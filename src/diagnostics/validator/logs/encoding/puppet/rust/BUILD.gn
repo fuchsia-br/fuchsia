@@ -1,0 +1,35 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("puppet") {
+  name = "log_validator_rust_puppet"
+  edition = "2018"
+  testonly = true
+
+  deps = [
+    "../../fidl:validate-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/diagnostics/log/encoding/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_component("component") {
+  component_name = "log-validator-rust-puppet"
+  testonly = true
+  manifest = "meta/puppet.cmx"
+  deps = [ ":puppet" ]
+}

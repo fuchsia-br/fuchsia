@@ -1,0 +1,164 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zbi/zbi.gni")
+import("//build/zbi/zbi_input.gni")
+import("//build/zircon/migrated_targets.gni")
+
+zx_host_tool("zbi") {
+  sources = [ "zbi.cc" ]
+  deps = [
+    "//sdk/lib/stdcompat",
+    "//third_party/rapidjson",
+    "//third_party/zstd",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zbitl",
+    "//zircon/third_party/ulib/cksum",
+    "//zircon/third_party/ulib/lz4",
+  ]
+  defines = [ "ZSTD_STATIC_LINKING_ONLY" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":zbi-input-size-limit-test",
+    ":zbi-storage-kernel-test",
+  ]
+  if (!is_mac) {
+    # TODO(fxbug.dev/85167): when bug fixed, add the dep below
+    # unconditionally.
+    deps += [ ":zbi-input-chrdev-test" ]
+  }
+}
+
+template("input_test") {
+  test_name = target_name
+  jq_path = "//prebuilt/third_party/jq/$host_platform/bin/jq"
+
+  zbi("$test_name.zbi") {
+    testonly = true
+    cpu = ""
+    deps = [ ":$test_name.input" ]
+  }
+
+  zbi_input("$test_name.input") {
+    testonly = true
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "expected",
+                             "fields",
+                           ])
+  }
+
+  action("$test_name.json") {
+    testonly = true
+    deps = [ ":$test_name.zbi" ]
+    zbi_outputs = get_target_outputs(deps[0])
+    sources = [ zbi_outputs[1] ]  # Just the JSON file.
+    outputs = [ "$target_out_dir/$target_name" ]
+    inputs = [ jq_path ]
+    script = "jq-test.sh"
+
+    fields = string_join(", ", invoker.fields)
+    args = rebase_path(inputs + sources + outputs, root_build_dir) +
+           [ "[ .[] | {$fields} ]" ]
+  }
+
+  generated_file("$test_name.expected.json") {
+    testonly = true
+    outputs = [ "$target_gen_dir/$target_name" ]
+    output_conversion = "json"
+    contents = invoker.expected
+  }
+
+  action(test_name) {
+    testonly = true
+    deps = [
+      ":$test_name.expected.json",
+      ":$test_name.json",
+    ]
+
+    sources = get_target_outputs(deps[0]) + get_target_outputs(deps[1])
+    inputs = [ jq_path ]
+    outputs = [ "$target_out_dir/$test_name.ok" ]
+    script = "json-diff.sh"
+    args = rebase_path([ jq_path ] + outputs + sources, root_build_dir)
+  }
+}
+
+input_test("zbi-input-size-limit-test") {
+  args = [ "--uncompressed" ]
+  type = "ramdisk:42"
+  sources = [ "BUILD.gn" ]
+  fields = [
+    "type",
+    "size",
+  ]
+  expected = [
+    {
+      type = "RAMDISK"
+      size = 42
+    },
+  ]
+}
+
+input_test("zbi-input-chrdev-test") {
+  args = [ "--uncompressed" ]
+  type = "ramdisk:23"
+  sources = [ "/dev/zero" ]
+  fields = [
+    "type",
+    "size",
+  ]
+  expected = [
+    {
+      type = "RAMDISK"
+      size = 23
+    },
+  ]
+}
+
+bootfs_entry = "$target_gen_dir/bootfs-entry.txt"
+generated_file("bootfs-entry") {
+  output_conversion = "list lines"
+  contents = []
+  outputs = [ bootfs_entry ]
+}
+
+bootfs_manifest = "$target_gen_dir/bootfs-manifest.txt"
+generated_file("bootfs-manifest") {
+  output_conversion = "list lines"
+  contents = [ "DEST=" + rebase_path(bootfs_entry, root_build_dir) ]
+  outputs = [ bootfs_manifest ]
+  deps = [ ":bootfs-entry" ]
+}
+
+input_test("zbi-storage-kernel-test") {
+  sources = [ bootfs_manifest ]
+  args = [ "--files-type=kernel" ]
+  fields = [
+    "type",
+    "contents",
+  ]
+  expected = [
+    {
+      type = "KERNEL"
+      contents = [
+        {
+          length = 0
+          name = "DEST"
+          offset = 4096
+          size = 0
+        },
+      ]
+    },
+  ]
+
+  deps = [ ":bootfs-manifest" ]
+}

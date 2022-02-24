@@ -1,0 +1,77 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/renamed_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+# `update` is conceptually a binary, but it built as a lib here so it can be
+# aggregated into //src/sys/pkg/bin/multi-universal-tool to save disk space.
+rustc_library("lib") {
+  name = "update"
+  with_unit_tests = true
+  edition = "2018"
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.update:fuchsia.update-rustc",
+    "//sdk/fidl/fuchsia.update.channelcontrol:fuchsia.update.channelcontrol-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer-rustc",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-ext",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+  ]
+
+  test_deps = [
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:parking_lot",
+  ]
+
+  source_root = "src/main.rs"
+  sources = [
+    "src/args.rs",
+    "src/channel.rs",
+    "src/check.rs",
+    "src/commit.rs",
+    "src/install.rs",
+    "src/main.rs",
+    "src/monitor_state.rs",
+    "src/monitor_updates.rs",
+    "src/revert.rs",
+  ]
+
+  visibility = [
+    ":*",
+    "//src/sys/pkg/bin/multi-universal-tool:*",
+  ]
+}
+
+renamed_binary("update-binary") {
+  source = "$root_out_dir/multi_universal_tool"
+  source_deps = [ "//src/sys/pkg/bin/multi-universal-tool" ]
+  dest = "bin/update"
+  fuchsia_shell_package_name = "update-bin"
+}
+
+fuchsia_package_with_single_component("update-bin") {
+  component_name = "update"
+  deps = [ ":update-binary" ]
+  manifest = "meta/update.cmx"
+}
+
+fuchsia_unittest_package("update-lib-tests") {
+  deps = [ ":lib_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":update-lib-tests" ]
+}

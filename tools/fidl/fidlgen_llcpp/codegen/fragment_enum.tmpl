@@ -1,0 +1,89 @@
+{{/*
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Enum:CommonTypesHeader" }}
+{{ EnsureNamespace . }}
+{{ if .IsStrict }}
+{{ .Docs }}
+enum class {{ .Name }} : {{ .Type }} {
+  {{- range .Members }}
+    {{ .Docs }}
+    {{ .Name }} = {{ .Value }},
+  {{- end }}
+};
+{{ else }}
+{{ .Docs }}
+class {{ .Name }} final {
+public:
+  constexpr {{ .Name }}() : value_(0) {}
+  constexpr explicit {{ .Name }}({{ .Type }} value) : value_(value) {}
+  constexpr operator {{ .Type }}() const { return value_; }
+
+  constexpr bool IsUnknown() const {
+    {{ if .Members }}
+    switch (value_) {
+      {{ range .Members }}
+      {{ if not .IsUnknown }}
+    case {{ .Value }}:
+      {{ end }}
+      {{ end }}
+      return false;
+    }
+    {{- end }}
+    return true;
+  }
+
+  constexpr static {{ .Name }} Unknown() {
+    return {{ .Name }}({{ .UnknownValueForTmpl | printf "%#x" }});
+  }
+
+  {{- range .Members }}
+    {{ .Docs }}
+    static const {{ $.Name }} {{ .Name }};
+  {{- end }}
+
+private:
+  {{ .Type }} value_;
+};
+
+{{- range $member := .Members }}
+constexpr const {{ $ }} {{ $.Name }}::{{ $member.Name }} =
+  {{ $ }}({{ $member.Value }});
+{{- end }}
+{{ end }}
+{{ end }}
+
+{{- define "Enum:Traits:CommonTypesHeader" }}
+
+template <>
+struct IsFidlType<{{ . }}> : public std::true_type {};
+template <>
+struct ContainsHandle<{{ . }}> : public std::false_type {};
+
+{{- end }}
+
+{{- define "Enum:WireTypesHeader" }}
+{{ EnsureNamespace . -}}
+using {{ .Name }} = {{ .Unified }};
+{{- end }}
+
+{{- define "Enum:Traits:NaturalTypesHeader" }}
+  template <>
+  struct internal::NaturalCodingTraits<{{ . }}> {
+    static constexpr size_t inline_size_v1_no_ee = sizeof({{ .Type }});
+    static constexpr size_t inline_size_v2 = sizeof({{ .Type }});
+
+    static void Encode(internal::NaturalEncoder* encoder, {{ . }}* value, size_t offset,
+                      cpp17::optional<NaturalHandleInformation> maybe_handle_info = cpp17::nullopt) {
+      ZX_DEBUG_ASSERT(maybe_handle_info == cpp17::nullopt);
+      *encoder->template GetPtr<{{ . }}>(offset) = *value;
+    }
+    static void Decode(internal::NaturalDecoder* decoder, {{ . }}* value, size_t offset) {
+      *value = *decoder->template GetPtr<{{ . }}>(offset);
+    }
+  };
+
+{{- end }}

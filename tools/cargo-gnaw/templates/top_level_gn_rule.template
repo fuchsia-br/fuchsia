@@ -1,0 +1,3 @@
+group("{group_name}") {{
+  deps = [":{dep_name}"]
+}}

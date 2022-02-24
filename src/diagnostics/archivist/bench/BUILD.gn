@@ -1,0 +1,12 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("bench") {
+  testonly = true
+  deps = [
+    "formatter:archivist-formatter-benchmarks",
+    "logging:archivist-logging-benchmarks",
+    "redaction:archivist-redaction-benchmarks",
+  ]
+}

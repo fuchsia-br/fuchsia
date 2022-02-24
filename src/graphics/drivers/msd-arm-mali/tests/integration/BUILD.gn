@@ -1,0 +1,46 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+group("integration") {
+  testonly = true
+
+  public_deps = [ ":msd_arm_mali_integration_tests" ]
+}
+
+executable("msd_arm_mali_integration_tests") {
+  testonly = true
+
+  sources = [
+    "run_unit_tests.cc",
+    "test_fault_recovery.cc",
+    "test_icd_list.cc",
+    "test_perf_counters.cc",
+    "test_shutdown.cc",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//sdk/lib/fdio",
+    "//src/graphics/lib/magma/include:magma",
+    "//src/graphics/lib/magma/src/libmagma",
+    "//src/graphics/lib/magma/src/magma_util:macros",
+    "//src/graphics/lib/magma/tests/helper:logger_init_helper",
+    "//src/graphics/lib/magma/tests/helper:magma_map_cpu",
+    "//src/graphics/lib/magma/tests/helper:test_device_helper",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [ "../../include" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

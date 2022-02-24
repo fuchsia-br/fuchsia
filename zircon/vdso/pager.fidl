@@ -1,0 +1,85 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+@transport("Syscall")
+protocol pager {
+    /// Create a new pager object.
+    /// Rights: None.
+    pager_create(struct {
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        out handle:PAGER;
+    });
+
+    /// Create a pager owned vmo.
+    /// Rights: pager must be of type ZX_OBJ_TYPE_PAGER.
+    /// Rights: port must be of type ZX_OBJ_TYPE_PORT and have ZX_RIGHT_WRITE.
+    pager_create_vmo(resource struct {
+        pager handle:PAGER;
+        options uint32;
+        port handle:PORT;
+        key uint64;
+        size uint64;
+    }) -> (resource struct {
+        status status;
+        out handle:VMO;
+    });
+
+    /// Detaches a vmo from a pager.
+    /// Rights: pager must be of type ZX_OBJ_TYPE_PAGER.
+    /// Rights: vmo must be of type ZX_OBJ_TYPE_VMO.
+    pager_detach_vmo(resource struct {
+        pager handle:PAGER;
+        vmo handle:VMO;
+    }) -> (struct {
+        status status;
+    });
+
+    /// Supply pages into a pager owned vmo.
+    /// Rights: pager must be of type ZX_OBJ_TYPE_PAGER.
+    /// Rights: pager_vmo must be of type ZX_OBJ_TYPE_VMO.
+    /// Rights: aux_vmo must be of type ZX_OBJ_TYPE_VMO and have ZX_RIGHT_READ and have ZX_RIGHT_WRITE.
+    pager_supply_pages(resource struct {
+        pager handle:PAGER;
+        pager_vmo handle:VMO;
+        offset uint64;
+        length uint64;
+        aux_vmo handle:VMO;
+        aux_offset uint64;
+    }) -> (struct {
+        status status;
+    });
+
+    /// Perform an operation on a range of a pager owned vmo.
+    /// Rights: pager must be of type ZX_OBJ_TYPE_PAGER.
+    /// Rights: pager_vmo must be of type ZX_OBJ_TYPE_VMO.
+    pager_op_range(resource struct {
+        pager handle:PAGER;
+        op uint32;
+        pager_vmo handle:VMO;
+        offset uint64;
+        length uint64;
+        data uint64;
+    }) -> (struct {
+        status status;
+    });
+
+    /// Query contiguous ranges of dirty pages in a pager owned vmo.
+    /// Rights: pager must be of type ZX_OBJ_TYPE_PAGER.
+    /// Rights: pager_vmo must be of type ZX_OBJ_TYPE_VMO.
+    @next
+    pager_query_dirty_ranges(resource struct {
+        pager handle:PAGER;
+        pager_vmo handle:VMO;
+        offset uint64;
+        length uint64;
+    }) -> (struct {
+        status status;
+        buffer vector_void;
+        actual optional_usize;
+        avail optional_usize;
+    });
+};

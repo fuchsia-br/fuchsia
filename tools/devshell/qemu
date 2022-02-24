@@ -1,0 +1,175 @@
+#!/bin/bash
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Run, inspect and debug
+### start fuchsia in qemu with a FVM disk
+## start fuchsia in qemu with a FVM disk
+##
+## usage: fx qemu [--no-build] [-z <zbi_image>] [--archive <tgt>]
+##
+##      -z <zbi_image>   use <zbi_image> instead of the default.
+##      --no-build       do not attempt to build the fvm and the default zbi images.
+##                       A custom zbi image passed by a '-z' flag is never built.
+##      --archive <tgt>  Don't actually run QEMU.  Instead, create a compressed tarball archive
+##                       named "<tgt>.tgz" which contains all of the images needed to run QEMU.
+##
+## When generating an archive, either two or three files are typically included in the
+## archive.  They are:
+##
+## 1) qemu-boot-shim.bin
+##    This file is the image to be loaded into RAM and jumped to. When using QEMU,
+##    pass this file to the VM instance using the -kernel option.
+## 2) fuchsia-ssh.zbi
+##    This file is the image to be used as the initial ramdisk for the VM. When using QEMU,
+##    pass this file to the VM instance using the -initrd option.
+## 3) fvm_raw.blk
+##    This file is the initial raw image of the block device for the VM.  It is
+##    not present in a "bringup" build configuration, but should be present for
+##    "core" builds and beyond.  When using QEMU, this file is provided to the
+##    VM using the --drive option, but needs to be manifested in the machine as
+##    a device using --device options in order for it to be available for the OS
+##    to mount.  An example of these flags might looks something like this:
+##
+##      -drive file=<path_to_fvm_raw.zbi>,format=raw,if=none,id=mydisk
+##      -device ich9-ahci,id=ahci
+##      -device ide-hd,drive=mydisk,bus=ahci.0
+##
+## This command delegates to //zircon/scripts/run-zircon. Other flags are
+## documented in that script, and can be discovered by passing -h or --help.
+##
+
+set -e
+
+declare -a CLEANUP_LIST
+function cleanup {
+  for i in "${CLEANUP_LIST[@]}"; do
+    rm -rf "${i}"
+  done
+}
+
+trap cleanup EXIT
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+fx-config-read
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/fvm.sh || exit $?
+
+echo
+fx-info "The Fuchsia emulator is improving and will soon be launched in ffx. Want to be an early adopter?"
+fx-info "Please use 'ffx emu' and send us feedback!"
+echo
+
+build_flag=true
+ZBI_IMAGE=
+PKG_TARGET=
+run_zircon_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      fx-command-help
+      "${FUCHSIA_DIR}/zircon/scripts/run-zircon" -h
+      exit 1
+      ;;
+    --no-build)
+      build_flag=false
+      ;;
+    --archive)
+      shift
+      PKG_TARGET="$1.tgz"
+      ;;
+    -z)
+      shift
+      ZBI_IMAGE="$1"
+      ;;
+    --)
+      # Stop processing args if we hit a "--" argument.
+      break
+      ;;
+    *)
+      run_zircon_args+=("$1")
+  esac
+  shift
+done
+
+authkeys_path="$(get-ssh-authkeys)" || {
+  fx-error "Cannot continue without a valid authorized keys file."
+  exit 1
+}
+
+qemu_dir="${PREBUILT_QEMU_DIR}/bin"
+
+build_targets=()
+
+KERNEL_IMAGE="$(fx-command-run list-build-artifacts --type kernel --name qemu-kernel images)"
+build_targets+=( "${KERNEL_IMAGE}" )
+if [[ -z "${ZBI_IMAGE}" ]]; then
+  ZBI_IMAGE="$(fx-command-run list-build-artifacts --type zbi --name zircon-a images)"
+  build_targets+=( "${ZBI_IMAGE}" )
+  ZBI_IMAGE="${FUCHSIA_BUILD_DIR}/${ZBI_IMAGE}"
+fi
+
+# Not all builds use an FVM so failing to find a source FVM is OK.
+fvm_source="$(fx-fvm-find-raw-source)"
+[[ -n "${fvm_source}" ]] && build_targets+=( "${fvm_source}" )
+
+args=(
+  -a "${FUCHSIA_ARCH}"
+  -q "${qemu_dir}"
+  -t "${FUCHSIA_BUILD_DIR}/${KERNEL_IMAGE}"
+)
+
+if $build_flag; then
+  _targets="$(printf ", %s" "${build_targets[@]}")"
+  echo >&2 "Building ${_targets:2}"
+  fx-command-run build "${build_targets[@]}"
+fi
+
+# Construction of a qcow image prevents qemu from writing back to the
+# build-produced image file, which could cause timestamp issues with that file.
+# Construction of the new ZBI adds ~/.ssh/fuchsia_authorized_keys for SSH
+# access.
+imgdir="$(mktemp -d ${FUCHSIA_BUILD_DIR}/tmp.XXX)"
+if [[ ! -d "${imgdir}" ]]; then
+  echo >&2 "Failed to create temporary directory"
+  exit 1
+fi
+CLEANUP_LIST+=("$imgdir")
+
+kernelzbi="${imgdir}/fuchsia-ssh.zbi"
+args+=(-z "${kernelzbi}")
+fx-zbi -o "${kernelzbi}" \
+  "${ZBI_IMAGE}" \
+  --entry "data/ssh/authorized_keys=${authkeys_path}" \
+  --type=entropy:64 /dev/urandom
+
+fvm_raw=
+if [[ -n "${fvm_source}" ]]; then
+  fvm_tool="$(fx-command-run host-tool --print fvm)"
+  fvm_raw="${imgdir}/fvm_raw.blk"
+  fx-fvm-extend-image "${fvm_tool}" "${FUCHSIA_BUILD_DIR}/${fvm_source}" "${fvm_raw}" "${IMAGE_SIZE}"
+  args+=(-d -D "${fvm_raw}" --diskfmt=raw)
+fi
+
+if [[ -z "${PKG_TARGET}" ]]; then
+  "${FUCHSIA_DIR}/zircon/scripts/run-zircon" "${args[@]}" "${run_zircon_args[@]}" "$@"
+else
+  # Create symlinks to all of the various components in a temp directory, so
+  # that our tar file is just a archive of individual files with no paths.
+  SYMLINK_PATH="$(mktemp -d)"
+  CLEANUP_LIST+=("${SYMLINK_PATH}")
+  for i in "${kernelzbi}" "${fvm_raw}" "${FUCHSIA_BUILD_DIR}/${KERNEL_IMAGE}"; do
+    if [[ ! $i ]]; then
+      continue
+    fi
+    name="${i##*/}"
+    ln -s "${i}" "${SYMLINK_PATH}/${name}"
+  done
+
+  # Now go ahead and create the tarball, working from within the symlink
+  # directory (again, to avoid pathnames in the tarball)
+  echo >&2 "Packaging into ${PKG_TARGET}"
+  cd "${SYMLINK_PATH}" > /dev/null
+  tar cvzf "${PKG_TARGET}" --dereference *
+  echo >&2 "done"
+fi

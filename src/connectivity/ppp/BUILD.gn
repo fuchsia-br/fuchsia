@@ -1,0 +1,20 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("drivers") {
+  deps = []
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "lib:ppp-tests",
+    "lib/ppp_packet:ppp-packet-tests",
+    "lib/ppp_protocol:ppp-protocol-tests",
+  ]
+}
+
+group("ppp") {
+  deps = [ "drivers" ]
+}

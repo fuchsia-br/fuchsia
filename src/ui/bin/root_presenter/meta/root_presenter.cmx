@@ -1,0 +1,10 @@
+{
+    "include": [
+        "//src/ui/bin/root_presenter/meta/root_presenter_base.cmx"
+    ],
+    "sandbox": {
+        "dev": [
+            "class/input-report"
+        ]
+    }
+}

@@ -1,0 +1,132 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.test;
+
+using zx;
+
+/// Human-readable name for a test case.
+alias Name = string:512;
+
+/// Optional unique tag to identitfy Invocation.
+alias Tag = string:512;
+
+/// Describes a single test case.
+type Case = table {
+    /// Uniquely identifies a test case within a test suite.
+    /// This member is required.
+    1: name Name;
+    /// Whether the test is enabled or disabled (marked ignored/skipped) by the developer.
+    /// If the member is omitted, the test is assumed to be enabled.
+    2: enabled bool;
+};
+
+/// Represents success, failure, or other possible conditions following a test invocation.
+type Status = strict enum {
+    /// The test passed.
+    PASSED = 1;
+
+    /// The test failed.
+    FAILED = 2;
+
+    /// The test was skipped.
+    /// A skipped status typically indicates that no attempt was made to run
+    /// the test.
+    ///
+    /// Examples:
+    /// The test was disabled by the developer.
+    /// A precondition for running the test was not satisfied.
+    SKIPPED = 3;
+};
+
+/// Specification of a test to run.
+type Invocation = table {
+    /// Uniquely identifies a test case within a test suite.
+    /// This member is required.
+    1: name Name;
+
+    /// Optional tag, arbitrarily specified by clients of `Suite`.
+    /// This field is not used by Suite protocol, but passed
+    /// back as is by `OnTestCaseStarted`.
+    2: tag Tag;
+};
+
+/// Optional additional instructions for running test cases.
+type RunOptions = table {
+    /// If set to true, test cases that have been disabled by the test author will nonetheless be
+    /// executed.
+    1: include_disabled_tests bool;
+
+    /// Defines maximum number of test cases to run simultaneously.
+    /// If unspecified, the default behavior is chosen by the `Suite`
+    /// implementation.
+    2: parallel uint16;
+
+    /// Optional arguments to pass to the test.
+    3: arguments vector<string:MAX>:MAX;
+};
+
+/// Result of invoking a single test case.
+type Result = table {
+    /// This member is required.
+    1: status Status;
+};
+
+/// Listens to updates from an individual test case run.
+protocol CaseListener {
+    /// Indicates that an invididual test case has completed and result is
+    /// available.
+    Finished(struct {
+        result Result;
+    });
+};
+
+/// Standard out/err handles from test case.
+type StdHandles = resource table {
+    /// stdout handle.
+    1: out zx.handle:SOCKET;
+
+    /// stderr handle.
+    2: err zx.handle:SOCKET;
+};
+
+/// Listens to updates from test runs.
+protocol RunListener {
+    /// Indicates that an individual test invocation has started execution.
+    OnTestCaseStarted(resource struct {
+        invocation Invocation;
+        std_handles StdHandles;
+        listener server_end:CaseListener;
+    });
+
+    /// Indicates that the last test case that started has finished, and no more test cases will start.
+    OnFinished();
+};
+
+/// Iterator for listing available test cases.
+protocol CaseIterator {
+    /// Returns the next batch of test cases.
+    GetNext() -> (struct {
+        cases vector<Case>:MAX;
+    });
+};
+
+@discoverable
+protocol Suite {
+    /// Enumerate the test cases available in this test suite.
+    GetTests(resource struct {
+        iterator server_end:CaseIterator;
+    });
+
+    /// Run the specified test cases. Results are returned over the results
+    /// channel.
+    ///
+    /// `tests` may contain duplicate elements, in which case the same test is
+    /// run multiple times as indicated.
+    /// Closing `test_listener` marks the end of this call.
+    Run(resource struct {
+        tests vector<Invocation>:MAX;
+        options RunOptions;
+        listener client_end:RunListener;
+    });
+};

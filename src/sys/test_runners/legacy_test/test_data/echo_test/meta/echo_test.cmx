@@ -1,0 +1,20 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "injected-services": {
+                "fidl.examples.routing.echo.Echo": "fuchsia-pkg://fuchsia.com/legacy_test_runner_examples#meta/echo_server.cmx"
+            }
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/echo_test"
+    },
+    "sandbox": {
+        "services": [
+            "fidl.examples.routing.echo.Echo"
+        ]
+    }
+}

@@ -1,0 +1,66 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+source_set("hid-input-report") {
+  sources = [
+    "axis.cc",
+    "consumer_control.cc",
+    "device.cc",
+    "keyboard.cc",
+    "mouse.cc",
+    "sensor.cc",
+    "touch.cc",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.input",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report_llcpp",
+    "//src/ui/lib/key_util",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/hid-parser",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("lib-hid-input-report-test") {
+  sources = [
+    "axis.cc",
+    "consumer_control.cc",
+    "device.cc",
+    "keyboard.cc",
+    "mouse.cc",
+    "sensor.cc",
+    "test/consumer-control-test.cc",
+    "test/keyboard-test.cc",
+    "test/mouse-test.cc",
+    "test/sensor-test.cc",
+    "test/touch-test.cc",
+    "touch.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.input",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/ui/lib/key_util",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/hid-parser",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("test") {
+  package_name = "lib-hid-input-report-test"
+  deps = [ ":lib-hid-input-report-test" ]
+}

@@ -1,0 +1,22 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("profiles") {
+  testonly = true
+  deps = [
+    "bt-a2dp",
+    "bt-a2dp:tests",
+    "bt-avrcp",
+    "bt-avrcp:tests",
+    "bt-avrcp-target",
+    "bt-avrcp-target:tests",
+    "bt-device-id",
+    "bt-device-id:tests",
+    "bt-hfp-audio-gateway",
+    "bt-hfp-audio-gateway:tests",
+    "bt-rfcomm",
+    "bt-rfcomm:tests",
+    "tests",
+  ]
+}

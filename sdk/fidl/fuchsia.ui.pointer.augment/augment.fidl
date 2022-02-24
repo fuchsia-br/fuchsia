@@ -1,0 +1,181 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+/// These augmentation protocols represent powerful introspection capabilities
+/// into the view hierarchy, and must be individually routed to specific target
+/// components. Most clients should not have access to these protocols. Some
+/// commonalities:
+/// - Theory of operation. These augmentation protocols accept a standard
+///   protocol endpoint and return an augmented protocol endpoint. In case of
+///   error, the original endpoint is returned.
+/// - View hierarchy scope. The reach of the augmented protocols are inherently
+///   bound to the original protocols they augment. That is, if the original
+///   protocol has power over only one view, the augmented protocol gives access
+///   to only that view.
+/// - Security warning. These protocols enable a form of clickjacking! While the
+///   view hierarchy prevents clickjacking of arbitrary views, care must be
+///   taken to route these augmentation protocols to the intended view's
+///   component.
+/// - Security guarantees. These protocols offer Confidentiality, Integrity, and
+///   Availability of the augmented data to authorized components. That is,
+///   non-authorized components cannot snoop on this data, modify its contents,
+///   or prevent its dispatch to authorized components.
+/// - Append semantics. Each augmentation provides augmentation-specific data to
+///   the protocol's regular event, but otherwise is not intended to modify the
+///   original protocol's basic functionality.
+/// - Synchronicity. The augmentation-specific data is synchronous with the
+///   original protocol's data.
+/// - API evolution. Server-side can introduce new methods to these protocols,
+///   and new fields to these tables, without breaking existing clients of the
+///   original or augmented protocol. For example, [`MouseEventWithGlobalMouse`]
+///   can be extended without consequences for
+///   [`fuchsia.ui.pointer.MouseEvent`].
+/// - API evolution. When clients require substantially different augmentation,
+///   new augmentation protocols representing those capabilities can (and
+///   should) be introduced. For example, if one client of [`GlobalMouse`]
+///   requires additional fields that are really about view-local hit data, it
+///   would be reasonable to mint a new augmentation.
+library fuchsia.ui.pointer.augment;
+
+using fuchsia.ui.pointer as pointer;
+using zx;
+
+/// Abnormal conditions for augmentation protocols.
+type ErrorReason = strict enum {
+    /// The augmentation attempt was denied.
+    DENIED = 1;
+};
+
+// GLOBAL MOUSE AUGMENTATION
+
+/// Abnormal return for global mouse.
+type ErrorForGlobalMouse = resource struct {
+    /// Abnormal reason for return.
+    error_reason ErrorReason;
+
+    /// Original protocol endpoint for client use.
+    original client_end:pointer.MouseSource;
+};
+
+/// A method for a client to receive view-global visibility for mouse behavior.
+/// - The augmented data are scoped to the view of the client.
+protocol GlobalMouse {
+    /// An exchange from an `original` mouse protocol endpoint to an `augmented`
+    /// mouse protocol endpoint. If successful, `error` is empty, `original` is
+    /// consumed, and `augmented` is returned for the client's use. Otherwise,
+    /// the `error` carries back `original` for the client's use, and
+    /// `augmented` is null.
+    Upgrade(resource struct {
+        original client_end:pointer.MouseSource;
+    }) -> (resource struct {
+        augmented client_end:<MouseSourceWithGlobalMouse, optional>;
+        error box<ErrorForGlobalMouse>;
+    });
+};
+
+/// Like [`fuchsia.ui.pointer.MouseSource`], but with additional information
+/// about the global position of mouse events, and otherwise identical in
+/// operation. See [`fuchsia.ui.pointer.MouseSource`] for regular usage
+/// information.
+protocol MouseSourceWithGlobalMouse {
+    /// Identical usage to [`fuchsia.ui.pointer.MouseSource.Watch`], but with
+    /// augmented data.
+    Watch() -> (struct {
+        events vector<MouseEventWithGlobalMouse>:pointer.MOUSE_MAX_EVENT;
+    });
+};
+
+/// An augmentation of [`fuchsia.ui.pointer.MouseEvent`] to provide global
+/// visibility for mouse behavior in the injection subtree.
+/// - The augmented data is scoped to the view of the client, meaning no events
+///   will be delivered when the mouse pointer is outside the view (even when
+///   the stream is latched to this view).
+/// - Augmented data is only produced for events injected either into or above
+///   the view in the scene graph.
+///   -  This means that local events ~= global events when the view is the
+///      root of the injection subtree.
+///   -  Otherwise the client will see all events up to root of the injection
+///      subtree.
+type MouseEventWithGlobalMouse = table {
+    /// Identical usage to [`fuchsia.ui.pointer.MouseEvent`]. In particular, if
+    /// the client's view is obscured, `mouse_event` will be empty.
+    1: mouse_event pointer.MouseEvent;
+
+    /// Augmented data that describes the position of a `mouse_event` within the
+    /// client's view, regardless of obscuring or latching.
+    2: global_position pointer.MousePointerSample;
+
+    /// Augmented data that describes when the mouse stream enters or exits
+    /// the client's view.
+    3: global_stream_info pointer.MouseEventStreamInfo;
+};
+
+// LOCAL HIT AUGMENTATION
+
+// Abnormal return for local hit.
+type ErrorForLocalHit = resource struct {
+    /// Abnormal reason for return.
+    error_reason ErrorReason;
+
+    /// Original protocol endpoint for client use.
+    original client_end:pointer.TouchSource;
+};
+
+/// A method for a client to upgrade its touch event protocol to additionally
+/// receive local-hit data for touch events.
+protocol LocalHit {
+    /// An exchange from an `original` touch protocol endpoint to an `augmented`
+    /// touch protocol endpoint. If successful, `error` is empty, `original` is
+    /// consumed, and `augmented` is returned for the client's use. Otherwise,
+    /// the `error` carries back `original` for the client's use, and
+    /// `augmented` is null.
+    Upgrade(resource struct {
+        original client_end:pointer.TouchSource;
+    }) -> (resource struct {
+        augmented client_end:<TouchSourceWithLocalHit, optional>;
+        error box<ErrorForLocalHit>;
+    });
+};
+
+/// Like [`fuchsia.ui.pointer.TouchSource`], but with additional information
+/// about the local-hit position of touch events, and otherwise identical in
+/// operation. See [`fuchsia.ui.pointer.TouchSource`] for regular usage
+/// information.
+protocol TouchSourceWithLocalHit {
+    /// Identical usage to [`fuchsia.ui.pointer.TouchSource.Watch`], but with
+    /// augmented data.
+    Watch(struct {
+        responses vector<pointer.TouchResponse>:pointer.TOUCH_MAX_EVENT;
+    }) -> (struct {
+        events vector<TouchEventWithLocalHit>:pointer.TOUCH_MAX_EVENT;
+    });
+    /// Identical usage to [`fuchsia.ui.pointer.TouchSource.UpdateResponse`].
+    UpdateResponse(struct {
+        interaction pointer.TouchInteractionId;
+        response pointer.TouchResponse;
+    }) -> ();
+};
+
+/// A floating point two-dimensional point.
+/// - The values are placed in (x, y) order.
+alias Point2 = array<float32, 2>;
+
+/// An augmentation of [`fuchsia.ui.pointer.TouchEvent`] to provide local-hit
+/// data for a touch event.
+///
+/// For a given touch event `e`, consider the ordered list of intersections with
+/// graphical content: its "hits" from top to bottom. The "local hit" of `e` is
+/// the location of `e` in the coordinate system of the view in which `e` has
+/// the top-most intersection.
+type TouchEventWithLocalHit = struct {
+    /// Identical usage to [`fuchsia.ui.pointer.TouchEvent`].
+    touch_event pointer.TouchEvent;
+
+    /// Augmented data for `touch_event` that describes the top-most client
+    /// KOID that it hits.
+    local_viewref_koid zx.koid;
+
+    /// Augmented data for `touch_event` that describes its local coordinates in
+    /// the coordinate space for `local_viewref_koid`.
+    local_point Point2;
+};

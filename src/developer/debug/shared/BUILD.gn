@@ -1,0 +1,144 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This library contains helper classes used by both the debug_agent and zxdb
+# but that aren't directly related to the protocol.
+static_library("shared") {
+  sources = [
+    "address_range.cc",
+    "address_range.h",
+    "arch.h",
+    "arch_arm64.h",
+    "arch_x86.cc",
+    "arch_x86.h",
+    "buffered_fd.cc",
+    "buffered_fd.h",
+    "component_utils.cc",
+    "component_utils.h",
+    "handle_info.cc",
+    "handle_info.h",
+    "largest_less_or_equal.h",
+    "message_loop.cc",
+    "message_loop.h",
+    "regex.cc",
+    "regex.h",
+    "register_id.h",
+    "register_info.cc",
+    "register_info.h",
+    "register_value.cc",
+    "register_value.h",
+    "status.cc",
+    "status.h",
+    "stream_buffer.cc",
+    "stream_buffer.h",
+    "test_stream_buffer.cc",
+    "test_stream_buffer.h",
+    "zx_status.cc",
+    "zx_status.h",
+    "zx_status_definitions.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit-promise",
+    "//src/developer/debug/shared/logging",
+    "//src/lib/containers/cpp",
+    "//src/lib/fxl",
+  ]
+
+  if (is_host) {
+    # Host toolchain.
+    sources += [
+      "message_loop_poll.cc",
+      "message_loop_poll.h",
+    ]
+
+    if (is_linux) {
+      sources += [
+        "message_loop_linux.cc",
+        "message_loop_linux.h",
+      ]
+    }
+  } else {
+    # Target toolchain.
+    sources += [
+      "buffered_zx_socket.cc",
+      "buffered_zx_socket.h",
+      "event_handlers.cc",
+      "event_handlers.h",
+      "message_loop_fuchsia.cc",
+      "message_loop_fuchsia.h",
+      "zircon_exception_watcher.h",
+      "zircon_utils.cc",
+      "zircon_utils.h",
+    ]
+
+    public_deps += [
+      "//sdk/lib/fdio",
+      "//sdk/lib/fit",
+      "//zircon/system/ulib/async:async-cpp",
+      "//zircon/system/ulib/async-default",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+
+source_set("test_support") {
+  testonly = true
+  sources = [
+    "mock_memory.cc",
+    "mock_memory.h",
+    "register_test_support.cc",
+    "register_test_support.h",
+    "test_with_loop.h",
+  ]
+
+  public_deps = [
+    ":shared",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+# Unit tests for this directory. These are intended to be referenced by unit
+# test targets for the consumers of this library.
+source_set("tests") {
+  testonly = true
+  sources = [
+    "address_range_unittest.cc",
+    "component_utils_unittest.cc",
+    "handle_info_unittest.cc",
+    "largest_less_or_equal_unittest.cc",
+    "message_loop_unittest.cc",
+    "regex_unittest.cc",
+    "register_info_unittest.cc",
+    "stream_buffer_unittest.cc",
+  ]
+
+  if (is_linux) {
+    sources += [ "message_loop_linux_unittest.cc" ]
+  }
+
+  deps = [
+    ":shared",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+if (is_mac) {
+  # Unwinders need elf.h which doesn't come on Mac. Copy the one out of Zircon and use it.
+  copy("copy_elf_h") {
+    sources = [ "//zircon/third_party/ulib/musl/include/elf.h" ]
+    outputs = [ "$target_gen_dir/elf/elf.h" ]
+  }
+
+  config("config_elf_h") {
+    include_dirs = [ target_gen_dir + "/elf" ]
+  }
+
+  group("elf_h_on_mac") {
+    public_deps = [ ":copy_elf_h" ]
+    public_configs = [ ":config_elf_h" ]
+  }
+}

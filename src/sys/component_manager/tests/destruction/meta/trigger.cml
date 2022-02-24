@@ -1,0 +1,18 @@
+// Integration test component that runs a Trigger service. When triggered, the
+// component is started but takes no action.
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/destruction_trigger",
+    },
+    capabilities: [
+        { protocol: "fidl.test.components.Trigger" },
+    ],
+    expose: [
+        {
+            protocol: "fidl.test.components.Trigger",
+            from: "self",
+        },
+    ],
+}

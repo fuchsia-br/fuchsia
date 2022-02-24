@@ -1,0 +1,112 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.pwm;
+
+using zx;
+
+type PwmConfig = struct {
+    polarity bool;
+    period_ns uint32;
+    /// duty_cycle range: [0.0, 100.0]
+    duty_cycle float32;
+    // TODO(fxbug.dev/41256): Vendor extensions
+    /// mode_config should be mode specific parameters. The first parameter should always be mode.
+    /// For example, a PWM supporting regular mode and 2 timer mode should have:
+    ///   struct mode_config_regular {};
+    ///
+    ///   struct mode_config_two_timer {
+    ///     uint32_t period_ns2;
+    ///     float duty_cycle2;
+    ///     uint8_t timer1;
+    ///     uint8_t timer2;
+    ///   };
+    ///
+    ///   struct mode_config {
+    ///     uint32_t mode;
+    ///     union {
+    ///       struct mode_config_regular regular;
+    ///       struct mode_config_two_timer two_timer;
+    ///     };
+    ///   };
+    @mutable
+    @buffer
+    mode_config vector<uint8>:MAX;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Pwm {
+    /// Gets the current config of the PWM.
+    /// @Returns : |s| : ZX_OK if success.
+    /// @Returns : |config| : current config of PWM.
+    GetConfig() -> (struct {
+        s zx.status;
+        config PwmConfig;
+    });
+
+    /// Sets the configurations of the PWM
+    /// |config| : Configurations.
+    /// @Returns : |s| : ZX_OK if success.
+    SetConfig(struct {
+        config PwmConfig;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    /// Enables the PWM.
+    /// @Returns : |s| : ZX_OK if success.
+    Enable() -> (struct {
+        s zx.status;
+    });
+
+    /// Disables the PWM.
+    /// @Returns : |s| : ZX_OK  if success.
+    Disable() -> (struct {
+        s zx.status;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol PwmImpl {
+    /// Gets the current config of the PWM.
+    /// |idx| : Index of requested PWM.
+    /// @Returns: |s| : ZX_OK if success.
+    /// @Returns : |config| : current config of PWM.
+    GetConfig(struct {
+        idx uint32;
+    }) -> (struct {
+        s zx.status;
+        config PwmConfig;
+    });
+
+    /// Sets the configurations of the PWM.
+    /// |idx| : Index of requested PWM.
+    /// |config| : Configurations.
+    /// @Returns : |s| : ZX_OK if success.
+    SetConfig(struct {
+        idx uint32;
+        config PwmConfig;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    /// Enables the PWM.
+    /// |idx| : Index of requested PWM.
+    /// @Returns : |s| : ZX_OK if success.
+    Enable(struct {
+        idx uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    /// Disables the PWM.
+    /// |idx| : Index of requested PWM.
+    /// @Returns : |s| : ZX_OK  if success.
+    Disable(struct {
+        idx uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+};

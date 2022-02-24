@@ -1,0 +1,98 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("openthread") {
+  edition = "2018"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//src/connectivity/lib/fidl_fuchsia_net_stack_ext",
+    "//src/connectivity/lowpan/lib/openthread_sys",
+    "//src/lib/fuchsia-async",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zerocopy",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/lib/zircon/rust:fuchsia-zircon-status",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:bitflags",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:libc",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:num",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:static_assertions",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/lib.rs",
+    "src/ot/border_router.rs",
+    "src/ot/cli.rs",
+    "src/ot/dataset.rs",
+    "src/ot/dnssd.rs",
+    "src/ot/error.rs",
+    "src/ot/ip6.rs",
+    "src/ot/joiner.rs",
+    "src/ot/link.rs",
+    "src/ot/message.rs",
+    "src/ot/mod.rs",
+    "src/ot/otbox.rs",
+    "src/ot/platform.rs",
+    "src/ot/radio.rs",
+    "src/ot/reset.rs",
+    "src/ot/singleton/backing.rs",
+    "src/ot/singleton/instance.rs",
+    "src/ot/singleton/mod.rs",
+    "src/ot/srp.rs",
+    "src/ot/state.rs",
+    "src/ot/tasklets.rs",
+    "src/ot/thread.rs",
+    "src/ot/trel.rs",
+    "src/ot/types/border_router_config.rs",
+    "src/ot/types/castable.rs",
+    "src/ot/types/channel_mask.rs",
+    "src/ot/types/device_role.rs",
+    "src/ot/types/ext_address.rs",
+    "src/ot/types/extended_pan_id.rs",
+    "src/ot/types/external_route_config.rs",
+    "src/ot/types/ipv6.rs",
+    "src/ot/types/link_mode.rs",
+    "src/ot/types/log_region.rs",
+    "src/ot/types/mod.rs",
+    "src/ot/types/neighbor_info.rs",
+    "src/ot/types/network_key.rs",
+    "src/ot/types/network_name.rs",
+    "src/ot/types/operational_dataset.rs",
+    "src/ot/types/radio_region.rs",
+    "src/ot/types/route_preference.rs",
+    "src/ot/types/scan_results.rs",
+    "src/ot/types/security_policy.rs",
+    "src/ot/udp.rs",
+    "src/otfuchsia.rs",
+  ]
+
+  non_rust_deps = [ "//third_party/openthread:lib-ot-core" ]
+
+  configs += [ "//build/config/fuchsia:static_cpp_standard_library" ]
+}
+
+fuchsia_unittest_package("openthread-rust-tests") {
+  deps = [ ":openthread_test" ]
+}
+
+group("openthread_rust") {
+  deps = [ ":openthread" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":openthread-rust-tests" ]
+}

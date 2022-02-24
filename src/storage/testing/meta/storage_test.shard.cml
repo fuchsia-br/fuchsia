@@ -1,0 +1,12 @@
+{
+    include: [ "//zircon/system/ulib/devmgr-integration-test/meta/client.shard.cml" ],
+    use: [
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+        },
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+    ],
+}

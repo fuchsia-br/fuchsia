@@ -1,0 +1,10 @@
+{
+    "annotation_allowlist": [
+        "foo"
+    ],
+    "attachment_allowlist": [
+        "log.kernel",
+        "log.syslog"
+    ],
+    "spurious field": []
+}

@@ -1,0 +1,9 @@
+{
+    include: [ "//src/sys/pkg/bin/pkg-resolver/meta/pkg-resolver-common.shard.cml" ],
+    use: [
+        {
+            storage: "data",
+            path: "/data",
+        },
+    ],
+}

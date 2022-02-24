@@ -1,0 +1,88 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "omaha_client_integration_test"
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.update:fuchsia.update-rustc",
+    "//sdk/fidl/fuchsia.update.channelcontrol:fuchsia.update.channelcontrol-rustc",
+    "//sdk/fidl/fuchsia.update.config:fuchsia.update.config-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer-rustc",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/mock-crash-reporter:lib",
+    "//src/sys/pkg/testing/mock-installer",
+    "//src/sys/pkg/testing/mock-omaha-server",
+    "//src/sys/pkg/testing/mock-paver",
+    "//src/sys/pkg/testing/mock-reboot",
+    "//src/sys/pkg/testing/mock-resolver",
+    "//src/sys/pkg/testing/mock-verifier:lib",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_component("omaha-client-test-root") {
+  component_name = "test_root"
+  testonly = true
+  manifest = "meta/test_root.cml"
+}
+
+fuchsia_component("omaha-client-test-driver") {
+  component_name = "test_driver"
+  testonly = true
+  manifest = "meta/test_driver.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("omaha-client-integration-tests") {
+  test_components = [ ":omaha-client-test-root" ]
+  deps = [
+    ":omaha-client-test-driver",
+    "//src/cobalt/bin/testing/mock_cobalt:component_v2",
+    "//src/connectivity/network/dns:component",
+    "//src/connectivity/network/netstack:component",
+    "//src/sys/pkg/bin/omaha-client:component",
+    "//src/sys/pkg/bin/system-update-committer:component",
+    "//src/sys/pkg/bin/system-updater:component",
+    "//src/sys/stash:stash2_v2",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":omaha-client-integration-tests" ]
+}

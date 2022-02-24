@@ -1,0 +1,40 @@
+{
+    children: [
+        {
+            name: "account",
+            url: "fuchsia-pkg://fuchsia.com/account#meta/account.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.identity.account.AccountManager",
+            from: "#account",
+        },
+    ],
+    offer: [
+        {
+            directory: "dev",
+            from: "parent",
+            to: "#account",
+        },
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+                "fuchsia.tpm.cr50.PinWeaver",
+            ],
+            from: "parent",
+            to: "#account",
+        },
+        {
+            protocol: [ "fuchsia.identity.account.AccountManager" ],
+            from: "#account",
+            to: "#session-manager",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: "#account",
+        },
+    ],
+}

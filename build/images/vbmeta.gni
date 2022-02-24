@@ -1,0 +1,46 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Build arguments used in the context of verified boot.
+# See [this document](https://android.googlesource.com/platform/external/avb/+/HEAD/README.md)
+# for more information.
+
+declare_args() {
+  # If true, then a vbmeta image will be generated for provided ZBI
+  # and the paving script will pave vbmeta images to the target device.
+  use_vbmeta = false
+
+  # a key which will be used to sign VBMETA and images for AVB
+  avb_key = ""
+
+  # AVB metadata which will be used to validate public key
+  avb_atx_metadata = ""
+
+  # Partition name from where image will be verified
+  zvb_partition_name = "zircon"
+
+  # Additional VBMeta Descriptors to add to the vbmeta image during assembly.
+  #
+  # To add a descriptor, include GN code such as:
+  #
+  # ```
+  # extra_vbmeta_descriptors = [{
+  #   name = "zircon"         # name of the partition
+  #   size = 12345            # size of the partition in bytes
+  #   flags = 1               # custom vbmeta flags to add
+  #   min_avb_version = "1.1" # minimum avb version
+  # }]
+  # ```
+  extra_vbmeta_descriptors = false
+
+  # DEPRECATED:  Remove when no boards set a value for these.
+  board_extra_vbmeta_images = []
+  avb_algorithm = "DEPRECATED"
+}
+
+# DEPRECATED: Remove when no boards set a value for this.
+not_needed([
+             "board_extra_vbmeta_images",
+             "avb_algorithm",
+           ])

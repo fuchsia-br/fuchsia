@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/get_message_client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.testing.chrealm.Tester"
+        ]
+    }
+}

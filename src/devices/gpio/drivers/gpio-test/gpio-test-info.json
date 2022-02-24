@@ -1,0 +1,14 @@
+{
+    "short_description": "Core GPIO test driver",
+    "manufacturer": "",
+    "families": [
+        "generic"
+    ],
+    "models": [
+        "generic"
+    ],
+    "areas": [
+        "GPIO",
+        "Test"
+    ]
+}

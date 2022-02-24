@@ -1,0 +1,584 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+
+visibility = [ ":*" ]
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+executable("archive_accessor_ptr_unittest_exe") {
+  testonly = true
+
+  sources = [ "archive_accessor_ptr_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/sys/cpp/testing:cpp",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:diagnostics",
+    "//src/developer/forensics/utils:errors",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("board_info_provider_unittest_exe") {
+  testonly = true
+
+  sources = [ "board_info_provider_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data/annotations:board_info_provider",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:board_info_provider",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/lib/fxl",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("channel_provider_unittest_exe") {
+  testonly = true
+
+  sources = [ "channel_provider_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data/annotations:channel_provider",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:channel_control",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("config_unittest_exe") {
+  testonly = true
+
+  # "config_unittest" is rather generic for the default_output_dir that is set
+  # to root_out_dir so instead we write the binary to target_out_dir.
+  output_dir = target_out_dir
+
+  sources = [ "config_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:config",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("data_provider_unittest_exe") {
+  testonly = true
+
+  sources = [ "data_provider_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.math",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/lib/fidl/cpp",
+    "//src/developer/forensics/feedback:device_id_provider",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data:data_provider",
+    "//src/developer/forensics/feedback_data:metadata",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:gmatchers",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/testing/stubs:scenic",
+    "//src/developer/forensics/utils:archive",
+    "//src/lib/fostr/fidl/fuchsia.math",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("data_provider_controller_unittest_exe") {
+  testonly = true
+
+  sources = [ "data_provider_controller_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data:data_provider_controller",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("datastore_unittest_exe") {
+  testonly = true
+
+  sources = [ "datastore_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hwinfo",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/lib/fit-promise",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data:datastore",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:gmatchers",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:log_message",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:board_info_provider",
+    "//src/developer/forensics/testing/stubs:channel_control",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/testing/stubs:device_id_provider",
+    "//src/developer/forensics/testing/stubs:diagnostics",
+    "//src/developer/forensics/testing/stubs:product_info_provider",
+    "//src/developer/forensics/utils:logs",
+    "//src/developer/forensics/utils:time",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/lib/files",
+    "//src/lib/fxl",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("default_annotations_unittest_exe") {
+  testonly = true
+
+  # "default_annotations_unittest" is rather generic for the default_output_dir that is set
+  # to root_out_dir so instead we write the binary to target_out_dir.
+  output_dir = target_out_dir
+  sources = [ "default_annotations_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:default_annotations",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("inspect_data_budget_unittest_exe") {
+  testonly = true
+
+  sources = [ "inspect_data_budget_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:inspect_budget",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/lib/files",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("inspect_unittest_exe") {
+  testonly = true
+
+  sources = [ "inspect_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/sys/cpp/testing:cpp",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:diagnostics",
+    "//src/developer/forensics/utils:errors",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("metadata_unittest_exe") {
+  testonly = true
+
+  sources = [ "metadata_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data:metadata",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/utils:errors",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+  ]
+}
+
+executable("kernel_log_ptr_integration_test_exe") {
+  testonly = true
+
+  sources = [ "kernel_log_ptr_integration_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/utils:errors",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("product_info_provider_unittest_exe") {
+  testonly = true
+
+  sources = [ "product_info_provider_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data/annotations:product_info_provider",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/testing/stubs:product_info_provider",
+    "//src/developer/forensics/utils:errors",
+    "//src/lib/fxl",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("screenshot_ptr_unittest_exe") {
+  testonly = true
+
+  sources = [ "screenshot_ptr_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:scenic",
+    "//src/lib/fxl",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("system_log_unittest_exe") {
+  testonly = true
+
+  sources = [ "system_log_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:diagnostics",
+    "//src/developer/forensics/utils:errors",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("timezone_provider_unittest_exe") {
+  testonly = true
+
+  sources = [ "timezone_provider_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data/annotations:timezone_provider",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:timezone_provider",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("zx_object_util") {
+  sources = [
+    "zx_object_util.cc",
+    "zx_object_util.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+###############################################################################
+# RESOURCES
+###############################################################################
+resource("test_configs") {
+  sources = [
+    "configs/bad_schema_duplicated_attachment_key.json",
+    "configs/bad_schema_missing_required_field.json",
+    "configs/bad_schema_spurious_field.json",
+    "configs/valid.json",
+    "configs/valid_empty_list.json",
+  ]
+
+  outputs = [ "data/configs/{{source_file_part}}" ]
+}
+
+resource("test_image") {
+  sources =
+      [ "//src/developer/forensics/testing/resources/checkerboard_100.png" ]
+
+  outputs = [ "data/checkerboard_100.png" ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_component("archive_accessor_ptr_unittest") {
+  testonly = true
+
+  manifest = "meta/archive_accessor_ptr_unittest.cmx"
+
+  deps = [ ":archive_accessor_ptr_unittest_exe" ]
+}
+
+fuchsia_component("board_info_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/board_info_provider_unittest.cmx"
+
+  deps = [ ":board_info_provider_unittest_exe" ]
+}
+
+fuchsia_component("channel_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/channel_provider_unittest.cmx"
+
+  deps = [ ":channel_provider_unittest_exe" ]
+}
+
+fuchsia_component("config_unittest") {
+  testonly = true
+
+  manifest = "meta/config_unittest.cmx"
+
+  deps = [
+    ":config_unittest_exe",
+    ":test_configs",
+  ]
+}
+
+fuchsia_component("data_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/data_provider_unittest.cmx"
+
+  deps = [
+    ":data_provider_unittest_exe",
+    ":test_image",
+  ]
+}
+
+fuchsia_component("data_provider_controller_unittest") {
+  testonly = true
+
+  manifest = "meta/data_provider_controller_unittest.cmx"
+
+  deps = [ ":data_provider_controller_unittest_exe" ]
+}
+
+fuchsia_component("datastore_unittest") {
+  testonly = true
+
+  manifest = "meta/datastore_unittest.cmx"
+
+  deps = [ ":datastore_unittest_exe" ]
+}
+
+fuchsia_component("default_annotations_unittest") {
+  testonly = true
+
+  manifest = "meta/default_annotations_unittest.cml"
+
+  deps = [ ":default_annotations_unittest_exe" ]
+}
+
+fuchsia_component("inspect_data_budget_unittest") {
+  testonly = true
+
+  manifest = "meta/inspect_data_budget_unittest.cmx"
+
+  deps = [ ":inspect_data_budget_unittest_exe" ]
+}
+
+fuchsia_component("inspect_unittest") {
+  testonly = true
+
+  manifest = "meta/inspect_unittest.cmx"
+
+  deps = [ ":inspect_unittest_exe" ]
+}
+
+fuchsia_component("metadata_unittest") {
+  testonly = true
+
+  manifest = "meta/metadata_unittest.cmx"
+
+  deps = [ ":metadata_unittest_exe" ]
+}
+
+fuchsia_component("kernel_log_ptr_integration_test") {
+  testonly = true
+
+  manifest = "meta/kernel_log_ptr_integration_test.cmx"
+
+  deps = [ ":kernel_log_ptr_integration_test_exe" ]
+}
+
+fuchsia_component("product_info_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/product_info_provider_unittest.cmx"
+
+  deps = [ ":product_info_provider_unittest_exe" ]
+}
+
+fuchsia_component("screenshot_ptr_unittest") {
+  testonly = true
+
+  manifest = "meta/screenshot_ptr_unittest.cmx"
+
+  deps = [ ":screenshot_ptr_unittest_exe" ]
+}
+
+fuchsia_component("system_log_unittest") {
+  testonly = true
+
+  manifest = "meta/system_log_unittest.cmx"
+
+  deps = [ ":system_log_unittest_exe" ]
+}
+
+fuchsia_component("timezone_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/timezone_provider_unittest.cml"
+
+  deps = [ ":timezone_provider_unittest_exe" ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("feedback-data-tests") {
+  test_components = [
+    ":archive_accessor_ptr_unittest",
+    ":board_info_provider_unittest",
+    ":channel_provider_unittest",
+    ":config_unittest",
+    ":data_provider_unittest",
+    ":data_provider_controller_unittest",
+    ":datastore_unittest",
+    ":default_annotations_unittest",
+    ":inspect_data_budget_unittest",
+    ":inspect_unittest",
+    ":metadata_unittest",
+    ":kernel_log_ptr_integration_test",
+    ":product_info_provider_unittest",
+    ":screenshot_ptr_unittest",
+    ":system_log_unittest",
+    ":timezone_provider_unittest",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":feedback-data-tests",
+
+    # Packages for the components that we are injecting in the integration tests.
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/developer/forensics:copy-pkg",
+    "//src/devices/sysmem/bin/sysmem_connector",
+    "//src/diagnostics/archivist:archivist-for-embedding",
+    "//src/graphics/bin/vulkan_loader",
+    "//src/sys/pkg/bin/system-update-checker",
+  ]
+
+  visibility += [ "//src/developer/forensics:tests" ]
+}

@@ -1,0 +1,101 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.sysmem2;
+
+using zx;
+
+// The contents of this file are not final.  Incompatible changes are still
+// being made to this file.  Do not rely on the contents of this file to provide
+// backward compatibility (yet).
+//
+// TODO(fxbug.dev/34192): Sysmem should use llcpp and FIDL tables.  The definitions in
+// this file are part of that transition, but the definitions here are not
+// final.  For now, the definition here is only used internally to sysmem (not
+// between processes), and therefore this definition can change for now.  Later
+// after we're happy with this representation, we'll create
+// fuchsia.sysmem2.BufferCollection.SetConstraints() which will accept
+// constraints as defined here.
+
+type VmoBuffer = resource table {
+    /// The same VMO can be used by more than one CodecBuffer (only of the same
+    /// buffer_lifetime_ordinal), but each vmo handle must be a separate handle.
+    ///
+    /// |vmo| can be un-set if a participant has no usage which requires a
+    /// VMO handle.
+    1: vmo zx.handle:VMO;
+
+    /// Offset within the VMO of the first usable byte.  Must be < the VMO's
+    /// size in bytes, and leave sufficient room for
+    /// BufferMemorySettings.size_bytes before the end of the VMO.
+    2: vmo_usable_start uint64;
+
+    /// In some cases, we have a physically separate aux buffer that is a
+    /// logical shadow of the main buffer.  The main use case so far is DRM L1
+    /// where we can have a clear aux buffer that has meaningful bytes only for
+    /// the portions of the input which are clear (not protected).  The
+    /// protected portions will be set to a byte value that will prevent start
+    /// code emulation (0xFF will work for most video formats).
+    ///
+    /// |aux_vmo| will be un-set if there are no aux buffers, or in the same
+    /// cases that |vmo| can be un-set.
+    3: aux_vmo zx.handle:VMO;
+};
+
+const MAX_COUNT_BUFFER_COLLECTION_INFO_BUFFERS uint32 = 128;
+
+/// Information about a buffer collection and its buffers.
+// TODO(fxbug.dev/32119): provide a way for clients to receive this table instead of the
+// struct fuchsia.sysmem.BufferCollectionInfo_2.
+type BufferCollectionInfo = resource table {
+    /// These settings apply to all the buffers in the inital buffer allocation.
+    /// This must be set.
+    1: settings SingleBufferSettings;
+
+    /// VMO handles (and vmo_usable_start offset) for each buffer in the
+    /// collection.
+    ///
+    /// The size of this vector is the buffer_count (buffer_count is not sent
+    /// separately).
+    ///
+    /// All buffer VMO handles have identical size and access rights.  The size
+    /// is in settings.buffer_settings.size_bytes.
+    ///
+    /// The VMO access rights are determined based on the usages which the
+    /// client specified when allocating the buffer collection.  For example,
+    /// a client which expressed a read-only usage will receive VMOs without
+    /// write rights.  In addition, the rights can be attenuated by the
+    /// parameter to BufferCollectionToken.Duplicate() calls.
+    ///
+    /// This field will always have VmoBuffer(s) in it, even if the participant
+    /// specifies usage whieh does not require VMO handles.  This permits such
+    /// a participant to know the vmo_usable_start values, in case that's of any
+    /// use to the participant.
+    2: buffers vector<VmoBuffer>:MAX_COUNT_BUFFER_COLLECTION_INFO_BUFFERS;
+};
+
+/// These settings and constraints apply to all the buffers in the collection.
+type SingleBufferSettings = table {
+    1: buffer_settings BufferMemorySettings;
+
+    /// Buffers holding data that is not uncompressed image data will not have
+    /// this field set.  Buffers holding data that is uncompressed image data
+    /// _may_ have this field set.
+    ///
+    /// At least for now, changing the PixelFormat requires re-allocating
+    /// buffers.
+    ///
+    /// If un-set, there are no image format constraints.
+    2: image_format_constraints ImageFormatConstraints;
+};
+
+/// These are memory-related settings for all buffers of a buffer collection.
+type BufferMemorySettings = table {
+    1: size_bytes uint32;
+    2: is_physically_contiguous bool;
+    3: is_secure bool;
+    4: coherency_domain CoherencyDomain;
+    /// The specific heap from which buffers are allocated.
+    /// See above in this file for heap identifier values.
+    5: heap HeapType;
+};

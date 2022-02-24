@@ -1,0 +1,31 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("runtime") {
+  sources = [ "thread.c" ]
+  sdk = "source"
+  sdk_headers = [
+    "runtime/thread.h",
+    "runtime/tls.h",
+  ]
+
+  deps = [
+    "//src/zircon/lib/zircon",
+    "//zircon/system/ulib/elf-psabi",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+
+  # This code is used in early startup, where safe-stack is not ready yet.
+  configs += [ "//build/config/sanitizers:no_sanitizers" ]
+
+  if (zircon_toolchain != false) {
+    # Make sure the thread_trampoline function has a frame pointer so that
+    # user-visible thread backtraces are consistent across collection methods.
+    configs += [ "//build/config:default_frame_pointers" ]
+    configs -= [ "//build/config:default_frame_pointers" ]
+    configs += [ "//build/config:frame_pointers" ]
+  }
+}

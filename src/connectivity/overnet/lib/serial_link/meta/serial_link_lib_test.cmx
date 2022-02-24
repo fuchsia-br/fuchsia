@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/serial_link_lib_test"
+    },
+    "sandbox": {
+        "dev": [
+            "class/serial"
+        ]
+    }
+}

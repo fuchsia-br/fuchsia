@@ -1,0 +1,112 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.isp;
+
+using zx;
+using fuchsia.hardware.camera;
+using fuchsia.hardware.camerahwaccel;
+using fuchsia.sysmem;
+
+type StreamType = strict enum : uint8 {
+    INVALID = 0;
+    FULL_RESOLUTION = 1;
+    DOWNSCALED = 2;
+    SCALAR = 3;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-callback")
+protocol IspStreamShutdownCallback {
+    // This is called by the ISP after completing all cleanup of a stream.
+    ShutdownComplete(struct {
+        status zx.status;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol OutputStream {
+    // Starts the streaming of frames.
+    Start() -> (struct {
+        s zx.status;
+    });
+
+    // Stops the streaming of frames.
+    Stop() -> (struct {
+        s zx.status;
+    });
+
+    // Unlocks the specified frame, allowing the driver to reuse the memory.
+    ReleaseFrame(struct {
+        buffer_id uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    // Shutdown the stream and release all resources that are no longer needed.
+    // |shutdown_callback| : Informs the caller that all cleanup is complete.
+    Shutdown(resource struct {
+        shutdown_callback client_end:IspStreamShutdownCallback;
+    }) -> (struct {
+        s zx.status;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Isp {
+    // The driver returns the Stream protocol for this particular stream.
+    // |buffer_collection| : Hold the format and pool of VMOs that the ISP will
+    //                       produce
+    // |image_format| : The format of the image data in the output stream
+    // |rate| : The desired frame rate for the stream
+    // |type| : The type of stream to produce
+    // |frame_callback| : The protocol which calls a function when the ISP is done
+    //            writing to a buffer.
+    // @Returns: |status| : indicates if the stream was created.
+    // @Returns: |st| : Protocol over which the flow of frames is controlled.
+    CreateOutputStream(resource struct {
+        buffer_collection fuchsia.sysmem.BufferCollectionInfo_2;
+        image_format fuchsia.sysmem.ImageFormat_2;
+        rate fuchsia.hardware.camera.FrameRate;
+        type StreamType;
+        frame_callback client_end:fuchsia.hardware.camerahwaccel.HwAccelFrameCallback;
+    }) -> (resource struct {
+        s zx.status;
+        st client_end:OutputStream;
+    });
+
+    // Configures the ISP to provide the streams with frame rate
+    // within the given range.
+    // |min_frame_rate|  : Minimum allowed frame rate.
+    // |max_frame_rate|  : Maximum allowed frame rate.
+    // Returns:
+    //   ZX_ERR_NOT_SUPPORTED if sensor doesn't support a specific frame rate.
+    SetFrameRateRange(struct {
+        min_frame_rate fuchsia.hardware.camera.FrameRate;
+        max_frame_rate fuchsia.hardware.camera.FrameRate;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    /// Changes the vendor-defined test pattern mode and sets any associated data.
+    ///     |mode|  The test pattern to use. A value of 0 disables it.
+    ///     |data|  Data associated with the mode, if applicable.
+    /// Returns ZX_OK if the mode was successfully applied.
+    /// Returns ZX_ERR_INVALID_ARGS if |mode| is invalid
+    ///         or if |data| is invalid for the given |mode|.
+    SetTestPattern(struct {
+        mode uint8;
+        data vector<uint8>:MAX;
+    }) -> (struct {
+        s zx.status;
+    });
+
+    /// Sets the ISP driver's idea of default sensor mode.
+    SetDefaultSensorMode(struct {
+        mode uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+};

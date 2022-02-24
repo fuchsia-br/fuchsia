@@ -1,0 +1,102 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/components/fuchsia_package_with_single_component.gni")
+import("//build/config.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+# Mesa Intel Vulkan driver requires x64 build
+if (target_cpu == "x64") {
+  resource("vulkan_metadata") {
+    sources = [ "metadata.json" ]
+    outputs = [ "meta/metadata/metadata.json" ]
+  }
+
+  if (bootfs_only) {
+    # Don't package ICD on bringup builds, because it wastes space and the loader service doesn't
+    # support loading it from bootfs.
+    group("libvulkan_intel_gen") {
+    }
+  } else {
+    libvulkan_intel_deps = [
+      ":libvulkan_intel_config_resource",
+      ":vulkan_metadata",
+      "//third_party/mesa:magma_vulkan",
+    ]
+    fuchsia_package_with_single_component("libvulkan_intel_gen") {
+      component_name = "vulkan"
+      deps = libvulkan_intel_deps
+      manifest = "meta/vulkan.cml"
+    }
+
+    # This package will override the normal libvulkan_intel_gen package. It can be included in
+    # universe_package_labels to allow hot-reloading of the ICD, even if libvulkan_intel_gen is in
+    # base_package_labels and can't be updated without a reboot.
+    fuchsia_package_with_single_component("libvulkan_intel_gen_test") {
+      component_name = "vulkan"
+      deps = libvulkan_intel_deps
+      manifest = "meta/vulkan.cml"
+    }
+  }
+
+  icd_config_data("libvulkan_intel_config_resource") {
+    icds = [
+      {
+        lib = "libvulkan_intel.so"
+        manifest = "$target_gen_dir/vulkan/icd.d/libvulkan_intel.json"
+      },
+    ]
+    resource_path = "meta/icd.d"
+  }
+
+  fuchsia_test_component("mesa_unit_tests_component") {
+    deps = [ "//third_party/mesa/tests:mesa_unit_tests" ]
+    manifest = "meta/mesa_unit_tests.cmx"
+  }
+
+  fuchsia_test_component("state_pool_component") {
+    deps = [ "//third_party/mesa/src/intel/vulkan/tests:state_pool" ]
+    manifest = "meta/state_pool.cmx"
+  }
+
+  fuchsia_test_component("state_pool_free_list_only_component") {
+    deps = [
+      "//third_party/mesa/src/intel/vulkan/tests:state_pool_free_list_only",
+    ]
+    manifest = "meta/state_pool_free_list_only.cmx"
+  }
+
+  fuchsia_test_component("state_pool_no_free_component") {
+    deps = [ "//third_party/mesa/src/intel/vulkan/tests:state_pool_no_free" ]
+    manifest = "meta/state_pool_no_free.cmx"
+  }
+
+  fuchsia_test_component("block_pool_no_free_component") {
+    deps = [ "//third_party/mesa/src/intel/vulkan/tests:block_pool_no_free" ]
+    manifest = "meta/block_pool_no_free.cmx"
+  }
+
+  fuchsia_test_package("mesa_unit_tests") {
+    test_components = [
+      ":mesa_unit_tests_component",
+      ":state_pool_component",
+      ":state_pool_free_list_only_component",
+      ":state_pool_no_free_component",
+      ":block_pool_no_free_component",
+    ]
+  }
+
+  fuchsia_test_component("mesa_integration_tests_component") {
+    deps = [ "//third_party/mesa:tests" ]
+    manifest = "meta/mesa_integration_tests.cmx"
+  }
+
+  fuchsia_test_package("mesa_integration_tests") {
+    test_components = [ ":mesa_integration_tests_component" ]
+    test_specs = {
+      environments = intel_gpu_envs
+    }
+  }
+}

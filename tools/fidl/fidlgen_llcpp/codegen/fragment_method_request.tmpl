@@ -1,0 +1,160 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Method:Request:WireMessagingHeader" }}
+{{- EnsureNamespace "" }}
+{{- if .Request.IsResource }}
+{{- IfdefFuchsia -}}
+{{- end }}
+
+template<>
+struct {{ .WireRequest }} final {
+{{- range .RequestAnonymousChildren }}
+  using {{ .ScopedName }} = {{ .FlattenedName }};
+{{- end }}
+
+  {{ if .RequestArgs }}
+  FIDL_ALIGNDECL
+    {{- range $index, $param := .RequestArgs }}
+  {{ $param.Type }} {{ $param.Name }};
+    {{- end }}
+
+  explicit {{ .WireRequest.Self }}({{ RenderParams .RequestArgs }})
+  {{ RenderInitMessage .RequestArgs }}{}
+  {{- end }}
+  {{ .WireRequest.Self }}() = default;
+
+    {{- if and .HasResponse .ResponseArgs }}
+  using ResponseType = {{ .WireResponse }};
+    {{- end }}
+
+  {{- if .Request.IsResource }}
+  void _CloseHandles();
+  {{- end }}
+};
+
+template<>
+struct {{ .WireTransactionalRequest }} final {
+  FIDL_ALIGNDECL
+  fidl_message_header_t header;
+  {{ if .RequestArgs }}
+  {{ .WireRequest }} body;
+  explicit {{ .WireTransactionalRequest.Self }}({{ RenderParams .RequestArgs }})
+  : body({{ .WireRequest }}({{ RenderForwardParams .RequestArgs }})) {
+    _InitHeader();
+  }
+  {{- end }}
+  {{ .WireTransactionalRequest.Self }}() {
+    _InitHeader();
+  }
+
+    {{- if and .HasResponse .ResponseArgs }}
+  using ResponseType = {{ .WireTransactionalResponse }};
+    {{- end }}
+
+  {{- if .Request.IsResource }}
+  void _CloseHandles() {
+    {{- if .RequestArgs }}
+    body._CloseHandles();
+    {{- end }}
+  }
+  {{- end }}
+
+ private:
+  void _InitHeader();
+};
+
+{{- if .Request.IsResource }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+
+
+
+{{- define "Method:Request:WireMessagingSource" }}
+  {{- EnsureNamespace "" }}
+
+{{- if .Request.IsResource }}
+{{- IfdefFuchsia -}}
+{{- end }}
+  void {{ .WireTransactionalRequest }}::_InitHeader() {
+    fidl_init_txn_header(&header, 0, {{ .OrdinalName }});
+  }
+
+  {{ if .Request.IsResource }}
+    void {{ .WireRequest }}::_CloseHandles() {
+      {{- range .RequestArgs }}
+        {{- CloseHandles . false false }}
+      {{- end }}
+    }
+  {{- end }}
+{{- if .Request.IsResource }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+
+
+{{- define "Method:Request:NaturalMessagingHeader" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+
+template <>
+class {{ .NaturalRequest }} final : public {{ .RequestMessageBase }} {
+ public:
+  {{- with .NaturalRequest }}
+    {{ .Self }}() = default;
+    ~{{ .Self }}() = default;
+    {{ .Self }}({{ .Self }}&&) noexcept = default;
+    {{ .Self }}& operator=({{ .Self }}&&) noexcept = default;
+  {{- end }}
+
+  {{- if .HasRequestPayload }}
+    {{ .NaturalRequest.Self }}({{ .RequestPayload }} payload) : payload_(std::move(payload)) {}
+  {{- end }}
+
+  {{- if .Request.IsResource }}
+    {{- with .NaturalRequest }}
+      {{ .Self }}(const {{ .Self }}&) noexcept = delete;
+      {{ .Self }}& operator=(const {{ .Self }}&) noexcept = delete;
+    {{- end }}
+  {{- else }}
+    {{- /* TODO(fxbug.dev/82189): Generate copy constructors */}}
+  {{- end }}
+
+  {{- if .HasRequestPayload }}
+    {{ .RequestPayload }}* operator->() { return &payload_; }
+    const {{ .RequestPayload }}* operator->() const { return &payload_; }
+    {{ .RequestPayload }}& operator*() { return payload_; }
+    const {{ .RequestPayload }}& operator*() const { return payload_; }
+  {{- end }}
+
+ private:
+  {{- if .HasRequestPayload }}
+    {{ .RequestPayload }} payload_;
+  {{- end }}
+};
+
+template <>
+struct {{ .RequestMessageTraits }} final {
+ public:
+  static constexpr bool kHasPayload = {{ .HasRequestPayload }};
+  {{- if .HasRequestPayload }}
+    using Payload = {{ .RequestPayload }};
+  {{- end }}
+};
+
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Method:Request:NaturalMessagingSource" }}
+
+{{- end }}
+

@@ -1,0 +1,97 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.net;
+
+/// The maximum length of a hostname, as per
+/// [RFC 1035 section 2.3.4](https://tools.ietf.org/html/rfc1035#section-2.3.4).
+// TODO(https://fxbug.dev/84190): inline this constant below.
+const MAX_HOSTNAME_SIZE uint64 = 255;
+
+/// A hostname.
+///
+/// Although the maximum length of a domain or hostname is 255 characters,
+/// each label within a name must not be longer than 63 characters as per
+/// [RFC 1035 section 2.3.4](https://tools.ietf.org/html/rfc1035#section-2.3.4).
+/// A label in a host name is the alphanumeric characters or hyphens, seperated
+/// by a period (e.g. abc.com has two labels, 'abc' and 'com').
+alias Hostname = string:MAX_HOSTNAME_SIZE;
+
+/// A unique non-zero interface identifier.
+alias interface_id = uint64;
+
+/// IpVersion is an IP version.
+type IpVersion = strict enum {
+    V4 = 1;
+    V6 = 2;
+};
+
+/// Ipv4Address is expressed in network byte order, so the most significant byte
+/// ("127" in the address "127.0.0.1") will be at index 0.
+type Ipv4Address = struct {
+    addr array<uint8, 4>;
+};
+
+/// Ipv6Address is expressed in network byte order, so the most significant byte
+/// ("ff" in the address "ff02::1") will be at index 0.
+type Ipv6Address = struct {
+    addr array<uint8, 16>;
+};
+
+/// Represents an IP address that may be either v4 or v6.
+type IpAddress = strict union {
+    1: ipv4 Ipv4Address;
+    2: ipv6 Ipv6Address;
+};
+
+// TODO(https://fxbug.dev/54163): rename Subnet to AddressWithPrefix when
+// binding support is ready, so we don't have to recursively fix all users.
+/// An IP address with its subnet prefix length.
+type Subnet = struct {
+    /// The IPv4 or IPv6 address.
+    addr IpAddress;
+
+    /// The prefix length of the netmask. E.g. for 192.168.1.0/24, the prefix
+    /// length is 24, corresponding to a netmask of 255.255.255.0.
+    /// For Ipv4, prefix_len must be in the range [0, 32].
+    /// For Ipv6, prefix_len must be in the range [0, 128].
+    prefix_len uint8;
+};
+
+/// An IPv4 address with its subnet prefix length.
+type Ipv4AddressWithPrefix = struct {
+    /// The IPv4 address.
+    addr Ipv4Address;
+
+    /// The prefix length. Must be in the range [0, 32].
+    prefix_len uint8;
+};
+
+/// An IPv6 address with its subnet prefix length.
+type Ipv6AddressWithPrefix = struct {
+    /// The IPv6 address.
+    addr Ipv6Address;
+
+    /// The prefix length. Must be in the range [0, 128].
+    prefix_len uint8;
+};
+
+/// An address that can be assigned to a network interface.
+type InterfaceAddress = strict union {
+    /// An IPv4 address with the prefix length.
+    ///
+    /// The prefix length is necessary to determine the subnet to which an
+    /// IPv4 address belongs so that the broadcast address can be inferred.
+    1: ipv4 Ipv4AddressWithPrefix;
+    /// An IPv6 address.
+    ///
+    /// Note that the prefix length is not included because on-link information
+    /// for IPv6 should be configured statically via a a route or be discovered
+    /// through NDP messages.
+    2: ipv6 Ipv6Address;
+};
+
+/// A MAC address used to identify a network interface on the data link layer within the network.
+type MacAddress = struct {
+    octets array<uint8, 6>;
+};

@@ -1,0 +1,90 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+wlanphy_sources = [
+  "device.cc",
+  "device.h",
+  "driver.cc",
+  "driver.h",
+]
+
+wlanphy_deps = [
+  ":wlanphy_bind",
+  "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_banjo_cpp",
+  "//sdk/banjo/fuchsia.hardware.wlanphyimpl:fuchsia.hardware.wlanphyimpl_banjo_cpp",
+  "//sdk/fidl/fuchsia.wlan.device",
+  "//sdk/fidl/fuchsia.wlan.device:fuchsia.wlan.device_llcpp",
+  "//src/connectivity/wlan/drivers/lib/log/cpp",
+  "//src/connectivity/wlan/lib/common/cpp:common",
+  "//src/devices/lib/driver",
+  "//src/lib/ddk",
+  "//zircon/system/ulib/async:async-cpp",
+  "//zircon/system/ulib/async-loop:async-loop-cpp",
+  "//zircon/system/ulib/async-loop:async-loop-default",
+]
+
+driver_bind_rules("wlanphy_bind") {
+  rules = "wlanphy.bind"
+  header_output = "wlanphy-bind.h"
+  bind_output = "wlanphy.bindbc"
+  tests = "wlanphy_bind_test.json"
+  deps = [ "//src/devices/bind/fuchsia.wlan" ]
+}
+
+fuchsia_driver("wlanphy_driver-driver") {
+  output_name = "wlanphy"
+  sources = wlanphy_sources
+
+  deps = wlanphy_deps
+  configs += [ "//build/config/fuchsia:enable_zircon_asserts" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("wlanphy_driver") {
+  component_name = "wlanphy"
+  deps = [ ":wlanphy_driver-driver" ]
+  info = "wlanphy_driver-info.json"
+  colocate = true
+}
+
+fuchsia_system_package("wlanphy") {
+  deps = [ ":wlanphy_driver" ]
+  allowed_in_extra_deps = true
+}
+
+# unit tests start here
+
+test("wlanphy_convert_unittest") {
+  sources = wlanphy_sources + [ "tests/convert_unittest.cc" ]
+
+  deps = wlanphy_deps + [
+           "//src/lib/fxl/test:gtest_main",
+           "//third_party/googletest:gtest",
+         ]
+
+  configs +=
+      [ "//src/connectivity/wlan/lib/mlme/cpp/tests:wlan_mlme_tests_config" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("wlanphy-unittests") {
+  deps = [ ":wlanphy_convert_unittest" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":wlanphy-unittests",
+    ":wlanphy_bind_test",
+  ]
+}

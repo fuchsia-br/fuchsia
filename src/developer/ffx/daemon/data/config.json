@@ -1,0 +1,42 @@
+{
+    "discovery": {
+        "zedboot": {
+            "enabled": false
+        }
+    },
+    "fastboot": {
+        "flash": {
+            "min_timeout_secs": 60,
+            "timeout_rate": 5
+        }
+    },
+    "overnet": {
+        "socket": "/tmp/ascendd"
+    },
+    "proactive_log": {
+        "cache_directory": "$DATA/target_logs",
+        "enabled": true,
+        "max_log_size_bytes": 1048576,
+        "max_session_size_bytes": 104857600,
+        "max_sessions_per_target": 5,
+        "symbolize": {
+            "enabled": true,
+            "extra_args": []
+        }
+    },
+    "ssh": {
+        "auth-sock": [
+            "$SSH_AUTH_SOCK"
+        ],
+        "priv": [
+            "$FUCHSIA_SSH_KEY",
+            "$HOME/.ssh/fuchsia_ed25519",
+            "$FUCHSIA_DIR/.ssh/pkey"
+        ],
+        "pub": [
+            "$FUCHSIA_AUTHORIZED_KEYS",
+            "$HOME/.ssh/fuchsia_authorized_keys",
+            "$FUCHSIA_DIR/.ssh/authorized_keys"
+        ]
+    }
+}

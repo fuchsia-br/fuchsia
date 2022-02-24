@@ -1,0 +1,19 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.hardware.acpi") {
+  sources = [
+    "acpi.fidl",
+    "address_space.fidl",
+    "device.fidl",
+    "global_lock.fidl",
+    "notification.fidl",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.mem",
+    "//zircon/vdso/zx",
+  ]
+}

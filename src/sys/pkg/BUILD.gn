@@ -1,0 +1,96 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("pkg") {
+  testonly = true
+  deps = [
+    "bin",
+    "lib",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    "bin:tests",
+    "lib:tests",
+    "scripts:tests",
+    "testing:tests",
+    "tests",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext:tests",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext:tests",
+  ]
+}
+
+group("e2e_tests") {
+  testonly = true
+  public_deps = [ "tests:e2e_tests" ]
+}
+
+# Targets to include in the base package set for the core product.
+group("core") {
+  public_deps = [
+    "bin/pkg-cache",
+    "bin/pkg-resolver",
+    "bin/pkgfs",
+    "bin/system-update-committer",
+    "bin/system-updater",
+  ]
+}
+
+# Targets to include in the base package set for the core recovery image.
+group("recovery-core") {
+  public_deps = [
+    "bin/pkg-cache",
+    "bin/pkg-resolver",
+    "bin/system-update-committer",
+  ]
+}
+
+# Targets to include in the base package set for the recovery image.
+group("recovery") {
+  public_deps = [
+    ":recovery-core",
+    "bin/omaha-client",
+    "bin/system-updater",
+  ]
+}
+
+# Shell control commands
+group("tools") {
+  public_deps = [
+    "bin/pkgctl:pkgctl-bin",
+    "bin/update:update-bin",
+  ]
+  deps = [ "//build/validate:non_production_tag" ]
+}
+
+group("system-update-configurator") {
+  public_deps = [
+    "bin/system-update-configurator",
+    "bin/system-update-configurator:core-shard",
+  ]
+}
+
+group("system-update-configurator-route-to-omaha-client") {
+  public_deps = [ "bin/system-update-configurator:route-to-omaha-core-shard" ]
+}
+
+group("system-update-checker") {
+  public_deps = [ "bin/system-update-checker" ]
+  deps = [ "//build/validate:non_production_tag" ]
+}
+
+group("omaha-client") {
+  public_deps = [
+    "bin/omaha-client",
+    "bin/omaha-client:omaha-client-config",
+    "//src/diagnostics/config/triage:omaha-client-detect",
+  ]
+}
+
+group("pkgfs-disable-executability-restrictions") {
+  public_deps = [ "bin/pkgfs:disable-executability-restrictions" ]
+  deps = [ "//build/validate:non_production_tag" ]
+}

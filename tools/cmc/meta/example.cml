@@ -1,0 +1,204 @@
+// This is a v2 component manifest.
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/example",
+        lifecycle: { stop_event: "notify" },
+    },
+    children: [
+        {
+            name: "logger",
+            url: "fuchsia-pkg://fuchsia.com/logger/stable#meta/logger.cm",
+            environment: "#env_one",
+        },
+    ],
+    collections: [
+        {
+            name: "modular",
+            durability: "persistent",
+        },
+        {
+            name: "explicit_static",
+            durability: "persistent",
+            allowed_offers: "static_only",
+        },
+        {
+            name: "explicit_dynamic",
+            durability: "persistent",
+            allowed_offers: "static_and_dynamic",
+        },
+    ],
+    capabilities: [
+        {
+            service: "fuchsia.logger.Log",
+            path: "/svc/fuchsia.logger.Log",
+        },
+        {
+            protocol: "fuchsia.logger.Log2",
+            path: "/svc/fuchsia.logger.Log2",
+        },
+        {
+            directory: "blobfs",
+            rights: [ "rw*" ],
+            path: "/volumes/blobfs",
+        },
+        {
+            storage: "minfs",
+            from: "parent",
+            backing_dir: "data",
+            storage_id: "static_instance_id_or_moniker",
+        },
+        {
+            runner: "dart_runner",
+            path: "/svc/fuchsia.sys2.Runner",
+        },
+        {
+            resolver: "pkg_resolver",
+            path: "/svc/fuchsia.pkg.Resolver",
+        },
+    ],
+    use: [
+        { service: "fuchsia.fonts.Provider" },
+        {
+            protocol: "fuchsia.fonts.LegacyProvider",
+            path: "/svc/fuchsia.fonts.OldProvider",
+        },
+        {
+            protocol: "fuchsia.log.LegacyLog",
+            from: "debug",
+        },
+        {
+            event: "started",
+            from: "framework",
+            as: "began",
+        },
+        {
+            event: [
+                "destroyed",
+                "stopped",
+            ],
+            from: "parent",
+        },
+        {
+            event: "directory_ready",
+            from: "parent",
+            as: "diagnostics_ready",
+            filter: { path: "diagnostics" },
+        },
+        {
+            event_stream_deprecated: "my_stream",
+            subscriptions: [
+                {
+                    event: "began",
+                    mode: "async",
+                },
+                {
+                    event: "destroyed",
+                    mode: "async",
+                },
+                {
+                    event: "diagnostics_ready",
+                    mode: "async",
+                },
+            ],
+        },
+        {
+            event_stream: [
+                "events",
+                "other",
+                "some",
+            ],
+            from: "parent",
+            path: "/testdir/my_stream",
+            scope: [ "#logger" ],
+        },
+        {
+            event_stream: "filtered",
+            from: "parent",
+        },
+    ],
+    offer: [
+        {
+            service: "fuchsia.logger.Log",
+            from: "#logger",
+            to: "#modular",
+        },
+        {
+            protocol: "fuchsia.logger.LegacyLog",
+            from: "#logger",
+            as: "fuchsia.logger.OldLog",
+            to: "#modular",
+        },
+        {
+            event: "stopped",
+            from: "parent",
+            as: "stopped-logger",
+            to: "#logger",
+        },
+    ],
+    expose: [
+        {
+            service: "fuchsia.logger.Log",
+            from: "#logger",
+        },
+        {
+            protocol: "fuchsia.logger.LegacyLog",
+            from: "#logger",
+            as: "fuchsia.logger.OldLog",
+            to: "parent",
+        },
+        {
+            directory: "blobfs",
+            from: "self",
+            to: "parent",
+            subdir: "blob",
+        },
+    ],
+    environments: [
+        {
+            name: "env_one",
+            extends: "none",
+            __stop_timeout_ms: 1337,
+        },
+        {
+            name: "env_two",
+            extends: "realm",
+            debug: [
+                {
+                    protocol: "fuchsia.logger.LegacyLog",
+                    from: "#logger",
+                },
+                {
+                    protocol: "fuchsia.logger.OtherLog",
+                    from: "parent",
+                },
+                {
+                    protocol: "fuchsia.logger.Log2",
+                    from: "self",
+                },
+            ],
+        },
+    ],
+    facets: {
+        author: "Fuchsia",
+        year: "2018",
+        metadata: { publisher: "The Books Publisher" },
+    },
+    config: {
+        my_flag: { type: "bool" },
+        my_uint8: { type: "uint8" },
+        my_string: {
+            type: "string",
+            max_size: 100,
+        },
+        my_vector_of_string: {
+            type: "vector",
+            max_count: 100,
+            element: {
+                type: "string",
+                max_size: 50,
+            },
+        },
+    },
+}

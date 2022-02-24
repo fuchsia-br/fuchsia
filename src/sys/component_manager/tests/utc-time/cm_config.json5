@@ -1,0 +1,26 @@
+{
+    debug: true,
+    maintain_utc_clock: true,
+    builtin_pkg_resolver: "appmgr_bridge",
+    out_dir_contents: "hub",
+    namespace_capabilities: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+            ],
+        },
+    ],
+    builtin_capabilities: [
+        {
+            protocol: [
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.sys2.EventSource",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.time.Maintenance",
+            ],
+        },
+        {
+            runner: "elf",
+        },
+    ],
+}

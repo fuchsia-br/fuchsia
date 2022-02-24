@@ -1,0 +1,12 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/pwrbtn_monitor_integration_test",
+    },
+    use: [
+        { protocol: "fuchsia.test.pwrbtn.Tests" },
+    ],
+}

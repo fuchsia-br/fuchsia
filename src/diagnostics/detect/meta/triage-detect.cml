@@ -1,0 +1,43 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/launcher",
+        args: [ "detect" ],
+    },
+    use: [
+        {
+            protocol: "fuchsia.feedback.CrashReporter",
+            from: "parent",
+        },
+        {
+            protocol: "fuchsia.feedback.CrashReportingProductRegister",
+            from: "parent",
+        },
+        {
+            protocol: "fuchsia.diagnostics.FeedbackArchiveAccessor",
+            from: "parent",
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+    config: {
+        check_every: {
+            type: "string",
+            max_size: 100,
+        },
+        test_only: { type: "bool" },
+    },
+}

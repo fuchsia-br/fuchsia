@@ -1,0 +1,177 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+executable("log_message_store_unittest_exe") {
+  testonly = true
+
+  sources = [ "log_message_store_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data/system_log_recorder:src",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_encoder",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:log_message",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("lz4_encoding_unittest_exe") {
+  testonly = true
+
+  sources = [ "lz4_encoding_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_encoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:lz4_decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:lz4_encoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:lz4_utils",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/re2",
+  ]
+}
+
+executable("reader_unittest_exe") {
+  testonly = true
+
+  sources = [ "reader_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/system_log_recorder:reader",
+    "//src/developer/forensics/feedback_data/system_log_recorder:src",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_encoder",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:log_message",
+    "//src/lib/files",
+    "//src/lib/fxl",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("system_log_recorder_unittest_exe") {
+  testonly = true
+
+  sources = [ "system_log_recorder_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/system_log_recorder:reader",
+    "//src/developer/forensics/feedback_data/system_log_recorder:src",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_encoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:production",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:diagnostics",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("writer_unittest_exe") {
+  testonly = true
+
+  sources = [ "writer_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/system_log_recorder:reader",
+    "//src/developer/forensics/feedback_data/system_log_recorder:src",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_decoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:identity_encoder",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:production",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:version",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:log_message",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_component("log_message_store_unittest") {
+  testonly = true
+
+  manifest = "meta/log_message_store_unittest.cmx"
+
+  deps = [ ":log_message_store_unittest_exe" ]
+}
+
+fuchsia_component("lz4_encoding_unittest") {
+  testonly = true
+
+  manifest = "meta/lz4_encoding_unittest.cmx"
+
+  deps = [ ":lz4_encoding_unittest_exe" ]
+}
+
+fuchsia_component("reader_unittest") {
+  testonly = true
+
+  manifest = "meta/reader_unittest.cmx"
+
+  deps = [ ":reader_unittest_exe" ]
+}
+
+fuchsia_component("system_log_recorder_unittest") {
+  testonly = true
+
+  manifest = "meta/system_log_recorder_unittest.cmx"
+
+  deps = [ ":system_log_recorder_unittest_exe" ]
+}
+
+fuchsia_component("writer_unittest") {
+  testonly = true
+
+  manifest = "meta/writer_unittest.cmx"
+
+  deps = [ ":writer_unittest_exe" ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("system-log-recorder-tests") {
+  test_components = [
+    ":log_message_store_unittest",
+    ":lz4_encoding_unittest",
+    ":reader_unittest",
+    ":system_log_recorder_unittest",
+    ":writer_unittest",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+
+  deps = [ ":system-log-recorder-tests" ]
+}

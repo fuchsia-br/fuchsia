@@ -1,0 +1,52 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# The allowlist of components that can use the "services" feature in CML.
+group("services") {
+  visibility = [
+    "//examples/components/services:*",
+    "//examples/fidl/*",
+    "//sdk/lib/sys/component/cpp/tests/*",
+    "//sdk/lib/sys/component/llcpp/tests/*",
+    "//src/devices/tests/*",
+    "//src/sys/component_manager/tests/services:*",
+    "//tools/cmc:*",
+  ]
+}
+
+# The allowlist of components that can use the "dynamic_offers" feature in CML.
+group("dynamic_offers") {
+  visibility = [
+    "//sdk/lib/driver_test_realm:*",
+    "//src/devices/tests/*",
+    "//src/sys/bootstrap:*",
+    "//tools/cmc:*",
+  ]
+}
+
+# The allowlist of components that can use the "structured_config" feature in CML.
+group("structured_config") {
+  visibility = [
+    "//src/diagnostics/detect:*",
+    "//src/diagnostics/sampler:*",
+    "//src/experiences/session_shells/ermine/session:*",
+    "//src/lib/assembly/structured_config:*",
+    "//src/lib/component_hub/tests:*",
+    "//src/lib/fuchsia-component-test/tests/echo_client_sc:*",
+    "//src/session/bin/session_manager:*",
+    "//src/session/examples/hello-world-session:*",
+    "//src/sys/component_manager/tests/hub:*",
+    "//src/sys/component_manager/tests/structured_config/client_integration/cpp_elf:*",
+    "//src/sys/component_manager/tests/structured_config/client_integration/rust:*",
+    "//src/sys/component_manager/tests/structured_config/different_values:*",
+    "//tools/cmc:*",
+    "//tools/configc:*",
+    "//vendor/google/sessions:*",
+  ]
+}
+
+# The allowlist of components that can use the "hub" feature in CML.
+group("hub") {
+  # Available to all components in fuchsia.git
+}

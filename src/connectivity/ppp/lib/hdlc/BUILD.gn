@@ -1,0 +1,54 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("fcs") {
+  sources = [
+    "fcs.cc",
+    "fcs.h",
+  ]
+  deps = [ "//zircon/system/ulib/fbl" ]
+}
+
+source_set("fcs-test") {
+  testonly = true
+
+  sources = [ "fcs-test.cc" ]
+
+  include_dirs = [ "//src/connectivity/ppp" ]
+
+  deps = [
+    ":fcs",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("frame") {
+  sources = [
+    "frame.cc",
+    "frame.h",
+  ]
+
+  include_dirs = [ "//src/connectivity/ppp" ]
+
+  deps = [
+    ":fcs",
+    "//sdk/lib/fit-promise",
+    "//src/connectivity/ppp/lib/common",
+    "//zircon/system/ulib/fbl",
+  ]
+  public_deps = [ "//sdk/lib/fit-promise" ]
+}
+
+source_set("frame-test") {
+  testonly = true
+
+  sources = [ "frame-test.cc" ]
+
+  include_dirs = [ "//src/connectivity/ppp" ]
+
+  deps = [
+    ":frame",
+    "//zircon/system/ulib/zxtest",
+  ]
+}

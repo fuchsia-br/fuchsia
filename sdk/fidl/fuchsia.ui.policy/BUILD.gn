@@ -1,0 +1,28 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.ui.policy") {
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [
+    "invalid-case-for-constant",
+    "invalid-case-for-decl-name",
+  ]
+
+  sdk_category = "partner"
+
+  sources = [
+    "device_listener.fidl",
+    "display_backlight.fidl",
+    "display_usage.fidl",
+    "presentation.fidl",
+    "presenter.fidl",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/fidl/fuchsia.ui.views",
+  ]
+}

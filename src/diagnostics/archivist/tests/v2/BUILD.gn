@@ -1,0 +1,199 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+import("//src/diagnostics/archivist/build/pipeline.gni")
+
+rustc_test("integration_tests_bin") {
+  output_name = "archivist_integration_tests"
+  edition = "2018"
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//sdk/fidl/fuchsia.sys.internal:fuchsia.sys.internal-rustc",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2-rustc",
+    "//src/diagnostics/archivist:lib",
+    "//src/diagnostics/archivist/tests/v2/components/fidl:fidl-rustc",
+    "//src/lib/diagnostics/data/rust",
+    "//src/lib/diagnostics/hierarchy/rust",
+    "//src/lib/diagnostics/log/message/rust",
+    "//src/lib/diagnostics/log/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/diagnostics/selectors",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/syslog/rust:syslog-listener",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/cm_rust",
+    "//src/sys/lib/component-events",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:difference",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "src/constants.rs",
+    "src/inspect/mod.rs",
+    "src/inspect/out_directory.rs",
+    "src/inspect/reader.rs",
+    "src/inspect/recursive_glob.rs",
+    "src/inspect/truncation.rs",
+    "src/lib.rs",
+    "src/logs/attribution.rs",
+    "src/logs/basic.rs",
+    "src/logs/budget.rs",
+    "src/logs/crash.rs",
+    "src/logs/interest.rs",
+    "src/logs/lifecycle.rs",
+    "src/logs/mod.rs",
+    "src/logs/redaction.rs",
+    "src/logs/selectors.rs",
+    "src/logs/sorting.rs",
+    "src/logs/utils.rs",
+    "src/test_topology.rs",
+    "src/utils.rs",
+  ]
+  inputs = [
+    "test_data/empty_result_golden.json",
+    "test_data/unified_reader_all_golden.json",
+    "test_data/feedback_reader_all_golden.json",
+    "test_data/memory_monitor_v2_moniker_golden.json",
+    "test_data/memory_monitor_legacy_moniker_golden.json",
+    "test_data/unified_reader_full_filter_golden.json",
+    "test_data/feedback_reader_nonoverlapping_selectors_golden.json",
+    "test_data/unified_reader_single_value_golden.json",
+    "test_data/feedback_reader_single_value_golden.json",
+  ]
+}
+
+fuchsia_component("archivist_for_integration_with_log_connector") {
+  component_name = "archivist_with_log_connector"
+  testonly = true
+  deps = [ "//src/diagnostics/archivist:bin" ]
+  manifest = "meta/archivist_for_integration_with_log_connector.cml"
+}
+
+fuchsia_component("archivist_with_klog") {
+  component_name = "archivist_with_klog"
+  testonly = true
+  deps = [ "//src/diagnostics/archivist:bin" ]
+  manifest = "meta/archivist_with_klog.cml"
+}
+
+fuchsia_component("archivist_for_integration") {
+  component_name = "archivist"
+  testonly = true
+  deps = [ "//src/diagnostics/archivist:bin" ]
+  manifest = "meta/archivist_for_integration.cml"
+}
+
+fuchsia_component("archivist-with-small-caches") {
+  component_name = "archivist-with-small-caches"
+  testonly = true
+  deps = [ "//src/diagnostics/archivist:bin" ]
+  manifest = "meta/archivist-with-small-caches.cml"
+}
+
+fuchsia_component("archivist_integration_tests") {
+  testonly = true
+  deps = [ ":integration_tests_bin" ]
+  manifest = "meta/archivist_integration_tests.cml"
+}
+
+resource("test_archivist_config") {
+  sources = [ "configs/archivist_config.json" ]
+  outputs = [ "data/config/archivist_config.json" ]
+}
+
+resource("small-caches-config") {
+  sources = [ "configs/small-caches-config.json" ]
+  outputs = [ "data/config/small-caches-config.json" ]
+}
+
+resource("filter_feedback") {
+  sources = [ "configs/static_selectors.cfg" ]
+  outputs = [ "data/config/pipelines/feedback/static_selectors.cfg" ]
+}
+
+resource("do_not_filter_feedback") {
+  sources = [ "configs/DISABLE_FILTERING.txt" ]
+  outputs = [ "data/config/pipelines/feedback/DISABLE_FILTERING.txt" ]
+}
+
+resource("configure_legacy_metrics_pipeline") {
+  sources = [ "configs/legacy_selectors.cfg" ]
+  outputs = [ "data/config/pipelines/legacy_metrics/legacy_selectors.cfg" ]
+}
+
+fuchsia_test_package("archivist-integration-tests-v2") {
+  package_deps_for_infra_only = [
+    "//src/diagnostics/archivist/tests/v2:archivist-with-feedback-filtering",
+    "//src/diagnostics/archivist/tests/v2:archivist-with-feedback-filtering-disabled",
+    "//src/diagnostics/archivist/tests/v2:archivist-with-legacy-metrics",
+  ]
+  test_components = [ ":archivist_integration_tests" ]
+  deps = [
+    ":archivist-with-small-caches",
+    ":archivist_for_integration",
+    ":archivist_for_integration_with_log_connector",
+    ":archivist_with_klog",
+    ":small-caches-config",
+    ":test_archivist_config",
+    "components",
+    "//src/diagnostics/iquery/test/test_component",
+  ]
+}
+
+fuchsia_package("archivist-with-feedback-filtering") {
+  testonly = true
+  deps = [
+    ":archivist_for_integration",
+    ":filter_feedback",
+    ":test_archivist_config",
+  ]
+}
+
+fuchsia_package("archivist-with-feedback-filtering-disabled") {
+  testonly = true
+  deps = [
+    ":archivist_for_integration",
+    ":do_not_filter_feedback",
+    ":test_archivist_config",
+  ]
+}
+
+fuchsia_package("archivist-with-legacy-metrics") {
+  testonly = true
+  deps = [
+    ":archivist_for_integration",
+    ":configure_legacy_metrics_pipeline",
+    ":test_archivist_config",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":archivist-integration-tests-v2",
+    ":archivist-with-feedback-filtering",
+    ":archivist-with-feedback-filtering-disabled",
+    ":archivist-with-legacy-metrics",
+  ]
+}

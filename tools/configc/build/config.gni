@@ -1,0 +1,300 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/config/clang/clang.gni")
+import("//build/host.gni")
+import("//build/rust/config.gni")
+
+# Compile a configuration value file.
+#
+# Parameters
+#
+#   cm (required)
+#     Compiled manifest for which the value file should be compiled.
+#     Type: path
+#
+#   value_file (required)
+#     A JSON5 file containing the configuration values to be compiled.
+#     Type: path
+#
+#   deps (optional)
+#   metadata (optional)
+#   output_name (optional)
+#   testonly (optional)
+#   visibility (optional)
+#     Standard GN meaning.
+template("cvf") {
+  input_manifest = invoker.cm
+  value_file = invoker.value_file
+
+  compiled_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "output_name",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    if (!defined(output_name)) {
+      output_name = target_name
+    }
+
+    tool = "//tools/configc"
+    tool_output_name = "configc"
+
+    compiled_output = "${target_out_dir}/${output_name}.cvf"
+    inputs = [
+      input_manifest,
+      value_file,
+    ]
+    outputs = [ compiled_output ]
+
+    args = [
+      "cvf",
+      "--cm",
+      rebase_path(input_manifest, root_build_dir),
+      "--values",
+      rebase_path(value_file, root_build_dir),
+      "--output",
+      rebase_path(compiled_output, root_build_dir),
+    ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    deps += [ "//tools/cmc/build/restricted_features:structured_config" ]
+  }
+}
+
+# Generate the FIDL client library source files for a configuration declaration.
+#
+# Parameters
+#
+#   compiled_manifest (required)
+#     Compiled manifest for which the source files should be generated.
+#     Type: path
+#
+#   name (required)
+#     Name for the generated FIDL library.
+#     Type: string
+#
+#   deps (optional)
+#   metadata (optional)
+#   testonly (optional)
+#   visibility (optional)
+#     Standard GN meaning.
+template("fidl_config_client_lib_source") {
+  assert(defined(invoker.compiled_manifest),
+         "the path to a compiled component manifest must be specified")
+  assert(defined(invoker.name),
+         "the name of this FIDL library must be specified")
+  compiled_manifest = invoker.compiled_manifest
+
+  compiled_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    tool = "//tools/configc"
+    tool_output_name = "configc"
+
+    fidl_format_tool_label = "//tools/fidl/fidlc:fidl-format($host_toolchain)"
+    fidl_format_tool_path =
+        get_label_info(fidl_format_tool_label, "root_out_dir") + "/fidl-format"
+
+    inputs = [
+      compiled_manifest,
+      fidl_format_tool_path,
+    ]
+
+    source_file_path = "${target_out_dir}/${target_name}.fidl"
+
+    args = [
+      "fidl",
+      "--cm",
+      rebase_path(compiled_manifest, root_build_dir),
+      "--output",
+      rebase_path(source_file_path, root_build_dir),
+      "--library-name",
+      invoker.name,
+      "--fidl-format",
+      rebase_path(fidl_format_tool_path, root_build_dir),
+    ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    deps += [
+      "//tools/cmc/build/restricted_features:structured_config",
+      "//tools/fidl/fidlc:fidl-format($host_toolchain)",
+    ]
+
+    outputs = [ source_file_path ]
+  }
+}
+
+# Generate the Rust client library source files for a configuration declaration.
+#
+# Parameters
+#
+#   compiled_manifest (required)
+#     Compiled manifest for which the source files should be generated.
+#     Type: path
+#
+#   fidl_library_name (required)
+#     Name for the internal FIDL library.
+#     Type: string
+#
+#   deps (optional)
+#   metadata (optional)
+#   output_name (optional)
+#   testonly (optional)
+#   visibility (optional)
+#     Standard GN meaning.
+template("rust_config_client_lib_source") {
+  assert(defined(invoker.compiled_manifest),
+         "the path to a compiled component manifest must be specified")
+  assert(defined(invoker.fidl_library_name),
+         "the name of the internal FIDL library must be specified")
+  compiled_manifest = invoker.compiled_manifest
+
+  compiled_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "name",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    tool = "//tools/configc"
+    tool_output_name = "configc"
+
+    inputs = [
+      compiled_manifest,
+      "//rustfmt.toml",
+      "$rustc_prefix/rustfmt",
+
+      # Ensure bindings are regenerated after Rust toolchain rolls.
+      "$rust_sysroot/.versions/rust.cipd_version",
+    ]
+
+    source_file_path = "${target_out_dir}/${target_name}.rs"
+
+    args = [
+      "rust",
+      "--cm",
+      rebase_path(compiled_manifest, root_build_dir),
+      "--output",
+      rebase_path(source_file_path, root_build_dir),
+      "--fidl-library-name",
+      invoker.fidl_library_name,
+      "--rustfmt",
+      "$rebased_rustc_prefix/rustfmt",
+      "--rustfmt-config",
+      rebase_path("//rustfmt.toml", root_build_dir),
+    ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    deps += [ "//tools/cmc/build/restricted_features:structured_config" ]
+
+    outputs = [ source_file_path ]
+  }
+}
+
+# Generate the C++ ELF client library source files for a configuration declaration.
+#
+# Parameters
+#
+#   compiled_manifest (required)
+#     Compiled manifest for which the source files should be generated.
+#     Type: path
+#
+#   fidl_library_name (required)
+#     Name for the internal FIDL library.
+#     Type: string
+#
+#   namespace (optional)
+#     Namespace used by the C++ library.
+#     Type: string
+#
+#   deps (optional)
+#   metadata (optional)
+#   output_name (optional)
+#   testonly (optional)
+#   visibility (optional)
+#     Standard GN meaning.
+template("cpp_elf_config_client_lib_source") {
+  assert(defined(invoker.compiled_manifest),
+         "the path to a compiled component manifest must be specified")
+  assert(defined(invoker.fidl_library_name),
+         "the name of the internal FIDL library must be specified")
+  if (defined(invoker.namespace)) {
+    namespace = invoker.namespace
+  } else {
+    namespace = target_name
+  }
+  compiled_manifest = invoker.compiled_manifest
+
+  compiled_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "name",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    tool = "//tools/configc"
+    tool_output_name = "configc"
+
+    inputs = [
+      compiled_manifest,
+      "${clang_prefix}/clang-format",
+    ]
+
+    output_path = "${target_out_dir}/${namespace}"
+    cc_source_file_path = "${output_path}/config.cc"
+    h_source_file_path = "${output_path}/config.h"
+
+    args = [
+      "cpp_elf",
+      "--cm",
+      rebase_path(compiled_manifest, root_build_dir),
+      "--output-path",
+      rebase_path(output_path, root_build_dir),
+      "--namespace",
+      namespace,
+      "--fidl-library-name",
+      invoker.fidl_library_name,
+      "--clang-format",
+      "${rebased_clang_prefix}/clang-format",
+    ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    deps += [ "//tools/cmc/build/restricted_features:structured_config" ]
+
+    outputs = [
+      cc_source_file_path,
+      h_source_file_path,
+    ]
+  }
+}

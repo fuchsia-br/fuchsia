@@ -1,0 +1,265 @@
+// Copyright 2016 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.tracing.controller;
+
+using zx;
+
+/// The maximum number of providers supported.
+const MAX_NUM_PROVIDERS uint32 = 100;
+
+/// The maximum length of a provider's name.
+const MAX_PROVIDER_NAME_LENGTH uint32 = 100;
+
+/// The maximum number of categories supported.
+const MAX_NUM_CATEGORIES uint32 = 100;
+
+/// The maximum length of a category name.
+const MAX_CATEGORY_NAME_LENGTH uint32 = 100;
+
+/// The maximum length of a category description.
+const MAX_CATEGORY_DESCRIPTION_LENGTH uint32 = 400;
+
+/// The maximum length of an alert name.
+const MAX_ALERT_NAME_LENGTH uint32 = 14;
+
+/// The state of the tracing session.
+/// A "session" is everything between `Initialize` and `Terminate`.
+type SessionState = strict enum {
+    /// The tracing system is ready for a new session.
+    /// There can be only one session at a time.
+    READY = 1;
+    /// A new tracing session has been initialized.
+    INITIALIZED = 2;
+    /// Tracing is in the midst of starting.
+    STARTING = 3;
+    /// Tracing has started.
+    STARTED = 4;
+    /// Tracing is in the midst of being stopped.
+    STOPPING = 5;
+    /// Tracing has fully stopped.
+    STOPPED = 6;
+    /// Tracing is in the midst of being terminated.
+    /// Once the system has completely terminated the session it goes back
+    /// to the READY state.
+    TERMINATING = 7;
+};
+
+/// The controller interface used by the trace tool to initialize/start/stop/terminate tracing.
+///
+/// The trace controller may lightly validate the structure of
+/// trace records as it copies them from trace buffers into the output.
+/// In particular, it may verify the size of each record header to ensure
+/// that the framing of trace records in the data stream is maintained.
+///
+/// The trace controller does not validate the contents of the trace records
+/// themselves.  For example, it does not try to check argument lengths in
+/// events.  This ensures that the trace format can be extended without needing
+/// to modify the trace controller.
+@discoverable
+protocol Controller {
+    /// Requests to initialize tracing with the specified `config`.
+    ///
+    /// A bad request will terminate the connection.
+    ///
+    /// The trace controller emits trace data to `output` as a sequence of
+    /// binary formatted trace records.  Traces obtained from different providers
+    /// are delimited by metadata records within the stream.
+    InitializeTracing(resource struct {
+        config TraceConfig;
+        output zx.handle:SOCKET;
+    });
+
+    /// Requests to terminate tracing.
+    ///
+    /// If tracing has not yet stopped it is stopped first.
+    /// If `options.write_results` is true, then the trace controller
+    /// continues to transfer any remaining data to the output socket
+    /// until finished, then closes the output.
+    TerminateTracing(struct {
+        options TerminateOptions;
+    }) -> (struct {
+        result TerminateResult;
+    });
+
+    /// Requests to start tracing with the specified `options`.
+    ///
+    /// If tracing has already started then the request is ignored,
+    /// except to send back an error code.
+    ///
+    /// The trace controller acknowledges the request when all
+    /// registered providers have been started or after
+    /// `TraceConfig.start_timeout_milliseconds` milliseconds.
+    /// One useful reason for the has-started acknowledgement is that the
+    /// trace program can start a program to trace knowing that all the
+    /// providers are started.
+    StartTracing(struct {
+        options StartOptions;
+    }) -> (struct {}) error StartErrorCode;
+
+    /// Requests to stop tracing.
+    ///
+    /// If tracing has already stopped then this does nothing.
+    /// Returning a result lets callers know when it's ok to, for example,
+    /// start tracing again.
+    StopTracing(struct {
+        options StopOptions;
+    }) -> ();
+
+    /// Return the set of registered providers.
+    GetProviders() -> (struct {
+        providers vector<ProviderInfo>:MAX_NUM_PROVIDERS;
+    });
+
+    // Gets the known categories.
+    GetKnownCategories() -> (struct {
+        categories vector<KnownCategory>:MAX_NUM_CATEGORIES;
+    });
+
+    /// Event sent when the session state changes.
+    -> OnSessionStateChange(struct {
+        state SessionState;
+    });
+
+    /// Returns the next alert when it arrives.
+    WatchAlert() -> (struct {
+        alert_name string:MAX_ALERT_NAME_LENGTH;
+    });
+};
+
+// This is a copy of provider.fidl:BufferingMode.
+type BufferingMode = strict enum : uint8 {
+    ONESHOT = 0;
+    CIRCULAR = 1;
+    STREAMING = 2;
+};
+
+// Individual providers can be tuned with this.
+type ProviderSpec = table {
+    1: name string:MAX_PROVIDER_NAME_LENGTH;
+    2: buffer_size_megabytes_hint uint32;
+};
+
+/// Provides options for the trace.
+type TraceConfig = table {
+    /// The trace categories to record, or an empty array for all.
+    1: categories vector<string:MAX_CATEGORY_NAME_LENGTH>:MAX_NUM_CATEGORIES;
+
+    /// Suggested size of trace buffer which each provider should receive.
+    // TODO(fxbug.dev/7932): Default to 4.
+    2: buffer_size_megabytes_hint uint32;
+
+    /// Acknowledge start request after at most `start_timeout_milliseconds`.
+    // TODO(fxbug.dev/7932): Default to 5000.
+    3: start_timeout_milliseconds uint64;
+
+    // TODO(fxbug.dev/7932), TODO(fxbug.dev/7810): Default to BufferingMode.ONESHOT.
+    4: buffering_mode BufferingMode;
+
+    /// Overrides for particular providers.
+    5: provider_specs vector<ProviderSpec>:MAX_NUM_PROVIDERS;
+};
+
+/// Terminate options.
+type TerminateOptions = table {
+    /// If true then write trace results.
+    /// If false then discard trace results.
+    1: write_results bool;
+};
+
+/// Result of a terminate request.
+type TerminateResult = table {
+        // TODO(dje): Provider stats.
+        };
+
+/// Choices for clearing/retaining trace buffer contents at Start.
+/// A brief summary of buffer contents:
+/// The trace buffer is divided into two main pieces: durable and
+/// non-durable.
+/// The durable portion contains things like the string and thread data for
+/// their respective references (trace_encoded_string_ref_t and
+/// trace_encoded_thread_ref_t). The non-durable portion contains the rest of
+/// the trace data like events); this is the portion that, for example, is
+/// discarded in circular buffering mode when the (non-durable) buffer fills.
+type BufferDisposition = strict enum : uint8 {
+    /// Clear the entire buffer, including durable buffer contents.
+    /// N.B. If this is done mid-session, then string and thread references
+    /// from prior to this point will become invalid - the underlying data
+    /// will be gone. To prevent this save buffer contents before clearing.
+    ///
+    /// This is typically used when buffer contents were saved after the
+    /// preceding Stop.
+    CLEAR_ALL = 1;
+
+    /// Clear the non-durable portion of the buffer, retaining the durable
+    /// portion.
+    ///
+    /// This is typically used when buffer contents were not saved after the
+    /// preceding Stop and the current contents are to be discarded.
+    CLEAR_NONDURABLE = 2;
+
+    /// Retain buffer contents. New trace data is added whether the previous
+    /// trace run left off.
+    ///
+    /// This is typically used when buffer contents were not saved after the
+    /// preceding Stop and the current contents are to be retained.
+    RETAIN = 3;
+};
+
+/// Error codes from Start operations.
+type StartErrorCode = strict enum {
+    /// Tracing hasn't been initialized, not ready to start.
+    NOT_INITIALIZED = 1;
+    /// Tracing has already been started.
+    ALREADY_STARTED = 2;
+    /// Tracing is currently being stopped.
+    STOPPING = 3;
+    /// Tracing is currently being terminated.
+    TERMINATING = 4;
+};
+
+/// Additional options to control trace data collection.
+type StartOptions = table {
+    /// Whether and how to clear the buffer when starting data collection.
+    /// This allows, for example, multiple Start/Stop trace runs to be
+    /// collected in the same buffer.
+    ///
+    /// If the preceding `Stop()` request had `save_after_stopped=true`
+    /// then this value is overridden to CLEAR_ENTIRE_BUFFER to avoid
+    /// duplicate data being saved.
+    1: buffer_disposition BufferDisposition;
+
+    /// The trace categories to add to the initial set provided in
+    /// `TraceConfig`. If the combined number of categories goes over the
+    /// limit then the extra categories past the limit are discarded.
+    2: additional_categories vector<string:MAX_CATEGORY_NAME_LENGTH>:MAX_NUM_CATEGORIES;
+};
+
+/// Additional options to control stopping of a trace.
+type StopOptions = table {
+    /// If true then write all collected data after tracing has stopped.
+    /// This is useful in situations where one wants to clear the buffer
+    /// before starting the next trace, without having to first terminate the
+    /// trace and start a new one.
+    1: write_results bool;
+};
+
+/// Result of `GetKnownCategories`.
+type KnownCategory = struct {
+    // Category name.
+    name string:MAX_CATEGORY_NAME_LENGTH;
+    // Category description.
+    description string:MAX_CATEGORY_DESCRIPTION_LENGTH;
+};
+
+/// Result of `GetProviders`.
+type ProviderInfo = table {
+    /// The provider's ID, assigned by trace-manager.
+    1: id uint32;
+
+    /// The provider's pid.
+    2: pid zx.koid;
+
+    /// The name of the provider.
+    3: name string:MAX_PROVIDER_NAME_LENGTH;
+};

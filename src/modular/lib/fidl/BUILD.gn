@@ -1,0 +1,198 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+group("fidl") {
+  testonly = true
+  deps = [
+    ":app_client",
+    ":app_client_unittest",
+    ":array_to_string",
+    ":clone",
+    ":environment",
+    ":json_xdr",
+    ":json_xdr_unittest",
+    ":json_xdr_unittest_fidl",
+    ":proxy",
+    ":single_service_app",
+    ":test.peridot.lib.fidl.appclient",
+    ":unittests",
+    ":view_host",
+  ]
+}
+
+source_set("app_client") {
+  sources = [
+    "app_client.cc",
+    "app_client.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.modular.session",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+  ]
+
+  deps = [
+    ":clone",
+    "//garnet/public/lib/svc/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/modular/lib/common:async_holder",
+  ]
+}
+
+source_set("array_to_string") {
+  sources = [ "array_to_string.h" ]
+
+  deps = [ "//sdk/lib/fidl/cpp" ]
+}
+
+source_set("json_xdr") {
+  sources = [
+    "json_xdr.cc",
+    "json_xdr.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/json_parser",
+    "//third_party/rapidjson",
+  ]
+}
+
+source_set("proxy") {
+  sources = [
+    "proxy.cc",
+    "proxy.h",
+  ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("clone") {
+  sources = [ "clone.h" ]
+  deps = [ "//sdk/lib/fidl/cpp" ]
+}
+
+source_set("environment") {
+  sources = [
+    "environment.cc",
+    "environment.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/storage/vfs/cpp",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("single_service_app") {
+  sources = [ "single_service_app.h" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("view_host") {
+  sources = [
+    "view_host.cc",
+    "view_host.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.gfx",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+    "//src/lib/ui/base_view",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/lib/ui/scenic/cpp",
+  ]
+}
+
+fidl("test.peridot.lib.fidl.appclient") {
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [ "too-many-nested-libraries" ]
+
+  testonly = true
+
+  sources = [ "app_client_unittest.fidl" ]
+}
+
+group("unittests") {
+  testonly = true
+
+  deps = [
+    ":app_client_unittest",
+    ":json_xdr_unittest",
+  ]
+}
+
+source_set("app_client_unittest") {
+  testonly = true
+
+  sources = [ "app_client_unittest.cc" ]
+
+  deps = [
+    ":app_client",
+    ":test.peridot.lib.fidl.appclient",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fsl",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fidl("json_xdr_unittest_fidl") {
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [
+    "string-bounds-not-specified",
+    "vector-bounds-not-specified",
+  ]
+
+  testonly = true
+
+  name = "test.peridot.lib.fidl.jsonxdr"
+
+  sources = [ "json_xdr_unittest.test.fidl" ]
+}
+
+source_set("json_xdr_unittest") {
+  testonly = true
+
+  sources = [ "json_xdr_unittest.cc" ]
+
+  deps = [
+    ":json_xdr",
+    ":json_xdr_unittest_fidl",
+    "//third_party/googletest:gtest",
+  ]
+}

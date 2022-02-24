@@ -1,0 +1,6 @@
+{
+    "default_data_collection_policy": "DO_NOT_UPLOAD",
+    "enable_replacement_metrics": true,
+    "release_stage": "DEBUG",
+    "watch_for_user_consent": true
+}

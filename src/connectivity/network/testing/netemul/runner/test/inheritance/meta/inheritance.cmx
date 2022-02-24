@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/inheritance"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.netemul.example.Counter",
+            "fuchsia.sys.Environment"
+        ]
+    }
+}

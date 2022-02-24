@@ -1,0 +1,47 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/rust/rustc_test.gni")
+
+fidl("fidl.rust.test.external") {
+  testonly = true
+  sources = [
+    "data_types.test.fidl",
+    "handle_rights.test.fidl",
+  ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+rustc_test("fidl_rust_external_tests_bin") {
+  assert(is_fuchsia)
+  output_name = "fidl_rust_external_tests"
+  edition = "2018"
+  deps = [
+    ":fidl.rust.test.external-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/testing/fidl:placeholders-rustc",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:test-case",
+  ]
+  sources = [
+    "src/data_types.rs",
+    "src/handle_rights.rs",
+    "src/lib.rs",
+    "src/persistence.rs",
+    "src/stream_handler_test.rs",
+  ]
+}
+
+fuchsia_unittest_package("fidl_rust_external_tests") {
+  deps = [ ":fidl_rust_external_tests_bin" ]
+}
+
+group("external_tests") {
+  testonly = true
+  deps = [ ":fidl_rust_external_tests" ]
+}

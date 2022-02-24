@@ -1,0 +1,20 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "system-services": [
+                "fuchsia.scheduler.ProfileProvider"
+            ]
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/scenic_util_tests"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.scheduler.ProfileProvider"
+        ]
+    }
+}

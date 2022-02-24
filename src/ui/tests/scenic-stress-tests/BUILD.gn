@@ -1,0 +1,124 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+import("//src/ui/lib/escher/build_args.gni")
+
+rustc_test("scenic-stressor-bin") {
+  name = "scenic_stressor"
+  edition = "2018"
+  testonly = true
+  source_root = "src/main.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.ui.gfx:fuchsia.ui.gfx-rustc",
+    "//sdk/fidl/fuchsia.ui.input:fuchsia.ui.input-rustc",
+    "//sdk/fidl/fuchsia.ui.scenic:fuchsia.ui.scenic-rustc",
+    "//sdk/fidl/fuchsia.ui.views:fuchsia.ui.views-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/ui/fuchsia-scenic",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/component_manager/testing:test_utils_lib",
+    "//src/sys/lib/component-events",
+    "//src/sys/lib/stress-test",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [
+    "src/environment.rs",
+    "src/input_actor.rs",
+    "src/main.rs",
+    "src/pointer_state.rs",
+    "src/session.rs",
+    "src/session_actor.rs",
+  ]
+}
+
+fuchsia_component("scenic-for-stress-tests") {
+  manifest = "meta/scenic-for-stress-tests.cml"
+  deps = [ "//src/ui/scenic/bin" ]
+}
+
+fuchsia_unittest_package("scenic-stress-tests") {
+  manifest = "meta/scenic_stressor.cml"
+  deps = [
+    ":scenic-for-stress-tests",
+    ":scenic-stressor-bin",
+    "//src/lib/vulkan/validation_layers",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider-cmv2-component",
+  ]
+
+  if (escher_use_runtime_glsl) {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_resources" ]
+  } else {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_spirv_resources" ]
+  }
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "AEMU"
+        }
+        tags = [ "stress-tests" ]
+      },
+    ]
+  }
+}
+
+fuchsia_unittest_package("scenic-stress-tests-short") {
+  package_deps_for_infra_only = [ "//src/ui/tests/scenic-stress-tests" ]
+  manifest = "meta/scenic_stressor_short.cml"
+  deps = [
+    ":scenic-for-stress-tests",
+    ":scenic-stressor-bin",
+    "//src/lib/vulkan/validation_layers",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider-cmv2-component",
+  ]
+
+  if (escher_use_runtime_glsl) {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_resources" ]
+  } else {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_spirv_resources" ]
+  }
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "AEMU"
+        }
+      },
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":scenic-stress-tests",
+    ":scenic-stress-tests-short",
+  ]
+}

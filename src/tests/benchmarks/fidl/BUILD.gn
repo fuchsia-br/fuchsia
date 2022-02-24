@@ -1,0 +1,19 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("benchmarks") {
+  testonly = true
+  deps = [
+    "cpp",
+    "dart",
+    "fidlc:fidlc_microbenchmarks",
+    "go",
+    "hlcpp",
+    "lib-fidl",
+    "llcpp",
+    "reference",
+    "rust",
+    "walker",
+  ]
+}

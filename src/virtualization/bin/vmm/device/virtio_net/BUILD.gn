@@ -1,0 +1,49 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("virtio_net_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_net"
+  sources = [
+    "guest_ethernet.cc",
+    "guest_ethernet.h",
+    "virtio_net.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.ethernet",
+    "//sdk/fidl/fuchsia.hardware.network",
+    "//sdk/fidl/fuchsia.net.virtualization",
+    "//sdk/lib/fit-promise",
+    "//src/connectivity/network/drivers/network-device/device",
+    "//src/connectivity/network/lib/net_interfaces/cpp",
+    "//src/virtualization/bin/vmm/device:virtio",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_net") {
+  deps = [
+    ":virtio_net_v1",
+    ":virtio_net_v2",
+  ]
+}
+
+fuchsia_component("virtio_net_v2") {
+  manifest = "meta/virtio_net.cml"
+  deps = [ ":virtio_net_bin" ]
+  component_name = "virtio_net"
+}
+
+fuchsia_component("virtio_net_v1") {
+  manifest = "meta/virtio_net.cmx"
+  deps = [ ":virtio_net_bin" ]
+  component_name = "virtio_net"
+}

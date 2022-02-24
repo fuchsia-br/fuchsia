@@ -1,0 +1,40 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("env") {
+  sources = [
+    "__environ.c",
+    "__stack_chk_fail.c",
+    "clearenv.c",
+    "getenv.c",
+    "putenv.c",
+    "setenv.c",
+    "unsetenv.c",
+  ]
+
+  deps = [
+    ":start-main",
+    "//zircon/third_party/ulib/musl:musl_internal",
+  ]
+
+  configs -= [ "//build/config:symbol_visibility_hidden" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("start-main") {
+  visibility = [ ":*" ]
+
+  sources = [ "__libc_start_main.c" ]
+
+  deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
+
+  # Make sure this code is compiled with frame pointers so the outermost few
+  # frames seen in user backtraces are always coherent and consistent between
+  # frame-pointer and shadow-call-stack backtraces.
+  configs += [ "//build/config:default_frame_pointers" ]
+  configs -= [ "//build/config:default_frame_pointers" ]
+  configs += [ "//build/config:frame_pointers" ]
+}

@@ -1,0 +1,1 @@
+See //docs/development/languages/fidl/guides/compatibility/protocol_event_remove.md

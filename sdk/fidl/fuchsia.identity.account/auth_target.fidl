@@ -1,0 +1,203 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.identity.account;
+
+using fuchsia.auth;
+using fuchsia.sys;
+using fuchsia.io;
+
+/// A protocol to receive events when the authentication state of an account
+/// changes.
+///
+/// AuthListeners may be registered through the `AuthTarget` protocol and this
+/// registration also defines the types of authentication state changes that
+/// should be sent to the listener.
+///
+/// All methods include an empty response to follow the "Throttle push using
+/// acknowledgements" FIDL design pattern.
+protocol AuthListener {
+    /// A method that is called when the AccountListener is first connected.
+    OnInitialize(struct {
+        auth_state AuthState;
+    }) -> ();
+
+    /// A method that is called when the authentication state of the account
+    /// changes.
+    OnAuthStateChanged(struct {
+        auth_state AuthState;
+    }) -> ();
+};
+
+/// A protocol that is extended by other protocols defining an entity
+/// (referred to as the "target") with an authentication state, such as an
+/// account or persona.
+///
+/// AuthTarget defines a set of methods to monitor the current authentication
+/// state of an entity and to request changes in that authentication state.
+protocol AuthTarget {
+    /// Returns the current `AuthState` of the target.
+    ///
+    /// `scenario` The scenario to produce the authentication state for.
+    ///
+    /// Returns: `auth_state` The target's current authentication state.
+    GetAuthState(struct {
+        scenario Scenario;
+    }) -> (struct {
+        auth_state AuthState;
+    }) error Error;
+
+    /// Connects a channel that will receive changes in the authentication
+    /// state of the target.
+    ///
+    /// `listener` The client end of an `AuthListener` channel
+    /// `initial_state` If true, the listener will receive the initial auth
+    ///                 state in addition to any changes.
+    /// `granularity` An `AuthChangeGranularity` expressing the magnitude of
+    ///               change in authentication state than should lead to a
+    ///               callback
+    RegisterAuthListener(resource struct {
+        scenario Scenario;
+        listener client_end:AuthListener;
+        initial_state bool;
+        granularity AuthChangeGranularity;
+    }) -> (struct {}) error Error;
+
+    // TODO(fxbug.dev/562): Add methods that request in increase in the authentication
+    //                 state or authentication for a particular event.
+};
+
+/// A protocol that exposes information about the personae for a system account
+/// and provides methods to manipulate these. It also exposes a writable data
+/// directory.
+///
+/// An Account provides access to sensitive long term identifiers and is only
+/// intended only for use by a small number of trusted system components.
+protocol Account {
+    compose AuthTarget;
+
+    // Note: an AccountID accessor method may be added if and when the
+    // first valid use case arrives.
+
+    /// Returns the account's lifetime.
+    GetLifetime() -> (struct {
+        lifetime Lifetime;
+    });
+
+    /// Returns a vector of all the personae defined for the account.
+    /// NOTE: Currently all accounts have exactly one persona.
+    GetPersonaIds() -> (struct {
+        persona_ids vector<PersonaId>:MAX_PERSONAE_PER_ACCOUNT;
+    });
+
+    /// Connects a channel to read properties of and access tokens for
+    /// the default persona for the account.
+    ///
+    /// `persona` The server end of a `Persona` channel
+    ///
+    /// Returns: `id` The identifier for the default persona
+    GetDefaultPersona(resource struct {
+        persona server_end:Persona;
+    }) -> (struct {
+        id PersonaId;
+    }) error Error;
+
+    /// Connects a channel to read properties of and access tokens for
+    /// one of the personae for the account.
+    ///
+    /// `id` The persona's identifier as returned by GetPersonaIds()
+    /// `persona` The server end of a `Persona` channel
+    GetPersona(resource struct {
+        id PersonaId;
+        persona server_end:Persona;
+    }) -> (struct {}) error Error;
+
+    // TODO(fxbug.dev/563): Add methods to create, delete, and manage personae.
+
+    /// Returns all authentication mechanism enrollments.
+    GetAuthMechanismEnrollments() -> (struct {
+        enrollments vector<AuthMechanismEnrollmentMetadata>:MAX_AUTH_MECHANISM_ENROLLMENTS;
+    }) error Error;
+
+    /// Create a new enrollment of the provided authentication mechanism,
+    /// and add it to the account.
+    ///
+    /// `auth_mechanism_id` The identifier of the authentication mechanism to
+    ///                     use for the enrollment.
+    ///
+    /// Returns: The `AuthMechanismEnrollmentId` of the created enrollment.
+    // TODO(dnordstrom): Define and document how to authenticate prior to making
+    // changes to the enrollment set.
+    CreateAuthMechanismEnrollment(struct {
+        auth_mechanism_id AuthMechanismId;
+    }) -> (struct {
+        enrollment_id AuthMechanismEnrollmentId;
+    }) error Error;
+
+    /// Remove an authentication mechanism enrollment for the account.
+    ///
+    /// `enrollment_id` The id of the enrollment to remove.
+    // TODO(dnordstrom): Define and document how to authenticate prior to making
+    // changes to the enrollment set.
+    RemoveAuthMechanismEnrollment(struct {
+        enrollment_id AuthMechanismEnrollmentId;
+    }) -> (struct {}) error Error;
+
+    // TODO(dnordstrom): Add support for modifications and/or replacement of
+    // enrollments.
+
+    /// Lock an account. After a successful call, all Account and Persona
+    /// channels for this account will be terminated. If storage unlock is not
+    /// enabled for the account, a FailedPrecondition error is returned.
+    // TODO(dnordstrom): Document the side effects on underlying storage that
+    // may still be in use by the client.
+    Lock() -> (struct {}) error Error;
+
+    /// Connects a channel to access a data directory of the account. The directory is
+    /// writable, and is initially empty for a newly created account. The
+    /// directory is persisted according to the lifetime of the account and is
+    /// never modified by the account system.
+    ///
+    /// NOTE: This method should only be called by the root session
+    /// component instance. Multiple component instance clients are not yet
+    /// supported.
+    ///
+    /// `data_directory` The server end of a `fuchsia.io.Directory` channel
+    // TODO(fxbug.dev/45799): Support multiple component instance clients.
+    GetDataDirectory(resource struct {
+        data_directory server_end:fuchsia.io.Directory;
+    }) -> (struct {}) error Error;
+};
+
+/// A protocol that exposes basic information about a persona and access to the
+/// authentication tokens that are visible through it.
+///
+/// Note a Persona purposefully does not provide access to a long term
+/// identifier for the persona. This is to support components in the system that
+/// work with short lived identifiers (e.g. SessionManager), but note that long
+/// term identifiers can usually still be derived via the TokenManger protocol.
+protocol Persona {
+    compose AuthTarget;
+
+    /// Returns the lifetime of this persona.
+    GetLifetime() -> (struct {
+        lifetime Lifetime;
+    });
+
+    /// Connects a channel to acquire and revoke authentication tokens for
+    /// service provider (aka cloud service) accounts that are visible through
+    /// this persona.
+    ///
+    /// `application_url` A url for the Fuchsia agent that this channel will be
+    ///                   used by. Applications are only allowed to access
+    ///                   tokens that they created.
+    /// `token_manager` The server end of a `TokenManager` channel
+    GetTokenManager // TODO(fxbug.dev/560): Migrate token manager to a more appropriate form
+    // of software identity. This is likely to be some verifiable
+    // representation of the organization that wrote the software, such as
+    // a URL domain.
+    (resource struct {
+        application_url fuchsia.sys.component_url;
+        token_manager server_end:fuchsia.auth.TokenManager;
+    }) -> (struct {}) error Error;
+};

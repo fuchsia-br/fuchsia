@@ -1,0 +1,98 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/testing/environments.gni")
+
+source_set("lib") {
+  sources = [
+    "activity_app.cc",
+    "activity_app.h",
+    "activity_control_connection.cc",
+    "activity_control_connection.h",
+    "activity_provider_connection.cc",
+    "activity_provider_connection.h",
+    "activity_state_machine.cc",
+    "activity_state_machine.h",
+    "activity_tracker_connection.cc",
+    "activity_tracker_connection.h",
+    "state_machine_driver.cc",
+    "state_machine_driver.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.activity",
+    "//sdk/fidl/fuchsia.ui.activity.control",
+    "//sdk/lib/fit",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":activity-test" ]
+}
+
+executable("activity_bin") {
+  output_name = "activity"
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/sys/cpp",
+  ]
+}
+
+fuchsia_component("activity-component") {
+  component_name = "activity"
+  manifest = "meta/activity.cml"
+  deps = [ ":activity_bin" ]
+}
+
+fuchsia_package("activity") {
+  deps = [ ":activity-component" ]
+}
+
+executable("activity_test_bin") {
+  testonly = true
+  output_name = "activity_test"
+
+  sources = [
+    "activity_app_test.cc",
+    "activity_provider_connection_test.cc",
+    "activity_state_machine_test.cc",
+    "activity_tracker_connection_test.cc",
+    "fake_listener.h",
+    "state_machine_driver_test.cc",
+  ]
+  deps = [
+    ":lib",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_component("activity-test-component") {
+  testonly = true
+  component_name = "activity-test"
+  manifest = "meta/activity-test.cmx"
+  deps = [ ":activity_test_bin" ]
+}
+
+fuchsia_test_package("activity-test") {
+  test_components = [ ":activity-test-component" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

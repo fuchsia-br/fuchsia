@@ -1,0 +1,78 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+import("//build/sdk/sdk_host_tool.gni")
+import("//build/test.gni")
+import("//build/testing/environments.gni")
+
+if (is_host) {
+  executable("fidlcat") {
+    output_name = "fidlcat"
+
+    sources = [ "main.cc" ]
+    deps = [
+      ":lib",
+      "//src/developer/debug/ipc:client",
+      "//src/developer/debug/zxdb/client",
+      "//src/developer/debug/zxdb/common",
+      "//src/lib/fidl_codec",
+      "//src/lib/fxl",
+      "//third_party/protobuf:protobuf_full",
+      "//third_party/rapidjson",
+      "//tools/fidlcat/lib:host_lib",
+      "//zircon/system/ulib/cmdline",
+      "//zircon/system/ulib/fidl:fidl_base",
+    ]
+  }
+
+  sdk_host_tool("fidlcat_sdk") {
+    category = "partner"
+    output_name = "fidlcat"
+    deps = [ ":fidlcat" ]
+  }
+
+  static_library("lib") {
+    public = [ "command_line_options.h" ]
+
+    sources = [ "command_line_options.cc" ]
+
+    deps = [
+      "//src/lib/fidl_codec",
+      "//src/lib/fxl",
+      "//zircon/system/ulib/cmdline",
+    ]
+
+    public_deps = [ "//src/lib/analytics/cpp/core_dev_tools" ]
+  }
+
+  test("fidlcat_host_tests") {
+    deps = [
+      ":host_tests",
+      ":lib",
+      "//src/lib/fxl/test:gtest_main",
+      "//tools/fidlcat/interception_tests:host_tests",
+      "//tools/fidlcat/lib:host_tests",
+    ]
+  }
+
+  source_set("host_tests") {
+    testonly = true
+    sources = [ "command_line_options_test.cc" ]
+    deps = [
+      ":lib",
+      "//src/lib/fxl",
+      "//third_party/googletest:gtest",
+      "//zircon/system/ulib/cmdline",
+    ]
+
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    configs += [ "//build/config:Wno-conversion" ]
+  }
+}
+
+install_host_tools("fidlcat_host") {
+  deps = [ ":fidlcat" ]
+  outputs = [ "fidlcat" ]
+}

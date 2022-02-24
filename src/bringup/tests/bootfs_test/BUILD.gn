@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+test("running_on_bootfs_test") {
+  testonly = true
+  output_name = "running-on-bootfs-test"
+  sources = [ "running_on_bootfs_test.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+# Note: this test should end up in /boot, which means the cmx produced here is
+# irrelevant, however, we don't allow bare tests in packages anymore, so the
+# cmx production avoids needing a very specialized exception for this case.
+bootfs_test("running-on-bootfs-test") {
+  name = "running-on-bootfs-test"
+  deps = [ ":running_on_bootfs_test" ]
+}

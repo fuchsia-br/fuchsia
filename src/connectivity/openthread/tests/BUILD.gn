@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  deps = [
+    "fake-drivers",
+    "fake-drivers/fake-ot-radio:tests",
+    "test-components:ot-radio-component-tests",
+
+    # TODO(fxbug.dev/92760): Re-enable after OpenThread update lands.
+    # "test-components:ot-stack-component-tests",
+  ]
+}
+
+group("all-tests") {
+  testonly = true
+  deps = [
+    ":tests",
+    "fake-drivers",
+    "test-components:ot-radio-tests",
+  ]
+}

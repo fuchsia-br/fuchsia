@@ -1,0 +1,71 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+test("test") {
+  output_name = "bind-test-v2"
+
+  sources = [ "bind-test-v2.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.device.test:fuchsia.device.test_llcpp",
+    "//sdk/fidl/fuchsia.driver.development",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/driver_test_realm/simple",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/ddk",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fdio-caller",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+  ]
+}
+
+fuchsia_unittest_package("bind-test-v2") {
+  deps = [
+    ":bind-test-driver-v2",
+    ":test",
+    "//src/devices/misc/drivers/test",
+    "//src/devices/misc/drivers/test-parent",
+  ]
+}
+
+driver_bind_rules("bind-v2") {
+  rules = "bind-test-v2.bind"
+  header_output = "bind-test-v2-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.compat",
+    "//src/devices/bind/fuchsia.test",
+  ]
+}
+
+fuchsia_driver("bind-test-driver-v2-driver") {
+  output_name = "bind-test-v2-driver"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "bind-test-driver-v2.cc" ]
+  deps = [
+    ":bind-v2",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("bind-test-driver-v2") {
+  component_name = "bind-test-v2-driver"
+  deps = [ ":bind-test-driver-v2-driver" ]
+  info = "bind-test-driver-v2-info.json"
+  colocate = true
+}

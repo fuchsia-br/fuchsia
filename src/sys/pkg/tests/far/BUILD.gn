@@ -1,0 +1,42 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "far_integration_test"
+  edition = "2018"
+
+  deps = [
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_component("far-component") {
+  testonly = true
+  component_name = "far"
+  manifest = "meta/far.cmx"
+  deps = [ "//src/sys/pkg/bin/far:bin" ]
+}
+
+fuchsia_test_component("far-integration-tests-component") {
+  component_name = "far-integration-tests"
+  manifest = "meta/far-integration-test.cmx"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("far-integration-tests") {
+  test_components = [ ":far-integration-tests-component" ]
+  deps = [ ":far-component" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":far-integration-tests" ]
+}

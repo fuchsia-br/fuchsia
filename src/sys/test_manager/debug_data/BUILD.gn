@@ -1,0 +1,69 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("rust_bin") {
+  name = "debug_data_rust_bin"
+  with_unit_tests = true
+  edition = "2018"
+  source_root = "src/main.rs"
+
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.debugdata:fuchsia.debugdata-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2-rustc",
+    "//sdk/fidl/fuchsia.test.internal:fuchsia.test.internal-rustc",
+    "//sdk/fidl/fuchsia.test.manager:fuchsia.test.manager-rustc",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/moniker",
+    "//src/sys/test_manager/fidl/fuchsia.test.debug:fuchsia.test.debug-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+  ]
+
+  test_deps = [
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [
+    "src/data_processor.rs",
+    "src/debug_data_server.rs",
+    "src/debug_data_set.rs",
+    "src/iterator.rs",
+    "src/main.rs",
+    "src/message.rs",
+  ]
+}
+
+fuchsia_component("debug_data_rust") {
+  testonly = true
+  deps = [ ":rust_bin" ]
+  manifest = "meta/debug_data_rust.cml"
+}
+
+fuchsia_unittest_package("debug-data-rust-unittests") {
+  deps = [ ":rust_bin_test" ]
+  manifest = "meta/debug_data_rust_unittests.cml"
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":debug-data-rust-unittests" ]
+}

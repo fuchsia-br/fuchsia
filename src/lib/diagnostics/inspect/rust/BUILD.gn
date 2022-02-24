@@ -1,0 +1,107 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("fuchsia-inspect") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//src/lib/diagnostics/hierarchy/rust",
+    "//src/lib/diagnostics/inspect/format/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/mapped-vmo",
+    "//src/lib/shared-buffer",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:derivative",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:paste",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "src/component.rs",
+    "src/health.rs",
+    "src/lib.rs",
+    "src/reader/error.rs",
+    "src/reader/mod.rs",
+    "src/reader/readable_tree.rs",
+    "src/reader/snapshot.rs",
+    "src/reader/tree_reader.rs",
+    "src/stats.rs",
+    "src/writer/error.rs",
+    "src/writer/heap.rs",
+    "src/writer/mod.rs",
+    "src/writer/state.rs",
+    "src/writer/testing_utils.rs",
+    "src/writer/types/base.rs",
+    "src/writer/types/bool_property.rs",
+    "src/writer/types/bytes_property.rs",
+    "src/writer/types/double_array.rs",
+    "src/writer/types/double_exponential_histogram.rs",
+    "src/writer/types/double_linear_histogram.rs",
+    "src/writer/types/double_property.rs",
+    "src/writer/types/inspector.rs",
+    "src/writer/types/int_array.rs",
+    "src/writer/types/int_exponential_histogram.rs",
+    "src/writer/types/int_linear_histogram.rs",
+    "src/writer/types/int_property.rs",
+    "src/writer/types/lazy_node.rs",
+    "src/writer/types/mod.rs",
+    "src/writer/types/node.rs",
+    "src/writer/types/property.rs",
+    "src/writer/types/string_array.rs",
+    "src/writer/types/string_property.rs",
+    "src/writer/types/string_reference.rs",
+    "src/writer/types/uint_array.rs",
+    "src/writer/types/uint_exponential_histogram.rs",
+    "src/writer/types/uint_linear_histogram.rs",
+    "src/writer/types/uint_property.rs",
+    "src/writer/types/value_list.rs",
+    "src/writer/utils.rs",
+  ]
+}
+
+fuchsia_unittest_package("fuchsia-inspect-tests") {
+  deps = [ ":fuchsia-inspect_test" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("rust") {
+  deps = [ ":fuchsia-inspect" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fuchsia-inspect-tests" ]
+}
+
+group("benchmarks") {
+  testonly = true
+  deps = [ "bench:rust-inspect-benchmarks" ]
+}

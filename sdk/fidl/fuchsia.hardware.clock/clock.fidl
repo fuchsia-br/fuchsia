@@ -1,0 +1,33 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.clock;
+
+using zx;
+
+const NAME_LEN uint32 = 30;
+
+type FrequencyInfo = struct {
+    name array<uint8, NAME_LEN>;
+    frequency uint64;
+};
+
+protocol Device {
+    Measure(struct {
+        clock uint32;
+    }) -> (struct {
+        info FrequencyInfo;
+    });
+    GetCount() -> (struct {
+        count uint32;
+    });
+
+    // For debugging
+    Enable(struct {
+        clock uint32;
+    }) -> (struct {}) error zx.status;
+
+    Disable(struct {
+        clock uint32;
+    }) -> (struct {}) error zx.status;
+};

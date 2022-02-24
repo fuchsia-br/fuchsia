@@ -1,0 +1,8 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/fidl_fuchsia_pkg_rewrite_ext_lib_test"
+    }
+}

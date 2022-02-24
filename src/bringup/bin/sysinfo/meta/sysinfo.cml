@@ -1,0 +1,23 @@
+{
+    program: {
+        runner: "elf",
+        binary: "bin/sysinfo",
+    },
+    capabilities: [
+        { protocol: "fuchsia.sysinfo.SysInfo" },
+    ],
+    use: [
+        {
+            directory: "dev",
+            rights: [ "rw*" ],
+            path: "/dev",
+        },
+        { protocol: "fuchsia.boot.WriteOnlyLog" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "self",
+        },
+    ],
+}

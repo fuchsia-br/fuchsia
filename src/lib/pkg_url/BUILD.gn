@@ -1,0 +1,55 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fuzzing/fuzzer.gni")
+
+source_set("pkg_url") {
+  sources = [
+    "fuchsia_pkg_url.cc",
+    "fuchsia_pkg_url.h",
+    "url_resolver.cc",
+    "url_resolver.h",
+  ]
+
+  public_deps = [ "//src/lib/fxl" ]
+  deps = [ "//third_party/re2" ]
+}
+
+executable("tests") {
+  testonly = true
+
+  output_name = "pkg_url_unittests"
+
+  sources = [
+    "fuchsia_pkg_url_unittest.cc",
+    "url_resolver_unittest.cc",
+  ]
+
+  deps = [
+    ":pkg_url",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+fuchsia_unittest_package("pkg_url_unittests") {
+  deps = [ ":tests" ]
+}
+
+fuzzers_package("pkg_url_fuzzers") {
+  fuzzers = [
+    ":fuchsia_pkg_url_fuzzer",
+    ":url_resolver_fuzzer",
+  ]
+}
+
+fuzzer("fuchsia_pkg_url_fuzzer") {
+  sources = [ "fuchsia_pkg_url_fuzztest.cc" ]
+  deps = [ ":pkg_url" ]
+}
+
+fuzzer("url_resolver_fuzzer") {
+  sources = [ "url_resolver_fuzztest.cc" ]
+  deps = [ ":pkg_url" ]
+}

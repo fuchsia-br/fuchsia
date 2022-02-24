@@ -1,0 +1,69 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+
+config("media_test_include_config") {
+  include_dirs = [ "include" ]
+}
+
+source_set("codec_buffer") {
+  testonly = true
+
+  sources = [ "codec_buffer.cc" ]
+
+  include_dirs = [ "include" ]
+  public_configs = [ ":media_test_include_config" ]
+
+  public = [ "include/lib/media/test/codec_buffer.h" ]
+  deps = [
+    "//sdk/fidl/fuchsia.mediacodec",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("codec_client") {
+  testonly = true
+
+  sources = [
+    "codec_client.cc",
+    "codec_output.cc",
+  ]
+
+  include_dirs = [ "include" ]
+
+  public_configs = [ ":media_test_include_config" ]
+
+  public = [
+    "include/lib/media/test/codec_client.h",
+    "include/lib/media/test/codec_output.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.mediacodec",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/media/lib/test:codec_buffer",
+    "//src/media/lib/test:one_shot_event",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+source_set("one_shot_event") {
+  testonly = true
+
+  sources = [ "one_shot_event.cc" ]
+
+  include_dirs = [ "include" ]
+
+  public_configs = [ ":media_test_include_config" ]
+
+  public = [ "include/lib/media/test/one_shot_event.h" ]
+
+  deps = [ "//zircon/system/ulib/zx" ]
+}

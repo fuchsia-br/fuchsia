@@ -1,0 +1,8 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/crash_server_unittest_exe"
+    }
+}

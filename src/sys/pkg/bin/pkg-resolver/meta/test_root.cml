@@ -1,0 +1,61 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//src/lib/fuchsia-hyper/hyper_testing.shard.cml",
+
+        // Depends on root ssl certificate which is a system capability.
+        "//src/sys/test_manager/system-test.shard.cml",
+    ],
+    children: [
+        {
+            name: "test_driver",
+            url: "fuchsia-pkg://fuchsia.com/pkg-resolver-unit-tests#meta/test_driver.cm",
+        },
+        {
+            name: "netstack",
+            url: "fuchsia-pkg://fuchsia.com/pkg-resolver-unit-tests#meta/netstack.cm",
+        },
+        {
+            name: "dns_resolver",
+            url: "fuchsia-pkg://fuchsia.com/pkg-resolver-unit-tests#meta/dns_resolver.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.posix.socket.Provider" ],
+            from: "#netstack",
+            to: "#test_driver",
+        },
+        {
+            protocol: [ "fuchsia.net.name.Lookup" ],
+            from: "#dns_resolver",
+            to: "#test_driver",
+        },
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: "#test_driver",
+        },
+        {
+            storage: "tmp",
+            from: "parent",
+            to: "#test_driver",
+        },
+        {
+            directory: "root-ssl-certificates",
+            from: "parent",
+            to: "#test_driver",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#test_driver",
+        },
+    ],
+}

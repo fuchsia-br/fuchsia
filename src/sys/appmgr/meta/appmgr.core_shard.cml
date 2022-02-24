@@ -1,0 +1,435 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Add appmgr to core
+{
+    children: [
+        {
+            name: "appmgr",
+            url: "fuchsia-pkg://fuchsia.com/appmgr#meta/appmgr.cm",
+            on_terminate: "reboot",
+        },
+    ],
+    capabilities: [
+        // These protocols are services from the v1 component runtime being made available to the v2
+        // component runtime. They are defined here in `core` rather than `appmgr` because they
+        // get proxied from the `svc_from_sys` directory. (See the accompanying comment in
+        // `core.cml`.)
+        //
+        // The presence of these protocols creates a dependency cycle between v1 and v2. For this
+        // reason, when you offer these protocol you typically mark them `weak_for_migration` to
+        // break the cycle. Be aware that when you do this, you can expect the target component to
+        // lose access to the protocol at some point when the system is shut down.
+        {
+            protocol: [
+                "fuchsia.accessibility.semantics.SemanticsManager",
+                "fuchsia.bluetooth.snoop.Snoop",
+                "fuchsia.camera3.DeviceWatcher",
+                "fuchsia.factory.MiscFactoryStoreProvider",
+                "fuchsia.factory.WeaveFactoryStoreProvider",
+                "fuchsia.feedback.ComponentDataRegister",
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.feedback.CrashReportingProductRegister",
+                "fuchsia.feedback.DeviceIdProvider",
+                "fuchsia.feedback.internal.CrashReportsDirectoryMigrator",
+                "fuchsia.feedback.internal.FeedbackDataDirectoryMigrator",
+                "fuchsia.hwinfo.Device",
+                "fuchsia.intl.PropertyProvider",
+                "fuchsia.intl.TimeZones",
+                "fuchsia.lowpan.device.Lookup",
+                "fuchsia.media.Audio",
+                "fuchsia.media.AudioCore",
+                "fuchsia.media.AudioDeviceEnumerator",
+                "fuchsia.media.ProfileProvider",
+                "fuchsia.media.SessionAudioConsumerFactory",
+                "fuchsia.media.sessions2.Discovery",
+                "fuchsia.media.sessions2.Publisher",
+                "fuchsia.media.UsageReporter",
+                "fuchsia.overnet.Overnet",
+                "fuchsia.overnet.ServicePublisher",
+                "fuchsia.power.manager.DriverManagerRegistration",
+                "fuchsia.process.Resolver",
+                "fuchsia.recovery.policy.Device",
+                "fuchsia.settings.Audio",
+                "fuchsia.settings.Input",
+                "fuchsia.settings.Keyboard",
+                "fuchsia.settings.Privacy",
+                "fuchsia.stash.SecureStore",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.internal.CrashIntrospect",
+                "fuchsia.sys.Launcher",
+                "fuchsia.sys.Loader",
+                "fuchsia.sysmem.Allocator",
+
+                // TODO(fxbug.dev/93338): delete this when tee_manager migrated to CFv2
+                "fuchsia.tee.Application.99dc95b2-938e-47eb-80e8-9404ae8a1385",
+                "fuchsia.tee.DeviceInfo",
+                "fuchsia.tracing.controller.Controller",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.annotation.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.composition.FlatlandDisplay",
+                "fuchsia.ui.focus.FocusChainListenerRegistry",
+                "fuchsia.ui.input.accessibility.PointerEventRegistry",
+                "fuchsia.ui.input.ImeService",
+                "fuchsia.ui.input.PointerCaptureListenerRegistry",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.input3.KeyEventInjector",
+                "fuchsia.ui.keyboard.focus.Controller",
+                "fuchsia.ui.lifecycle.LifecycleController",
+                "fuchsia.ui.pointerinjector.Registry",
+                "fuchsia.ui.policy.DeviceListenerRegistry",
+                "fuchsia.ui.policy.Presenter",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.ui.shortcut.Manager",
+                "fuchsia.ui.shortcut.Registry",
+                "fuchsia.ui.views.ViewRefInstalled",
+                "fuchsia.update.channelcontrol.ChannelControl",
+                "fuchsia.virtualization.Manager",
+                "fuchsia.weave.FactoryDataManager",
+                "fuchsia.weave.Signer",
+            ],
+        },
+    ],
+
+    // Protocols used from a child are routed to the v1 sys realm.
+    use: [
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.NameProvider",
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+                "fuchsia.driver.registrar.DriverRegistrar",
+                "fuchsia.fshost.BlockWatcher",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister",
+                "fuchsia.hardware.pty.Device",
+                "fuchsia.hardware.usb.DeviceWatcher",
+                "fuchsia.kernel.Counter",
+                "fuchsia.kernel.CpuResource",
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.kernel.DebugResource",
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.IoportResource",
+                "fuchsia.kernel.IrqResource",
+                "fuchsia.kernel.MmioResource",
+                "fuchsia.kernel.PowerResource",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.SmcResource",
+                "fuchsia.kernel.Stats",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.logger.Log",
+                "fuchsia.paver.Paver",
+                "fuchsia.power.profile.Watcher",
+                "fuchsia.power.systemmode.ClientConfigurator",
+                "fuchsia.power.systemmode.Requester",
+                "fuchsia.process.Launcher",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.sysinfo.SysInfo",
+                "fuchsia.thermal.ClientStateConnector",
+                "fuchsia.thermal.Controller",
+                "fuchsia.time.Maintenance",
+                "fuchsia.tpm.cr50.Cr50",
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.kernel.Reader",
+                "fuchsia.vboot.FirmwareParam",
+                "fuchsia.virtualconsole.SessionManager",
+            ],
+            from: "parent",
+        },
+        {
+            protocol: "fuchsia.devicesettings.DeviceSettingsManager",
+            from: "#device_settings",
+        },
+        {
+            protocol: [
+                "fuchsia.settings.Accessibility",
+                "fuchsia.settings.Audio",
+                "fuchsia.settings.Display",
+                "fuchsia.settings.DoNotDisturb",
+                "fuchsia.settings.FactoryReset",
+                "fuchsia.settings.Input",
+                "fuchsia.settings.Intl",
+                "fuchsia.settings.Keyboard",
+                "fuchsia.settings.Light",
+                "fuchsia.settings.NightMode",
+                "fuchsia.settings.policy.VolumePolicyController",
+                "fuchsia.settings.Privacy",
+                "fuchsia.settings.Setup",
+            ],
+            from: "#setui_service",
+        },
+        {
+            protocol: "fuchsia.sysmem.Allocator",
+            from: "#sysmem_connector",
+        },
+        {
+            protocol: [
+                "fuchsia.net.http.Loader",
+                "fuchsia.net.interfaces.admin.Installer",
+                "fuchsia.net.interfaces.State",
+                "fuchsia.net.name.Lookup",
+                "fuchsia.net.routes.State",
+                "fuchsia.net.stack.Stack",
+                "fuchsia.netstack.Netstack",
+                "fuchsia.posix.socket.Provider",
+            ],
+            from: "#network",
+        },
+        {
+            protocol: "fuchsia.media.sounds.Player",
+            from: "#soundplayer",
+        },
+        {
+            protocol: "fuchsia.fonts.Provider",
+            from: "#font_provider",
+        },
+        {
+            protocol: [
+                "fuchsia.hwinfo.Board",
+                "fuchsia.hwinfo.Device",
+                "fuchsia.hwinfo.Product",
+            ],
+            from: "#hwinfo",
+        },
+        {
+            protocol: "fuchsia.update.CommitStatusProvider",
+            from: "#system-update-committer",
+        },
+        {
+            protocol: "fuchsia.developer.remotecontrol.RemoteControl",
+            from: "#remote-control",
+        },
+        {
+            protocol: "fuchsia.starnix.developer.Manager",
+            from: "#starnix_manager",
+        },
+        {
+            protocol: "fuchsia.hardware.serial.NewDeviceProxy",
+            from: "#debug_serial",
+        },
+        {
+            protocol: "fuchsia.systemmetrics.test.SystemMetricsLogger",
+            from: "#system-metrics-logger",
+        },
+        {
+            protocol: "fuchsia.thermal.test.TemperatureLogger",
+            from: "#temperature-logger",
+        },
+        {
+            protocol: [
+                "fuchsia.pkg.PackageCache",
+                "fuchsia.space.Manager",
+            ],
+            from: "#pkg-cache",
+        },
+        {
+            protocol: [
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.pkg.PackageResolverAdmin",
+                "fuchsia.pkg.RepositoryManager",
+                "fuchsia.pkg.rewrite.Engine",
+            ],
+            from: "#pkg-resolver",
+        },
+
+        // TODO(https://fxbug.dev/90433): prune these once MDNS is a CFv2 component.
+        {
+            protocol: [
+                "fuchsia.net.mdns.Publisher",
+                "fuchsia.net.mdns.Resolver",
+                "fuchsia.net.mdns.ServiceInstanceResolver",
+                "fuchsia.net.mdns.Subscriber",
+            ],
+            from: "#mdns",
+        },
+
+        // TODO(fxbug.dev/71830): Remove once the Feedback migration has completed.
+        {
+            protocol: "fuchsia.feedback.internal.LastRebootDirectoryMigrator",
+            from: "#last_reboot",
+        },
+        {
+            protocol: "fuchsia.stash.Store",
+            from: "#stash",
+        },
+        {
+            protocol: "fuchsia.stash.Store2",
+            from: "#stash2",
+        },
+        {
+            protocol: "fuchsia.stash.SecureStore",
+            from: "#stash_secure",
+        },
+        {
+            protocol: "fuchsia.vulkan.loader.Loader",
+            from: "#vulkan_loader",
+        },
+
+        // From v2 Bluetooth components (testonly capabilities).
+        // TODO(fxbug.dev/86390): These capabilities should not always be available to the system.
+        // Remove this once we can conditionally expose these testonly capabilities.
+        {
+            protocol: [
+                "fuchsia.bluetooth.avrcp.PeerManager",
+                "fuchsia.bluetooth.avrcp.test.PeerManagerExt",
+            ],
+            from: "#bt-avrcp",
+        },
+
+        // Used by SL4F in appmgr
+        {
+            protocol: [
+                "fuchsia.bluetooth.bredr.Profile",
+                "fuchsia.bluetooth.gatt.Server",
+                "fuchsia.bluetooth.le.Central",
+                "fuchsia.bluetooth.le.Peripheral",
+                "fuchsia.bluetooth.rfcomm.test.RfcommTest",
+                "fuchsia.bluetooth.sys.Access",
+                "fuchsia.bluetooth.sys.Configuration",
+                "fuchsia.bluetooth.sys.HostWatcher",
+            ],
+            from: "#bluetooth-core",
+        },
+        {
+            protocol: [
+                "fuchsia.ui.activity.control.Control",
+                "fuchsia.ui.activity.Provider",
+                "fuchsia.ui.activity.Tracker",
+            ],
+            from: "#activity",
+        },
+        {
+            protocol: "fuchsia.ui.brightness.Control",
+            from: "#brightness_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.cobalt.SystemDataUpdater",
+                "fuchsia.metrics.MetricEventLoggerFactory",
+            ],
+            from: "#cobalt",
+        },
+        {
+            protocol: "fuchsia.diagnostics.persist.DataPersistence-wlan",
+            from: "#diagnostics-persistence",
+        },
+        {
+            protocol: "fuchsia.ssh.AuthorizedKeys",
+            from: "#ssh-key-manager",
+        },
+        {
+            protocol: [
+                "fuchsia.location.namedplace.RegulatoryRegionConfigurator",
+                "fuchsia.location.namedplace.RegulatoryRegionWatcher",
+            ],
+            from: "#regulatory_region",
+        },
+        {
+            protocol: [
+                "fuchsia.element.GraphicalPresenter",
+                "fuchsia.session.Launcher",
+            ],
+            from: "#session-manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.exception.Handler",
+                "fuchsia.exception.ProcessLimbo",
+            ],
+            from: "#exceptions",
+        },
+        {
+            protocol: [
+                "fuchsia.feedback.ComponentDataRegister",
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.feedback.CrashReportingProductRegister",
+                "fuchsia.feedback.DataProvider",
+                "fuchsia.feedback.DataProviderController",
+                "fuchsia.feedback.LastRebootInfoProvider",
+            ],
+            from: "#feedback",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: "#appmgr",
+        },
+        {
+            directory: [
+                "blob",
+                "boot",
+                "dev",
+                "durable",
+                "factory",
+                "hub",
+                "install",
+                "minfs",
+                "mnt",
+                "system",
+                "tmp",
+            ],
+            from: "parent",
+            to: "#appmgr",
+        },
+        {
+            directory: "pkgfs",
+            from: "parent",
+            to: "#appmgr",
+            rights: [ "rx*" ],
+        },
+    ],
+    expose: [
+        // Non-zircon services for svchost
+        {
+            protocol: [
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.hwinfo.Device",
+                "fuchsia.process.Resolver",
+                "fuchsia.settings.Input",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.Launcher",
+                "fuchsia.sys.Loader",
+                "fuchsia.tracing.controller.Controller",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.virtualization.Manager",
+            ],
+            from: "self",
+        },
+        {
+            protocol: [
+                "fuchsia.appmgr.Startup",
+                "fuchsia.sys.internal.ComponentEventProvider",
+                "fuchsia.sys.internal.LogConnector",
+            ],
+            from: "#appmgr",
+        },
+        {
+            directory: "hub-legacy",
+            from: "#appmgr",
+        },
+    ],
+}

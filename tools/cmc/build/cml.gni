@@ -1,0 +1,142 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//tools/cmc/build/cmc.gni")
+import("//tools/cmc/build/expect_includes.gni")
+
+# Compiles a cml file into a cm file.
+#
+# Parameters
+#
+#   manifest (required)
+#     [file] The path to the cml file that is to be compiled.
+#
+#   output_name (optional)
+#     [path] Name for the output.
+#     If not specified, the target name is used.
+#
+#   check_includes (optional)
+#     [boolean] Whether to check against expect_includes() in deps.
+#     Default: true
+#
+#   restricted_features (optional)
+#     [list of strings] The set of restricted CML features to allow.
+#     The set of features is allowlisted here: //tools/cmc/build/restricted/BUILD.gn
+#     where each feature name is represented by a group of the same name.
+#
+#   experimental_force_runner (optional)
+#     [string] Sets the --experimental-force-runner flag.
+#     This feature is experimental and may be removed without warning.
+#
+#   deps (optional)
+#   testonly (optional)
+#   visibility (optional)
+template("cm") {
+  if (!defined(invoker.check_includes) || invoker.check_includes) {
+    check_includes_target = "${target_name}_check_includes"
+    cmc_check_includes(check_includes_target) {
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "manifest",
+                               "testonly",
+                             ])
+      visibility = [ ":*" ]
+    }
+
+    if (!defined(invoker.deps)) {
+      invoker.deps = []
+    }
+    invoker.deps += [ ":" + check_includes_target ]
+  }
+  input_manifest = invoker.manifest
+
+  # for the profile variant we need to inject a use clause for DebugData.
+  needs_debugdata = is_coverage
+
+  if (needs_debugdata) {
+    cmc_merge("${target_name}_merge") {
+      sources = [
+        "//build/config/sanitizers/debugdata.cml",
+        invoker.manifest,
+      ]
+      output_name = "${target_name}_merge.cml"
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "testonly",
+                             ])
+      visibility = [ ":*" ]
+    }
+    invoker.deps += [ ":${target_name}_merge" ]
+    merged = get_target_outputs(":${target_name}_merge")
+    input_manifest = merged[0]
+  }
+
+  cmc(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "output_name",
+                             "restricted_features",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    if (!defined(output_name)) {
+      output_name = target_name
+    }
+
+    compiled_output = "${target_out_dir}/${output_name}"
+    inputs = [ input_manifest ]
+    outputs = [ compiled_output ]
+    depfile = "${target_out_dir}/${target_name}.d"
+
+    args = [
+      "compile",
+      rebase_path(inputs[0], root_build_dir),
+      "--output",
+      rebase_path(compiled_output, root_build_dir),
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+    ]
+    if (defined(invoker.config_values_package_path)) {
+      args += [
+        "--config-package-path",
+        invoker.config_values_package_path,
+      ]
+    }
+    args += include_paths
+
+    if (!defined(restricted_features)) {
+      restricted_features = []
+    }
+
+    # Restricted features that don't require an explicit opt-in.
+    #
+    # Useful for features which we want to allow globally in tree but
+    # restrict out of tree.
+    restricted_features += [ "hub" ]
+
+    # Opt-in to the requested restricted_features.
+    args += [ "--features" ] + restricted_features
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    # Add a dependency on the feature's allowlist.
+    foreach(feature, restricted_features) {
+      deps += [ "//tools/cmc/build/restricted_features:" + feature ]
+    }
+
+    if (defined(invoker.experimental_force_runner)) {
+      args += [
+        "--experimental-force-runner",
+        invoker.experimental_force_runner,
+      ]
+    }
+  }
+}

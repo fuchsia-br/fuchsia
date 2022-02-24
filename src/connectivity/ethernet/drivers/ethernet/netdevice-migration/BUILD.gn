@@ -1,0 +1,79 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":netdevice-migration-tests" ]
+}
+
+driver_bind_rules("netdevice-migration-bind") {
+  rules = "netdevice_migration.bind"
+  header_output = "netdevice_migration_bind.h"
+  tests = "bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.ethernet" ]
+}
+
+source_set("src") {
+  sources = [
+    "netdevice_migration.cc",
+    "netdevice_migration.h",
+  ]
+  public_deps = [
+    ":netdevice-migration-bind",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.network.device:fuchsia.hardware.network.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.network.mac:fuchsia.hardware.network.mac_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_llcpp",
+    "//sdk/fidl/fuchsia.hardware.network:fuchsia.hardware.network_llcpp",
+    "//src/connectivity/network/drivers/network-device/device:shared_lock",
+    "//src/devices/lib/dev-operation",
+    "//src/lib/ddktl",
+    "//src/lib/vmo_store",
+    "//zircon/system/public",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+}
+
+fuchsia_driver("netdevice-migration-driver") {
+  output_name = "netdevice-migration"
+  deps = [
+    ":netdevice-migration-bind",
+    ":src",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("netdevice-migration") {
+  component_name = "netdevice-migration"
+  deps = [ ":netdevice-migration-driver" ]
+  info = "netdevice-migration-info.json"
+  colocate = true
+}
+
+test("unit-tests") {
+  output_name = "netdevice-migration-unit-tests"
+  sources = [ "unit-tests.cc" ]
+  deps = [
+    ":netdevice-migration-bind",
+    ":src",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/mock-ddk",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/predicates",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_package("netdevice-migration-tests") {
+  deps = [ ":unit-tests" ]
+}

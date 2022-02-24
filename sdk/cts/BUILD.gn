@@ -1,0 +1,95 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/build_api_module.gni")
+import("//sdk/cts/build/cts.gni")
+
+# TODO(fxb/82775): Remove this target once infra points to //sdk:cts.
+group("cts_artifacts") {
+  testonly = true
+
+  # build_api_module invocation moved to //sdk/cts/build/cts_sdk.gni
+  # and is hooked into the build from the //sdk:cts target.
+
+  deps = [ "//sdk:cts" ]
+}
+
+generated_file("generated_test_manifest") {
+  testonly = true
+  outputs = [ "$target_gen_dir/cts/test_manifest.json" ]
+  output_conversion = "json"
+  data_keys = [ "test_manifest" ]
+  deps = [
+    "examples:tests",
+    "tests",
+  ]
+}
+
+cts_copy_to_sdk("test_manifest") {
+  testonly = true
+  dest = ""
+  sources = get_target_outputs(":generated_test_manifest")
+  non_sdk_deps = [ ":generated_test_manifest" ]
+}
+
+sdk_molecule("test_manifest") {
+  testonly = true
+  deps = [ ":test_manifest_sdk" ]
+}
+
+group("cts_no_e2e") {
+  testonly = true
+  assert_no_deps = e2e_test_libs
+
+  deps = [ "tests:tests_no_e2e" ]
+
+  # Prevents us from adding example tests and build scripts to the archive.
+  path = get_label_info(":${target_name}", "dir")
+  is_cts_tot = string_replace(path, "//sdk/cts", "") != path
+  if (is_cts_tot) {
+    deps += [
+      "build/scripts:tests",
+      "examples:tests",
+    ]
+  }
+}
+
+group("cts") {
+  testonly = true
+  deps = [
+    ":cts_no_e2e",
+    "tests",
+  ]
+}
+
+cts_copy_to_sdk("build") {
+  sources = [ "BUILD.gn" ]
+  testonly = true
+}
+
+sdk_molecule("cts_tests") {
+  category = "cts"
+  deps = [
+    ":build_sdk",
+    ":cts_deps",
+    ":test_manifest",
+    "tests:test_sdks",
+    "//sdk/testing/fidl:test_sdks",
+    "//src/sys/component_manager/tests/reboot_on_terminate:test_sdks",
+  ]
+
+  # Prevents us from adding example tests to the archive.
+  path = get_label_info(":${target_name}", "dir")
+  is_cts_tot = string_replace(path, "//sdk/cts", "") != path
+  if (is_cts_tot) {
+    deps += [ "examples:test_sdks" ]
+  }
+  testonly = true
+}
+
+sdk_molecule("cts_deps") {
+  category = "cts"
+  deps = [ "//zircon/public/sysroot/sdk:sysroot_sdk" ]
+  testonly = true
+}

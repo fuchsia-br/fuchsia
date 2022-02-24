@@ -1,0 +1,110 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.bridge;
+
+// Covers the FFX Daemon Fastboot protocol. For information about how the fastboot
+// protocol works, see:
+// https://android.googlesource.com/platform/system/core/+/HEAD/fastboot/
+// for the most up-to-date information.
+
+/// The maximum size of a fastboot response is 256 bytes, minus
+/// four bytes for the header defining the type of message.
+const MAX_FASTBOOT_MESSAGE_SIZE uint32 = 252;
+
+type FastbootError = strict enum {
+    PROTOCOL_ERROR = 1;
+    COMMUNICATION_ERROR = 2;
+    REDISCOVERED_ERROR = 3;
+    @deprecated
+    TARGET_ERROR = 4;
+    @deprecated
+    NON_FASTBOOT_DEVICE = 5;
+    REBOOT_FAILED = 6;
+};
+
+/// Callback event listener for upload progress.
+protocol UploadProgressListener {
+    OnError(struct {
+        error string:MAX;
+    });
+    OnStarted(struct {
+        size uint64;
+    });
+    OnProgress(struct {
+        bytes_written uint64;
+    });
+    OnFinished();
+};
+
+/// Callback event listener for when the device reboots to the
+/// bootloader.
+protocol RebootListener {
+    OnReboot();
+};
+
+
+/// Callback event listener for listing all variables.
+protocol VariableListener {
+    OnVariable(struct {
+        name string:64;
+        value string:64;
+    });
+};
+
+
+@discoverable
+protocol Fastboot {
+    Prepare(resource struct {
+        listener client_end:RebootListener;
+    }) -> (struct {}) error FastbootError;
+    GetVar(struct {
+        name string:64;
+    }) -> (struct {
+        value string:64;
+    }) error FastbootError;
+    GetAllVars(resource struct {
+        listener client_end:VariableListener;
+    }) -> (struct {}) error FastbootError;
+    Flash(resource struct {
+        partition_name string:64;
+        path string:256;
+        listener client_end:UploadProgressListener;
+    }) -> (struct {}) error FastbootError;
+    Erase(struct {
+        partition_name string:64;
+    }) -> (struct {}) error FastbootError;
+    Boot() -> (struct {}) error FastbootError;
+    Reboot() -> (struct {}) error FastbootError;
+    RebootBootloader(resource struct {
+        listener client_end:RebootListener;
+    }) -> (struct {}) error FastbootError;
+    ContinueBoot() -> (struct {}) error FastbootError;
+    GetStaged(resource struct {
+        path string:256;
+    }) -> (struct {}) error FastbootError;
+    Stage(resource struct {
+        path string:256;
+        listener client_end:UploadProgressListener;
+    }) -> (struct {}) error FastbootError;
+    SetActive(struct {
+        slot string:64;
+    }) -> (struct {}) error FastbootError;
+    Oem(struct {
+        command string:64;
+    }) -> (struct {}) error FastbootError;
+};
+
+type FastbootTarget = table {
+    /// The fastboot serial number of the target.
+    1: serial string:MAX_FASTBOOT_MESSAGE_SIZE;
+};
+
+@discoverable
+protocol FastbootTargetStream {
+    /// Gets the next target from the protocol. Intended to be used as a hanging get
+    /// on the client side.
+    GetNext() -> (struct {
+        target FastbootTarget;
+    });
+};

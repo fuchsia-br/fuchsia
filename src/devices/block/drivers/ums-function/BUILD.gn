@@ -1,0 +1,50 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("usb_ums_bind") {
+  rules = "usb_ums.bind"
+  header_output = "usb_ums_bind.h"
+  bind_output = "ums-function.bindbc"
+  tests = "bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.usb",
+    "//src/devices/bind/fuchsia.usb.massstorage",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":usb_ums_bind_test" ]
+}
+
+fuchsia_driver("ums-function-driver") {
+  output_name = "ums-function"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "ums-function.c" ]
+  deps = [
+    ":usb_ums_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.function:fuchsia.hardware.usb.function_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral.block:fuchsia.hardware.usb.peripheral.block_c",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+fuchsia_driver_component("ums-function") {
+  component_name = "ums-function"
+  deps = [ ":ums-function-driver" ]
+  info = "ums-function-info.json"
+  colocate = true
+}

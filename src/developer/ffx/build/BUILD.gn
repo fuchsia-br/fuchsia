@@ -1,0 +1,62 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/python/python_binary.gni")
+import("ffx_action.gni")
+
+python_binary("gn_generate_plugins") {
+  main_source = "gn_generate_plugins.py"
+  deps = [
+    "//third_party/jinja2",
+    "//third_party/markupsafe",
+  ]
+}
+
+python_binary("gn_generate_cmd") {
+  main_source = "gn_generate_cmd.py"
+  deps = [
+    "//third_party/jinja2",
+    "//third_party/markupsafe",
+  ]
+}
+
+python_binary("gn_generate_protocols_macro") {
+  main_source = "gn_generate_protocols_macro.py"
+  deps = [
+    "//third_party/jinja2",
+    "//third_party/markupsafe",
+  ]
+}
+
+if (is_host) {
+  # This is the build configuration for the ffx environment used by ffx_action()
+  #
+  generated_file("ffx_env_build_config") {
+    outputs = [ ffx_env_build_config ]
+    output_conversion = "json"
+    contents = {
+      ffx = {
+        analytics = {
+          disabled = true
+        }
+      }
+      sdk = {
+        root = rebase_path(root_build_dir, root_build_dir)
+        type = "in-tree"
+        module = "host_tools.modular"
+      }
+    }
+  }
+
+  # This is the ffx environment used by ffx_action()
+  #
+  generated_file("ffx_env_config") {
+    outputs = [ ffx_env_config ]
+    output_conversion = "json"
+    public_deps = [ ":ffx_env_build_config" ]
+    contents = {
+      global = rebase_path(ffx_env_build_config, root_build_dir)
+    }
+  }
+}

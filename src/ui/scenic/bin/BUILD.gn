@@ -1,0 +1,71 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("bin") {
+  output_name = "scenic"
+
+  sources = [
+    "app.cc",
+    "app.h",
+    "main.cc",
+    "temporary_frame_renderer_delegator.cc",
+    "temporary_frame_renderer_delegator.h",
+  ]
+
+  deps = [
+    ":base_deps",
+    "//sdk/fidl/fuchsia.stash",
+    "//sdk/fidl/fuchsia.vulkan.loader",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/async-watchdog",
+    "//src/lib/cobalt/cpp:cobalt_logger",
+    "//src/ui/lib/display:hdcp_client",
+    "//src/ui/lib/display:hdcp_service",
+    "//src/ui/scenic/lib/annotation:annotation_registry",
+    "//src/ui/scenic/lib/display",
+    "//src/ui/scenic/lib/flatland/engine",
+    "//src/ui/scenic/lib/flatland/renderer",
+    "//src/ui/scenic/lib/focus",
+    "//src/ui/scenic/lib/gfx",
+    "//src/ui/scenic/lib/input",
+    "//src/ui/scenic/lib/scheduling:frame_metrics_registry",
+    "//src/ui/scenic/lib/screenshot",
+    "//src/ui/scenic/lib/shutdown",
+    "//src/ui/scenic/lib/shutdown:lifecycle_controller",
+    "//src/ui/scenic/lib/view_tree:geometry_provider",
+    "//src/ui/scenic/lib/view_tree:observer_registry",
+    "//src/ui/scenic/lib/view_tree:view_ref_installed",
+    "//src/ui/scenic/lib/view_tree:view_tree_snapshot",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  # Extra stack needed to avoid crashes when loading vulkan validation layers
+  # with asan enabled.
+  ldflags = [ "-Wl,-z,stack-size=0x100000" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  public_configs = [ "//src/ui/scenic:flatland_config" ]
+}
+
+source_set("base_deps") {
+  public_deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/ui/scenic/lib/flatland",
+    "//src/ui/scenic/lib/scenic",
+    "//src/ui/scenic/lib/scenic/util",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}

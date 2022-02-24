@@ -1,0 +1,57 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Protocol:Caller:WireMessagingHeader" }}
+{{- EnsureNamespace "" }}
+
+// Methods to make a sync FIDL call directly on an unowned handle or a
+// const reference to a |{{ .Transport.Namespace }}::ClientEnd<{{ .WireType }}>|,
+// avoiding setting up a client.
+template<>
+class {{ .WireSyncClientImpl }} final :
+    public ::fidl::internal::SyncEndpointManagedVeneer<{{ .WireSyncClientImpl }}> {
+ public:
+  {{/* Client-calling functions do not apply to events. */}}
+  {{ range .ClientMethods }}
+    {{ .Docs }}
+    //{{ template "Method:ClientAllocationComment:Helper" . }}
+    {{ .WireResult }} {{ .Name }}({{- RenderParams .RequestArgs }}) {
+      {{ .WireTransactionalRequest }} _request{ {{ RenderForwardParams .RequestArgs }} };
+      return {{ .WireResult }}(_client_end(), &_request);
+    }
+{{ "" }}
+  {{- end }}
+
+ private:
+  ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}> _client_end() const {
+    return ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}>(
+      _transport().get<{{ .Transport.Type }}>());
+  }
+};
+
+template <>
+class {{ .WireSyncBufferClientImpl }} final :
+    public ::fidl::internal::SyncEndpointBufferVeneer<{{ .WireSyncBufferClientImpl }}> {
+ public:
+  {{/* Client-calling functions do not apply to events. */}}
+  {{ range .ClientMethods }}
+    {{- .Docs }}
+    // Caller provides the backing storage for FIDL message via an argument to `.buffer()`.
+    {{ .WireUnownedResult }} {{ .Name }}({{ RenderParams .RequestArgs }}) {
+      {{ .WireTransactionalRequest }} _request{ {{ RenderForwardParams .RequestArgs }} };
+      return {{ .WireUnownedResult }}(_client_end(), _allocator(), &_request);
+    }
+{{ "" }}
+  {{- end }}
+
+ private:
+  ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}> _client_end() const {
+    return ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}>(
+      _transport().get<{{ .Transport.Type }}>());
+  }
+};
+{{- end }}
+

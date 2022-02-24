@@ -1,0 +1,8 @@
+// Test example which doesn't expose suite protocol.
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/no_suite_service",
+    },
+}

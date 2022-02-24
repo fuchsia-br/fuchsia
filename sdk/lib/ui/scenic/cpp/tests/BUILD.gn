@@ -1,0 +1,28 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+test("scenic_cpp_unittests") {
+  sources = [
+    "commands_sizing_test.cc",
+    "session_test.cc",
+    "view_identity_test.cc",
+    "view_ref_pair_test.cc",
+    "view_token_pair_test.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_unittest_package("scenic_cpp_tests") {
+  deps = [ ":scenic_cpp_unittests" ]
+  manifest = "meta/scenic_cpp_unittests.cmx"
+}

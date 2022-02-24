@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/persistent_storage_test_util"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-persistent-storage",
+            "isolated-temp"
+        ]
+    }
+}

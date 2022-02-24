@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("display") {
+  sources = [
+    "display.cc",
+    "display.h",
+    "display_controller.cc",
+    "display_controller.h",
+    "display_controller_listener.cc",
+    "display_controller_listener.h",
+    "display_manager.cc",
+    "display_manager.h",
+    "display_manager2.cc",
+    "display_manager2.h",
+    "util.cc",
+    "util.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.display",
+    "//sdk/fidl/fuchsia.ui.display",
+    "//sdk/lib/fit",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.display:fuchsia.hardware.display_c",
+
+    # TODO(fxbug.dev/24590): For displayOwned/NotOwnedSignal.
+    # TODO(fxbug.dev/23686): Remove this when we externalize Displays.
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/ui/scenic/lib/allocation",
+    "//src/ui/scenic/lib/scheduling:vsync_timing",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

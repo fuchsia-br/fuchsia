@@ -1,0 +1,64 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+fuchsia_driver("aml-rawnand-driver") {
+  output_name = "aml-rawnand"
+  deps = [
+    ":common",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("aml-rawnand") {
+  info = "aml-rawnand-info.json"
+  component_name = "aml-rawnand"
+  deps = [ ":aml-rawnand-driver" ]
+  colocate = true
+}
+
+driver_bind_rules("aml-rawnand-bind") {
+  rules = "aml-rawnand.bind"
+  header_output = "aml-rawnand-bind.h"
+  bind_output = "aml-rawnand.bindbc"
+  tests = "bind-tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+source_set("common") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "aml-rawnand.cc",
+    "onfi.cc",
+  ]
+  public_deps = [
+    ":aml-rawnand-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.rawnand:fuchsia.hardware.rawnand_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.nand:fuchsia.hardware.nand_c",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/mmio",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":aml-rawnand-bind_test",
+    "tests",
+  ]
+}

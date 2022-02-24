@@ -1,0 +1,27 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+group("test") {
+  testonly = true
+  deps = [ ":zx-panic-libc-test" ]
+}
+
+test("zx-panic-libc-test") {
+  output_name = "zx-panic-libc-test-test"
+  sources = [ "zx-panic-libc-test.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zx-panic-libc",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+bootfs_test("zx-panic-libc-test-bootfs-test") {
+  name = "zx-panic-libc-test-test"
+  deps = [ ":zx-panic-libc-test" ]
+}

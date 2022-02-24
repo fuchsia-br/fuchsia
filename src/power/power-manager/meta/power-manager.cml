@@ -1,0 +1,57 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/power_manager",
+        main_process_critical: "true",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister",
+                "fuchsia.power.clientlevel.Watcher",
+                "fuchsia.power.manager.DriverManagerRegistration",
+                "fuchsia.power.profile.Watcher",
+                "fuchsia.power.systemmode.ClientConfigurator",
+                "fuchsia.power.systemmode.Requester",
+                "fuchsia.thermal.ClientStateConnector",
+                "fuchsia.thermal.Controller",
+            ],
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.kernel.CpuResource",
+                "fuchsia.kernel.Stats",
+                "fuchsia.settings.Input",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.activity.Provider",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister",
+                "fuchsia.power.clientlevel.Watcher",
+                "fuchsia.power.manager.DriverManagerRegistration",
+                "fuchsia.power.profile.Watcher",
+                "fuchsia.power.systemmode.ClientConfigurator",
+                "fuchsia.power.systemmode.Requester",
+                "fuchsia.thermal.ClientStateConnector",
+                "fuchsia.thermal.Controller",
+            ],
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.settings") {
+  sdk_category = "partner"
+
+  sources = [
+    "accessibility.fidl",
+    "audio.fidl",
+    "display.fidl",
+    "do_not_disturb.fidl",
+    "factory_reset.fidl",
+    "input.fidl",
+    "intl.fidl",
+    "keyboard.fidl",
+    "light.fidl",
+    "night_mode.fidl",
+    "privacy.fidl",
+    "settings.fidl",
+    "setup.fidl",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.input",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/fidl/fuchsia.media",
+    "//sdk/fidl/fuchsia.ui.types",
+    "//zircon/vdso/zx",
+  ]
+}

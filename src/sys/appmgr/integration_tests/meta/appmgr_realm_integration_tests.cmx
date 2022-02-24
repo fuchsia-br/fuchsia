@@ -1,0 +1,28 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "system-services": [
+                "fuchsia.sys.internal.CrashIntrospect"
+            ]
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/appmgr_realm_integration_tests"
+    },
+    "sandbox": {
+        "features": [
+            "hub",
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.log.LogSink",
+            "fuchsia.process.Launcher",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Loader",
+            "fuchsia.sys.internal.CrashIntrospect"
+        ]
+    }
+}

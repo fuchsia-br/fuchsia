@@ -1,0 +1,26 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("security") {
+  testonly = true
+  deps = [
+    ":tests",
+    "kms",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "codelab:tests",
+    "cr50_agent:tests",
+    "csa_helper:tests",
+    "fcrypto:tests",
+    "kms:tests",
+    "pkg_test/tests",
+    "scrutiny:tests",
+    "tee_manager:tests",
+    "zxcrypt:tests",
+  ]
+}

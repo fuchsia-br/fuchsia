@@ -1,0 +1,645 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/dist/generated_resource.gni")
+import("//build/fidl/fidl.gni")
+import("//build/host.gni")
+import("//build/testing/host_test.gni")
+import("//build/testing/host_test_data.gni")
+
+import("//build/sdk/sdk_atom.gni")
+
+# Private template to generate an SDK Atom for bind_library.
+#
+template("_bind_library_sdk") {
+  library_name = target_name
+  if (defined(invoker.name)) {
+    library_name = invoker.name
+  }
+
+  # Process sources.
+  file_base = "bind/$library_name"
+  all_files = []
+
+  sdk_sources = []
+  sdk_unrebased_sources = []
+  source = invoker.source
+  sdk_unrebased_sources += [ source ]
+  relative_source = rebase_path(source, ".")
+  if (string_replace(relative_source, "..", "bogus") != relative_source) {
+    # If the source file is not within the same directory, just use the file
+    # name.
+    relative_source = get_path_info(source, "file")
+  }
+  destination = "$file_base/$relative_source"
+  sdk_sources += [ destination ]
+  all_files += [
+    {
+      source = source
+      dest = destination
+    },
+  ]
+
+  # Identify metadata for dependencies.
+  sdk_metas = []
+  sdk_deps = []
+  all_deps = []
+  if (defined(invoker.deps)) {
+    all_deps = invoker.deps
+  }
+  foreach(dep, all_deps) {
+    full_label = get_label_info(dep, "label_no_toolchain")
+    sdk_dep = "${full_label}_sdk"
+    sdk_deps += [ sdk_dep ]
+    gen_dir = get_label_info(sdk_dep, "target_gen_dir")
+    name = get_label_info(sdk_dep, "name")
+    sdk_metas += [ "$gen_dir/$name.meta.json" ]
+  }
+
+  # Generate the library metadata.
+  meta_file = "$target_gen_dir/${target_name}.sdk_meta.json"
+  meta_target_name = "${target_name}_meta"
+
+  action(meta_target_name) {
+    script = "//build/bind/gen_sdk_meta.py"
+
+    inputs = sdk_metas
+
+    # Use the unrebased source name. GN automatically converts
+    # sources to be relative to the build directory.
+    sources = sdk_unrebased_sources
+
+    outputs = [ meta_file ]
+
+    args = [
+             "--out",
+             rebase_path(meta_file, root_build_dir),
+             "--name",
+             library_name,
+             "--root",
+             file_base,
+             "--specs",
+           ] + rebase_path(sdk_metas, root_build_dir) + [ "--sources" ] +
+           sdk_sources
+
+    deps = sdk_deps
+  }
+
+  sdk_atom("${target_name}_sdk") {
+    id = "sdk://bind/$library_name"
+
+    category = invoker.sdk_category
+
+    meta = {
+      source = meta_file
+      dest = "$file_base/meta.json"
+      schema = "bind_library"
+    }
+
+    files = all_files
+
+    non_sdk_deps = [ ":$meta_target_name" ]
+
+    deps = []
+    foreach(dep, all_deps) {
+      label = get_label_info(dep, "label_no_toolchain")
+      deps += [ "${label}_sdk" ]
+    }
+  }
+}
+
+# Declares a suite of tests for a driver's bind rules.
+#
+# The tests run as host tests by invoking the compiler. To avoid specifying the rules and bind
+# library dependencies twice use the `tests` parameter on the bind_rules template to generate this
+# target with the appropriate parameters.
+#
+# Parameters
+#
+#   rules (required)
+#     [path]: Path to the bind rules source file.
+#
+#   tests (required)
+#     [path]: Path to a test specification. The test specification is a JSON file defining a set
+#     of devices and the expected result of the bind rules when applied to that device. The file
+#     must adhere to the JSON schema defined by //src/devices/bind/debugger/tests_schema.json.
+#
+#   target (optional)
+#     [label]: The test target. Defaults to target_name.
+#
+#   deps (optional)
+#     [list of labels]: List of bind_library targets included by the bind rules.
+#
+#   visibility
+#     Forwarded from invoker.
+#
+template("bind_host_test") {
+  assert(defined(invoker.rules), "Need a bind rules source")
+  assert(defined(invoker.tests), "Need a test specification")
+
+  test_target = "_${target_name}_test"
+
+  group(target_name) {
+    testonly = true
+    if (is_host) {
+      deps = [ ":${test_target}" ]
+    }
+    forward_variables_from(invoker, [ "visibility" ])
+  }
+
+  if (is_host) {
+    response_file_target = "_${target_name}_response_file"
+    response_file = "${target_gen_dir}/${target_name}.rsp"
+    test_data_dir = "${root_out_dir}/test_data/bind-tests/${target_name}"
+    test_data_target = "_${target_name}_test_data"
+
+    generated_file(response_file_target) {
+      visibility = [ ":*" ]
+      testonly = true
+      forward_variables_from(invoker, [ "deps" ])
+      data_keys = [ "test_sources" ]
+      outputs = [ "${response_file}" ]
+    }
+
+    host_test_data(test_data_target) {
+      visibility = [ ":*" ]
+      sources = [
+        "${host_tools_dir}/bindc",
+        invoker.rules,
+        invoker.tests,
+        response_file,
+      ]
+      outputs = [ "${test_data_dir}/{{source_file_part}}" ]
+      deps = [
+        ":${response_file_target}",
+        "//tools/bindc:host($host_toolchain)",
+      ]
+    }
+
+    host_test(test_target) {
+      visibility = [ ":*" ]
+      if (defined(invoker.target)) {
+        target = invoker.target
+      } else {
+        target = get_label_info(":${target_name}", "label_with_toolchain")
+      }
+      binary_path = "${test_data_dir}/bindc"
+
+      rules_filename = get_path_info(invoker.rules, "file")
+      test_spec_filename = get_path_info(invoker.tests, "file")
+      response_file_filename = get_path_info(response_file, "file")
+      args = [
+        "test",
+        "--lint",
+        rebase_path("${test_data_dir}/${rules_filename}", root_build_dir),
+        "--test-spec",
+        rebase_path("${test_data_dir}/${test_spec_filename}", root_build_dir),
+        "--include-file",
+        rebase_path("${test_data_dir}/${response_file_filename}",
+                    root_build_dir),
+      ]
+      deps = [
+        ":${response_file_target}",
+        ":${test_data_target}",
+        "//tools/bindc:bin($host_toolchain)",
+      ]
+    }
+  } else {
+    not_needed(invoker,
+               [
+                 "deps",
+                 "tests",
+                 "rules",
+                 "target",
+                 test_target,
+               ])
+  }
+}
+
+# Declares a suite of tests for a driver's bind rules.
+#
+# This template is provided for convenience. It handles redirect bind_host_test to the host
+# toolchain.
+#
+# Parameters
+#
+#   rules (required)
+#     [path]: Path to the bind rules source file.
+#
+#   tests (required)
+#     [path]: Path to a test specification. The test specification is a JSON file defining a set
+#     of devices and the expected result of the bind rules when applied to that device. The file
+#     must adhere to the JSON schema defined by //src/devices/bind/debugger/tests_schema.json.
+#
+#   target (optional)
+#     [label]: The test target. Defaults to target_name.
+#
+#   deps (optional)
+#     [list of labels]: List of bind_library targets included by the bind rules.
+#
+#   visibility
+#     Forwarded from invoker.
+#
+template("bind_test") {
+  assert(defined(invoker.rules), "Need a bind rules source")
+  assert(defined(invoker.tests), "Need a test specification")
+  test_target = "${target_name}_test"
+
+  group(target_name) {
+    forward_variables_from(invoker, [ "visibility" ])
+    testonly = true
+
+    # Redirect to the host toolchain.
+    deps = [ ":${test_target}($host_toolchain)" ]
+  }
+
+  original_target_name = target_name
+  bind_host_test(test_target) {
+    if (defined(invoker.target)) {
+      target = invoker.target
+    } else {
+      target =
+          get_label_info(":${original_target_name}", "label_with_toolchain")
+    }
+    rules = invoker.rules
+    tests = invoker.tests
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "visibility",
+                           ])
+  }
+}
+
+# Call the bindc tool with the correct arguments.
+#
+# This template calls the bindc tool. It can either generate a C header or a
+# bytecode file.
+# For more details refer to //tools/bindc/README.md.
+#
+# Parameters
+#
+#   rules (required)
+#     [path]: Path to the bind rules source file.
+#     Note: This becomes optional when disable_autobind is true. See below.
+#
+#   deps (optional)
+#     [lib of labels]: List of bind_library targets included by the bind rules.
+#
+#   header_output (optional)
+#     [path]: Name of the header file generated by the tool (defaults to target name + ".h")
+#     Only valid if generate_bytecode is false.
+#
+#   bytecode_output (optional)
+#     [path]: Name of the bytecode file generated by the tool (defaults to target name + ".bindbc")
+#     Only valid if generate_bytecode is true.
+#
+#   disable_autobind (optional)
+#     [bool]: Configure the bind compiler to disable autobind, so that the driver must be bound on
+#     a user's request. If this is set to true, then the rules parameter becomes optional and when
+#     it's omitted the driver will bind unconditionally (but must be bound manually.) Defaults to
+#     false.
+#     TODO(fxbug.dev/43400): Eventually this option should be removed when we can define this
+#     configuration in the driver's component manifest.
+#
+#   generate_bytecode (optional)
+#     [bool]: Output a bytecode file, instead of a C header file.
+#
+#   testonly, visibility
+#     Forwarded from invoker.
+#
+template("bindc") {
+  assert(defined(invoker.rules) || (defined(invoker.disable_autobind) &&
+                                        invoker.disable_autobind == true),
+         "Need a bind rules source")
+
+  generate_bytecode = false
+  if (defined(invoker.generate_bytecode)) {
+    generate_bytecode = invoker.generate_bytecode
+  }
+
+  output_file = ""
+  if (generate_bytecode) {
+    output_file = "$target_name.bindbc"
+    if (defined(invoker.bytecode_output)) {
+      output_file = invoker.bytecode_output
+    }
+  } else {
+    output_file = "$target_name.h"
+    if (defined(invoker.header_output)) {
+      output_file = invoker.header_output
+    }
+  }
+
+  response_file_target = "_${target_name}_response_file"
+  response_file = "${target_gen_dir}/${target_name}.rsp"
+
+  generated_file(response_file_target) {
+    visibility = [ ":*" ]
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "testonly",
+                           ])
+    data_keys = [ "sources" ]
+    outputs = [ "${response_file}" ]
+  }
+
+  compiled_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    tool = "//tools/bindc:bin"
+    tool_output_name = "bindc"
+
+    if (defined(invoker.rules)) {
+      sources = [ invoker.rules ]
+    }
+
+    depfile = "$target_gen_dir/$target_name.d"
+
+    args = [
+      "compile",
+      "--lint",
+      "--output",
+      rebase_path("$target_gen_dir/$output_file", root_build_dir),
+      "--include-file",
+      rebase_path(response_file, root_build_dir),
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+    ]
+    if (defined(invoker.disable_autobind) && invoker.disable_autobind) {
+      args += [ "--disable-autobind" ]
+    }
+    if (generate_bytecode) {
+      args += [ "--output-bytecode" ]
+    }
+    if (defined(invoker.rules)) {
+      args += [ rebase_path(invoker.rules, root_build_dir) ]
+    }
+    if (!defined(invoker.disable_new_bytecode) ||
+        !invoker.disable_new_bytecode) {
+      args += [ "--use-new-bytecode" ]
+    }
+
+    inputs = [ response_file ]
+
+    outputs = [ "$target_gen_dir/$output_file" ]
+
+    deps = [ ":$response_file_target" ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+    metadata = {
+      if (generate_bytecode) {
+        # This metadata lets the packaging system know where to put the bytecode file.
+        distribution_entries = [
+          {
+            source = rebase_path("$target_gen_dir/$output_file", root_build_dir)
+            destination = "meta/bind/$output_file"
+            label = get_label_info(":$target_name", "label_with_toolchain")
+          },
+        ]
+      } else {
+        # This ensures the generated header files are made available for static
+        # analysis without doing a full build.
+        generated_sources = rebase_path(outputs, root_build_dir)
+      }
+    }
+  }
+}
+
+# Declares a driver's bind rules.
+#
+# Generates both a C header and a bytecode file withe the necessary bind rules.
+# For more details refer to //tools/bindc/README.md.
+#
+# Parameters
+#
+#   rules (required)
+#     [path]: Path to the bind rules source file.
+#     Note: This becomes optional when disable_autobind is true. See below.
+#
+#   deps (optional)
+#     [lib of labels]: List of bind_library targets included by the bind rules.
+#
+#   header_output (optional)
+#     |string|: Name of the bind header file.
+#     Defaults to bind_name + ".h"
+#
+#   bind_output (optional)
+#     |string|: Name of the bind binary file
+#     Defaults to target_name + ".bindbc"
+#
+#   tests (optional)
+#     [path]: Path to a test specification. If this parameter is set then the template will
+#     create an additional bind_test target with the name "${target_name}_test". This allows you
+#     to define tests without specifying the bind library dependencies and rules file twice.
+#
+#   disable_autobind (optional)
+#     [bool]: Configure the bind compiler to disable autobind, so that the driver must be bound on
+#     a user's request. If this is set to true, then the rules parameter becomes optional and when
+#     it's omitted the driver will bind unconditionally (but must be bound manually.) Defaults to
+#     false.
+#     TODO(fxbug.dev/43400): Eventually this option should be removed when we can define this
+#     configuration in the driver's component manifest.
+#
+#   testonly, visibility
+#     Forwarded from invoker.
+#
+template("driver_bind_rules") {
+  assert(defined(invoker.rules) || (defined(invoker.disable_autobind) &&
+                                        invoker.disable_autobind == true),
+         "Need a bind rules source")
+  header_output = "$target_name.h"
+  if (defined(invoker.header_output)) {
+    header_output = invoker.header_output
+  }
+
+  bind_output = "$target_name.bindbc"
+  if (defined(invoker.bind_output)) {
+    bind_output = invoker.bind_output
+  }
+
+  header_file_target = "${target_name}_header"
+  bindc(header_file_target) {
+    forward_variables_from(invoker,
+                           [
+                             "rules",
+                             "deps",
+                             "testonly",
+                             "disable_autobind",
+                             "disable_new_bytecode",
+                             "visibility",
+                           ])
+    header_output = "$header_output"
+  }
+
+  bytecode_file_target = "${target_name}_bytecode"
+  bindc(bytecode_file_target) {
+    forward_variables_from(invoker,
+                           [
+                             "rules",
+                             "deps",
+                             "testonly",
+                             "disable_autobind",
+                             "disable_new_bytecode",
+                             "visibility",
+                           ])
+    bytecode_output = bind_output
+    generate_bytecode = true
+  }
+
+  group(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    public_deps = [
+      ":${bytecode_file_target}",
+      ":${header_file_target}",
+    ]
+  }
+
+  if (defined(invoker.tests)) {
+    bind_test("${target_name}_test") {
+      forward_variables_from(invoker,
+                             [
+                               "rules",
+                               "deps",
+                               "tests",
+                             ])
+    }
+  }
+}
+
+# Declares a bind library.
+#
+# Declare a bind library that may be included by other libraries or bind rules. For more details,
+# refer to //tools/bindc/README.md.
+#
+# Parameters
+#
+#   source (required)
+#     [path]: Path to the library source file.
+#
+#   public_deps (optional)
+#     [list of labels]: List of other bind_library targets included by the library.
+#
+#   name (optional)
+#     [string] Name of the library. Defaults to the target's name. This is only used when
+#     fidl_target (see below) is not provided, to set the generated FIDL target name.
+#
+#   fidl_target (optional)
+#     [label]: The FIDL library target. Defaults to the FIDL library name, which is the bind
+#     library name prepended with the `bind` namespace.
+#
+#   testonly, visibility
+#     Forwarded from invoker.
+#
+template("bind_library") {
+  assert(defined(invoker.source), "Need a source file")
+
+  if (defined(invoker.name)) {
+    library_name = invoker.name
+  } else {
+    library_name = target_name
+  }
+
+  fidl_file = "${target_gen_dir}/bind.${library_name}.fidl"
+  if (defined(invoker.fidl_target)) {
+    fidl_target = "${invoker.fidl_target}"
+  } else {
+    fidl_target = "bind.${library_name}"
+  }
+
+  test_data_dir = "${target_out_dir}/test_data/bind-tests/"
+  test_data_target = "${target_name}_test_data"
+
+  copy(test_data_target) {
+    visibility = [ ":*" ]
+    sources = [ invoker.source ]
+    outputs = [ "${test_data_dir}/{{source_file_part}}" ]
+  }
+
+  group(target_name) {
+    metadata = {
+      sources = [ rebase_path(invoker.source, root_build_dir) ]
+
+      # Adds metadata for test_spec().
+      test_runtime_deps = get_target_outputs(":${test_data_target}")
+
+      # Adds metadata for bind_test().
+      test_sources = rebase_path(get_target_outputs(":${test_data_target}"),
+                                 root_build_dir)
+    }
+
+    deps = [
+      ":${fidl_target}",
+      ":${test_data_target}",
+    ]
+
+    forward_variables_from(invoker,
+                           [
+                             "public_deps",
+                             "testonly",
+                             "visibility",
+                           ])
+  }
+
+  if (defined(invoker.sdk_category)) {
+    _bind_library_sdk("$target_name") {
+      forward_variables_from(invoker, "*")
+    }
+  }
+
+  if (current_toolchain == fidl_toolchain) {
+    # Generates a FIDL file with all the generated FIDL file. It is only ran in
+    # the FIDL toolchain because we want to run this conversion only once.
+
+    fidl_file_target = "${target_name}_fidl"
+
+    compiled_action(fidl_file_target) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+
+      tool = "//tools/bindc:bin"
+      tool_output_name = "bindc"
+
+      sources = [ invoker.source ]
+
+      args = [
+        "generate",
+        "--lint",
+        "--output",
+        rebase_path("${fidl_file}", root_build_dir),
+        rebase_path("${invoker.source}", root_build_dir),
+      ]
+
+      outputs = [ fidl_file ]
+    }
+
+    fidl(fidl_target) {
+      sources = [ "${fidl_file}" ]
+      non_fidl_deps = [ ":${fidl_file_target}" ]
+      should_lint = false
+      public_deps = [ "//sdk/fidl/fuchsia.driver.framework" ]
+    }
+  } else {
+    # The non-FIDL toolchain FIDL libraries are built normally; except based
+    # off of the generated FIDL file.
+    fidl(fidl_target) {
+      sources = [ fidl_file ]
+      public_deps = [ "//sdk/fidl/fuchsia.driver.framework" ]
+    }
+  }
+}

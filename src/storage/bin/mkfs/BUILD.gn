@@ -1,0 +1,16 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("fs-mkfs") {
+  deps = [ ":mkfs" ]
+}
+
+executable("mkfs") {
+  sources = [ "main.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/lib/storage/fs_management",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}

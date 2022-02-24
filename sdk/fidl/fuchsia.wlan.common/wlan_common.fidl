@@ -1,0 +1,224 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.wlan.common;
+
+using fuchsia.wlan.ieee80211;
+
+type RequestStatus = strict enum {
+    ACKNOWLEDGED = 0;
+    REJECTED_NOT_SUPPORTED = 1;
+    REJECTED_INCOMPATIBLE_MODE = 2;
+    REJECTED_ALREADY_IN_USE = 3;
+    REJECTED_DUPLICATE_REQUEST = 4;
+};
+
+// LINT analyzer keyword intended for humans:
+// LINT.IfChange
+
+/// PHY types supporting different MCS and payload data rates.
+/// Based off of dot11PHYType from IEEE 802.11-2016/2020 Annex C + Amendments
+type WlanPhyType = strict enum {
+    /// IEEE 802.11-2016 Clause 15:
+    ///     Direct Sequence Spread Spectrum
+    /// Supports 1, 2 Mbps.
+    DSSS = 1;
+
+    /// IEEE 802.11-2016 Clause 16:
+    ///     High Rate DSSS
+    /// Supports 5.5, 11 Mbps.
+    /// Also referred to as ERP-CCK
+    HR = 2;
+
+    /// IEEE 802.11a/g or IEEE 802.11-2016 Clause 17:
+    ///     Orthogonal Frequency Division Multiplexing
+    /// Supports 6, 9, 12, 18, 24, 36, 48, and 54 Mbps.
+    OFDM = 3;
+
+    /// IEEE 802.11g or IEEE 802.11-2016 Clause 18:
+    ///     Extended Rate PHY
+    /// Supports 1, 2, 5.5, 11, 12, 24 Mbps + optionally 6, 54 Mbps.
+    /// Encompasses DSSS/HR/OFDM rates and modulation.
+    ERP = 4;
+
+    /// IEEE 802.11n or IEEE 802.11-2016 Clause 19:
+    ///     High Throughput PHY
+    /// Supports rates up to 495 Mbps.
+    HT = 5;
+
+    /// 802.11ad or IEEE 802.11-2016 Clause 20:
+    ///     Directional Multi-Gigabit PHY
+    DMG = 6;
+
+    /// IEEE 802.11ac or IEEE 802.11-2016 Clause 21:
+    ///     Very High Throughput PHY
+    /// Supports rates up to 6.9 Gbps.
+    VHT = 7;
+
+    /// IEEE 802.11af or IEEE 802.11-2016 Clause 22:
+    ///     Television Very High Throughput PHY
+    /// Supports rates of up to 568.9 Mbps in TV spectrum
+    TVHT = 8;
+
+    /// IEEE 802.11ah or IEEE 802.11-2020 Clause 23:
+    ///     Sub 1-GHz PHY
+    S1G = 9;
+
+    /// IEEE 802.11aj or IEEE 802.11-2020 Clause 24:
+    ///     China Directional Multi-Gigabit PHY
+    CDMG = 10;
+
+    /// IEEE 802.11aj or IEEE 802.11-2020 Clause 25:
+    ///     China Millimeter-wave Multi-Gigabit PHY
+    CMMG = 11;
+
+    /// IEEE 802.11ax: High Efficiency PHY
+    /// Supports rates of up to 9.6 Gbps (whew!)
+    HE = 12;
+};
+
+/// This constant defines fixed length for arrays containing PHY types supported by
+/// PHY entities.
+@namespaced
+const MAX_SUPPORTED_PHY_TYPES uint8 = 64;
+
+// Numbers defined to guarantee consistent numbering between all code bindings
+// to ease conversion.
+type WlanMacRole = strict enum {
+    CLIENT = 1;
+    AP = 2;
+    MESH = 3;
+};
+
+/// This constant defines fixed length for arrays containing MAC roles supported by
+/// PHY entities.
+@namespaced
+const MAX_SUPPORTED_MAC_ROLES uint8 = 16;
+
+/// This constant defined the fixed length for arrays containing the capabilities
+/// for each band supported by a device driver.
+@namespaced
+const MAX_BANDS uint8 = 16;
+
+type ChannelBandwidth = strict enum { // Channel Bandwidth
+    CBW20 = 0;
+    CBW40 = 1;
+    CBW40BELOW = 2;
+    CBW80 = 3;
+    CBW160 = 4;
+    CBW80P80 = 5;
+};
+
+type WlanChannel = struct {
+    primary uint8;
+    cbw ChannelBandwidth;
+    secondary80 uint8;
+};
+
+type WlanBand = flexible enum : uint8 {
+    TWO_GHZ = 0;
+    FIVE_GHZ = 1;
+};
+
+// LINT.ThenChange(//zircon/system/banjo/fuchsia.hardware.wlan.associnfo/info.banjo)
+
+type ScanType = strict enum {
+    ACTIVE = 1;
+    PASSIVE = 2;
+};
+
+type DriverFeature = strict enum {
+    SCAN_OFFLOAD = 0;
+    RATE_SELECTION = 1;
+    SYNTH = 2;
+    TX_STATUS_REPORT = 3;
+    DFS = 4;
+    PROBE_RESP_OFFLOAD = 5;
+    SAE_SME_AUTH = 6;
+    SAE_DRIVER_AUTH = 7;
+    /// Indicates support for management frame protection and IGTK.
+    MFP = 8;
+    /// Temporary feature flag for driver to indicate this iface a SoftMAC device.
+    /// TODO(fxbug.dev/41640): Remove this flag once FullMAC drivers no longer use SME.
+    TEMP_SOFTMAC = 2718281828;
+};
+
+/// HT and VHT guard interval.
+/// See IEEE 802.11-2016 Table 19-1 and Table 21-1.
+type GuardInterval = strict enum : uint8 {
+    LONG_GI = 1; // 800 ns
+    SHORT_GI = 2; // 400 ns
+};
+
+// Powersave types. Since vendor implementations of power save mode vary
+// greatly, this is an attempt to generalize the setting and indicated
+// as an enum (bitfield).
+type PowerSaveType = strict enum : uint32 {
+    // Close to power off state.
+    PS_MODE_ULTRA_LOW_POWER = 0x0;
+    // Tuned for power over performance
+    PS_MODE_LOW_POWER = 0x1;
+    // Tuned for a balance between power and performance
+    PS_MODE_BALANCED = 0x2;
+    // Tuned for best performance
+    PS_MODE_PERFORMANCE = 0x3;
+};
+
+@namespaced
+const WLAN_TX_VECTOR_IDX_INVALID uint16 = 0;
+@namespaced
+const WLAN_TX_STATUS_MAX_ENTRY uint32 = 8;
+
+/// One entry in a WlanTxStatus report. Indicates a number of attempted transmissions on
+/// a particular tx vector, but does not imply successful transmission.
+type WlanTxStatusEntry = struct {
+    tx_vector_idx uint16;
+    /// Number of total attempts with this specific tx vector, including successful attempts.
+    /// DDK assumes the number of attempts per packet will not exceed 255. (typically <= 8)
+    attempts uint8;
+};
+
+/// Outcome of a packet transmission.
+type WlanTxResult = strict enum : uint8 {
+    /// ACK was not received or transmission otherwise failed.
+    FAILED = 0x0;
+    /// ACK was received from peer.
+    SUCCESS = 0x1;
+};
+
+/// TX status reports are used by the Minstrel rate selection algorithm
+/// Tests should use the default value in //src/connectivity/wlan/testing/hw-sim/src/lib.rs
+type WlanTxStatus = struct {
+    /// up to 8 different tx_vector for one PPDU frame.
+    /// WLAN_TX_VECTOR_IDX_INVALID indicates no more entries.
+    tx_status_entry array<WlanTxStatusEntry, WLAN_TX_STATUS_MAX_ENTRY>;
+    /// Destination mac address, or addr1 in packet header.
+    peer_addr fuchsia.wlan.ieee80211.MacAddr;
+    result WlanTxResult;
+};
+
+type WlanSoftmacHardwareCapabilityBit = strict enum : uint32 {
+    /// Short packet preamble.
+    SHORT_PREAMBLE = 0x0020;
+
+    /// Spectrum management.
+    SPECTRUM_MGMT = 0x0100;
+
+    // QoS capable.
+    QOS = 0x0200;
+
+    /// Short slot times after packet collision.
+    SHORT_SLOT_TIME = 0x0400;
+
+    /// Radio measurement.
+    RADIO_MSMT = 0x1000;
+
+    // Supports simutaneous client-ap use
+    // TODO(fxbug.dev/54923): Move SIMULTANEOUS_CLIENT_AP to a different Fuchsia specific
+    // capability enum. This enum should only be used for IEEE 802.11 fields. This type
+    // should also be reduced to uint16_t once this is done.
+    SIMULTANEOUS_CLIENT_AP = 0x10000;
+};
+
+// IEEE Std 802.11-2016, 9.4.1.4
+alias WlanSoftmacHardwareCapability = uint32;

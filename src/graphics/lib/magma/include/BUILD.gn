@@ -1,0 +1,46 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+config("magma_config") {
+  include_dirs = [ "magma" ]
+}
+
+source_set("magma") {
+  public_configs = [ ":magma_config" ]
+
+  sources = [
+    "magma/magma.h",
+    "magma/magma_sysmem.h",
+  ]
+
+  public_deps = [ ":magma_common" ]
+}
+
+source_set("magma_common") {
+  public_configs = [ ":magma_config" ]
+
+  sources = [ "magma/magma_common_defs.h" ]
+}
+
+config("msd_config") {
+  include_dirs = [ "msd" ]
+}
+
+source_set("msd") {
+  public_configs = [ ":msd_config" ]
+
+  sources = [
+    "msd/msd.h",
+    "msd/msd_defs.h",
+  ]
+
+  public_deps = [ ":magma_common" ]
+}
+
+# TODO(fxbug.dev/85557) - remove
+group("magma_abi") {
+  public_deps = [ ":magma" ]
+}

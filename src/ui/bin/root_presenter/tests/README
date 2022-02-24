@@ -1,0 +1,6 @@
+To run tests, make sure to include the following tests package in your build:
+//src/ui/bin/root_presenter:tests
+
+After building, presenter tests can be run as follows:
+fx test root_presenter_apptests
+fx test root_presenter_unittests

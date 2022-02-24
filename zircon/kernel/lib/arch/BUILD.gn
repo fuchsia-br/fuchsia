@@ -1,0 +1,63 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/zircon_cpu.gni")
+import("//build/zircon/zx_library.gni")
+import("//zircon/system/ulib/hwreg/hwreg_asm_header.gni")
+
+zx_library("arch") {
+  sdk = "source"
+  sdk_headers = [ "lib/arch/asm.h" ]
+
+  sources = [
+    "cpuid.cc",
+    "lbr.cc",
+  ]
+  deps = []
+
+  public_deps = [
+    "//sdk/lib/stdcompat",
+
+    # <lib/arch/x86/cpuid.h> has #include <hwreg/bitfields.h>.
+    "//zircon/system/ulib/hwreg:headers",
+  ]
+
+  if (is_host) {
+    deps += [ "host" ]
+    public_deps += [ "host:headers" ]
+  } else {
+    # The per-CPU subdirectory is a separate library() target but it shares
+    # (and overrides) the <lib/arch/...> header name space and users of this
+    # library need never realize it's distinct.
+    deps = [ zircon_cpu ]
+    if (zircon_toolchain != false) {
+      public_configs = [ "$zircon_cpu:headers.config" ]
+    } else {
+      public_configs = [ "$zircon_cpu:$zircon_cpu.config" ]
+    }
+    public_deps += [
+      ":gen-arm64-sysreg-asm",
+      ":gen-x86-msr-asm",
+      "$zircon_cpu:headers",
+    ]
+  }
+}
+
+hwreg_asm_header("gen-x86-msr-asm") {
+  visibility = [ ":*" ]
+  output_name = "lib/arch/x86/msr-asm.h"
+  defines = [ "LIB_ARCH_PRINTERS" ]
+  sources = [ "gen-x86-msr-asm.cc" ]
+  deps = [ ":arch" ]
+}
+
+hwreg_asm_header("gen-arm64-sysreg-asm") {
+  visibility = [ ":*" ]
+  output_name = "lib/arch/arm64/sysreg-asm.h"
+  defines = [ "LIB_ARCH_PRINTERS" ]
+  sources = [ "gen-arm64-sysreg-asm.cc" ]
+  deps = [ ":arch" ]
+}

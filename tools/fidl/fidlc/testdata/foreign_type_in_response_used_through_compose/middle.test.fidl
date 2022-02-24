@@ -1,0 +1,9 @@
+library test.middle;
+
+using test.bottom;
+
+protocol Middle {
+    GetFoo() -> (struct {
+        foo test.bottom.Foo;
+    });
+};

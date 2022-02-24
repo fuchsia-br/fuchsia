@@ -1,0 +1,283 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/host.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/golden_test.gni")
+import("//build/testing/host_test_data.gni")
+import("//src/tests/fidl/conformance_suite/gidl-conformance-suite.gni")
+import(
+    "//third_party/go/src/syscall/zx/fidl/fidl_test/conformance_test_files.gni")
+import("//tools/fidl/gidl/gidl.gni")
+
+if (is_host) {
+  go_library("gopkg") {
+    name = "go.fuchsia.dev/fuchsia/tools/fidl/gidl/..."
+    deps = [ "//tools/fidl/lib/fidlgen" ]
+    sources = [
+      "audit/main.go",
+      "c/conformance.go",
+      "config/defaults.go",
+      "cpp/benchmarks.go",
+      "cpp/builder.go",
+      "cpp/conformance.go",
+      "cpp/equality_builder.go",
+      "dart/benchmarks.go",
+      "dart/common.go",
+      "dart/conformance.go",
+      "dynfidl/conformance.go",
+      "fuzzer_corpus/conformance.go",
+      "golang/benchmarks.go",
+      "golang/common.go",
+      "golang/conformance.go",
+      "golang/equality_builder.go",
+      "golang/golang_test.go",
+      "hlcpp/benchmarks.go",
+      "hlcpp/builder.go",
+      "hlcpp/conformance.go",
+      "hlcpp/equality_builder.go",
+      "ir/error.go",
+      "ir/test_case.go",
+      "ir/util.go",
+      "ir/value.go",
+      "librust/common.go",
+      "llcpp/benchmarks.go",
+      "llcpp/conformance.go",
+      "llcpp/lib/allocator_builder.go",
+      "llcpp/lib/common.go",
+      "llcpp/lib/equality_builder.go",
+      "llcpp/lib/unowned_builder.go",
+      "main.go",
+      "mixer/mixer.go",
+      "mixer/mixer_test.go",
+      "parser/generators.go",
+      "parser/parser.go",
+      "parser/parser_test.go",
+      "reference/benchmarks.go",
+      "rust/benchmarks.go",
+      "rust/common.go",
+      "rust/conformance.go",
+      "rust/forget_handles.go",
+      "transformer/conformance.go",
+      "util/pattern_match.go",
+      "walker/benchmarks.go",
+    ]
+  }
+
+  go_binary("gidl") {
+    gopackage = "go.fuchsia.dev/fuchsia/tools/fidl/gidl"
+    deps = [ ":gopkg" ]
+  }
+
+  go_binary("gidl_audit") {
+    gopackage = "go.fuchsia.dev/fuchsia/tools/fidl/gidl/audit"
+    deps = [ ":gopkg" ]
+  }
+
+  go_test("gidl_parser_test") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/fidl/gidl/parser" ]
+    deps = [
+      ":gopkg",
+      "//third_party/golibs:github.com/google/go-cmp",
+    ]
+  }
+
+  go_test("gidl_golang_test") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/fidl/gidl/golang" ]
+
+    deps = [ ":gopkg" ]
+  }
+
+  host_test_data("gidl_mixer_test_json") {
+    deps = [ ":gidl_mixer_test_fidl($fidl_toolchain)" ]
+    sources = [ "$root_build_dir/fidling/gen/tools/fidl/gidl/gidl_mixer_test_fidl.fidl.json" ]
+    outputs = [ "$root_out_dir/test_data/gidl/mixer.test.fidl.json" ]
+  }
+
+  go_test("gidl_mixer_test") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/fidl/gidl/mixer" ]
+    args = [
+      "--test_data_dir",
+      rebase_path("$root_out_dir/test_data/gidl", root_build_dir),
+    ]
+    deps = [ ":gopkg" ]
+    non_go_deps = [ ":gidl_mixer_test_json" ]
+  }
+
+  conformance_golden_items = [
+    {
+      language = "go"
+      extension = "go"
+    },
+    {
+      language = "cpp"
+      extension = "cc"
+    },
+    {
+      language = "hlcpp"
+      extension = "cc"
+    },
+    {
+      language = "llcpp"
+      extension = "cc"
+    },
+    {
+      language = "rust"
+      extension = "rs"
+    },
+    {
+      language = "dynfidl"
+      extension = "rs"
+    },
+    {
+      language = "dart"
+      extension = "dart"
+    },
+  ]
+
+  foreach(item, conformance_golden_items) {
+    gidl("${item.language}_goldens") {
+      type = "conformance"
+      language = item.language
+      inputs = conformance_suite_golden_gidl_files
+      fidl = conformance_suite_fidl_target
+      output = "$target_gen_dir/${item.language}_golden.${item.extension}"
+    }
+  }
+
+  golden_test("gidl_golden_tests") {
+    goldens_dir = "goldens"
+    deps = []
+    entries = []
+
+    foreach(item, conformance_golden_items) {
+      deps += [ ":${item.language}_goldens" ]
+      entries += [
+        {
+          golden = "${item.language}_golden.${item.extension}.golden"
+          generated =
+              "$target_gen_dir/${item.language}_golden.${item.extension}"
+        },
+      ]
+    }
+  }
+}
+
+fidl("gidl_mixer_test_fidl") {
+  name = "test.mixer"
+  testonly = true
+  sources = [ "//tools/fidl/gidl/mixer/testdata/mixer.test.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+install_host_tools("host") {
+  deps = [
+    ":gidl",
+    ":gidl_audit",
+  ]
+  outputs = [
+    "gidl",
+    "gidl_audit",
+  ]
+}
+
+## Tests for building from an empty GIDL file.
+##
+## This verifies that there won't be build issues if tests are disabled.
+## Previously, when you disabled a test you sometimes had to debug build issues, even in
+## different bindings than the one you are debugging.
+
+rust_empty_gidl_test_source = "$target_gen_dir/src/empty_conformance_test.rs"
+
+gidl("rust_empty_gidl_test") {
+  type = "conformance"
+  language = "rust"
+  inputs = [ "//tools/fidl/gidl/empty.gidl" ]
+  fidl = conformance_suite_fidl_target
+  output = rust_empty_gidl_test_source
+}
+
+rustc_test("rust_empty_gidl_test_bin") {
+  output_name = "rust_empty_gidl_tests"
+  edition = "2018"
+  source_root = rust_empty_gidl_test_source
+  deps = [
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fidl/rust/gidl_util",
+    "//src/lib/zircon/rust:fuchsia-zircon-status",
+    "//src/tests/fidl/conformance_suite:conformance_fidl-rustc",
+    "//third_party/rust_crates:assert_matches",
+  ]
+  non_rust_deps = [ ":rust_empty_gidl_test" ]
+  sources = [ rust_empty_gidl_test_source ]
+}
+
+fuchsia_unittest_package("rust_empty_gidl_tests") {
+  deps = [ ":rust_empty_gidl_test_bin" ]
+}
+
+go_generated_dir = target_gen_dir
+go_generated_source = "$go_generated_dir/empty_gidl_test.go"
+
+gidl("go_empty_gidl") {
+  type = "conformance"
+  language = "go"
+  inputs = [ "//tools/fidl/gidl/empty.gidl" ]
+  fidl = conformance_suite_fidl_target
+  output = go_generated_source
+}
+
+copy("go_copy_test_utils") {
+  sources = []
+  foreach(filename, go_conformance_test_files) {
+    sources += [ "//third_party/go/src/syscall/zx/fidl/fidl_test/" + filename ]
+  }
+  outputs = [ "${go_generated_dir}/{{source_file_part}}" ]
+}
+
+go_library("go_empty_gidl_tests_library") {
+  testonly = true
+  name = "empty_gidl_tests"
+  source_dir = go_generated_dir
+
+  sources = rebase_path(
+          [ go_generated_source ] + get_target_outputs(":go_copy_test_utils"),
+          go_generated_dir)
+
+  non_go_deps = [
+    ":go_copy_test_utils",
+    ":go_empty_gidl",
+  ]
+
+  deps = [ "${conformance_suite_fidl_target}(${go_toolchain})" ]
+}
+
+go_test("go_empty_gidl_test_bin") {
+  gopackages = [ "empty_gidl_tests" ]
+  deps = [ ":go_empty_gidl_tests_library" ]
+  non_go_deps = [ ":go_empty_gidl" ]
+  use_prebuilt_go = false
+}
+
+fuchsia_unittest_package("go_empty_gidl_tests") {
+  deps = [ ":go_empty_gidl_test_bin" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":gidl_golang_test($host_toolchain)",
+    ":gidl_golden_tests($host_toolchain)",
+    ":gidl_mixer_test($host_toolchain)",
+    ":gidl_parser_test($host_toolchain)",
+    ":go_empty_gidl_tests",
+    ":rust_empty_gidl_tests",
+  ]
+}

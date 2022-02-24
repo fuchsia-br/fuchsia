@@ -1,0 +1,12 @@
+{
+    "program": {
+        "data": "data/inspect-dart-codelab-client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.logger.LogSink",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Launcher"
+        ]
+    }
+}

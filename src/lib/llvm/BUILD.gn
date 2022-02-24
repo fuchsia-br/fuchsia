@@ -1,0 +1,765 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+config("LLVM_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [ "//prebuilt/third_party/llvm/${current_platform}/include" ]
+  if (current_os == "linux") {
+    libs = [ "//prebuilt/third_party/llvm/${current_platform}/lib/libLLVM.so" ]
+  } else if (current_os == "mac") {
+    libs =
+        [ "//prebuilt/third_party/llvm/${current_platform}/lib/libLLVM.dylib" ]
+  }
+}
+
+# Shared library
+group("LLVM") {
+  public_configs = [ ":LLVM_config" ]
+}
+
+config("LLVMHeader_config") {
+  visibility = [ ":*" ]
+
+  # elflib depends on LLVM headers and is compiled on target. Since we don't have Fuchsia variant
+  # of LLVM library yet, always use host_platform's include directory for now.
+  # It should make no difference as headers are the same across different platforms.
+  # Use -isystem instead of -I to suppress -Wconversion warnings in those headers.
+  cflags = [ "-isystem" +
+             rebase_path("//prebuilt/third_party/llvm/${host_platform}/include",
+                         root_build_dir) ]
+}
+
+group("LLVMHeaderOnly") {
+  public_configs = [ ":LLVMHeader_config" ]
+}
+
+template("llvm_library") {
+  config(target_name + "_config") {
+    visibility = [ ":*" ]
+    libs = [
+      "//prebuilt/third_party/llvm/${current_platform}/lib/lib${target_name}.a",
+    ]
+  }
+
+  group(target_name) {
+    forward_variables_from(invoker, [ "deps" ])
+    public_configs = [
+      ":LLVMHeader_config",
+      ":${target_name}_config",
+    ]
+
+    # LLVM prebuilts are currently not built with RTTI, so if UBSan is enabled,
+    # we should make sure RTTI vptr checks should not be done on these libraries
+    # and anyone who depends on these libraries.
+    # Note that this doesn't remove the rtti config (or the -frtti flag), but
+    # this works because inherited configs will apply after the config set on the
+    # target, so the last RTTI setting on the command line wins.
+    public_configs += [ "//build/config:no_rtti" ]
+
+    # ASan will report false positives for container overflow detection because
+    # LLVM is prebuilt without ASan.
+    if (!defined(deps)) {
+      deps = []
+    }
+    deps += [ "//build/config/sanitizers:suppress-asan-container-overflow" ]
+  }
+}
+
+# The following dependency graph could be obtained by
+# 1. Download llvm/utils/GenLibDeps.pl from LLVM codebase.
+# 2. GenLibDeps.pl -flat prebuilt/third_party/llvm/lib.
+
+llvm_library("LLVMAArch64AsmParser") {
+  deps = [
+    ":LLVMAArch64Desc",
+    ":LLVMAArch64Info",
+    ":LLVMAArch64Utils",
+    ":LLVMMC",
+    ":LLVMMCParser",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMAArch64CodeGen") {
+  deps = [
+    ":LLVMAArch64Desc",
+    ":LLVMAArch64Info",
+    ":LLVMAArch64Utils",
+    ":LLVMAnalysis",
+    ":LLVMAsmPrinter",
+    ":LLVMCFGuard",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMGlobalISel",
+    ":LLVMMC",
+    ":LLVMScalarOpts",
+    ":LLVMSelectionDAG",
+    ":LLVMSupport",
+    ":LLVMTarget",
+  ]
+}
+
+llvm_library("LLVMAArch64Desc") {
+  deps = [
+    ":LLVMAArch64Info",
+    ":LLVMAArch64Utils",
+    ":LLVMBinaryFormat",
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMAArch64Disassembler") {
+  deps = [
+    ":LLVMAArch64Desc",
+    ":LLVMAArch64Info",
+    ":LLVMAArch64Utils",
+    ":LLVMMC",
+    ":LLVMMCDisassembler",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMAArch64Info") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMAArch64Utils") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMAggressiveInstCombine") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMAnalysis") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMCore",
+    ":LLVMObject",
+    ":LLVMProfileData",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMAsmParser") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMAsmPrinter") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMBinaryFormat",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMDebugInfoCodeView",
+    ":LLVMDebugInfoDWARF",
+    ":LLVMMC",
+    ":LLVMMCParser",
+    ":LLVMRemarks",
+    ":LLVMSupport",
+    ":LLVMTarget",
+  ]
+}
+
+llvm_library("LLVMBinaryFormat") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMBitReader") {
+  deps = [
+    ":LLVMBitstreamReader",
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMBitWriter") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMBitstreamReader") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMCFGuard") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMCodeGen") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMBitReader",
+    ":LLVMBitWriter",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMProfileData",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMCore") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMRemarks",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMCoroutines") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+    ":LLVMipo",
+  ]
+}
+
+llvm_library("LLVMCoverage") {
+  deps = [
+    ":LLVMObject",
+    ":LLVMProfileData",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMDWARFLinker") {
+  deps = [
+    ":LLVMAsmPrinter",
+    ":LLVMCodeGen",
+    ":LLVMDebugInfoDWARF",
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMDebugInfoCodeView") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMDebugInfoDWARF") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMDebugInfoGSYM") {
+  deps = [
+    ":LLVMDebugInfoDWARF",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMDebugInfoMSF") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMDebugInfoPDB") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMDebugInfoCodeView",
+    ":LLVMDebugInfoMSF",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMDemangle") {
+}
+
+llvm_library("LLVMDlltoolDriver") {
+  deps = [
+    ":LLVMObject",
+    ":LLVMOption",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMExecutionEngine") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMRuntimeDyld",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMExtensions") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMFileCheck") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMFrontendOpenACC") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMFrontendOpenMP") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMFuzzMutate") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMBitReader",
+    ":LLVMBitWriter",
+    ":LLVMCore",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMGlobalISel") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMSelectionDAG",
+    ":LLVMSupport",
+    ":LLVMTarget",
+  ]
+}
+
+llvm_library("LLVMHelloNew") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMIRReader") {
+  deps = [
+    ":LLVMAsmParser",
+    ":LLVMBitReader",
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMInstCombine") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMInstrumentation") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMProfileData",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMInterfaceStub") {
+  deps = [
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMInterpreter") {
+  deps = [
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMExecutionEngine",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMJITLink") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMLTO") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMBinaryFormat",
+    ":LLVMBitReader",
+    ":LLVMBitWriter",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMInstCombine",
+    ":LLVMLinker",
+    ":LLVMMC",
+    ":LLVMObjCARCOpts",
+    ":LLVMObject",
+    ":LLVMPasses",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMTransformUtils",
+    ":LLVMipo",
+  ]
+}
+
+llvm_library("LLVMLibDriver") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMBitReader",
+    ":LLVMObject",
+    ":LLVMOption",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMLineEditor") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMLinker") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMMC") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMMCA") {
+  deps = [
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMMCDisassembler") {
+  deps = [
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMMCJIT") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMExecutionEngine",
+    ":LLVMObject",
+    ":LLVMRuntimeDyld",
+    ":LLVMSupport",
+    ":LLVMTarget",
+  ]
+}
+
+llvm_library("LLVMMCParser") {
+  deps = [
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMMIRParser") {
+  deps = [
+    ":LLVMAsmParser",
+    ":LLVMBinaryFormat",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMObjCARCOpts") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMObject") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMBitReader",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMMCParser",
+    ":LLVMSupport",
+    ":LLVMTextAPI",
+  ]
+}
+
+llvm_library("LLVMObjectYAML") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMDebugInfoCodeView",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMOption") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMOrcError") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMOrcJIT") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMBitReader",
+    ":LLVMBitWriter",
+    ":LLVMCore",
+    ":LLVMExecutionEngine",
+    ":LLVMJITLink",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMOrcError",
+    ":LLVMPasses",
+    ":LLVMRuntimeDyld",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMPasses") {
+  deps = [
+    ":LLVMAggressiveInstCombine",
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMCoroutines",
+    ":LLVMHelloNew",
+    ":LLVMInstCombine",
+    ":LLVMInstrumentation",
+    ":LLVMObjCARCOpts",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMTransformUtils",
+    ":LLVMVectorize",
+    ":LLVMipo",
+  ]
+}
+
+llvm_library("LLVMProfileData") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMDemangle",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMRemarks") {
+  deps = [
+    ":LLVMBitstreamReader",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMRuntimeDyld") {
+  deps = [
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMScalarOpts") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMSelectionDAG") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMSupport") {
+  deps = [ ":LLVMDemangle" ]
+}
+
+llvm_library("LLVMSymbolize") {
+  deps = [
+    ":LLVMDebugInfoDWARF",
+    ":LLVMDebugInfoPDB",
+    ":LLVMDemangle",
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMTableGen") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMTarget") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMMC",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMTextAPI") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMTransformUtils") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMVectorize") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMCore",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+  ]
+}
+
+llvm_library("LLVMWindowsManifest") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMX86AsmParser") {
+  deps = [
+    ":LLVMMC",
+    ":LLVMMCParser",
+    ":LLVMSupport",
+    ":LLVMX86Desc",
+    ":LLVMX86Info",
+  ]
+}
+
+llvm_library("LLVMX86CodeGen") {
+  deps = [
+    ":LLVMAnalysis",
+    ":LLVMAsmPrinter",
+    ":LLVMCFGuard",
+    ":LLVMCodeGen",
+    ":LLVMCore",
+    ":LLVMGlobalISel",
+    ":LLVMMC",
+    ":LLVMProfileData",
+    ":LLVMSelectionDAG",
+    ":LLVMSupport",
+    ":LLVMTarget",
+    ":LLVMX86Desc",
+    ":LLVMX86Info",
+  ]
+}
+
+llvm_library("LLVMX86Desc") {
+  deps = [
+    ":LLVMBinaryFormat",
+    ":LLVMMC",
+    ":LLVMMCDisassembler",
+    ":LLVMSupport",
+    ":LLVMX86Info",
+  ]
+}
+
+llvm_library("LLVMX86Disassembler") {
+  deps = [
+    ":LLVMMCDisassembler",
+    ":LLVMSupport",
+    ":LLVMX86Info",
+  ]
+}
+
+llvm_library("LLVMX86Info") {
+  deps = [ ":LLVMSupport" ]
+}
+
+llvm_library("LLVMXRay") {
+  deps = [
+    ":LLVMObject",
+    ":LLVMSupport",
+  ]
+}
+
+llvm_library("LLVMipo") {
+  deps = [
+    ":LLVMAggressiveInstCombine",
+    ":LLVMAnalysis",
+    ":LLVMBitReader",
+    ":LLVMBitWriter",
+    ":LLVMCore",
+    ":LLVMFrontendOpenMP",
+    ":LLVMIRReader",
+    ":LLVMInstCombine",
+    ":LLVMInstrumentation",
+    ":LLVMLinker",
+    ":LLVMObject",
+    ":LLVMProfileData",
+    ":LLVMScalarOpts",
+    ":LLVMSupport",
+    ":LLVMTransformUtils",
+    ":LLVMVectorize",
+  ]
+}

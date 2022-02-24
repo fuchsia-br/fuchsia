@@ -1,0 +1,75 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("input") {
+  sources = [
+    "a11y_legacy_contender.cc",
+    "a11y_legacy_contender.h",
+    "a11y_registry.cc",
+    "a11y_registry.h",
+    "constants.cc",
+    "constants.h",
+    "gesture_arena.cc",
+    "gesture_arena.h",
+    "gesture_contender.h",
+    "gesture_contender_inspector.cc",
+    "gesture_contender_inspector.h",
+    "gfx_legacy_contender.cc",
+    "gfx_legacy_contender.h",
+    "helper.cc",
+    "helper.h",
+    "injector.cc",
+    "injector.h",
+    "input_command_dispatcher.cc",
+    "input_command_dispatcher.h",
+    "input_system.cc",
+    "input_system.h",
+    "internal_pointer_event.h",
+    "mouse_injector.cc",
+    "mouse_injector.h",
+    "mouse_source.cc",
+    "mouse_source.h",
+    "mouse_source_base.cc",
+    "mouse_source_base.h",
+    "mouse_source_with_global_mouse.cc",
+    "mouse_source_with_global_mouse.h",
+    "pointerinjector_registry.cc",
+    "pointerinjector_registry.h",
+    "stream_id.cc",
+    "stream_id.h",
+    "touch_injector.cc",
+    "touch_injector.h",
+    "touch_source.cc",
+    "touch_source.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/lib/fidl/cpp",
+    "//src/lib/files",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fostr/fidl/fuchsia.ui.input.accessibility",
+    "//src/lib/fostr/fidl/fuchsia.ui.pointerinjector",
+    "//src/lib/fxl",
+    "//src/ui/lib/escher/geometry:escher_geometry",
+    "//src/ui/scenic/lib/gfx",
+    "//src/ui/scenic/lib/gfx:ids",
+    "//src/ui/scenic/lib/scenic",
+    "//src/ui/scenic/lib/scheduling:id",
+    "//src/ui/scenic/lib/utils",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/trace",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.pointer",
+    "//sdk/fidl/fuchsia.ui.pointer.augment",
+    "//sdk/fidl/fuchsia.ui.pointerinjector",
+    "//src/ui/scenic/lib/view_tree:view_tree_snapshot",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

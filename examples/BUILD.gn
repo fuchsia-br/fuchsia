@@ -1,0 +1,40 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("examples") {
+  testonly = true
+  deps = [
+    ":tests",
+    "components",
+    "cowsay",
+    "criterion_bench",
+    "dart",
+    "diagnostics",
+    "drivers",
+    "fidl",
+    "fortune",
+    "fuzzers",
+    "hello_world",
+    "intl",
+    "isolated_cache",
+    "rust",
+    "time",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  data_deps = [
+    "components:tests",
+    "dart:tests",
+    "diagnostics:tests",
+    "drivers:tests",
+    "fidl:tests",
+    "fuzzers:tests",
+    "hello_world:tests",
+    "intl:tests",
+    "isolated_cache:tests",
+    "rust:tests",
+  ]
+}

@@ -1,0 +1,25 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/prebuilt_binaries.gni")
+
+# The //prebuilt directory contains only the binary artifacts managed by
+# jiri.  So this directory represents it in the build.
+
+group("prebuilt") {
+  testonly = true
+
+  deps = [
+    ":latest_or_generic",
+    ":stable",
+  ]
+}
+
+prebuilt_binaries("latest_or_generic") {
+  build_id_dir = "//prebuilt/.build-id"
+}
+
+prebuilt_binaries("stable") {
+  build_id_dir = "//prebuilt/stable/.build-id"
+}

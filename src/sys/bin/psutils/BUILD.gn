@@ -1,0 +1,179 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("psutils") {
+  deps = [
+    ":handles",
+    ":kill",
+    ":killall",
+    ":kstats",
+    ":memgraph",
+    ":ps",
+    ":signal",
+    ":threads",
+    ":top",
+    ":vmaps",
+    ":vmos",
+  ]
+}
+
+source_set("ps_internal") {
+  sources = [ "ps_internal.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+source_set("handles_internal") {
+  sources = [
+    "handles-internal.cc",
+    "object-utils.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("ps") {
+  output_dir = "$root_out_dir/zircon-migrated"
+  sources = [ "ps.c" ]
+  deps = [
+    ":ps_internal",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("top") {
+  sources = [ "top.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//src/lib/listnode",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("kill") {
+  sources = [ "kill.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("killall") {
+  sources = [ "killall.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("vmaps") {
+  sources = [ "vmaps.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("vmos") {
+  sources = [
+    "vmo-utils.c",
+    "vmos.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("memgraph") {
+  sources = [
+    "memgraph.cc",
+    "object-utils.cc",
+    "resources.c",
+    "vmo-utils.c",
+  ]
+  include_dirs = [ target_gen_dir ]
+  deps = [
+    ":gen-memgraph-schema",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+# Generate an include file that contains the schema JSON.
+action("gen-memgraph-schema") {
+  outputs = [ "$target_gen_dir/memgraph-schema.h" ]
+  sources = [ "memgraph-schema.json" ]
+  script = "gen-memgraph-schema-header.sh"
+  args = rebase_path(outputs, root_build_dir) +
+         rebase_path(sources, root_build_dir)
+}
+
+executable("kstats") {
+  sources = [
+    "kstats.c",
+    "resources.c",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/pretty",
+  ]
+}
+
+executable("threads") {
+  sources = [ "threads.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/inspector",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/task-utils",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+executable("signal") {
+  sources = [ "signal.c" ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/task-utils",
+  ]
+}
+
+executable("handles") {
+  output_dir = "$root_out_dir/zircon-migrated"
+  sources = [ "handles.cc" ]
+  deps = [
+    ":handles_internal",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/task-utils",
+  ]
+}

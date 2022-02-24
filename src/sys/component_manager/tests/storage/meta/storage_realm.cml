@@ -1,0 +1,42 @@
+{
+    children: [
+        {
+            name: "memfs",
+            url: "fuchsia-pkg://fuchsia.com/storage_integration_test#meta/memfs.cm",
+            startup: "eager",
+        },
+        {
+            name: "storage_user",
+            url: "fuchsia-pkg://fuchsia.com/storage_integration_test#meta/storage_user.cm",
+            startup: "eager",
+        },
+    ],
+    capabilities: [
+        {
+            storage: "data",
+            from: "#memfs",
+            backing_dir: "memfs",
+            storage_id: "static_instance_id_or_moniker",
+        },
+    ],
+    offer: [
+        {
+            storage: "data",
+            from: "self",
+            to: "#storage_user",
+        },
+        {
+            directory: "memfs",
+            from: "#memfs",
+            to: "#storage_user",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: [
+                "#memfs",
+                "#storage_user",
+            ],
+        },
+    ],
+}

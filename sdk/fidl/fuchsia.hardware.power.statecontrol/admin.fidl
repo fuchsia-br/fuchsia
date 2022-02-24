@@ -1,0 +1,97 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.power.statecontrol;
+
+using zx;
+
+// TODO(ravoorir): When the system power states are properly defined,
+// remove the suspend flags. For now, treat each suspend flag as a system
+// power state.
+type SystemPowerState = strict enum : uint8 {
+    FULLY_ON = 1;
+    REBOOT = 2;
+    REBOOT_BOOTLOADER = 3;
+    REBOOT_RECOVERY = 4;
+    POWEROFF = 5;
+    MEXEC = 6;
+    SUSPEND_RAM = 7;
+};
+const MAX_SYSTEM_POWER_STATES uint32 = 7;
+
+/// The maxium number of seconds the server will wait for responses from all RebootMethodsWatchers
+/// before changing the system power state.
+// TODO(fxbug.dev/52274): Track how long it takes to persist the reboot reason and adjust this value.
+const MAX_REBOOT_WATCHER_RESPONSE_TIME_SECONDS uint32 = 5;
+
+/// Provides methods to request that the system be transitioned into a supported power state.
+///
+/// Note (see fxbug.dev/58348):
+/// These methods do not return until after the state transition has been completed. In most cases
+/// (e.g. Reboot), a successful transition means that the caller does not actually observe the
+/// completion because the system will be rebooted before the call is completed. The implication is
+/// that using a synchronous FIDL client with these methods will result in a blocked thread for the
+/// duration of the call, or even for the remainder of the component's life (in the case of Reboot).
+/// Therefore, if a synchronous FIDL client is to be used with this protocol then care should be
+/// taken to avoid handling any shutdown-induced callbacks on the same thread that was used to
+/// initiate the transition. Example callbacks include [`fuchsia.process.lifecycle/Lifecycle.Stop`]
+/// and [`fuchsia.hardware.power.statecontrol/RebootMethodsWatcher.OnReboot`].
+/// Alternatively, the caller could choose to use an asynchronous FIDL client with this protocol to
+/// avoid blocking their calling thread.
+@discoverable
+protocol Admin {
+    /// Asks the device to enter a fully on state.
+    PowerFullyOn() -> (struct {}) error zx.status;
+
+    /// Asks the device to reboot.
+    Reboot(struct {
+        reason RebootReason;
+    }) -> (struct {}) error zx.status;
+
+    /// Asks the device to reboot into the bootloader.
+    RebootToBootloader() -> (struct {}) error zx.status;
+
+    /// Asks the device to reboot into the recovery partition.
+    RebootToRecovery() -> (struct {}) error zx.status;
+
+    /// Asks all devices to enter a powered off state.
+    Poweroff() -> (struct {}) error zx.status;
+
+    /// Performs a kernel mexec.
+    ///
+    /// It is expected that the ZBI items specified by
+    /// `zx_system_mexec_payload_get()` have not yet been appended to the
+    /// provided data ZBI.
+    Mexec(resource struct {
+        kernel_zbi zx.handle:VMO;
+        data_zbi zx.handle:VMO;
+    }) -> (struct {}) error zx.status;
+
+    SuspendToRam() -> (struct {}) error zx.status;
+};
+
+// Component Framework's orderly shutdown is tracked with bug 51034.
+/// Allows components to register a callback that will be executed when a Reboot method is called.
+/// The main purpose of this protocol is to be able to track reboot reasons. Consider relying on
+/// Component Framework's orderly shutdown if you're looking at using this protocol.
+@discoverable
+protocol RebootMethodsWatcherRegister {
+    /// Register a watcher to be notified when a Reboot method is called. The Register channel
+    /// will be used at most once to notify the watcher of an impending reboot and allow it
+    /// the chance to respond.
+    ///
+    /// Watchers can unregister by closing the underlying channel.
+    Register(resource struct {
+        watcher client_end:RebootMethodsWatcher;
+    });
+};
+
+/// Allows components to be notified when Reboot related methods are called. Watchers will be given
+/// 'MAX_REBOOT_WATCHER_RESPONSE_TIME_SECONDS' to return before the system power state is changed.
+/// The channel will be used once to send a notification to the watcher. Once the watcher responds
+/// or the timeout expires, the channel will be closed by the client of RebootMethodsWatcher.
+protocol RebootMethodsWatcher {
+    OnReboot(struct {
+        reason RebootReason;
+    }) -> ();
+};

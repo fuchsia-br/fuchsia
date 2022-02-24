@@ -1,0 +1,26 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.kernel;
+
+using zx;
+
+/// Protocol for providing the root job.
+///
+/// TODO(fxbug.dev/33856): Do not use this without first consulting the Zircon team.
+@discoverable
+@for_deprecated_c_bindings
+protocol RootJob {
+    /// Get the root `job`.
+    Get() -> (resource struct {
+        job zx.handle:JOB;
+    });
+};
+
+/// Protocol for providing the root job with restricted rights, specifically:
+/// INSPECT | ENUMERATE | DUPLICATE | TRANSFER
+@discoverable
+@for_deprecated_c_bindings
+protocol RootJobForInspect {
+    compose RootJob;
+};

@@ -1,0 +1,33 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/advanced_routing_reporter",
+        args: [
+            "Hippos",
+            "rule!",
+        ],
+    },
+    use: [
+        {
+            directory: "hub",
+            from: "parent",
+            rights: [ "r*" ],
+            path: "/parent_hub",
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+            subdir: "exec",
+        },
+        {
+            directory: "sibling_hub",
+            from: "parent",
+            rights: [ "r*" ],
+            path: "/sibling_hub",
+        },
+        { protocol: "fidl.examples.routing.echo.Echo" },
+    ],
+}

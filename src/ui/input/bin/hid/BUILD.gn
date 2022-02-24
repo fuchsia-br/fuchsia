@@ -1,0 +1,29 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("hid") {
+  if (is_fuchsia) {
+    configs += [ "//build/config:all_source" ]
+  }
+  output_dir = "$root_out_dir/zircon-migrated"
+
+  sources = [
+    "main.cc",
+    "report.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.input:fuchsia.hardware.input_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/listnode",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/hid-parser",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

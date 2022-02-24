@@ -1,0 +1,26 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("cbuf") {
+  sources = [ "cbuf.cc" ]
+  deps = [
+    ":tests",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/zxc",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("tests") {
+  # TODO: testonly = true
+  sources = [ "cbuf_tests.cc" ]
+  include_dirs = [ "include" ]
+  deps = [ "//zircon/kernel/lib/unittest" ]
+}

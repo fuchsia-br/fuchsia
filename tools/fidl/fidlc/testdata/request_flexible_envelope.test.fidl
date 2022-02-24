@@ -1,0 +1,24 @@
+library test.requestflexibleenvelope;
+
+type FlexibleFoo = flexible union {
+    1: s string;
+    2: i int32;
+};
+
+type StrictFoo = strict union {
+    1: s string;
+    2: i int32;
+};
+
+protocol Protocol {
+    RequestStrictResponseFlexible(struct {
+        s StrictFoo;
+    }) -> (struct {
+        f FlexibleFoo;
+    });
+    RequestFlexibleResponseStrict(struct {
+        s FlexibleFoo;
+    }) -> (struct {
+        f StrictFoo;
+    });
+};

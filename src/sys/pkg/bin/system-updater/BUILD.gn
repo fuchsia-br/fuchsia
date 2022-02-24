@@ -1,0 +1,145 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//src/sys/core/build/core_shard.gni")
+import("epoch/generate_epoch.gni")
+
+base_epoch_file = "$target_out_dir/epoch.json"
+source_dir = "//" + rebase_path("src", "//")
+rebased_epoch_file = rebase_path(base_epoch_file, source_dir)
+
+config("env") {
+  rustenv = [ "EPOCH_PATH=$rebased_epoch_file" ]
+}
+
+generate_epoch("epoch.json") {
+  output_file = "$base_epoch_file"
+}
+
+rustc_binary("bin") {
+  name = "system_updater"
+  with_unit_tests = true
+  edition = "2018"
+  configs += [ ":env" ]
+  disable_clippy = true  # TODO(fxbug.dev/86506): clippy needs env vars
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.space:fuchsia.space-rustc",
+    "//src/lib/cobalt/rust:fuchsia-cobalt",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-url",
+    "//src/lib/mundane",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer-rustc",
+    "//src/sys/pkg/lib/async-generator",
+    "//src/sys/pkg/lib/bounded-node",
+    "//src/sys/pkg/lib/epoch",
+    "//src/sys/pkg/lib/event-queue",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//src/sys/pkg/lib/fuchsia-hash",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//src/sys/pkg/lib/pkgfs",
+    "//src/sys/pkg/lib/update-package",
+    "//third_party/cobalt/src/lib/client/rust:cobalt-client",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:pin-project",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:uuid",
+  ]
+  non_rust_deps = [ ":epoch.json" ]
+  test_deps = [
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/version",
+    "//src/sys/pkg/testing/mock-paver",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:proptest",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [
+    "src/fidl.rs",
+    "src/install_manager.rs",
+    "src/main.rs",
+    "src/update.rs",
+    "src/update/config.rs",
+    "src/update/environment.rs",
+    "src/update/genutil.rs",
+    "src/update/history.rs",
+    "src/update/history/version.rs",
+    "src/update/metrics.rs",
+    "src/update/paver.rs",
+    "src/update/paver/configuration.rs",
+    "src/update/reboot.rs",
+    "src/update/resolver.rs",
+    "src/update/state.rs",
+  ]
+  inputs = [ base_epoch_file ]
+}
+
+fuchsia_component("component") {
+  component_name = "system-updater"
+  manifest = "meta/system-updater.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("system-updater") {
+  deps = [ ":component" ]
+}
+
+fuchsia_unittest_package("system-updater-tests") {
+  manifest = "meta/system-updater-bin-test.cml"
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  deps = [ ":bin_test" ]
+}
+
+# TODO(fxbug.dev/76629): omaha-client integration tests must be ported before
+# this can be migrated.
+fuchsia_component("isolated") {
+  component_name = "system-updater-isolated"
+  manifest = "meta/system-updater-isolated.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("isolated-v2") {
+  component_name = "system-updater-isolated"
+  manifest = "meta/system-updater-isolated.cml"
+  deps = [ ":bin" ]
+}
+
+core_shard("system-updater-core-shard") {
+  shard_file = "meta/system_updater.core_shard.cml"
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":system-updater-tests",
+    "epoch:host_tests",
+  ]
+}

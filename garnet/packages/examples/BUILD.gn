@@ -1,0 +1,90 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# WARNING: This file was machine-generated from previous json files and
+# will eventually be deleted.
+
+group("scenic") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:scenic",
+    "//src/ui/examples",
+  ]
+}
+
+group("escher") {
+  testonly = true
+  public_deps = [
+    "//src/ui/examples/escher:escher_rainfall",
+    "//src/ui/examples/escher:escher_waterfall",
+  ]
+}
+
+group("all") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/examples:benchmark",
+    "//garnet/packages/examples:bluetooth",
+    "//garnet/packages/examples:escher",
+    "//garnet/packages/examples:fidl",
+    "//garnet/packages/examples:http",
+    "//garnet/packages/examples:overnet",
+    "//garnet/packages/examples:rust",
+    "//garnet/packages/examples:scenic",
+    "//garnet/packages/examples:tcp",
+  ]
+}
+
+group("http") {
+  testonly = true
+  public_deps = [
+    "//garnet/examples/http/httpget_cpp",
+    "//garnet/examples/http/httpget_rust",
+    "//garnet/examples/http/postfile",
+  ]
+}
+
+group("fidl") {
+  testonly = true
+  public_deps = [
+    "//examples/fidl/c/server:echo-c-server",
+    "//examples/fidl/go:echo-go-client",
+    "//examples/fidl/hlcpp:echo-hlcpp-client",
+    "//examples/fidl/hlcpp:echo-hlcpp-client-sync",
+    "//examples/fidl/hlcpp/server:echo-hlcpp-server",
+    "//examples/fidl/llcpp:echo-llcpp-client",
+    "//examples/fidl/llcpp/server:echo-llcpp-server",
+    "//examples/fidl/rust:echo-rust-client",
+    "//examples/fidl/rust:echo-rust-client-sync",
+    "//examples/fidl/rust/server:echo-rust-server",
+  ]
+}
+
+group("overnet") {
+  testonly = true
+  public_deps = [
+    "//src/connectivity/overnet/examples/echo:overnet-echo",
+    "//src/connectivity/overnet/examples/interface_passing:overnet-interface-passing",
+  ]
+}
+
+group("benchmark") {
+  testonly = true
+  public_deps = [ "//garnet/examples/benchmark" ]
+}
+
+group("bluetooth") {
+  testonly = true
+  public_deps = [ "//src/connectivity/bluetooth/examples" ]
+}
+
+group("tcp") {
+  testonly = true
+  public_deps = [ "//garnet/examples/tcp/tcp_file_sender" ]
+}
+
+group("rust") {
+  testonly = true
+  public_deps = [ "//examples/rust:garnet-rust-examples" ]
+}

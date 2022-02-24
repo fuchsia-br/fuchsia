@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/vulkan/application.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/shadertoy_service"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

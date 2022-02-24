@@ -1,0 +1,39 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("hardware_display_controller_provider") {
+  testonly = true
+  public_deps = [
+    ":fake-hardware-display-controller-provider",
+    ":hardware-display-controller-provider",
+  ]
+}
+
+fuchsia_package_with_single_component(
+    "fake-hardware-display-controller-provider") {
+  testonly = true
+  component_name = "hdcp"
+  manifest = "meta/fake_hdcp.cmx"
+  deps = [ "fake:bin" ]
+}
+
+fuchsia_package_with_single_component("hardware-display-controller-provider") {
+  manifest = "meta/real_hdcp.cmx"
+  component_name = "hdcp"
+  deps = [ "real:bin" ]
+}
+
+fuchsia_component("fake-hardware-display-controller-provider-cmv2-component") {
+  manifest = "meta/fake_hdcp.cml"
+  component_name = "hdcp"
+  testonly = true
+  deps = [ "fake:bin" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ "fake/tests" ]
+}

@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/socket_puppet",
+    },
+    use: [
+        { protocol: "fuchsia.archivist.tests.SocketPuppetController" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+}

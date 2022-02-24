@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/test_story_shell_bin"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

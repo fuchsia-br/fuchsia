@@ -1,0 +1,37 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # A list of binary labels to include in ZBIs built for this product.
+  product_bootfs_labels = []
+
+  # A list of binary labels to include in the system_image package.
+  product_system_image_deps = []
+
+  # A human readable product description.
+  product_description = ""
+
+  # The following arguments are all used to configure the contents of the core
+  # component realm. See //src/sys/core/build/core.gni for documentation on what
+  # each field means.
+  # TODO: redo comments
+  core_realm_package_name = "core-generic"
+  core_realm_shards = []
+  core_realm_restrict_persistent_storage = true
+
+  # Determines whether the fuchsia_async library used by many Rust targets will be compiled
+  # with TRACE level log statements that increase binary size a measurable amount.
+  # TODO(fxbug.dev/80742) move this to a toolchain to allow multiple products to build together
+  fuchsia_async_trace_level_logging = true
+
+  # TODO(fxbug.dev/94051): move to board definitions.
+  # Adds a prefix to the start of the virtual device name. Used to distinguish
+  # between similar virtual device's using different configuration's such as
+  # `emu_window_size`.
+  virtual_device_name_prefix = ""
+
+  # Configuration to override the default window size for the virtual device in pixels.
+  emu_window_size_width = false
+  emu_window_size_height = false
+}

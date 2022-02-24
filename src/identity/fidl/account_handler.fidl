@@ -1,0 +1,197 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.identity.internal;
+
+using fuchsia.auth;
+using fuchsia.identity.account;
+using fuchsia.identity.authentication;
+using fuchsia.identity.external;
+
+// TODO(fxbug.dev/42836): Supply UI for system authentication.
+/// The control channel for an AccountHandler component.
+///
+/// This interface is intended only for use by the AccountManager component that
+/// starts instances of AccountHandler. We define which account the handler
+/// should be handling one time via this channel rather than via startup flags to
+/// provide additional flexibility given the range of scenarios:
+/// * The account is completely new
+/// * The account is being added to the current device for the first time
+/// * Account information is already present on the local disk and is readable
+/// * Account information is already present on the local disk but is not yet
+///   readable because the disk is not yet decrypted.
+///
+/// A given Account Handler progresses through the following state machine:
+/// ```
+///               |
+///               V
+///       +---------------+
+///       | Uninitialized |------------+
+///       +---------------+            |
+///               |                    |
+///               |                    | Preload
+///               |                    V
+///               |           +------------------+
+///               |           |      Locked      |
+///               |           +------------------+
+///               |                    ^
+///               |                    |
+///               |                    |
+///               |                    | LockAccount /
+///               | CreateAccount      | UnlockAccount
+///               |                    |
+///               |                    |
+///               |                    |
+///               V                    |
+///       +---------------+            |
+///       |  Initialized  |<-----------+
+///       +---------------+
+///               |
+///               | Terminate
+///               V
+///       +---------------+
+///       |   Finished    |
+///       +---------------+
+/// ```
+///
+/// * `Uninitialized` - the handler has just been instantiated and contains no
+///   account information.
+/// * `Locked` - the handler has loaded pre-authentication data, which lets it
+///   unlock the account subsequently.
+/// * `Initialized` - the handler has loaded account information and is ready
+///   to serve requests for the `Account` interface.  If the account is
+///   persistent, then it is saved to disk.
+/// * `Finished` - the handler is in the process of shutting down and will soon
+///   terminate.
+@discoverable
+protocol AccountHandlerControl {
+    /// Creates a completely new system account, optionally protecting the
+    /// account with a single enrollment of an authentication mechanism.
+    ///
+    /// `auth_mechanism_id` An `AuthMechanismId` for a storage
+    ///                     unlock-capable authentication mechanism. If
+    ///                     provided, a single enrollment of that
+    ///                     mechanism will be created for storage
+    ///                     unlock.
+    ///
+    /// Fails with FAILED_PRECONDITION if the AccountHandler is not in the `Uninitialized`
+    /// state.
+    CreateAccount(struct {
+        auth_mechanism_id fuchsia.identity.account.AuthMechanismId:optional;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Loads pre-auth data, which allows the account to be unlocked later.
+    ///
+    /// This moves the AccountHandler from the `Uninitialized` state to the `Locked` state.
+    ///
+    /// Fails with FAILED_PRECONDITION if the AccountHandler is not in the `Uninitialized`
+    /// state.
+    Preload() -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Reach the `Initialized` state, attempting authentication and unlocking the account where
+    /// necessary.
+    ///
+    /// Fails with
+    /// - FAILED_PRECONDITION if the AccountHandler is not in the `Locked` or `Initialized` state.
+    /// - FAILED_AUTH_ATTEMPT if the authentication attempt failed.
+    UnlockAccount() -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Reach the `Locked` state, closing any open `Account` and `Persona` channels for the account.
+    ///
+    /// Fails with FAILED_PRECONDITION if the AccountHandler is not in the `Initialized` or
+    /// `Locked` state.
+    LockAccount() -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Deletes all persistent information about the Fuchsia account handled by
+    /// this handler, including all credentials and global identifiers.
+    /// Credential revocation is attempted before deletion. After a
+    /// successful call to RemoveAccount, all other open interfaces for this
+    /// account handler will be closed and any subsequent calls on the current
+    /// interface will fail.
+    ///
+    /// `force` If true, continues removing the account even if revocation of
+    ///         credentials fails. If false, any revocation failure will result
+    ///         in an error and the account will remain. In this case, a subset
+    ///         of the credentials may have been deleted.
+    RemoveAccount(struct {
+        force bool;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    // TODO(jsankey): Add methods to cover adding an existing account and
+    // handling an account where the disk is not yet decrypted.
+
+    /// Connects an interface to read properties of and perform operations on
+    /// the account handled by this handler. The AccountHandler must be in the
+    /// `Initialized` state.
+    ///
+    /// `context_provider` An `AuthenticationContextProvider` capable of
+    ///                    supplying UI contexts used for interactive
+    ///                    authentication on this account
+    /// `account` The server end of an `Account` channel
+    ///
+    /// Fails with FAILED_PRECONDITION if the AccountHandler is not in the `Initialized`
+    /// state.
+    GetAccount(resource struct {
+        auth_context_provider client_end:fuchsia.auth.AuthenticationContextProvider;
+        account server_end:fuchsia.identity.account.Account;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Signals that the AccountHandler should tear itself down. After the
+    /// receiver responds by closing its handle, the caller may terminate the
+    /// component if it hasn't already exited.
+    Terminate();
+};
+
+/// An interface that supplies the account and authentication services that
+/// an AccountHandler needs to perform its role in the system.
+///
+/// This service is supplied into the namespace of AccountHandler by the
+/// component that launches it (i.e. the AccountManager).
+@discoverable
+protocol AccountHandlerContext {
+    /// Connects to the `Oauth` implementation for a particular service provider,
+    /// launching it if necessary.
+    ///
+    /// `auth_provider_type` An OAuth identity provider matching a configuration
+    ///                      set in an AuthProviderConfig.auth_provider_type
+    /// `oauth` The server end of an `Oauth` channel
+    GetOauth(resource struct {
+        auth_provider_type string;
+        oauth server_end:fuchsia.identity.external.Oauth;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Connects to the `OpenIdConnect` implementation for a particular service
+    /// provider, launching it if necessary.
+    ///
+    /// `auth_provider_type` An OpenID Connect identity provider matching a
+    ///                      configuration set in an
+    ///                      AuthProviderConfig.auth_provider_type
+    /// `open_id_connect` The server end of an `OpenIDConnect` channel
+    GetOpenIdConnect(resource struct {
+        auth_provider_type string;
+        open_id_connect server_end:fuchsia.identity.external.OpenIdConnect;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Connects to the `OauthOpenIdConnect` implementation for a particular
+    /// service provider, launching it if necessary.
+    ///
+    /// `auth_provider_type` An OpenID Connect identity provider matching a
+    ///                      configuration set in an
+    ///                      AuthProviderConfig.auth_provider_type
+    /// `oauth_open_id_connect` The server end of an `OauthOpenIDConnect` channel
+    GetOauthOpenIdConnect(resource struct {
+        auth_provider_type string;
+        oauth_open_id_connect server_end:fuchsia.identity.external.OauthOpenIdConnect;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+
+    /// Connects to a `StorageUnlockMechanism` implementation identified by its
+    /// auth mechanism ID, launching the associated Authenticator if necessary.
+    ///
+    /// `auth_mechanism_id` An identifier matching an authentication mechanism
+    ///                     configured by the account system.
+    /// `storage_unlock_mechanism` The server end of an `StorageUnlockMechanism` channel
+    GetStorageUnlockAuthMechanism(resource struct {
+        auth_mechanism_id fuchsia.identity.account.AuthMechanismId;
+        storage_unlock_mechanism server_end:fuchsia.identity.authentication.StorageUnlockMechanism;
+    }) -> (struct {}) error fuchsia.identity.account.Error;
+};

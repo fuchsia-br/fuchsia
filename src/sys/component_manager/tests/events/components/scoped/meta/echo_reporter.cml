@@ -1,0 +1,45 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/scoped_echo_reporter",
+    },
+    children: [
+        {
+            name: "echo_server",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/echo_server.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.sys2.EventSource" ],
+        },
+        {
+            event: [
+                "started",
+                "stopped",
+            ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+        {
+            event_stream_deprecated: "ScopedEventStream",
+            subscriptions: [
+                {
+                    event: "started",
+                    mode: "async",
+                },
+                {
+                    event: "stopped",
+                    mode: "async",
+                },
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "#echo_server",
+        },
+    ],
+}

@@ -1,0 +1,20 @@
+{
+    include: [ "syslog/elf_stdio.shard.cml" ],
+    program: {
+        binary: "bin/intl_property_manager",
+    },
+    capabilities: [
+        { protocol: "fuchsia.intl.PropertyProvider" },
+        { protocol: "fuchsia.test.intl.manager.PropertyManager" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.intl.PropertyProvider",
+            from: "self",
+        },
+        {
+            protocol: "fuchsia.test.intl.manager.PropertyManager",
+            from: "self",
+        },
+    ],
+}

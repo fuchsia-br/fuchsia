@@ -1,0 +1,26 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+##########################################
+# Though under //zircon, this build file #
+# is meant to be used in the Fuchsia GN  #
+# build.                                 #
+# See fxbug.dev/36139.                   #
+##########################################
+
+executable("xdc-server") {
+  sources = [
+    "usb-handler.cc",
+    "xdc-server.cc",
+  ]
+  deps = [
+    "//sdk/lib/fit",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/xdc-host-utils",
+    "//zircon/system/ulib/xdc-server-utils",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

@@ -1,0 +1,42 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("metrics") {
+  sources = [
+    "bucket_match.cc",
+    "bucket_match.h",
+    "capture.cc",
+    "capture.h",
+    "digest.cc",
+    "digest.h",
+    "printer.cc",
+    "printer.h",
+    "summary.cc",
+    "summary.h",
+    "watcher.cc",
+    "watcher.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_llcpp",
+    "//third_party/re2",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_c",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/task-utils",
+    "//zircon/system/ulib/trace",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

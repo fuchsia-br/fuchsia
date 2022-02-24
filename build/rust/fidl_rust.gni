@@ -1,0 +1,90 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/fidl/toolchain.gni")
+import("//build/rust/config.gni")
+import("//build/rust/toolchain.gni")
+
+# Generates some Rust bindings for a FIDL library.
+#
+# The parameters for this template are defined in //build/fidl/fidl.gni. The
+# relevant parameters in this template are:
+#   - name.
+
+template("fidl_rust") {
+  assert(current_toolchain == rust_toolchain,
+         "This template can only be used in $rust_toolchain.")
+
+  not_needed(invoker, [ "sources" ])
+
+  main_target_name = target_name
+  generation_target_name = "${target_name}_rust_generate"
+
+  library_name = target_name
+  if (defined(invoker.name)) {
+    library_name = invoker.name
+  }
+
+  underscore_name = "fidl_" + string_replace(library_name, ".", "_")
+
+  fidl_target_gen_dir =
+      get_label_info(":bogus($fidl_toolchain)", "target_gen_dir")
+  filename = "$fidl_target_gen_dir/$main_target_name/$underscore_name.rs"
+  json_representation = "$fidl_target_gen_dir/$target_name.fidl.json"
+
+  compiled_action(generation_target_name) {
+    forward_variables_from(invoker, [ "testonly" ])
+
+    visibility = [
+      ":*",
+      "//tools/fidl/fidlgen_rust:*",
+    ]
+
+    tool = "//tools/fidl/fidlgen_rust"
+
+    inputs = [
+      json_representation,
+      "//rustfmt.toml",
+      "$rustc_prefix/rustfmt",
+
+      # Ensure bindings are regenerated after Rust toolchain rolls.
+      "$rust_sysroot/.versions/rust.cipd_version",
+    ]
+
+    outputs = [ filename ]
+
+    args = [
+      "--json",
+      rebase_path(json_representation, root_build_dir),
+      "--output-filename",
+      rebase_path(filename, root_build_dir),
+      "--rustfmt",
+      "$rebased_rustc_prefix/rustfmt",
+      "--rustfmt-config",
+      rebase_path("//rustfmt.toml", root_build_dir),
+    ]
+
+    deps = [ ":$main_target_name($fidl_toolchain)" ]
+
+    metadata = {
+      generated_sources = rebase_path(outputs, root_build_dir)
+    }
+  }
+
+  group(main_target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "public_deps",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    deps = [ ":$generation_target_name" ]
+
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+  }
+}

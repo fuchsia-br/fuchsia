@@ -1,0 +1,134 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/images/assemble_system.gni")
+import("//src/sys/core/build/core.gni")
+import("//src/sys/root/build/root.gni")
+
+core_name = "core-guest"
+
+core_realm("core") {
+  package_name = core_name
+  testonly = true
+  restrict_persistent_storage = false
+  deps = [
+    "//src/sys/pkg/bin/system-update-checker:system-update-checker-core-shard",
+    "//src/sys/pkg/bin/system-updater:system-updater-core-shard",
+  ]
+}
+
+root_realm("root") {
+  core_package_name = core_name
+  testonly = true
+}
+
+assemble_system("guest") {
+  testonly = true
+  generate_fvm = !bootfs_only
+  base_packages = [
+    ":core",
+    "//src/sys/tools/run",
+    "//garnet/bin/sysmgr",
+    "//garnet/bin/trace",
+    "//garnet/bin/vsock_service:vsock_service",
+    "//src/diagnostics/log-stats:package",
+    "//src/sys/appmgr:appmgr_scheme_config",
+    "//src/sys/appmgr:component_id_index_no_restrict_storage",
+    "//src/sys/appmgr:core_component_id_index",
+    "//src/sys/appmgr",
+    "//src/sys/pkg/bin/pkg-cache",
+    "//src/sys/pkg/bin/pkg-resolver",
+    "//src/sys/pkg/bin/system-updater",
+    "//src/sys/pkg/bin/system-update-checker",
+    "//src/sys/pkg/bin/system-update-committer",
+    "//src/virtualization/packages/zircon_guest:services_config",
+    "//src/virtualization/tests:virtualization_test_utils_pkg",
+  ]
+
+  bootfs_labels = [
+    ":root",
+    "//build/info:bootfs",
+    "//products/kernel_cmdline:kernel.enable-debugging-syscalls--true",
+    "//products/kernel_cmdline:kernel.enable-serial-syscalls--true",
+    "//src/power/power-manager:base_config",
+    "//src/bringup/bin/bootsvc:bin",
+    "//src/bringup/bin/console-launcher:bootfs",
+    "//src/bringup/bin/console:bootfs",
+    "//src/bringup/bin/console",
+    "//src/bringup/bin/debuglog",
+    "//src/bringup/bin/device-name-provider",
+    "//src/bringup/bin/miscsvc",
+    "//src/bringup/bin/netsvc",
+    "//src/bringup/bin/ptysvc:bootfs",
+    "//src/bringup/bin/ptysvc",
+    "//src/bringup/bin/pwrbtn-monitor:bootfs",
+    "//src/bringup/bin/pwrbtn-monitor",
+    "//src/bringup/bin/run-vc",
+    "//src/bringup/bin/svchost:bootfs",
+    "//src/bringup/bin/sysinfo:bootfs",
+    "//src/bringup/bin/sysinfo",
+    "//src/bringup/bin/trace-benchmark",
+    "//src/bringup/bin/virtcon:bootfs",
+    "//src/bringup/bin/waitfor",
+    "//src/bringup/bin/watch",
+    "//src/bringup/bundles:bootstrap",
+    "//src/connectivity/ethernet/drivers/ethernet",
+    "//src/connectivity/ethernet/drivers/virtio:virtio_ethernet",
+    "//src/connectivity/network/bin/ping",
+    "//src/connectivity/network/drivers/network-device",
+    "//src/devices/bin/driver_host",
+    "//src/devices/bin/driver_manager:bootfs",
+    "//src/devices/bin/driverctl",
+    "//src/devices/bin/driver-index:bootfs",
+    "//src/devices/bin/lsdev",
+    "//src/devices/bin/unbind",
+    "//src/devices/block/drivers/virtio:virtio_block",
+    "//src/devices/block/drivers/virtio:virtio_scsi",
+    "//src/devices/board/drivers/machina",
+    "//src/devices/bundles:bootstrap-dev",
+    "//src/devices/bus/drivers/pci:bus-pci",
+    "//src/devices/misc/drivers/virtio-rng:virtio_rng",
+    "//src/devices/misc/drivers/virtio-socket:virtio_socket",
+    "//src/devices/serial/drivers/virtio-console:virtio_console",
+    "//src/devices/sysmem/drivers/sysmem",
+    "//src/diagnostics/archivist:default-service-config",
+    "//src/diagnostics/bundles:bootstrap",
+    "//src/graphics/display/drivers/display",
+    "//src/graphics/drivers/virtio:virtio_gpu",
+    "//src/power/shutdown-shim:bootfs",
+    "//src/storage/bin/blobfs-component:bootfs",
+    "//src/storage/bin/minfs",
+    "//src/storage/bin/dd",
+    "//src/storage/bin/df",
+    "//src/storage/bin/mount",
+    "//src/storage/bin/umount",
+    "//src/storage/blobfs:decompressor-sandbox",
+    "//src/storage/fshost:bootfs",
+    "//src/storage/fshost",
+    "//src/storage/fvm/driver",
+    "//src/sys/bin/psutils",
+    "//src/sys/bundles:bootstrap",
+    "//src/sys/component_manager:component_manager_bootfs_config",
+    "//src/ui/input/drivers/hid",
+    "//src/ui/input/drivers/hid-input-report",
+    "//src/ui/input/drivers/virtio:virtio_input",
+    "//zircon/third_party/uapp/dash",
+  ]
+
+  fshost_config = [ "no-zxcrypt" ]
+
+  if (current_cpu == "x64") {
+    bootfs_labels += [
+      "//src/devices/block/drivers/ahci",
+      "//src/devices/block/drivers/mbr",
+      "//src/devices/board/drivers/x86:platform-bus-x86",
+      "//src/devices/i2c/drivers/intel-i2c",
+      "//src/devices/serial/drivers/uart16550",
+    ]
+  }
+
+  include_component_id_index = true
+
+  sysmgr_golden = "sysmgr-golden.json"
+}

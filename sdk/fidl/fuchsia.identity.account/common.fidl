@@ -1,0 +1,138 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.identity.account;
+using fuchsia.sys;
+
+/// The maximum number of Fuchsia accounts that may be simultaneously
+/// provisioned on a device. This number may be increased in the future.
+const MAX_ACCOUNTS_PER_DEVICE uint32 = 128;
+
+/// The maximum number of personae that may be simultaneously defined within a
+/// Fuchsia account. This number may be increased in the future.
+const MAX_PERSONAE_PER_ACCOUNT uint32 = 128;
+
+/// The maximum length of the (UTF-8 encoded) human readable names, in bytes.
+const MAX_NAME_SIZE uint32 = 128;
+
+/// The maximum length of an (UTF-8 encoded) auth provider type, in bytes.
+const MAX_AUTH_PROVIDER_TYPE_SIZE uint32 = 128;
+
+/// The maximum number of authentication mechanisms that can be registered
+/// for a device.
+const MAX_AUTH_MECHANISMS uint32 = 16;
+
+/// The maximum number of authentication mechanism enrollments that may be
+/// simultaneously defined within a Fuchsia account.
+const MAX_AUTH_MECHANISM_ENROLLMENTS uint32 = 32;
+
+/// Provides an upper bound to how long a Fuchsia account can live on the
+/// current device.
+type Lifetime = strict enum : uint8 {
+    /// The account lives at the longest to the end of the power cycle it
+    /// was created in.
+    EPHEMERAL = 1;
+    /// The account lives on the device until it is removed.
+    PERSISTENT = 2;
+};
+
+/// A unique identifier for an account on the current device.
+alias AccountId = uint64;
+
+/// A unique identifier for a persona of an account on the current device.
+/// The AccountId for an account cannot be derived from the PersonaId of its
+/// personae.
+alias PersonaId = uint64;
+
+/// Specifies the reason that a fuchsia.identity.account method failed.
+type Error = strict enum {
+    /// Some other problem occurred that cannot be classified using one of the
+    /// more specific statuses. Retry is optional.
+    UNKNOWN = 1;
+
+    /// An internal error occurred. This usually indicates a bug within the
+    /// account system itself. Retry is optional.
+    INTERNAL = 2;
+
+    /// The requested operation is not supported. This generally indicates that
+    /// implementation of a new feature is not yet complete. The request should
+    /// not be retried.
+    UNSUPPORTED_OPERATION = 3;
+
+    /// The request was malformed in some way, such as using an empty string for
+    /// auth_provider_type. The request should not be retried.
+    INVALID_REQUEST = 4;
+
+    /// A local resource error occurred such as I/O, FIDL, or memory allocation
+    /// failure. Retry, after a delay, is recommended.
+    RESOURCE = 5;
+
+    /// A network error occurred while communicating with an auth server.
+    /// Retry, after a delay, is recommended.
+    NETWORK = 6;
+
+    /// The requested account or persona is not present on the current device.
+    /// The request should not be retried.
+    NOT_FOUND = 7;
+
+    /// The request cannot be processed due to an ongoing account or persona
+    /// removal. The removal is not guaranteed to suceed and so retry, after
+    /// a delay, is recommended.
+    REMOVAL_IN_PROGRESS = 8;
+
+    /// The server is not in the state required to perform the requested
+    /// operation. The request should not be retried unless the server state
+    /// has been corrected before the retry.
+    FAILED_PRECONDITION = 9;
+
+    /// The request cannot be processed due to a rejected authentication
+    /// attempt. User consent or input is required before any retry.
+    FAILED_AUTHENTICATION = 10;
+
+    // This enumeration may expand to include additional statuses in the future.
+    // Examples are likely to include: MAX_LISTENERS, NO_SUITABLE_AUTHENTICATOR,
+    // INVALID_AUTH_PROVIDER,
+};
+
+/// Basic data about a system account. These data are available even while an
+/// account is locked.
+type AccountMetadata = table {
+    /// A human-readable name for the account. Account names are set by a human
+    /// and are not guaranteed to be meaningful or unique, even among the
+    /// accounts on a single device.
+    1: name string:MAX_NAME_SIZE;
+};
+
+/// A fuchsia component URI pointing to a component containing an authentication
+/// mechanism. It acts as a unique, stable identifier representing an
+/// authentication mechanism.
+// TODO(dnordstrom): Allow multiple authentication mechanisms in the same
+// component.
+alias AuthMechanismId = fuchsia.sys.component_url;
+
+/// Properties describing the authentication mechanism.
+type AuthMechanismProperties = struct {
+    /// A unique identifier for the authentication mechanism.
+    id AuthMechanismId;
+
+    /// If true, the authentication mechanism can be used for storage unlock.
+    storage_unlock bool;
+
+    // TODO(dnordstrom): Add more properties as they become useful to clients.
+};
+
+/// An identifier for an enrollment of an authentication mechanism. It is
+/// unique within an account and an authentication mechanism.
+alias AuthMechanismEnrollmentId = uint64;
+
+/// Metadata about an enrollment, such as a human readable name.
+type AuthMechanismEnrollmentMetadata = struct {
+    /// A unique identifier associated with the enrollment.
+    id AuthMechanismEnrollmentId;
+
+    /// A short text describing the enrollment, e.g. "right thumb" for a
+    /// fingerprint authenticator.
+    name string:MAX_NAME_SIZE;
+
+    // TODO(dnordstrom): Add field for date created.
+};

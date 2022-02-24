@@ -1,0 +1,226 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/component/config.gni")
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":rights_integration_test" ]
+}
+
+rustc_test("rights_integration_test_bin") {
+  name = "rights_integration_test"
+  edition = "2018"
+  source_root = "rights_integration_test.rs"
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/scoped_task",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/component_manager/testing:test_utils_lib",
+    "//src/sys/component_manager/tests/fidl:components-rustc",
+    "//third_party/rust_crates:anyhow",
+  ]
+
+  sources = [ "rights_integration_test.rs" ]
+}
+
+executable("expose_dir_rights_bin") {
+  output_name = "expose_dir_rights"
+  sources = [ "expose_dir_rights.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.io",
+    "//src/lib/storage/vfs/cpp",
+    "//src/storage/memfs:cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/svc",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+rustc_binary("use_dir_rights_bin") {
+  name = "use_dir_rights"
+  edition = "2018"
+  source_root = "use_dir_rights.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/component_manager/tests/fidl:components-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "use_dir_rights.rs" ]
+}
+
+rustc_binary("use_storage_bin") {
+  name = "use_storage"
+  edition = "2018"
+  source_root = "use_storage.rs"
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/component_manager/tests/fidl:components-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "use_storage.rs" ]
+}
+
+fuchsia_component("root_storage_offer_rights") {
+  testonly = true
+  manifest = "meta/root_storage_offer_rights.cml"
+}
+
+fuchsia_component("use_storage") {
+  testonly = true
+  deps = [ ":use_storage_bin" ]
+  manifest = "meta/use_storage.cml"
+}
+
+fuchsia_component("root_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_expose_intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_expose_intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_invalid_use_in_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_invalid_use_in_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_invalid_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_invalid_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_alias_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_alias_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_invalid_storage_offer_rights") {
+  testonly = true
+  manifest = "meta/root_invalid_storage_offer_rights.cml"
+}
+
+fuchsia_component("root_invalid_expose_intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_invalid_expose_intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_invalid_offer_intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_invalid_offer_intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("root_offer_intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/root_offer_intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("intermediate_expose_dir_rights") {
+  testonly = true
+  manifest = "meta/intermediate_expose_dir_rights.cml"
+}
+
+fuchsia_component("intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("invalid_intermediate_expose_dir_rights") {
+  testonly = true
+  manifest = "meta/invalid_intermediate_expose_dir_rights.cml"
+}
+
+fuchsia_component("invalid_intermediate_offer_dir_rights") {
+  testonly = true
+  manifest = "meta/invalid_intermediate_offer_dir_rights.cml"
+}
+
+fuchsia_component("expose_dir_rights") {
+  testonly = true
+  deps = [ ":expose_dir_rights_bin" ]
+  manifest = "meta/expose_dir_rights.cml"
+}
+
+fuchsia_component("use_dir_rights") {
+  testonly = true
+  deps = [ ":use_dir_rights_bin" ]
+  manifest = "meta/use_dir_rights.cml"
+}
+
+fuchsia_component("invalid_use_dir_rights") {
+  testonly = true
+  deps = [ ":use_dir_rights_bin" ]
+  manifest = "meta/invalid_use_dir_rights.cml"
+}
+
+component_config("component_manager_debug_config") {
+  sources = [ "rights_test_config.json5" ]
+}
+
+fuchsia_component("component_manager_for_rights_test") {
+  testonly = true
+  deps = [ "//src/sys/component_manager:bin" ]
+  manifest = "meta/component_manager_for_rights_test.cmx"
+}
+
+fuchsia_unittest_package("rights_integration_test") {
+  manifest = "meta/rights_integration_test.cmx"
+  deps = [
+    ":component_manager_debug_config",
+    ":component_manager_for_rights_test",
+    ":expose_dir_rights",
+    ":intermediate_expose_dir_rights",
+    ":intermediate_offer_dir_rights",
+    ":invalid_intermediate_expose_dir_rights",
+    ":invalid_intermediate_offer_dir_rights",
+    ":invalid_use_dir_rights",
+    ":rights_integration_test_bin",
+    ":root_alias_offer_dir_rights",
+    ":root_expose_intermediate_offer_dir_rights",
+    ":root_invalid_expose_intermediate_offer_dir_rights",
+    ":root_invalid_offer_dir_rights",
+    ":root_invalid_offer_intermediate_offer_dir_rights",
+    ":root_invalid_storage_offer_rights",
+    ":root_invalid_use_in_offer_dir_rights",
+    ":root_offer_dir_rights",
+    ":root_offer_intermediate_offer_dir_rights",
+    ":root_storage_offer_rights",
+    ":use_dir_rights",
+    ":use_storage",
+  ]
+}

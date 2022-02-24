@@ -1,0 +1,114 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/fidl/toolchain.gni")
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/host.gni")
+import("//build/testing/golden_test.gni")
+import("//tools/fidl/fidlc/testdata/info.gni")
+
+if (is_host) {
+  go_library("gopkg") {
+    name = "go.fuchsia.dev/fuchsia/tools/fidl/fidlgen_hlcpp/..."
+    deps = [
+      "//tools/fidl/lib/fidlgen",
+      "//tools/fidl/lib/fidlgen_cpp",
+    ]
+    sources = [
+      "codegen/codegen.go",
+      "codegen/header.tmpl",
+      "codegen/implementation.tmpl",
+      "codegen/natural_types_bits.tmpl",
+      "codegen/natural_types_const.tmpl",
+      "codegen/natural_types_enum.tmpl",
+      "codegen/natural_types_protocol.tmpl",
+      "codegen/natural_types_struct.tmpl",
+      "codegen/natural_types_table.tmpl",
+      "codegen/natural_types_union.tmpl",
+      "codegen/proxies_and_stubs_protocol.tmpl",
+      "codegen/proxies_and_stubs_service.tmpl",
+      "codegen/test_base.tmpl",
+      "main.go",
+    ]
+  }
+
+  go_binary("fidlgen_hlcpp") {
+    gopackage = "go.fuchsia.dev/fuchsia/tools/fidl/fidlgen_hlcpp"
+
+    sdk_category = "partner"
+    deps = [ ":gopkg" ]
+  }
+
+  # TODO(fxbug.dev/45483): Remove once all SDK customers are using HLCPP backend
+  # directly.
+  go_binary("fidlgen") {
+    gopackage = "go.fuchsia.dev/fuchsia/tools/fidl/fidlgen_hlcpp"
+
+    sdk_category = "partner"
+    deps = [ ":gopkg" ]
+  }
+
+  golden_test("fidlgen_hlcpp_golden_tests") {
+    goldens_dir = "goldens"
+    reformat_goldens_bin = "${clang_prefix}/clang-format"
+    reformat_goldens_args = [ "--style=google" ]
+    deps = []
+    entries = []
+    foreach(info, fidl_testdata_info) {
+      if (info.denylist + [ "fidlgen_hlcpp" ] - [ "fidlgen_hlcpp" ] ==
+          info.denylist) {
+        deps += [ "${info.target}_hlcpp_generate($fidl_toolchain)" ]
+        gen_dir = "${info.fidl_gen_dir}/${info.target_name}/hlcpp"
+        include_path = string_replace(info.library, ".", "/") + "/cpp"
+        entries += [
+          {
+            golden = "${info.name}.h.golden"
+            generated = "$gen_dir/$include_path/fidl.h"
+          },
+          {
+            golden = "${info.name}.cc.golden"
+            generated = "$gen_dir/$include_path/fidl.cc"
+          },
+          {
+            golden = "${info.name}_test_base.h.golden"
+            generated = "$gen_dir/$include_path/fidl_test_base.h"
+          },
+        ]
+      }
+    }
+  }
+}
+
+install_host_tools("host") {
+  deps = [ ":fidlgen_hlcpp" ]
+  outputs = [ "fidlgen_hlcpp" ]
+}
+
+group("goldens") {
+  testonly = true
+
+  denylist_key = "device_build_denylist"
+  if (is_host) {
+    denylist_key = "host_build_denylist"
+  }
+
+  deps = []
+  foreach(info, fidl_testdata_info) {
+    if (info[denylist_key] + [ "fidlgen_hlcpp" ] - [ "fidlgen_hlcpp" ] ==
+        info[denylist_key]) {
+      deps += [ "${info.target}_hlcpp" ]
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":fidlgen_hlcpp_golden_tests($host_toolchain)",
+    ":goldens",
+    ":goldens($host_toolchain)",
+  ]
+}

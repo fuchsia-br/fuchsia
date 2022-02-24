@@ -1,0 +1,337 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/cipd.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+
+declare_args() {
+  # Path to the amlogic decoder firmware file. Overrides the default in the build.
+  amlogic_decoder_firmware_path = ""
+}
+
+# These targets only compile for arm64.
+if (target_cpu == "arm64") {
+  group("amlogic_decoder") {
+    deps = [
+      ":amlogic_decoder_firmware",
+      ":amlogic_decoder_package",
+    ]
+  }
+
+  group("tests") {
+    testonly = true
+
+    deps = [
+      ":amlogic_decoder_firmware",
+      ":amlogic_decoder_test_package",
+      ":amlogic_video_bind_test",
+      ":test_amlogic_codec_factory_package",
+      "tests/runner:amlogic_decoder_integration_tests",
+      "tests/unit_tests:amlogic-decoder-unittest",
+    ]
+  }
+
+  driver_bind_rules("amlogic_video_bind") {
+    rules = "amlogic_video.bind"
+    header_output = "amlogic_video_bind.h"
+    tests = "bind_tests.json"
+    deps = [ "//src/devices/bind/fuchsia.amlogic.platform" ]
+  }
+
+  # Note: This target uses the same source as above, the only difference is the addition of
+  # `diasable_autobind = true`, and tests are omitted.
+  driver_bind_rules("amlogic_video_test_bind") {
+    rules = "amlogic_video.bind"
+    header_output = "amlogic_video_test_bind.h"
+    disable_autobind = true
+    deps = [ "//src/devices/bind/fuchsia.amlogic.platform" ]
+  }
+
+  fuchsia_driver("amlogic_video_decoder-driver") {
+    output_name = "amlogic_video_decoder"
+    deps = [
+      ":amlogic_video_bind",
+      ":sources",
+      ":test_support",
+      "//sdk/lib/syslog/cpp:backend_legacy",
+    ]
+
+    sources = [ "binding.c" ]
+  }
+
+  fuchsia_driver_component("amlogic_video_decoder") {
+    component_name = "amlogic_video_decoder"
+    deps = [ ":amlogic_video_decoder-driver" ]
+    info = "amlogic_video_decoder-info.json"
+    colocate = true
+  }
+
+  # This version of the driver runs tests on startup.
+  fuchsia_driver("amlogic_decoder_test-driver") {
+    output_name = "amlogic_video_decoder_test"
+
+    testonly = true
+
+    deps = [
+      ":amlogic_video_test_bind",
+      ":sources",
+      ":test_sources",
+      ":test_support",
+      "//sdk/fidl/fuchsia.hardware.mediacodec:fuchsia.hardware.mediacodec_llcpp",
+      "//sdk/lib/fdio",
+      "//sdk/lib/syslog/cpp:backend_legacy",
+    ]
+    sources = [
+      "test_binding.c",
+      "test_device_ctx.cc",
+    ]
+  }
+
+  fuchsia_driver_component("amlogic_decoder_test") {
+    testonly = true
+    component_name = "amlogic_video_decoder_test"
+    deps = [ ":amlogic_decoder_test-driver" ]
+    info = "amlogic_video_decoder_test-info.json"
+    colocate = true
+  }
+
+  config("sources_include_config") {
+    include_dirs = [ "." ]
+  }
+
+  source_set("test_support") {
+    deps = [
+      "//src/devices/lib/driver",
+      "//src/lib/ddk",
+    ]
+    sources = [ "tests/test_support.h" ]
+  }
+
+  source_set("sources") {
+    sources = [
+      # Driver structure:
+      "device_ctx.cc",
+      "device_ctx.h",
+      "driver_ctx.cc",
+      "driver_ctx.h",
+
+      # HW driving:
+      "amlogic-video.cc",
+      "amlogic-video.h",
+      "decoder_core.h",
+      "firmware_blob.cc",
+      "firmware_blob.h",
+      "h264_multi_decoder.cc",
+      "h264_multi_decoder.h",
+      "h264_utils.cc",
+      "h264_utils.h",
+      "hevcdec.cc",
+      "hevcdec.h",
+      "macros.h",
+      "mpeg12_decoder.cc",
+      "mpeg12_decoder.h",
+      "parser.cc",
+      "parser.h",
+      "pts_manager.cc",
+      "pts_manager.h",
+      "registers.h",
+      "secmem_session.cc",
+      "secmem_session.h",
+      "third_party/vp9_adapt_probs/vp9_coefficient_adaptation.c",
+      "thread_role.h",
+      "vdec1.cc",
+      "vdec1.h",
+      "video_decoder.cc",
+      "video_decoder.h",
+      "video_firmware_session.cc",
+      "video_firmware_session.h",
+      "video_frame.cc",
+      "video_frame.h",
+      "vp9_decoder.cc",
+      "vp9_decoder.h",
+      "vp9_utils.cc",
+      "vp9_utils.h",
+      "watchdog.cc",
+      "watchdog.h",
+
+      # CodecFactory+Codec interface handling:
+      "codec_adapter_h264_multi.cc",
+      "codec_adapter_h264_multi.h",
+      "codec_adapter_mpeg2.cc",
+      "codec_adapter_mpeg2.h",
+      "codec_adapter_vp9.cc",
+      "codec_adapter_vp9.h",
+      "device_fidl.cc",
+      "device_fidl.h",
+      "local_codec_factory.cc",
+      "local_codec_factory.h",
+    ]
+    public_deps = [
+      ":amlogic_video_test_bind_header",
+      "//sdk/banjo/fuchsia.hardware.amlogiccanvas:fuchsia.hardware.amlogiccanvas_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.clock:fuchsia.hardware.clock_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.tee:fuchsia.hardware.tee_banjo_cpp",
+      "//sdk/fidl/fuchsia.hardware.mediacodec:fuchsia.hardware.mediacodec_llcpp",
+      "//sdk/fidl/fuchsia.tee",
+      "//sdk/lib/fit",
+      "//sdk/lib/fit-promise",
+      "//src/devices/bus/lib/device-protocol-pdev",
+      "//src/devices/lib/driver",
+      "//src/devices/lib/mmio",
+      "//src/lib/ddk",
+      "//src/lib/ddktl",
+      "//src/media/lib/extend_bits",
+      "//src/media/lib/internal_buffer",
+      "//src/media/lib/memory_barriers",
+      "//src/media/lib/video_utils/h264:h264_parser",
+      "//src/security/tee/tee-client-api",
+      "//zircon/system/ulib/async:async-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/hwreg",
+      "//zircon/system/ulib/sync",
+      "//zircon/system/ulib/syslog",
+      "//zircon/system/ulib/trace:trace-driver",
+      "//zircon/system/ulib/zx",
+      "//zircon/third_party/ulib/safemath",
+    ]
+    deps = [
+      ":test_support",
+      "third_party/libvpx",
+      "//sdk/fidl/fuchsia.mediacodec",
+      "//sdk/lib/fdio",
+      "//sdk/lib/fidl/cpp",
+      "//src/lib/ddktl",
+      "//src/lib/fsl",
+      "//src/lib/metrics_buffer",
+      "//src/media/lib/codec_impl",
+    ]
+    public_configs = [ ":sources_include_config" ]
+    cflags = []
+
+    # TODO(fxb/58162): delete the below and fix compiler warnings
+    configs += [ "//build/config:Wno-conversion" ]
+  }
+
+  source_set("test_sources") {
+    testonly = true
+    deps = [
+      ":sources",
+      ":test_support",
+      "//sdk/fidl/fuchsia.mediacodec",
+      "//sdk/lib/syslog/cpp",
+      "//src/media/lib/codec_impl",
+      "//third_party/boringssl:crypto",
+      "//third_party/googletest:gtest",
+      "//zircon/system/ulib/mmio-ptr:mmio-ptr-fake",
+    ]
+    sources = [
+      "tests/integration/bear_h264_hashes.h",
+      "tests/integration/test_25fps_h264_hashes.h",
+      "tests/integration/test_25fps_vp9_hashes.h",
+      "tests/integration/test_amlogic_video.cc",
+      "tests/integration/test_frame_allocator.h",
+      "tests/integration/test_h264_multi.cc",
+      "tests/integration/test_mpeg2.cc",
+      "tests/integration/test_parser.cc",
+      "tests/integration/test_vp9.cc",
+      "tests/integration/video_frame_helpers.cc",
+      "tests/integration/video_frame_helpers.h",
+      "tests/test_basic_client.h",
+      "tests/test_support.cc",
+      "tests/test_support.h",
+      "tests/unit_tests/test_binding.cc",
+      "tests/unit_tests/test_pts_manager.cc",
+      "tests/unit_tests/test_vp9.cc",
+    ]
+
+    # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+    configs += [ "//build/config:Wno-conversion" ]
+  }
+
+  resource("test_files") {
+    sources = [
+      "//garnet/test_data/media/third_party/chromium_media_test_data/bear.h264",
+      "//garnet/test_data/media/third_party/chromium_media_test_data/red-green.h264",
+      "//garnet/test_data/media/third_party/chromium_media_test_data/test-25fps.h264",
+      "//garnet/test_data/media/third_party/chromium_media_test_data/test-25fps.vp9",
+      "//garnet/test_data/media/third_party/chromium_media_test_data/test-25fps.vp9_2",
+      "//garnet/test_data/media/third_party/chromium_media_test_data_downstream/bear.mpeg2",
+    ]
+    outputs = [ "lib/firmware/video_test_data/{{source_file_part}}" ]
+  }
+
+  # internal access is needed to get the firmware from the default path.
+  _has_decoder_firmware =
+      target_cpu == "arm64" &&
+      (internal_access || amlogic_decoder_firmware_path != "")
+
+  if (_has_decoder_firmware) {
+    resource("decoder_firmware") {
+      if (amlogic_decoder_firmware_path != "") {
+        sources = [ amlogic_decoder_firmware_path ]
+      } else {
+        sources =
+            [ "//prebuilt/media/firmware/amlogic-decoder/video_ucode.bin" ]
+      }
+      outputs = [ "lib/firmware/amlogic_video_ucode.bin" ]
+    }
+  }
+
+  fuchsia_system_package("amlogic_decoder_firmware") {
+    if (_has_decoder_firmware) {
+      deps = [ ":decoder_firmware" ]
+    }
+  }
+
+  fuchsia_system_package("amlogic_decoder_package") {
+    if (_has_decoder_firmware) {
+      deps = [ ":amlogic_video_decoder" ]
+    }
+  }
+
+  fuchsia_system_package("amlogic_decoder_test_package") {
+    if (_has_decoder_firmware) {
+      testonly = true
+
+      deps = [
+        ":amlogic_decoder_test",
+        ":test_files",
+      ]
+    }
+  }
+
+  #
+  # Manual tests
+  #
+
+  executable("test_amlogic_codec_factory") {
+    testonly = true
+    sources = [ "tests/manual/test_amlogic_codec_factory.cc" ]
+    deps = [
+      "//sdk/fidl/fuchsia.mediacodec",
+      "//sdk/lib/sys/cpp",
+      "//src/sys/testing/elftest",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+    ]
+  }
+
+  fuchsia_unittest_package("test_amlogic_codec_factory_package") {
+    if (target_cpu == "arm64") {
+      deps = [ ":test_amlogic_codec_factory" ]
+      test_specs = {
+        environments = [
+          # Manual only test; uncomment out to use `fx test`
+          #astro_env
+        ]
+      }
+    }
+  }
+}

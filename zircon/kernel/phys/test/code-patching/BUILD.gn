@@ -1,0 +1,95 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/testing/zbi_test.gni")
+import("//build/zbi/zbi_input.gni")
+import("//zircon/kernel/kernel_package.gni")
+import("//zircon/kernel/lib/code-patching/code-patching.gni")
+import("//zircon/kernel/phys/zbi_executable.gni")
+
+code_patching_hermetic_alternative("multiply_by_two") {
+  testonly = true
+  visibility = [ ":*" ]
+  sources = [ "multiply_by_two.S" ]
+  deps = [ "//zircon/kernel/lib/arch:headers" ]
+}
+
+code_patching_hermetic_alternative("multiply_by_ten") {
+  testonly = true
+  visibility = [ ":*" ]
+  sources = [ "multiply_by_ten.S" ]
+  deps = [ "//zircon/kernel/lib/arch:headers" ]
+}
+
+code_patching_hermetic_stub("multiply_by_factor") {
+  case_id_header = "test.h"
+  testonly = true
+  visibility = [ ":*" ]
+  deps = [
+    ":multiply_by_ten",
+    ":multiply_by_two",
+  ]
+  include_dirs = [ "." ]
+}
+
+zbi_executable("zbi-code-patching-test.executable") {
+  testonly = true
+  sources = [
+    "add-one.S",
+    "test.cc",
+  ]
+
+  deps = [
+    ":multiply_by_factor",
+    "..:zbi-test-main",
+    "//zircon/kernel/lib/code-patching",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/libc",
+    "//zircon/kernel/phys:allocation",
+    "//zircon/kernel/phys:zbi-memory",
+    "//zircon/kernel/phys:zbitl-allocation",
+    "//zircon/kernel/phys/lib/memalloc",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zbitl",
+  ]
+
+  include_dirs = [ "." ]
+}
+
+code_patches("code-patches") {
+  testonly = true
+  deps = [ ":zbi-code-patching-test.executable" ]
+}
+
+# We use a kernel package to transport code-patches.bin and the patch
+# alternatives, as that is how they will be transported in production.
+kernel_package("code-patches-test") {
+  testonly = true
+  deps = [
+    ":code-patches",
+    ":multiply_by_ten",
+    ":multiply_by_two",
+  ]
+}
+
+zbi_test("zbi-code-patching-test") {
+  args = []
+  deps = [
+    ":code-patches-test",
+    ":zbi-code-patching-test.executable",
+  ]
+
+  # TODO(mcgrathr): enable on hardware too
+  device_types = [
+    "AEMU",
+    "QEMU",
+  ]
+}
+
+group("code-patching") {
+  testonly = true
+  deps = [ ":zbi-code-patching-test" ]
+}

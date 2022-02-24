@@ -1,0 +1,273 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("forensics") {
+  testonly = true
+
+  deps = [
+    ":pkg",
+    ":tests",
+    "crasher",
+    "snapshot",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "crash_reports/tests",
+    "exceptions/tests",
+    "feedback:tests",
+    "feedback_data/system_log_recorder/tests",
+    "feedback_data/tests",
+    "last_reboot/tests",
+    "snapshot/tests",
+    "utils/tests",
+  ]
+}
+
+group("infra_configs") {
+  deps = [ ":crash_reports_upload_to_prod_server_config" ]
+}
+
+group("userdebug_configs") {
+  deps = [ ":crash_reports_userdebug_config" ]
+}
+
+group("user_configs") {
+  deps = [
+    ":crash_reports_user_config",
+    ":feedback_data_limit_inspect_data",
+  ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+# We use a template to keep the real and copy packages in sync.
+template("forensics_package") {
+  fuchsia_package(target_name) {
+    package_name = invoker.package_name
+
+    deps = [
+      ":crash_reports",
+      ":exceptions",
+      ":exceptions_v1",
+      ":feedback",
+      ":feedback_data",
+      ":feedback_v1",
+      ":last_reboot",
+    ]
+  }
+}
+
+# The real package.
+forensics_package("pkg") {
+  package_name = "forensics"
+}
+
+# A copy package for integration test purposes to make sure that:
+# * all the components used in the test are updated ephemerally, even if the real package
+#   is a base package.
+# * any config_data() for the real package does not impact any component used in the test.
+forensics_package("copy-pkg") {
+  package_name = "copy-forensics"
+}
+
+# A copy package for integration test purposes where we want a valid override config_data()
+# for crash_reports that only affects that copy package.
+forensics_package("copy-pkg-valid-crash-reports-override-config") {
+  package_name = "copy-forensics-valid-crash-reports-override-config"
+}
+
+# A copy package for integration test purposes where we want an invalid override config_data()
+# for crash_reports that only affects that copy package.
+forensics_package("copy-pkg-invalid-crash-reports-override-config") {
+  package_name = "copy-forensics-invalid-crash-reports-override-config"
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_component("crash_reports") {
+  manifest = "crash_reports/meta/crash_reports.cmx"
+
+  deps = [
+    ":crash_reports_default_config",
+    ":crash_reports_exe",
+  ]
+}
+
+fuchsia_component("exceptions") {
+  manifest = "exceptions/meta/exceptions.cml"
+
+  deps = [
+    ":exception_handler_exe",
+    ":exceptions_exe",
+  ]
+}
+
+# Needed for integration tests.
+fuchsia_component("exceptions_v1") {
+  manifest = "exceptions/meta/exceptions.cmx"
+
+  component_name = "exceptions"
+
+  deps = [
+    ":exception_handler_exe",
+    ":exceptions_exe",
+  ]
+}
+
+# Needed for integration tests.
+fuchsia_component("feedback_v1") {
+  manifest = "feedback/meta/feedback.cmx"
+
+  component_name = "feedback"
+
+  deps = [ ":feedback_exe" ]
+}
+
+fuchsia_component("feedback") {
+  manifest = "feedback/meta/feedback.cml"
+
+  deps = [ ":feedback_exe" ]
+}
+
+fuchsia_component("feedback_data") {
+  manifest = "feedback_data/meta/feedback_data.cmx"
+
+  deps = [
+    ":feedback_data_config",
+    ":feedback_data_exe",
+    ":system_log_recorder_exe",
+  ]
+}
+
+fuchsia_component("last_reboot") {
+  manifest = "last_reboot/meta/last_reboot.cml"
+
+  deps = [ ":last_reboot_exe" ]
+}
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+# We use a template to have multiple copies of the same binary named differently.
+template("forensics_unified_binary") {
+  executable(target_name) {
+    output_name = invoker.output_name
+
+    sources = [ "unified_binary.cc" ]
+
+    deps = [
+      "crash_reports:main",
+      "exceptions:main",
+      "exceptions/handler:main",
+      "feedback:main",
+      "feedback_data:main",
+      "feedback_data/system_log_recorder:main",
+      "last_reboot:main",
+      "//sdk/lib/syslog/cpp",
+    ]
+  }
+}
+
+forensics_unified_binary("crash_reports_exe") {
+  output_name = "crash_reports"
+}
+
+forensics_unified_binary("exceptions_exe") {
+  output_name = "exceptions"
+}
+
+forensics_unified_binary("exception_handler_exe") {
+  output_name = "exception_handler"
+}
+
+forensics_unified_binary("feedback_exe") {
+  output_name = "feedback"
+}
+
+forensics_unified_binary("feedback_data_exe") {
+  output_name = "feedback_data"
+}
+
+forensics_unified_binary("last_reboot_exe") {
+  output_name = "last_reboot"
+}
+
+forensics_unified_binary("system_log_recorder_exe") {
+  output_name = "system_log_recorder"
+}
+
+###############################################################################
+# CONFIGS
+###############################################################################
+resource("crash_reports_default_config") {
+  sources = [ "crash_reports/configs/default.json" ]
+
+  outputs = [ "data/crash_reports/default_config.json" ]
+}
+
+config_data("crash_reports_user_config") {
+  for_pkg = "forensics"
+
+  sources = [ "crash_reports/configs/user.json" ]
+
+  outputs = [ "crash_reports/override_config.json" ]
+}
+
+config_data("crash_reports_userdebug_config") {
+  for_pkg = "forensics"
+
+  sources = [ "crash_reports/configs/userdebug.json" ]
+
+  outputs = [ "crash_reports/override_config.json" ]
+}
+
+config_data("crash_reports_upload_to_prod_server_config") {
+  for_pkg = "forensics"
+
+  sources = [ "crash_reports/configs/upload_to_prod_server.json" ]
+
+  outputs = [ "crash_reports/override_config.json" ]
+}
+
+resource("feedback_data_config") {
+  sources = [ "feedback_data/configs/default.json" ]
+
+  outputs = [ "data/feedback_data/config.json" ]
+}
+
+config_data("feedback_data_limit_inspect_data") {
+  for_pkg = "forensics"
+
+  sources = [ "feedback_data/configs/limit_inspect_data" ]
+
+  outputs = [ "feedback_data/limit_inspect_data" ]
+}
+
+config_data("feedback_remote_device_id_provider") {
+  for_pkg = "forensics"
+
+  sources = [ "feedback/configs/remote_device_id_provider" ]
+
+  outputs = [ "feedback/remote_device_id_provider" ]
+}
+
+config_data("exceptions_enable_jitd_on_startup") {
+  for_pkg = "forensics"
+
+  sources = [ "exceptions/configs/jitd_on_startup.json" ]
+
+  outputs = [ "exceptions/enable_jitd_on_startup.json" ]
+}

@@ -1,0 +1,55 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+import("//build/rust/rustc_binary.gni")
+
+group("component_manager_config") {
+  testonly = true
+
+  public_deps = [ ":install" ]
+}
+
+group("tests") {
+  testonly = true
+
+  public_deps = [ ":generate_config_bin_test($host_toolchain)" ]
+}
+
+install_host_tools("install") {
+  deps = [ ":generate_config_bin($host_toolchain)" ]
+  outputs = [ "generate_config" ]
+}
+
+if (is_host) {
+  rustc_binary("generate_config_bin") {
+    name = "generate_config"
+    with_unit_tests = true
+    edition = "2018"
+    deps = [
+      "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+      "//sdk/fidl/fuchsia.component.internal:fuchsia.component.internal-rustc",
+      "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+      "//sdk/fidl/fuchsia.sys2:fuchsia.sys2-rustc",
+      "//src/lib/fidl/rust/fidl",
+      "//src/sys/lib/cm_types",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:serde",
+      "//third_party/rust_crates:serde_json",
+      "//third_party/rust_crates:serde_json5",
+      "//tools/lib/cml",
+    ]
+
+    test_deps = [
+      "//third_party/rust_crates:assert_matches",
+      "//third_party/rust_crates:tempfile",
+    ]
+
+    sources = [
+      "src/compile.rs",
+      "src/main.rs",
+    ]
+  }
+}

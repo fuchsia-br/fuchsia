@@ -1,0 +1,143 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":process-builder-tests" ]
+}
+
+rustc_library("process_builder") {
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.ldsvc:fuchsia.ldsvc-rustc",
+    "//sdk/fidl/fuchsia.process:fuchsia.process-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/zerocopy",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:bitflags",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:owning_ref",
+    "//third_party/rust_crates:static_assertions",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  # Test-only deps. Prefer adding deps used only in tests here instead of
+  # above, which has the benefit of keeping unneeded deps out of the production
+  # library and allows depending on 'testonly' targets.
+  test_deps = [
+    ":test-util-fidl-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//third_party/rust_crates:assert_matches",
+  ]
+
+  sources = [
+    "src/elf_load.rs",
+    "src/elf_parse.rs",
+    "src/lib.rs",
+    "src/processargs.rs",
+    "src/util.rs",
+  ]
+
+  inputs = [
+    "test/elf_aarch64_file-header.bin",
+    "test/elf_x86-64_file-header.bin",
+  ]
+}
+
+rustc_binary("root_job_test_runner") {
+  testonly = true
+  edition = "2018"
+  source_root = "root_job_test_runner/main.rs"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/testing/fidl:placeholders-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "root_job_test_runner/main.rs" ]
+}
+
+fidl("test-util-fidl") {
+  testonly = true
+  name = "test.processbuilder"
+
+  sources = [ "test_util.test.fidl" ]
+}
+
+rustc_binary("test_util") {
+  testonly = true
+  name = "process_builder_test_util"
+  edition = "2018"
+  source_root = "test/test_util.rs"
+
+  deps = [
+    ":test-util-fidl-rustc",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "test/test_util.rs" ]
+}
+
+# This is used to test the library's handling of statically linked PIE
+# executables.  Warning: Don't copy this unless you know what you're doing.
+executable("static_pie_test_util") {
+  testonly = true
+
+  # TODO(fxbug.dev/60072): Support syslog backend here.
+  disable_syslog_backend = true
+
+  sources = [ "test/static_pie_test_util.c" ]
+  configs += [
+    "//build/config/fuchsia:no_cpp_standard_library",
+    "//build/config/fuchsia:static-pie-config",
+  ]
+
+  exclude_toolchain_tags = [ "instrumented" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("process-builder-tests") {
+  manifest = "meta/process-builder-tests.cmx"
+  deps = [
+    ":process_builder_test",
+    ":root_job_test_runner",
+    ":static_pie_test_util",
+    ":test_util",
+  ]
+}

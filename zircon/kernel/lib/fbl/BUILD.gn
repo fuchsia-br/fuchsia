@@ -1,0 +1,41 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("fbl") {
+  sources = [ "arena.cc" ]
+  deps = [
+    ":tests",
+    "//sdk/lib/fit",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/vm:headers",
+    "//zircon/system/ulib/fbl",
+  ]
+  public_deps = [
+    # <fbl/gparena.h> has #include <lib/fit/defer.h>
+    "//sdk/lib/fit:headers",
+    "//zircon/system/ulib/fbl:headers",
+
+    # <include/fbl/arena.h> has #include <ktl/forward.h>.
+    "//zircon/kernel/lib/ktl:headers",
+  ]
+}
+
+source_set("tests") {
+  #TODO: testonly = true
+  visibility = [ ":*" ]
+  sources = [
+    "arena_tests.cc",
+    "gparena_tests.cc",
+    "name_tests.cc",
+  ]
+
+  deps = [
+    ":headers",
+    "//zircon/kernel/lib/unittest",
+  ]
+}

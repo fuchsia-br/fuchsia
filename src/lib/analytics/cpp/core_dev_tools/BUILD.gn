@@ -1,0 +1,122 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+
+source_set("testable_internals") {
+  visibility = [ ":*" ]
+  sources = [
+    "environment_status.cc",
+    "environment_status.h",
+    "persistent_status.cc",
+    "persistent_status.h",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/analytics/cpp/metric_properties",
+    "//src/lib/uuid",
+  ]
+}
+
+static_library("core_dev_tools") {
+  public = [
+    "analytics.h",
+    "analytics_executor.h",
+    "command_line_options.h",
+    "general_parameters.h",
+    "google_analytics_client.h",
+    "system_info.h",
+    "user_agent.h",
+  ]
+
+  sources = [
+    "analytics.h",
+    "analytics_executor.cc",
+    "analytics_executor.h",
+    "analytics_internal.cc",
+    "analytics_internal.h",
+    "analytics_messages.cc",
+    "analytics_messages.h",
+    "analytics_status.h",
+    "command_line_options.cc",
+    "command_line_options.h",
+    "general_parameters.cc",
+    "general_parameters.h",
+    "google_analytics_client.cc",
+    "google_analytics_client.h",
+    "system_info.cc",
+    "system_info.h",
+    "user_agent.cc",
+    "user_agent.h",
+  ]
+
+  deps = [
+    ":testable_internals",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/debug/shared",
+    "//src/developer/debug/zxdb/common",
+    "//src/lib/analytics/cpp/google_analytics",
+    "//src/lib/fxl",
+  ]
+
+  public_deps = [ "//zircon/system/ulib/cmdline" ]
+}
+
+test("unittests") {
+  output_name = "analytics_cpp_core_dev_tools_unittests"
+  sources = [
+    "environment_status_unittest.cc",
+    "persistent_status_unittest.cc",
+    "user_agent_unittest.cc",
+  ]
+
+  deps = [
+    ":core_dev_tools",
+    ":testable_internals",
+    "//src/lib/analytics/cpp/metric_properties",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/uuid",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+test("system_info_manualtest") {
+  output_name = "analytics_cpp_core_dev_tools_system_info_manualtest"
+  sources = [ "system_info_manualtest.cc" ]
+  deps = [ ":core_dev_tools" ]
+}
+
+test("analytics_executor_manualtest") {
+  output_name = "analytics_cpp_core_dev_tools_analytics_executor_manualtest"
+  sources = [ "analytics_executor_manualtest.cc" ]
+  deps = [
+    ":core_dev_tools",
+    "//src/developer/debug/shared",
+    "//src/lib/fxl",
+  ]
+}
+
+test("google_analytics_client_manualtest") {
+  output_name =
+      "analytics_cpp_core_dev_tools_google_analytics_client_manualtest"
+  sources = [ "google_analytics_client_manualtest.cc" ]
+  deps = [
+    ":core_dev_tools",
+    "//src/developer/debug/shared",
+    "//src/lib/fxl",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":analytics_executor_manualtest",
+    ":google_analytics_client_manualtest",
+    ":system_info_manualtest",
+    ":unittests",
+  ]
+}

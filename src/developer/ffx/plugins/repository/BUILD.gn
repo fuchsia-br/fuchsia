@@ -1,0 +1,23 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_repository") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  config_data = [ "data/config.json" ]
+
+  plugin_deps = [
+    "add-from-pm:ffx_repository_add_from_pm",
+    "default:ffx_repository_default",
+    "list:ffx_repository_list",
+    "packages:ffx_repository_packages",
+    "remove:ffx_repository_remove",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+}

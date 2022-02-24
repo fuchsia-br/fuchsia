@@ -1,0 +1,23 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("gfx") {
+  sdk = "source"
+  sdk_headers = [ "gfx/gfx.h" ]
+
+  if (is_efi_toolchain) {
+    sources = []
+  } else {
+    sources = [ "gfx.c" ]
+    deps = [ "//src/zircon/lib/zircon" ]
+    public_deps = [ "//zircon/system/ulib/gfx-common" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "test:tests" ]
+}

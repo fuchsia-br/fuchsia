@@ -1,0 +1,46 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("fidl-fuchsia-update-ext") {
+  version = "0.0.1"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.update:fuchsia.update-rustc",
+    "//src/sys/pkg/lib/event-queue",
+    "//third_party/rust_crates:proptest",
+    "//third_party/rust_crates:proptest-derive",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/lib.rs",
+    "src/types.rs",
+  ]
+
+  if (is_fuchsia) {
+    deps += [
+      "//src/lib/zircon/rust:fuchsia-zircon",
+      "//third_party/rust_crates:anyhow",
+    ]
+    sources += [ "src/commit.rs" ]
+    test_deps = [
+      "//src/lib/fidl/rust/fidl",
+      "//src/lib/fuchsia-async",
+    ]
+  }
+}
+
+fuchsia_unittest_package("fidl-fuchsia-update-ext-tests") {
+  deps = [ ":fidl-fuchsia-update-ext_test" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":fidl-fuchsia-update-ext-tests" ]
+}

@@ -1,0 +1,25 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/visibility_reporter",
+    },
+    children: [
+        {
+            name: "child",
+            url: "fuchsia-pkg://fuchsia.com/hub_integration_test#meta/child.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.test.hub.HubReport",
+            from: "framework",
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+        },
+    ],
+}

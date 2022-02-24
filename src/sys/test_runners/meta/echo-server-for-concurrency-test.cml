@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/echo_server_for_concurrency_test",
+    },
+    capabilities: [
+        { protocol: "fidl.examples.routing.echo.Echo" },
+    ],
+    expose: [
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,60 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("battery_cli_bin") {
+  name = "battery_cli"
+  with_unit_tests = true
+  edition = "2018"
+  deps = [
+    "//sdk/fidl/fuchsia.power:fuchsia.power-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power.test-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:pin-utils",
+    "//third_party/rust_crates/compat/rustyline",
+  ]
+
+  sources = [
+    "src/commands.rs",
+    "src/main.rs",
+  ]
+}
+
+# Shell components
+fuchsia_shell_package("battery-cli") {
+  deps = [ ":battery_cli_bin" ]
+}
+
+# Test components
+fuchsia_component("battery_cli_test_driver") {
+  testonly = true
+  manifest = "meta/battery_cli_test_driver.cml"
+  deps = [ ":battery_cli_bin_test" ]
+}
+
+fuchsia_component("battery_cli_tests") {
+  testonly = true
+  component_name = "battery_cli_tests"
+  manifest = "meta/battery_cli_tests.cml"
+}
+
+fuchsia_test_package("battery-cli-tests") {
+  package_deps_for_infra_only =
+      [ "//src/power/battery-manager:battery-manager" ]
+  test_components = [ ":battery_cli_tests" ]
+  deps = [ ":battery_cli_test_driver" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":battery-cli-tests" ]
+}

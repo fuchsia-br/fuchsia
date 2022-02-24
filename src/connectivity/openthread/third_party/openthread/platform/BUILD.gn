@@ -1,0 +1,54 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//third_party/openthread/openthread_upstream_version.gni")
+
+source_set("platform") {
+  sources = [
+    "alarm.cc",
+    "alarm.h",
+    "bootstrap_fidl_impl.cc",
+    "bootstrap_fidl_impl.h",
+    "entropy.cc",
+    "fuchsia_platform_alarm.cc",
+    "infra_if.cc",
+    "infra_if.h",
+    "logging.cc",
+    "main.cc",
+    "misc.cc",
+    "misc.h",
+    "ncp_fidl.cc",
+    "ncp_fidl.h",
+    "radio.cc",
+    "radio.h",
+    "settings.cc",
+    "spinel_fidl_interface.cc",
+    "spinel_fidl_interface.h",
+    "system.cc",
+    "thread_config_manager.cc",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.lowpan.bootstrap:fuchsia.lowpan.bootstrap_llcpp",
+    "//sdk/fidl/fuchsia.net",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.net.routes",
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/connectivity/openthread/lib/ot-stack:ot-stack-callback",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/lib/json_parser",
+    "//third_party/modp_b64",
+    "//third_party/openthread:lib-ot-core",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/svc",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [ "//third_party/openthread:lib-ot-core" ]
+}

@@ -1,0 +1,68 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+import("//build/zircon/zx_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":watchdog-unittest" ]
+}
+
+test("watchdog_unittest") {
+  testonly = true
+  sources = [ "watchdog_test.cc" ]
+  deps = [
+    "//src/lib/storage/vfs/cpp",
+    "//src/storage/lib/watchdog",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/syslog",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  include_dirs = [ ".." ]
+}
+
+bootfs_test("watchdog-unit-bootfs-test") {
+  name = "watchdog-unittest"
+  deps = [ ":watchdog-unittest" ]
+}
+
+fuchsia_unittest_package("watchdog-unittest") {
+  deps = [ ":watchdog_unittest" ]
+}
+
+zx_library("watchdog") {
+  sdk = "source"
+  sdk_headers = [
+    "lib/watchdog/watchdog.h",
+    "lib/watchdog/operations.h",
+  ]
+  deps = [
+    "//sdk/lib/fit",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  if (is_fuchsia) {
+    sources = [ "watchdog.cc" ]
+    public_deps = [
+      "//zircon/system/ulib/fzl",
+      "//zircon/system/ulib/syslog",
+      "//zircon/system/ulib/zx",
+    ]
+    deps += [
+      "//sdk/lib/fdio",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/inspector",
+    ]
+  } else {
+    sources = [ "watchdog_host.cc" ]
+  }
+}

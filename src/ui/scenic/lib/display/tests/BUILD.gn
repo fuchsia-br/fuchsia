@@ -1,0 +1,39 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+
+  public_deps = [ ":unittests" ]
+}
+
+executable("unittests") {
+  output_name = "display_unittests"
+  testonly = true
+  sources = [
+    "display_controller_listener_unittest.cc",
+    "display_controller_unittest.cc",
+    "display_manager2_unittest.cc",
+    "display_manager_unittest.cc",
+  ]
+  deps = [
+    ":mocks",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture:gtest",
+    "//src/ui/scenic/lib/display",
+  ]
+}
+
+source_set("mocks") {
+  testonly = true
+  sources = [
+    "mock_display_controller.cc",
+    "mock_display_controller.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.display",
+    "//src/lib/fsl",
+    "//src/ui/scenic/lib/display",
+  ]
+}

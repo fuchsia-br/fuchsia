@@ -1,0 +1,168 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.wlan.associnfo;
+
+using ddk.hw.wlan.ieee80211;
+using fuchsia.wlan.common;
+using fuchsia.wlan.ieee80211 as ieee80211;
+
+// LINT.IfChange
+type WlanKeyType = strict enum : uint8 {
+    PAIRWISE = 1;
+    GROUP = 2;
+    IGTK = 3;
+    PEER = 4;
+};
+// LINT.ThenChange(//src/connectivity/wlan/lib/mlme/rust/src/key.rs)
+
+// IEEE Std 802.11-2016, 9.4.2.57
+@packed
+type WlanHtOp = struct {
+    primary_channel uint8;
+
+    /// First 8 bits of HT Operation:
+    /// - Secondary Channel Offset: 2 bits
+    /// - STA Channel Width: 1 bit
+    /// - RIFS Mode: 1 bit
+    /// - Reserved: 4 bits
+    /// - HT Protection: 2 bits
+    /// - Nongreenfield HT STAs Present: 1 bit
+    /// - Reserved: 1 bit
+    /// - OBSS Non-HT STAs Present: 1 bit
+    /// - Channel Center Frequency Segment 2: 8 bits (spec says "11 bits": that can't be correct)
+    /// - Reserved: 3 bits (spec says "2 bits": can't be correct either)
+    /// - Reserved: 6 bits
+    /// - Dual Beacon: 1 bit
+    /// - Dual CTS Protection: 1 bit
+    head uint32;
+
+    /// Next 8 bits of HT Operation:
+    /// - STBC Beacon: 1 bit
+    /// - L-SIG TXOP Protection Full Support: 1 bit
+    /// - PCO Active: 1 bit
+    /// - PCO Phase: 1 bit
+    /// - Reserved: 4 bits
+    tail uint8;
+
+    rx_mcs_head uint64;
+    rx_mcs_tail uint32;
+    tx_mcs uint32;
+};
+
+@packed
+type WlanVhtOp = struct {
+    vht_cbw uint8;
+    center_freq_seg0 uint8;
+    center_freq_seg1 uint8;
+    basic_mcs uint16;
+};
+
+type WlanRxInfoValid = strict enum : uint32 {
+    /// Bits 6-31 reserved
+    PHY = 0x1;
+    DATA_RATE = 0x2;
+    CHAN_WIDTH = 0x4;
+    MCS = 0x8;
+    RSSI = 0x10;
+    SNR = 0x20;
+};
+
+/// Guard Interval
+type WlanGi = strict enum : uint8 {
+    /// all 802.11 phy
+    G_800NS = 0x1;
+    /// 802.11n/ac
+    G_400NS = 0x2;
+    /// 802.11n/ac
+    G_200NS = 0x4;
+    /// 802.11ax
+    G_3200NS = 0x10;
+    /// 802.11ax
+    G_1600NS = 0x20;
+};
+
+// Temporarily redeclare above with old names to transition.
+const WLAN_GI__800NS uint8 = 0x1;
+const WLAN_GI__400NS uint8 = 0x2;
+const WLAN_GI__200NS uint8 = 0x4;
+const WLAN_GI__3200NS uint8 = 0x10;
+const WLAN_GI__1600NS uint8 = 0x20;
+
+/// Access category
+/// WFA WMM v1.2, 2.2.2 Table 6
+type WlanAc = strict enum {
+    BACKGROUND = 1;
+    BEST_EFFORT = 2;
+    VIDEO = 3;
+    VOICE = 4;
+};
+
+type WlanWmmParams = struct {
+    apsd bool;
+    ac_be_params WlanWmmAcParams;
+    ac_bk_params WlanWmmAcParams;
+    ac_vi_params WlanWmmAcParams;
+    ac_vo_params WlanWmmAcParams;
+};
+
+/// WFA WMM v1.2, 2.2.2
+type WlanWmmAcParams = struct {
+    /// Lower bound of contention window in exponential form
+    /// `cw_min = 2^(ecw_min) - 1`. The unit for contention window is "slot time", which
+    /// is different for each standard (e.g. 9 microseconds, 13 microseconds, etc.)
+    ecw_min uint8;
+    /// Upper bound of contention window in exponential form
+    /// `cw_max = 2^(ecw_max) - 1`. The unit for contention window is "slot time", which
+    /// is different for each standard (e.g. 9 microseconds, 13 microseconds, etc.)
+    ecw_max uint8;
+    /// Arbitration Interframe Spacing Number (control wait time between sending each frame)
+    aifsn uint8;
+    /// TXOP limit in unit of 32 microseconds
+    txop_limit uint16;
+    /// Whether admission control is mandatory
+    acm bool;
+};
+
+/// Information defined only within a context of association
+/// Beware the subtle interpretation of each field: they are designed to
+/// reflect the parameters safe to use within an association
+/// Many parameters do not distinguish Rx capability from Tx capability.
+/// In those cases, a capability is commonly applied to both Rx and Tx.
+/// Some parameters are distinctively for Rx only, and some are Tx only.
+const WLAN_MAC_MAX_SUPP_RATES uint32 = 8;
+const WLAN_MAC_MAX_EXT_RATES uint32 = 255;
+const WLAN_MAC_MAX_RATES uint32 = 263; // (8 + 255)
+type WlanAssocCtx = struct {
+    bssid ieee80211.MacAddr;
+    aid uint16;
+    listen_interval uint16;
+    channel fuchsia.wlan.common.WlanChannel;
+
+    /// QoS capable and parameters
+    qos bool;
+    /// WFA WMM v1.2, 2.2.2
+    wmm_params WlanWmmParams;
+
+    /// Coincatenation of SupportedRates and ExtendedSupportedRates
+    /// IEEE Std 802.11-2016, 9.4.2.3 & 9.4.2.13
+    rates_cnt uint16;
+    rates array<uint8, WLAN_MAC_MAX_RATES>;
+
+    /// IEEE Std 802.11-2016, 9.4.1.4
+    capability_info uint16;
+
+    /// IEEE Std 802.11-2016, 9.4.2.56, 57
+    /// Rx MCS Bitmask in Supported MCS Set field represents the set of MCS
+    /// the peer can receive at from this device, considering this device's Tx capability.
+    has_ht_cap bool;
+    ht_cap ddk.hw.wlan.ieee80211.Ieee80211HtCapabilities;
+    has_ht_op bool;
+    ht_op WlanHtOp;
+
+    /// IEEE Std 802.11-2016, 9.4.2.158, 159
+    has_vht_cap bool;
+    vht_cap ddk.hw.wlan.ieee80211.Ieee80211VhtCapabilities;
+    has_vht_op bool;
+    vht_op WlanVhtOp;
+};

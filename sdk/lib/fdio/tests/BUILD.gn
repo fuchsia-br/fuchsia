@@ -1,0 +1,193 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+fuchsia_unittest_component("fdio-gtest-component") {
+  deps = [ ":fdio-gtest" ]
+}
+
+fuchsia_unittest_component("fdio-zxtest-component") {
+  manifest = "meta/fdio_test.cmx"
+  deps = [
+    ":accept-child",
+    ":chroot-child",
+    ":fdio-test",
+    ":hello-world",
+    ":null-namespace-child",
+  ]
+}
+
+fuchsia_unittest_component("cleanpath-tests-component") {
+  deps = [ ":cleanpath-tests" ]
+}
+
+fuchsia_test_package("fdio-unittest-package") {
+  test_components = [
+    ":cleanpath-tests-component",
+    ":fdio-gtest-component",
+    ":fdio-zxtest-component",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    # We build the chroot-child binary for host to make it easier to experiment with host
+    # behavior of chroot. Unfortunately, we cannot test host chroot behavior automatically
+    # because calling chroot requires root (or other) privileges that we lack in our host
+    # test environment.
+    ":chroot-child($host_toolchain)",
+    ":cleanpath-tests",
+    ":fdio-unittest-package",
+    "constructors:tests",
+    "getaddrinfo:tests",
+  ]
+  if (host_os == "linux") {
+    deps += [
+      ":fdio-gtest($host_toolchain)",
+      ":fdio-test($host_toolchain)",
+    ]
+  }
+}
+
+test("fdio-test") {
+  configs += [ "//build/config:all_source" ]
+
+  # FDIO tests that can run on host as well as target.
+  sources = [
+    "eventfd.cc",
+    "fdio_inotify.cc",
+    "fdio_lock.cc",
+    "fdio_mmap.cc",
+    "fdio_poll.cc",
+    "fdio_rmdir.cc",
+    "fdio_select.cc",
+    "fdio_timerfd.cc",
+    "fdio_unistd.cc",
+    "pipe.cc",
+  ]
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zxtest",
+  ]
+  if (is_fuchsia) {
+    sources += [
+      "fdio_atexit.cc",
+      "fdio_chroot.cc",
+      "fdio_directory.cc",
+      "fdio_eventfd.cc",
+      "fdio_fd.cc",
+      "fdio_fdio.cc",
+      "fdio_get_vmo.cc",
+      "fdio_handle_fd.cc",
+      "fdio_io.cc",
+      "fdio_memfd.cc",
+      "fdio_null_namespace.cc",
+      "fdio_open_max.cc",
+      "fdio_pipe.cc",
+      "fdio_pty.cc",
+      "fdio_root.cc",
+      "fdio_socket.cc",
+      "fdio_socket_cleanup.cc",
+      "fdio_startup.cc",
+      "fdio_stubs.cc",
+      "fdio_unsafe.cc",
+      "fdio_vfs.cc",
+      "fdio_watcher.cc",
+    ]
+    deps += [
+      "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_llcpp",
+      "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+      "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket_llcpp",
+      "//sdk/fidl/fuchsia.process:fuchsia.process_llcpp",
+      "//sdk/lib/fdio",
+      "//sdk/lib/stdcompat",
+      "//sdk/lib/zxio",
+      "//src/storage/memfs",
+      "//zircon/system/ulib/async:async-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/fidl-async",
+      "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+      "//zircon/system/ulib/sync",
+      "//zircon/system/ulib/test-utils",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+
+test("cleanpath-tests") {
+  deps = [
+    "//sdk/lib/fdio:cleanpath",
+    "//zircon/system/ulib/zxtest",
+  ]
+  sources = [ "fdio_cleanpath.cc" ]
+}
+
+test("fdio-gtest") {
+  configs += [ "//build/config:all_source" ]
+
+  sources = [
+    "socketpair.cc",
+    "socketpair_test_helpers.h",
+  ]
+
+  deps = [
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  if (is_fuchsia) {
+    sources += [ "fdio_socketpair.cc" ]
+    deps += [
+      "//sdk/lib/fdio",
+      "//src/lib/testing/predicates",
+    ]
+  }
+}
+
+executable("accept-child") {
+  visibility = [ ":*" ]
+
+  testonly = true
+  sources = [ "fdio_atexit_test_accept_child.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/zircon/lib/zircon",
+  ]
+}
+
+executable("chroot-child") {
+  visibility = [ ":*" ]
+
+  testonly = true
+  sources = [ "fdio_chroot_child.cc" ]
+
+  if (is_fuchsia) {
+    deps = [ "//sdk/lib/fdio" ]
+  }
+}
+
+# Used by tests in fdio_startup.cc.
+executable("hello-world") {
+  visibility = [ ":*" ]
+
+  testonly = true
+  sources = [ "hello.cc" ]
+  deps = [ "//sdk/lib/fdio" ]
+}
+
+executable("null-namespace-child") {
+  visibility = [ ":*" ]
+
+  testonly = true
+  sources = [ "fdio_null_namespace_child.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/zircon/lib/zircon",
+  ]
+}

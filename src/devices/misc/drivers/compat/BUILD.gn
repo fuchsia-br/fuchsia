@@ -1,0 +1,170 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/drivers.gni")
+
+group("compat") {
+  deps = [
+    ":compat_v1_create_test",
+    ":compat_v1_device_add_null_test",
+    ":compat_v1_missing_test",
+    ":compat_v1_test",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":compat_test" ]
+}
+
+source_set("lib") {
+  sources = [
+    "api.cc",
+    "devfs_vnode.cc",
+    "devfs_vnode.h",
+    "device.cc",
+    "device.h",
+    "driver.cc",
+    "driver.h",
+    "loader.cc",
+    "loader.h",
+  ]
+  deps = [ "//src/devices/lib/compat" ]
+  public_deps = [
+    "fidl:fuchsia.driver.compat_llcpp",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/lib/stdcompat",
+    "//src/devices/lib/driver2:devfs_exporter",
+    "//src/devices/lib/driver2:llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+
+  # TODO(fxbug.dev/85473): This target uses |fidl::WireTryDispatch| which is deprecated.
+  # Please remove ad-hoc composition of FIDL protocols and migrate to |fidl::WireDispatch|.
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-wire-try-dispatch" ]
+}
+
+fuchsia_driver("driver") {
+  output_name = "compat"
+  deps = [ ":lib" ]
+}
+
+driver_bind_rules("v1_test_bind") {
+  header_output = "v1_test_bind.h"
+  disable_autobind = true
+}
+
+fuchsia_driver("v1_test") {
+  sources = [
+    "v1_test.cc",
+    "v1_test.h",
+  ]
+  deps = [
+    ":v1_test_bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("compat_v1_test") {
+  deps = [ ":v1_test" ]
+  info = "compat_v1_test-info.json"
+  colocate = true
+}
+
+fuchsia_driver("v1_create_test") {
+  sources = [
+    "v1_create_test.cc",
+    "v1_test.h",
+  ]
+  deps = [
+    ":v1_test_bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("compat_v1_create_test") {
+  deps = [ ":v1_create_test" ]
+  info = "compat_v1_create_test-info.json"
+  colocate = true
+}
+
+fuchsia_driver("v1_missing_test") {
+  sources = [ "v1_missing_test.cc" ]
+  deps = [
+    ":v1_test_bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("compat_v1_missing_test") {
+  deps = [ ":v1_missing_test" ]
+  info = "compat_v1_missing_test-info.json"
+  colocate = true
+}
+
+fuchsia_driver("v1_device_add_null_test") {
+  sources = [
+    "v1_device_add_null.cc",
+    "v1_test.h",
+  ]
+  deps = [
+    ":v1_test_bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("compat_v1_device_add_null_test") {
+  deps = [ ":v1_device_add_null_test" ]
+  info = "compat_v1_device_add_null-info.json"
+  colocate = true
+}
+
+resource("test-firmware-file") {
+  sources = [ "test-firmware.txt" ]
+  outputs = [ "lib/firmware/test" ]
+}
+
+executable("unittests") {
+  testonly = true
+  output_name = "compat_test"
+  sources = [
+    "device_test.cc",
+    "driver_test.cc",
+    "loader_test.cc",
+    "v1_test.h",
+  ]
+  deps = [
+    ":lib",
+    ":test-firmware-file",
+    "//src/devices/lib/compat",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_unittest_package("compat_test") {
+  manifest = "meta/compat_test.cml"
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  deps = [
+    ":compat_v1_create_test",
+    ":compat_v1_device_add_null_test",
+    ":compat_v1_missing_test",
+    ":compat_v1_test",
+    ":unittests",
+  ]
+}

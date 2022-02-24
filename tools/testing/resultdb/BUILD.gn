@@ -1,0 +1,69 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/testing/host_test_data.gni")
+
+go_library("main") {
+  sources = [
+    "main.go",
+    "main_test.go",
+    "summary.go",
+    "summary_test.go",
+  ]
+  deps = [
+    "//third_party/golibs:github.com/google/go-cmp",
+    "//third_party/golibs:golang.org/x/sync",
+    "//third_party/golibs:google.golang.org/protobuf",
+    "//third_party/luci-go/resultdb/proto/v1:resultdb_proto_go",
+    "//third_party/luci-go/resultdb/sink/proto/v1:resultsink_proto_go",
+    "//tools/lib/flagmisc",
+    "//tools/testing/runtests",
+    "//tools/testing/testparser",
+  ]
+}
+
+go_binary("resultdb") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/testing/resultdb"
+  deps = [ ":main" ]
+
+  # Needed to support cross-compilation. The infra recipes always needs this
+  # built for Linux, even if build happens on Mac.
+  cgo = false
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":test($host_toolchain)" ]
+}
+
+if (is_host) {
+  _testdata_path = "$target_gen_dir/testdata"
+
+  go_test("test") {
+    output_name = "resultdb_tests"
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/testing/resultdb" ]
+    args = [
+      "--test_data_dir",
+      rebase_path(_testdata_path, root_build_dir),
+    ]
+    deps = [ ":main" ]
+    non_go_deps = [ ":testdata" ]
+  }
+
+  host_test_data("testdata") {
+    sources = [
+      "testdata/lucictx.json",
+      "testdata/serial_log.txt",
+      "testdata/summary.json",
+      "testdata/summary2.json",
+      "testdata/summary_long_name.json",
+      "testdata/syslog.txt",
+      "testdata/test_output.txt",
+    ]
+    outputs = [ "${_testdata_path}/{{source_file_part}}" ]
+  }
+}

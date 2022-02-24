@@ -1,0 +1,27 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("network") {
+  testonly = true
+  deps = [
+    "ethernet",
+    "fidl_fuchsia_hardware_ethernet_ext",
+    "fidl_fuchsia_net_ext",
+    "fidl_fuchsia_net_interfaces_ext",
+    "packet",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  public_deps = [
+    "ethernet:ethernet-tests",
+    "fidl_fuchsia_hardware_ethernet_ext:fidl-fuchsia-hardware-ethernet-ext-tests",
+    "fidl_fuchsia_net_ext:fidl-fuchsia-net-ext-tests",
+    "fidl_fuchsia_net_interfaces_ext:tests",
+    "netsvc-proto:tests",
+    "packet:tests",
+  ]
+}

@@ -1,0 +1,174 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":sysmem-unittest",
+    ":sysmem_bind_test",
+  ]
+}
+
+driver_bind_rules("sysmem_bind") {
+  rules = "sysmem.bind"
+  header_output = "sysmem-bind.h"
+  bind_output = "sysmem.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.platform" ]
+}
+
+source_set("sysmem_common_srcs") {
+  sources = [
+    "allocator.cc",
+    "buffer_collection.cc",
+    "buffer_collection_token.cc",
+    "contiguous_pooled_memory_allocator.cc",
+    "device.cc",
+    "driver.cc",
+    "external_memory_allocator.cc",
+    "koid_util.cc",
+    "logging.cc",
+    "logical_buffer_collection.cc",
+    "memory_allocator.cc",
+    "node.cc",
+    "node_properties.cc",
+    "orphaned_node.cc",
+    "sysmem_metrics.cc",
+    "table_holder.cc",
+    "table_set.cc",
+    "usage_pixel_format_cost.cc",
+    "utils.cc",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/banjo/fuchsia.sysmem:fuchsia.sysmem_banjo_c",
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//sdk/fidl/fuchsia.sysmem2:fuchsia.sysmem2_llcpp",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp:cpp",
+    "//src/devices/sysmem/metrics",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/lib/metrics_buffer",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/closure-queue",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/region-alloc",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/sysmem-version",
+    "//zircon/system/ulib/trace:trace-driver",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/region-alloc",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver("sysmem-driver") {
+  output_name = "sysmem"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "binding.cc" ]
+  deps = [
+    ":sysmem_bind",
+    ":sysmem_common_srcs",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/devices/lib/driver",
+    "//zircon/system/ulib/sysmem-version",
+  ]
+}
+
+fuchsia_driver_component("sysmem") {
+  info = "sysmem-info.json"
+  component_name = "sysmem"
+  deps = [ ":sysmem-driver" ]
+  colocate = true
+  root_resource = true
+}
+
+test("sysmem-unittest-bin") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  output_name = "sysmem-unittest"
+  sources = [
+    "test/contiguous_pooled_memory_allocator_test.cc",
+    "test/device_test.cc",
+    "test/pixel_format_cost_test.cc",
+  ]
+  include_dirs = [ "." ]
+  deps = [
+    ":sysmem_common_srcs",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//sdk/lib/fit",
+    "//src/devices/bus/testing/fake-pdev",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/mock-ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/async-testing",
+    "//zircon/system/ulib/closure-queue",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/region-alloc",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/sysmem-version",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("sysmem-unittest") {
+  deps = [ ":sysmem-unittest-bin" ]
+}

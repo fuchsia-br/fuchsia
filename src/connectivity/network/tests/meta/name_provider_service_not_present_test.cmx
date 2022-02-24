@@ -1,0 +1,15 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "injected-services": {
+                "fuchsia.device.NameProvider": "fuchsia-pkg://fuchsia.com/netstack-c-api-tests#meta/device_name_provider.cmx"
+            }
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/name_provider_service_not_present_test"
+    }
+}

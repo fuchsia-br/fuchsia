@@ -1,0 +1,27 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/session_control_bin_test",
+    },
+    collections: [
+        {
+            name: "session",
+            durability: "transient",
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.cobalt.LoggerFactory" ],
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.session.Launcher",
+            from: "parent",
+            to: "#session",
+        },
+    ],
+}

@@ -1,0 +1,111 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("ddk-fidl-bind") {
+  rules = "ddk-fidl.bind"
+  header_output = "ddk-fidl-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("fidl-llcpp-driver-driver") {
+  output_name = "fidl-llcpp-driver"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "fidl-llcpp-driver.cc" ]
+
+  deps = [
+    ":ddk-fidl-bind",
+    "//src/devices/lib/driver",
+    "//src/devices/tests/fuchsia-hardware-test:fuchsia.hardware.test_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("fidl-llcpp-driver") {
+  component_name = "fidl-llcpp-driver"
+  deps = [ ":fidl-llcpp-driver-driver" ]
+  info = "fidl-llcpp-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("ddk-fidl-async-bind") {
+  rules = "ddk-fidl-async.bind"
+  header_output = "ddk-fidl-async-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("fidl-async-llcpp-driver-driver") {
+  output_name = "fidl-async-llcpp-driver"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "fidl-async-llcpp-driver.cc" ]
+
+  deps = [
+    ":ddk-fidl-async-bind",
+    "//src/devices/lib/driver",
+    "//src/devices/tests/fuchsia-hardware-test:fuchsia.hardware.test_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("fidl-async-llcpp-driver") {
+  component_name = "fidl-async-llcpp-driver"
+  deps = [ ":fidl-async-llcpp-driver-driver" ]
+  info = "fidl-async-llcpp-driver-info.json"
+  colocate = true
+}
+
+test("ddk-fidl-test") {
+  sources = [ "test.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/devices/testing/driver-integration-test-shim",
+    "//src/devices/tests/fuchsia-hardware-test:fuchsia.hardware.test_c",
+    "//src/devices/tests/fuchsia-hardware-test:fuchsia.hardware.test_llcpp",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("ddk-fidl-test-package") {
+  package_name = "ddk-fidl-test"
+
+  deps = [
+    ":ddk-fidl-test",
+    ":fidl-async-llcpp-driver",
+    ":fidl-llcpp-driver",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":ddk-fidl-test-package" ]
+}

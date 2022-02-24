@@ -1,0 +1,97 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+
+config_data("overnetstack_config") {
+  for_pkg = "sysmgr"
+  outputs = [ "overnetstack.config" ]
+  sources = [ rebase_path("config/service.config") ]
+}
+
+rustc_binary("bin") {
+  name = "overnetstack"
+  with_unit_tests = true
+  edition = "2018"
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.serial:fuchsia.hardware.serial-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.net.mdns:fuchsia.net.mdns-rustc",
+    "//sdk/fidl/fuchsia.overnet:fuchsia.overnet-rustc",
+    "//sdk/fidl/fuchsia.overnet.protocol:fuchsia.overnet.protocol-rustc",
+    "//src/connectivity/overnet/lib/core",
+    "//src/connectivity/overnet/lib/serial_link",
+    "//src/connectivity/overnet/lib/stream_link",
+    "//src/connectivity/overnet/lib/udp_link",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates/mirrors/quiche",
+  ]
+
+  sources = [
+    "src/main.rs",
+    "src/mdns.rs",
+    "src/serial.rs",
+  ]
+}
+
+# TODO(ctiller): This is clearly not great and we should not be hardcoding certificates
+# and private keys into the overnetstack package. Design and implement security.
+resource("certificates") {
+  sources = [
+    "//third_party/rust_crates/mirrors/quiche/examples/cert.crt",
+    "//third_party/rust_crates/mirrors/quiche/examples/cert.key",
+    "//third_party/rust_crates/mirrors/quiche/examples/rootca.crt",
+  ]
+  outputs = [ "data/{{source_file_part}}" ]
+}
+
+fuchsia_component("component") {
+  component_name = "overnetstack"
+
+  deps = [
+    ":bin",
+    ":certificates",
+  ]
+  manifest = "meta/overnetstack.cmx"
+}
+
+fuchsia_package("overnetstack") {
+  deps = [ ":component" ]
+}
+
+fuchsia_component("component-with-udp") {
+  component_name = "overnetstack-with-udp"
+
+  deps = [
+    ":bin",
+    ":certificates",
+  ]
+  manifest = "meta/overnetstack-with-udp.cmx"
+}
+
+fuchsia_unittest_package("overnetstack-tests") {
+  deps = [
+    ":bin_test",
+    ":certificates",
+  ]
+  manifest = "meta/overnetstack_bin_test.cmx"
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":overnetstack-tests" ]
+}

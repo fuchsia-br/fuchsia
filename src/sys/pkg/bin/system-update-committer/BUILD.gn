@@ -1,0 +1,90 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//src/sys/pkg/bin/grand-swd-binary/gsb.gni")
+import("system_update_committer_config.gni")
+
+# `system-update-committer` is conceptually a binary, but it built as a lib here so
+# it can be aggregated into //src/sys/pkg/bin/grand-swd-binary to save disk space.
+rustc_library("lib") {
+  name = "system-update-committer"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.update:fuchsia.update-rustc",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+  ]
+  test_deps = [
+    "//src/sys/pkg/testing/mock-paver",
+    "//src/sys/pkg/testing/mock-reboot",
+    "//src/sys/pkg/testing/mock-verifier:lib",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:proptest",
+  ]
+
+  source_root = "src/main.rs"
+  sources = [
+    "src/config.rs",
+    "src/fidl.rs",
+    "src/main.rs",
+    "src/metadata.rs",
+    "src/metadata/commit.rs",
+    "src/metadata/configuration.rs",
+    "src/metadata/errors.rs",
+    "src/metadata/inspect.rs",
+    "src/metadata/policy.rs",
+    "src/metadata/verify.rs",
+    "src/reboot.rs",
+  ]
+
+  visibility = [
+    ":*",
+    "//src/sys/pkg/bin/grand-swd-binary:*",
+  ]
+}
+
+grand_swd_binary("bin") {
+  output_name = "system_update_committer"
+}
+
+fuchsia_component("component") {
+  component_name = "system-update-committer"
+  manifest = "meta/system-update-committer.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("system-update-committer") {
+  deps = [ ":component" ]
+}
+
+fuchsia_unittest_package("system-update-committer-tests") {
+  deps = [ ":lib_test" ]
+}
+
+system_update_committer_config("enable_reboot_on_verification_failure") {
+  blobfs = "reboot_on_failure"
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":system-update-committer-tests" ]
+}

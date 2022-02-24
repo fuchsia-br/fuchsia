@@ -1,0 +1,43 @@
+{
+    include: [
+        "//src/sys/component_manager/testing/meta/start_component_tree.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/lifecycle_timeout_integration_test",
+    },
+    collections: [
+        {
+            name: "test-collection",
+            durability: "transient",
+        },
+    ],
+    capabilities: [
+        { protocol: "fuchsia.process.Launcher" },
+    ],
+    use: [
+        {
+            event: [
+                "purged",
+                "started",
+                "stopped",
+            ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+            from: "self",
+            to: "#test-collection",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#test-collection",
+        },
+    ],
+}

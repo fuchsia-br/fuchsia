@@ -1,0 +1,82 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("bootserver_lib") {
+  sources = [
+    "boot.go",
+    "boot_test.go",
+    "image.go",
+    "image_test.go",
+    "mode.go",
+  ]
+  deps = [
+    ":bootserverconstants",
+    "//third_party/golibs:cloud.google.com/go/storage",
+    "//third_party/golibs:golang.org/x/crypto",
+    "//third_party/golibs:golang.org/x/sync",
+    "//tools/botanist:constants",
+    "//tools/build",
+    "//tools/lib/color",
+    "//tools/lib/gcsutil",
+    "//tools/lib/iomisc",
+    "//tools/lib/jsonutil",
+    "//tools/lib/logger",
+    "//tools/lib/osmisc",
+    "//tools/lib/retry",
+    "//tools/net/netboot",
+    "//tools/net/tftp",
+  ]
+}
+
+go_library("bootserverconstants") {
+  source_dir = "bootserverconstants"
+  sources = [ "constants.go" ]
+}
+
+go_library("main") {
+  source_dir = "cmd"
+  sources = [
+    "main.go",
+    "main_test.go",
+  ]
+  deps = [
+    ":bootserver_lib",
+    "//tools/lib/retry",
+    "//tools/net/netboot",
+    "//tools/net/netutil",
+    "//tools/net/tftp",
+    "//tools/testing/runtests",
+  ]
+}
+
+go_binary("bootserver") {
+  # TODO(fxbug.dev/38517): Stop renaming once zircon bootserver goes away.
+
+  output_name = "bootserver_new"
+  gopackage = "go.fuchsia.dev/fuchsia/tools/bootserver/cmd"
+  deps = [ ":main" ]
+}
+
+go_test("bootserver_lib_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/bootserver" ]
+  deps = [ ":bootserver_lib" ]
+}
+
+go_test("bootserver_cmd_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/bootserver/cmd" ]
+  deps = [ ":main" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":bootserver_cmd_tests",
+    ":bootserver_lib_tests",
+  ]
+}

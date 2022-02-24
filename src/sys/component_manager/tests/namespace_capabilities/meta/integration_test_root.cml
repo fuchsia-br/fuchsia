@@ -1,0 +1,49 @@
+// Realm for integration test that offers a child a protocol and directory from component
+// manager's namespace.
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/namespace_capabilities_integration_test_root",
+    },
+
+    // `trigger` exposes the `Trigger` service which the test will use to
+    // receive a message.
+    children: [
+        {
+            name: "trigger",
+            url: "fuchsia-pkg://fuchsia.com/namespace-capabilities-integration-test#meta/trigger.cm",
+        },
+    ],
+    capabilities: [
+        { protocol: "fuchsia.test.Suite" },
+    ],
+    use: [
+        // Needed to bind to children
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fidl.examples.routing.echo.Echo",
+                "fuchsia.logger.LogSink",
+            ],
+            from: "parent",
+            to: "#trigger",
+        },
+        {
+            directory: "test-pkg",
+            from: "parent",
+            to: "#trigger",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "self",
+        },
+    ],
+}

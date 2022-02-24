@@ -1,0 +1,30 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_target") {
+  version = "0.1.0"
+  edition = "2018"
+  plugin_deps = [
+    "add:ffx_target_add",
+    "bootloader:ffx_bootloader",
+    "default:ffx_target_default",
+    "echo:ffx_target_echo",
+    "flash:ffx_flash",
+    "forward:ffx_target_forward",
+    "get-ssh-address:ffx_get_ssh_address",
+    "list:ffx_list",
+    "off:ffx_off",
+    "reboot:ffx_reboot",
+    "remove:ffx_target_remove",
+    "repository:ffx_target_repository",
+    "show:ffx_target_show",
+    "snapshot:ffx_snapshot",
+    "update:ffx_update",
+    "wait:ffx_wait",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+}

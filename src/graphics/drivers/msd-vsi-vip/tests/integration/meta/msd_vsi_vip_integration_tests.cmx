@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/msd_vsi_vip_integration_tests"
+    },
+    "sandbox": {
+        "dev": [
+            "aml-nna",
+            "class/gpu"
+        ],
+        "services": [
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

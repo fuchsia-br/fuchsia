@@ -1,0 +1,76 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  name = "brightness_manager"
+  version = "0.1.0"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.backlight:fuchsia.hardware.backlight-rustc",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report-rustc",
+    "//sdk/fidl/fuchsia.ui.brightness:fuchsia.ui.brightness-rustc",
+    "//sdk/fidl/fuchsia.ui.input:fuchsia.ui.input-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/watch_handler:watch_handler",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:futures-core",
+    "//third_party/rust_crates:futures-util",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:splines",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/backlight.rs",
+    "src/control.rs",
+    "src/main.rs",
+    "src/sender_channel.rs",
+    "src/sensor.rs",
+  ]
+}
+
+fuchsia_component("brightness_manager_cm") {
+  component_name = "brightness_manager"
+  manifest = "meta/brightness_manager.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("brightness_manager") {
+  deps = [ ":brightness_manager_cm" ]
+}
+
+fuchsia_component("brightness_manager_test_driver") {
+  testonly = true
+  manifest = "meta/brightness_manager_test_driver.cml"
+  deps = [ ":bin_test" ]
+}
+
+fuchsia_component("brightness_manager_test") {
+  testonly = true
+  component_name = "brightness_manager_test"
+  manifest = "meta/brightness_manager_test.cml"
+}
+
+fuchsia_test_package("brightness_manager_tests") {
+  test_components = [ ":brightness_manager_test" ]
+  deps = [ ":brightness_manager_test_driver" ]
+}

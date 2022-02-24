@@ -1,0 +1,42 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//build/security.gni")
+
+group("bootfs") {
+  testonly = fuchsia_zbi_testonly
+  deps = [
+    "board:bootfs_labels",
+    "dev:bootfs_labels",
+    "product:bootfs_labels",
+  ]
+}
+
+group("build_only") {
+  testonly = true
+  deps = [ "dev:build_only_deps" ]
+}
+
+group("recovery_bootfs") {
+  deps = [
+    "board:recovery_bootfs_labels",
+    "dev:recovery_bootfs_labels",
+  ]
+}
+
+group("system_image") {
+  testonly = fuchsia_zbi_testonly
+  deps = [
+    "board:system_image_deps",
+    "dev:system_image_deps",
+    "product:system_image_deps",
+  ]
+}
+
+group("zedboot_bootfs") {
+  testonly = true
+  deps = [
+    "board:zedboot_bootfs_labels",
+    "dev:zedboot_bootfs_labels",
+  ]
+}

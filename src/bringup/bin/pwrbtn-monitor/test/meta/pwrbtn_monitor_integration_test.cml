@@ -1,0 +1,64 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/pwrbtn_monitor_mock_services",
+    },
+    children: [
+        {
+            name: "pwrbtn-monitor",
+            url: "fuchsia-pkg://fuchsia.com/pwrbtn-monitor-integration-test#meta/pwrbtn-monitor.cm",
+            startup: "eager",
+        },
+        {
+            name: "test-driver",
+            url: "fuchsia-pkg://fuchsia.com/pwrbtn-monitor-integration-test#meta/test-driver.cm",
+        },
+    ],
+    capabilities: [
+        {
+            directory: "input",
+            rights: [ "rw*" ],
+            path: "/input",
+        },
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.test.pwrbtn.Tests",
+            ],
+        },
+    ],
+    offer: [
+        {
+            directory: "input",
+            from: "self",
+            to: "#pwrbtn-monitor",
+        },
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "self",
+            to: "#pwrbtn-monitor",
+        },
+        {
+            protocol: "fuchsia.test.pwrbtn.Tests",
+            from: "self",
+            to: "#test-driver",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#test-driver",
+        },
+        {
+            protocol: "fuchsia.boot.WriteOnlyLog",
+            from: "parent",
+            to: "#pwrbtn-monitor",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#test-driver",
+        },
+    ],
+}

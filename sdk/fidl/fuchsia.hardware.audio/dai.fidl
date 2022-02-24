@@ -1,0 +1,73 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.audio;
+
+using zx;
+using fuchsia.hardware.audio.signalprocessing;
+
+const MAX_DAI_UI_STRING_SIZE uint32 = 256;
+const MAX_COUNT_DAI_FORMATS uint32 = 64;
+
+type DaiProperties = table {
+    /// Dai type is input or output. Required.
+    1: is_input bool;
+
+    /// Name of the DAI interface provider manufacturer. If not included, the manufacturer is
+    /// unspecified.
+    2: manufacturer string:MAX_DAI_UI_STRING_SIZE;
+
+    /// Product name of the DAI interface provider. If not included, the product name is
+    /// unspecified.
+    3: product_name string:MAX_DAI_UI_STRING_SIZE;
+};
+
+/// For an overview see
+/// [Digital Audio Interface](https://fuchsia.dev/fuchsia-src/concepts/drivers/driver_architectures/audio_drivers/audio_dai).
+protocol Dai {
+    /// Allows providing driver health state.
+    compose Health;
+
+    /// Allows providing signal processing capabilities.
+    compose fuchsia.hardware.audio.signalprocessing.Connector;
+
+    /// Resets the DAI HW. The `ring_buffer` channel obtained via `CreateRingBuffer` may be closed
+    /// by the driver, in this case the client needs to obtain a new `ring_buffer`.
+    /// `Reset` returns when the reset is completed. If the driver can't successfully reset the HW,
+    /// it will close the DAI protocol channel, in this case the client may obtain a new DAI
+    /// protocol channel and retry.
+    Reset() -> ();
+
+    /// Retrieves top level static properties.
+    GetProperties() -> (struct {
+        properties DaiProperties;
+    });
+
+    /// Retrieves the DAI formats supported by the DAI, if not available at the time the DAI
+    /// may reply with an error status and the client may retry at a later time.
+    /// Retrieving multiple `DaiSupportedFormats` allows for cases where exclusive combinations of
+    /// the parameters in SupportedFormats may be supported.
+    GetDaiFormats() -> (struct {
+        dai_formats vector<DaiSupportedFormats>:MAX_COUNT_DAI_FORMATS;
+    }) error zx.status;
+
+    /// Retrieves the ring buffer formats supported by the DAI, if not available at the time the DAI
+    /// may reply with an error status and the client may retry at a later time.
+    /// Retrieving multiple `SupportedFormats` allows for cases where exclusive combinations of
+    /// the parameters in `SupportedFormats` may be supported.
+    GetRingBufferFormats() -> (struct {
+        ring_buffer_formats vector<SupportedFormats>:MAX_COUNT_FORMATS;
+    }) error zx.status;
+
+    /// `CreateRingBuffer` is sent by clients to select both a DAI format and a ring buffer format
+    /// based on information that the driver provides in `GetDaiFormats` and `GetRingBufferFormats`,
+    /// what is supported by the client, and any other requirement. The `ring_buffer` channel is
+    /// used to control the audio buffer, if a previous ring buffer channel had been established and
+    /// was still active, the driver must close that (ring buffer) channel and make every attempt to
+    /// gracefully quiesce any on-going streaming operations in the process.
+    CreateRingBuffer(resource struct {
+        dai_format DaiFormat;
+        ring_buffer_format Format;
+        ring_buffer server_end:RingBuffer;
+    });
+};

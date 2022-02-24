@@ -1,0 +1,108 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fuzzing/fuzzer.gni")
+import("//build/test.gni")
+import("//src/storage/fs_test/suite.gni")
+import("//src/storage/testing/driver_test_realm.gni")
+
+group("test") {
+  testonly = true
+  deps = [
+    ":f2fs-fs-tests",
+    ":f2fs-slow-fs-tests",
+  ]
+}
+
+test("f2fs_unit") {
+  sources = [
+    "unit/bcache.cc",
+    "unit/checkpoint.cc",
+    "unit/dir.cc",
+    "unit/dir_entry_cache.cc",
+    "unit/f2fs.cc",
+    "unit/file.cc",
+    "unit/file_cache.cc",
+    "unit/fsck.cc",
+    "unit/inline.cc",
+    "unit/mkfs.cc",
+    "unit/mount.cc",
+    "unit/node.cc",
+    "unit/orphan.cc",
+    "unit/segment.cc",
+    "unit/teardown.cc",
+    "unit/unit_lib.cc",
+    "unit/vnode.cc",
+    "unit/vnode_cache.cc",
+  ]
+  public = [ "unit/unit_lib.h" ]
+  deps = [
+    "//sdk/fidl/fuchsia.fs:fuchsia.fs_llcpp",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/chunked-compression",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/block_client/cpp:fake_device",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+    "//src/storage/f2fs",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/cobalt-client:in-memory-logger",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/storage/buffer",
+    "//zircon/system/ulib/storage/operation",
+    "//zircon/system/ulib/sync",
+    "//zircon/third_party/ulib/cksum",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+fuchsia_unittest_component("f2fs-unittest") {
+  manifest = "f2fs_unittest.cml"
+  deps = [ ":f2fs_unit" ]
+}
+
+fs_test_config("f2fs") {
+  timestamp_granularity = 1
+  supports_hard_links = true
+  supports_resize = false
+  max_file_size = 4329690886144
+  is_journaled = false
+  supports_fsck_after_every_transaction = false
+  supports_inspect = true
+
+  options = [
+    {
+      description = "F2fsWithoutFvm"
+      use_fvm = false
+      has_min_volume_size = true
+
+      # f2fs requires a minimum of 100mb volume
+      device_block_count = 204800
+      device_block_size = 512
+    },
+  ]
+}
+
+fs_test_suite("f2fs") {
+  deps = [
+    ":f2fs_fs_test_config",
+    "//src/storage/bin/f2fs",
+  ]
+  extra_components = [ ":f2fs-unittest" ]
+}
+
+slow_fs_test_suite("f2fs") {
+  deps = [
+    ":f2fs_fs_test_config",
+    "//src/storage/bin/f2fs",
+  ]
+}

@@ -1,0 +1,55 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/graphics/examples/vkproto/common/common.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+fuchsia_component("transaction_elimination_test") {
+  testonly = true
+  manifest = "meta/transaction-elimination-test.cmx"
+  deps = [
+    ":bin",
+    "//src/graphics/examples/vkproto:shaders",
+    "//src/lib/vulkan/swapchain:image_pipe_swapchain_fb_layer",
+    "//src/lib/vulkan/validation_layers",
+  ]
+}
+
+executable("bin") {
+  testonly = true
+  output_name = "transaction-elimination-test"
+  sources = common_sources
+
+  sources += [
+    "../fuchsia/surface.cc",
+    "../fuchsia/surface.h",
+    "main.cc",
+  ]
+
+  include_dirs = [ "//src/graphics/examples/vkproto/common" ]
+
+  defines = [ "VULKAN_HPP_NO_EXCEPTIONS" ]
+
+  deps = [
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/vulkan",
+    "//third_party/github.com/ARM-software/HWCPipe:mali_profiler",
+    "//third_party/googletest:gtest",
+  ]
+
+  include_dirs += [ "//src/graphics/examples/vkproto/fuchsia" ]
+
+  # HWCPipe uses exceptions to report errors, so they must be left enabled.
+  configs -= [ "//build/config:no_exceptions" ]
+}
+
+fuchsia_test_package("transaction-elimination-test") {
+  test_components = [ ":transaction_elimination_test" ]
+
+  test_specs = {
+    environments = magma_libvulkan_arm_hardware_envs
+  }
+}

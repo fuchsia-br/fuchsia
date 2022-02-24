@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/component_manager_test"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-temp"
+        ],
+        "services": [
+            "fidl.examples.routing.echo.Echo",
+            "fuchsia.io.Directory",
+            "fuchsia.process.Launcher"
+        ]
+    }
+}

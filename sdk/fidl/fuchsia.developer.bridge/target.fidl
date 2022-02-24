@@ -1,0 +1,249 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.bridge;
+using fuchsia.device;
+using fuchsia.net;
+using fuchsia.buildinfo;
+using fuchsia.developer.remotecontrol as rc;
+
+type TargetIp = struct {
+    ip fuchsia.net.IpAddress;
+    scope_id uint32;
+};
+
+type TargetIpPort = struct {
+    ip fuchsia.net.IpAddress;
+    scope_id uint32;
+    port uint16;
+};
+
+// TODO(awdavies): Add serial number.
+type TargetAddrInfo = strict union {
+    1: ip TargetIp;
+    2: ip_port TargetIpPort;
+};
+
+// TODO(awdavies): Add more target states once they're more well defined.
+type TargetState = strict enum {
+    UNKNOWN = 1;
+    DISCONNECTED = 2;
+    PRODUCT = 3;
+    FASTBOOT = 4;
+    ZEDBOOT = 5;
+};
+
+// TODO(awdavies): Add more target types. Hardware? Product state?
+type TargetType = strict enum {
+    UNKNOWN = 1;
+};
+
+/// Address of the ssh host address from the perspective of the target.
+type SshHostAddrInfo = struct {
+    address string:256;
+};
+
+/// Current known state of the remote control
+type RemoteControlState = strict enum {
+    UP = 1;
+    DOWN = 2;
+    UNKNOWN = 3;
+};
+
+/// Interface fastboot is connected over.
+type FastbootInterface = strict enum {
+    USB = 0;
+    UDP = 1;
+    TCP = 2;
+};
+
+type TargetInfo = table {
+    1: nodename string:fuchsia.device.DEVICE_NAME_MAX;
+    2: addresses vector<TargetAddrInfo>:256;
+    3: age_ms uint64;
+    4: rcs_state RemoteControlState;
+    5: target_type TargetType;
+    6: target_state TargetState;
+    // Contains the string used for the product in `fx set`, for example
+    // `fx set core.x64` would make this value "core".
+    7: product_config string:fuchsia.buildinfo.MAX_STRING_LENGTH;
+    // Contains the string used for the board in `fx set`, for example
+    // `fx set core.x64` would make this value "x64".
+    8: board_config string:fuchsia.buildinfo.MAX_STRING_LENGTH;
+    9: serial_number string:256;
+    /// ssh_address is the preferred address to use to connect to the
+    /// device over SSH, and will include a port number if a custom SSH
+    /// port number has been set.
+   10: ssh_address TargetAddrInfo;
+   11: fastboot_interface FastbootInterface;
+    /// The address of the ssh host as seen by the target.
+   12: ssh_host_address SshHostAddrInfo;
+};
+
+type TargetRebootError = strict enum {
+    /// Cannot reboot from fastboot to recovery.
+    FASTBOOT_TO_RECOVERY = 1;
+    /// There was an Overnet communication issue with the target.
+    TARGET_COMMUNICATION = 2;
+    /// There was a Fastboot protocol communication issue with the
+    /// target.
+    FASTBOOT_COMMUNICATION = 3;
+    /// No netsvc address was found for the target when attempting
+    /// to reboot from Zedboot.
+    NETSVC_ADDRESS_NOT_FOUND = 4;
+    /// Error when running a function through netsvc protocol.
+    NETSVC_COMMUNICATION = 5;
+};
+
+type TargetRebootState = strict enum {
+    PRODUCT = 1;
+    BOOTLOADER = 2;
+    RECOVERY = 3;
+};
+
+@discoverable
+protocol TargetControl {
+    @deprecated("Please use target collection -> target handle instead.")
+    Reboot(struct {
+        state TargetRebootState;
+    }) -> (struct {}) error TargetRebootError;
+};
+
+/// An iterator for which the client handles calls to the `Next` function. When
+/// a client calls `ListTargets` in the `TargetCollection` protocol, the targets
+/// will be sent to the client via the `Next` function, with acknowledgements
+/// sent via the responder to handle backpressure.
+///
+/// When there are no more targets to be sent to the client, an empty vector
+/// will be sent as the last call to `Next`.
+protocol TargetCollectionReader {
+    Next(struct {
+        entry vector<TargetInfo>:MAX;
+    }) -> ();
+};
+
+/// A query for a Fuchsia target device. If empty when supplied to a method, will be
+/// interpreted as requesting the first target to be seen on the network, or ALL
+/// targets that have been seen on the network.
+type TargetQuery = table {
+    /// A string matcher is something that can match either the:
+    /// - Target nodename (partial matches okay).
+    /// - Target IP (any that have been seen).
+    /// - Serial number (partial matches okay).
+    ///
+    /// IPv6 and IPv4 addresses are both acceptable queries. However, an IPv6
+    /// address should not contain square brackets, and if it is a link-local
+    /// address, it should not contain the interface name. For example, an address
+    /// like "fe80::f00d%qemu" isn't valid, but "fe80::f00d" is. Any IPv4
+    /// address is also a valid query.
+    1: string_matcher string:255;
+};
+
+type OpenTargetError = strict enum {
+    /// When querying for a target, an ambiguous query was received (one that
+    /// matched multiple targets).
+    QUERY_AMBIGUOUS = 1;
+    /// No targets were able to match the query after waiting.
+    TARGET_NOT_FOUND = 2;
+};
+
+/// A protocol defining a collection of Fuchsia targets. This is used to inspect
+/// and interact with fuchsia targets that the daemon has discovered.
+@discoverable
+protocol TargetCollection {
+    /// Sends a list of all active targets in the collection. An active target
+    /// is one that has responded over the network recently.
+    ///
+    /// An optional query string can be passed that will limit results to only
+    /// targets whose metadata matches. Matching is limited to partial string
+    /// matches via the target's nodename, serial number, or IP address.
+    ///
+    /// The client receives updates by handling calls to `Next` in the
+    /// `TargetCollectionReader` protocol.
+    ListTargets(resource struct {
+        query TargetQuery;
+        reader client_end:TargetCollectionReader;
+    });
+
+    /// Opens a target handle given the query matches exactly one
+    /// target. If a target does not yet exist in the cache that matches the
+    /// query, then this will hang until one is found. It is the caller's
+    /// responsibility to time out if this call takes too long.
+    OpenTarget(resource struct {
+        query TargetQuery;
+        target_handle server_end:Target;
+    }) -> (struct {}) error OpenTargetError;
+
+    /// Manually adds a target that cannot be discovered via mDNS.
+    AddTarget(struct {
+        ip TargetAddrInfo;
+    }) -> ();
+
+    /// Manually remove a target from the target list.
+    ///
+    /// If the target_id doesn't match a device name, the daaemon will attempt
+    /// to interpret it as an IP.
+    RemoveTarget(struct {
+        target_id string:fuchsia.device.DEVICE_NAME_MAX;
+    }) -> (struct {
+        removed bool;
+    });
+};
+
+/// This is a handle to a target received from the target collection.
+/// Not to be confused with the `TargetControl` protocol. This is exclusively
+/// for use with the target collection service.
+@discoverable
+protocol Target {
+    /// Returns:
+    /// * As much information identifying the target as is currently available.
+    Identity() -> (struct {
+        target_info TargetInfo;
+    });
+
+    /// Waits for an SSH address to become available on the target.
+    ///
+    /// Returns:
+    /// * The first cached address viable for SSH. If there isn't one, will
+    ///   wait until there is. It is the client's responsibility to handle
+    ///   potential timeouts.
+    GetSshAddress() -> (struct {
+        address TargetAddrInfo;
+    });
+
+    /// Opens a connection to the RemoteControlService for a given
+    /// target. If the target is not in a state that allows opening up the
+    /// remote control, will wait until it is. It is the client's responsibilty
+    /// to handle potential timeouts here otherwise it will wait indefinitely.
+    ///
+    /// Returns:
+    /// * Nothing on success.
+    OpenRemoteControl(resource struct {
+        remote_control server_end:rc.RemoteControl;
+    }) -> ();
+
+    /// Opens a Fastboot controller for a given target.
+    OpenFastboot(resource struct {
+        fastboot server_end:Fastboot;
+    });
+
+    /// Reboots the target to the desired state.
+    ///
+    /// Returns:
+    /// * Empty struct on success.
+    ///
+    /// Errors:
+    /// * See [TargetRebootError] for failure states.
+    Reboot(struct {
+        state TargetRebootState;
+    }) -> (struct {}) error TargetRebootError;
+
+
+    /// Runs an iterator over diagnostics data. At present, this means cached log data.
+    StreamActiveDiagnostics(resource struct {
+        parameters DaemonDiagnosticsStreamParameters;
+        iterator server_end:rc.ArchiveIterator;
+    }) -> (struct {
+        log_session LogSession;
+    }) error DiagnosticsStreamError;
+};

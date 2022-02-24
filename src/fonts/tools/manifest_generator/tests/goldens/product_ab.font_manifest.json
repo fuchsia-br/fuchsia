@@ -1,0 +1,409 @@
+{
+  "version": "2",
+  "families": [
+    {
+      "name": "Alpha Sans",
+      "aliases": [
+        {
+          "names": [
+            "Alpha",
+            "AlphaSans"
+          ]
+        }
+      ],
+      "generic_family": "sans-serif",
+      "assets": [
+        {
+          "file_name": "AlphaAndBeta-Thin.ttc",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-alphanadbeta-thin-ttc"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "slant": "upright",
+              "weight": 100,
+              "width": "normal",
+              "code_points": "0,45+1,19+1,18,13,2+2,3+1,3,2,2,4",
+              "postscript_name": "AlphaAndBeta-Thin",
+              "full_name": "AlphaAndBeta Thin"
+            }
+          ]
+        },
+        {
+          "file_name": "AlphaSans-Bold.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-alphasans-bold-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "upright",
+              "weight": 700,
+              "width": "normal",
+              "code_points": "0,45+1,19+1,17,14,3,2,2,4,2+2,3+1",
+              "postscript_name": "AlphaSans-Bold",
+              "full_name": "AlphaSans Bold"
+            }
+          ]
+        },
+        {
+          "file_name": "AlphaSans-BoldItalic.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-alphasans-bolditalic-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "italic",
+              "weight": 700,
+              "width": "normal",
+              "code_points": "0,45+1,19+1,7,10,14,2+1,2,2+1,3,2+2,3+1",
+              "postscript_name": "AlphaSans-BoldItalic",
+              "full_name": "AlphaSans BoldItalic"
+            }
+          ]
+        },
+        {
+          "file_name": "AlphaSans-Italic.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-alphasans-italic-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "italic",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "0,45+1,19,8,10,14,2,3,2+1,3,2,2,3+1",
+              "postscript_name": "AlphaSans-Italic",
+              "full_name": "AlphaSans Italic"
+            }
+          ]
+        },
+        {
+          "file_name": "AlphaSans-Regular.ttf",
+          "location": {
+            "local": {
+              "directory": "/config/data/assets"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "0,45+1,19,17+1,14,4+3,4,2,2,2+3",
+              "postscript_name": "AlphaSans-Regular",
+              "full_name": "AlphaSans Regular"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Beta Sans",
+      "aliases": [
+        {
+          "names": [
+            "Beta",
+            "BetaSans",
+            "β Sans"
+          ]
+        },
+        {
+          "names": [
+            "Beta Condensed"
+          ],
+          "width": "condensed"
+        }
+      ],
+      "generic_family": "sans-serif",
+      "assets": [
+        {
+          "file_name": "AlphaAndBeta-Thin.ttc",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-alphanadbeta-thin-ttc"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 1,
+              "slant": "upright",
+              "weight": 100,
+              "width": "normal",
+              "code_points": "1,44+1,19+1,18,13,2+2,3+1,3,2,2,4",
+              "postscript_name": "AlphaAndBeta-Thin-1",
+              "full_name": "AlphaAndBeta Thin 1"
+            }
+          ]
+        },
+        {
+          "file_name": "BetaSans-Bold.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-betasans-bold-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "upright",
+              "weight": 700,
+              "width": "normal",
+              "code_points": "0,45+1,20,17,14,3+2,6,2+1,4+1",
+              "postscript_name": "BetaSans-Bold",
+              "full_name": "BetaSans Bold"
+            }
+          ]
+        },
+        {
+          "file_name": "BetaSans-BoldItalic.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-betasans-bolditalic-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "italic",
+              "weight": 700,
+              "width": "normal",
+              "code_points": "0,45+1,20,7,10,14,2+3,3,3,2+1,4+1",
+              "postscript_name": "BetaSans-BoldItalic",
+              "full_name": "BetaSans BoldItalic"
+            }
+          ]
+        },
+        {
+          "file_name": "BetaSans-Condensed.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-betasans-condensed-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "condensed",
+              "code_points": "0,45+1,20+1,16,14,3+2,8+1,4+1",
+              "postscript_name": "BetaSans-Condensed",
+              "full_name": "BetaSans Condensed"
+            },
+            {
+              "index": 1,
+              "languages": [
+                "ar"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "condensed",
+              "code_points": "1,44+1,20+1,16,14,3+2,8+1,4+1",
+              "postscript_name": "BetaSans-Condensed-1",
+              "full_name": "BetaSans Condensed 1"
+            }
+          ]
+        },
+        {
+          "file_name": "BetaSans-Italic.ttf",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-betasans-italic-ttf"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "italic",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "0,45+1,20,7,10,14,2,2+1,3,3,2,5+1",
+              "postscript_name": "BetaSans-Italic",
+              "full_name": "BetaSans Italic"
+            }
+          ]
+        },
+        {
+          "file_name": "BetaSans-Regular.ttf",
+          "location": {
+            "local": {
+              "directory": "/config/data/assets"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "en"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "0,45+1,20,16+1,14,4+2,5,2,4+3",
+              "postscript_name": "BetaSans-Regular",
+              "full_name": "BetaSans Regular"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gamma CJK",
+      "aliases": [
+        {
+          "names": [
+            "Gamma CJK JP",
+            "Gamma JP"
+          ],
+          "languages": [
+            "ja"
+          ]
+        },
+        {
+          "names": [
+            "Gamma CJK KR",
+            "Gamma KR"
+          ],
+          "languages": [
+            "ko"
+          ]
+        }
+      ],
+      "generic_family": "sans-serif",
+      "assets": [
+        {
+          "file_name": "GammaCJK-Regular.ttc",
+          "location": {
+            "package": {
+              "url": "fuchsia-pkg://fuchsia.com/font-package-gammacjk-regular-ttc"
+            }
+          },
+          "typefaces": [
+            {
+              "index": 0,
+              "languages": [
+                "ja"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "0,45+1,21,4,3+1,7,15,2,2,2,5+1,5,2+1",
+              "postscript_name": "GammaCJK-Regular",
+              "full_name": "GammaCJK Regular"
+            },
+            {
+              "index": 1,
+              "languages": [
+                "ko"
+              ],
+              "slant": "upright",
+              "weight": 400,
+              "width": "normal",
+              "code_points": "1,44+1,21,4,3+1,7,15,2,2,2,5+1,5,2+1",
+              "postscript_name": "GammaCJK-Regular-1",
+              "full_name": "GammaCJK Regular 1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fallback_chain": [
+    {
+      "file_name": "BetaSans-Regular.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "BetaSans-Italic.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "BetaSans-BoldItalic.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "AlphaAndBeta-Thin.ttc",
+      "index": 1
+    },
+    {
+      "file_name": "GammaCJK-Regular.ttc",
+      "index": 0
+    },
+    {
+      "file_name": "GammaCJK-Regular.ttc",
+      "index": 1
+    },
+    {
+      "file_name": "AlphaAndBeta-Thin.ttc",
+      "index": 0
+    },
+    {
+      "file_name": "AlphaSans-Bold.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "AlphaSans-BoldItalic.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "AlphaSans-Italic.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "AlphaSans-Regular.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "BetaSans-Bold.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "BetaSans-Condensed.ttf",
+      "index": 0
+    },
+    {
+      "file_name": "BetaSans-Condensed.ttf",
+      "index": 1
+    }
+  ],
+  "settings": {
+    "cache_size_bytes": 5000000
+  }
+}

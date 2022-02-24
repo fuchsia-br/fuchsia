@@ -1,0 +1,20 @@
+{
+    include: [
+        "//src/sys/test_runners/gtest/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+    ],
+    program: {
+        binary: "bin/realm_builder_test_bin",
+    },
+    use: [
+        // Needed for gTest Death Tests.
+        { protocol: "fuchsia.process.Launcher" },
+    ],
+    offer: [
+        {
+            protocol: [ "test.placeholders.Echo" ],
+            from: "parent",
+            to: "#realm_builder",
+        },
+    ],
+}

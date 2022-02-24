@@ -1,0 +1,63 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("internal") {
+  name = "fuchsia.netemul.internal"
+  sources = [ "internal.fidl" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.device",
+    "//sdk/fidl/fuchsia.hardware.network",
+  ]
+}
+
+fidl("network") {
+  name = "fuchsia.netemul.network"
+  sources = [ "network.fidl" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.ethernet",
+    "//sdk/fidl/fuchsia.hardware.ethertap",
+    "//sdk/fidl/fuchsia.hardware.network",
+    "//sdk/fidl/fuchsia.net",
+    "//sdk/fidl/fuchsia.net.virtualization",
+  ]
+}
+
+fidl("environment") {
+  name = "fuchsia.netemul.environment"
+  sources = [ "environment.fidl" ]
+
+  public_deps = [
+    ":network",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/fidl/fuchsia.sys",
+  ]
+}
+
+fidl("sync") {
+  name = "fuchsia.netemul.sync"
+  sources = [ "sync.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+fidl("sandbox") {
+  name = "fuchsia.netemul.sandbox"
+  sources = [ "sandbox.fidl" ]
+
+  public_deps = [
+    ":environment",
+    ":network",
+    ":sync",
+    "//sdk/fidl/fuchsia.sys",
+  ]
+}
+
+fidl("devmgr") {
+  name = "fuchsia.netemul.devmgr"
+  sources = [ "devmgr.fidl" ]
+  public_deps = [ "//sdk/fidl/fuchsia.io" ]
+}

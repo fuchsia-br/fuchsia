@@ -1,0 +1,48 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+@transport("Syscall")
+protocol socket {
+    /// Create a socket.
+    socket_create(struct {
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        out0 handle;
+        out1 handle;
+    });
+
+    /// Write data to a socket.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_SOCKET and have ZX_RIGHT_WRITE.
+    socket_write(resource struct {
+        handle handle:SOCKET;
+        options uint32;
+        buffer vector_void;
+    }) -> (struct {
+        status status;
+        actual optional_usize;
+    });
+
+    /// Read data from a socket.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_SOCKET and have ZX_RIGHT_READ.
+    socket_read(resource struct {
+        handle handle:SOCKET;
+        options uint32;
+    }) -> (struct {
+        status status;
+        buffer vector_void;
+        actual optional_usize;
+    });
+
+    /// Set disposition of writes.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_SOCKET and have ZX_RIGHT_MANAGE_SOCKET.
+    socket_set_disposition(resource struct {
+        handle handle:<SOCKET, rights.MANAGE_SOCKET>;
+        disposition uint32;
+        disposition_peer uint32;
+    }) -> (struct {
+        status status;
+    });
+};

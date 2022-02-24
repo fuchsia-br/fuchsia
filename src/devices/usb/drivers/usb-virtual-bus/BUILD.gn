@@ -1,0 +1,201 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+
+driver_bind_rules("usb-virtual-bus-bind") {
+  rules = "usb-virtual-bus.bind"
+  header_output = "usb-virtual-bus-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+source_set("common") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "usb-virtual-bus.cc",
+    "usb-virtual-device.cc",
+    "usb-virtual-host.cc",
+  ]
+  public_deps = [
+    ":usb-virtual-bus-bind",
+    "//sdk/banjo/fuchsia.hardware.usb.bus:fuchsia.hardware.usb.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.dci:fuchsia.hardware.usb.dci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.hci:fuchsia.hardware.usb.hci_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.usb.virtual.bus:fuchsia.hardware.usb.virtual.bus_llcpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver("usb-virtual-bus-driver") {
+  output_name = "usb-virtual-bus"
+  deps = [
+    ":common",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("usb-virtual-bus") {
+  info = "usb-virtual-bus-info.json"
+  component_name = "usb-virtual-bus"
+  deps = [ ":usb-virtual-bus-driver" ]
+  colocate = true
+}
+
+bind_library("fuchsia.usb.test") {
+  source = "fuchsia.usb.test.bind"
+}
+
+driver_bind_rules("usb-virtual-bus-tester-bind") {
+  rules = "usb-virtual-bus-tester.bind"
+  header_output = "usb-virtual-bus-tester-bind.h"
+  deps = [
+    ":fuchsia.usb.test",
+    "//src/devices/bind/fuchsia.usb",
+  ]
+}
+
+fidl("fuchsia.hardware.usb.virtualbustest") {
+  sources = [ "usb-virtualbustest.test.fidl" ]
+}
+
+fuchsia_driver("virtual-bus-tester-driver") {
+  output_name = "virtual-bus-tester"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "host.cc" ]
+  deps = [
+    ":fuchsia.hardware.usb.virtualbustest_llcpp",
+    ":usb-virtual-bus-tester-bind",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.composite:fuchsia.hardware.usb.composite_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("virtual-bus-tester") {
+  info = "virtual-bus-tester-info.json"
+  component_name = "virtual-bus-tester"
+  deps = [ ":virtual-bus-tester-driver" ]
+  colocate = true
+}
+
+driver_bind_rules("usb-virtual-bus-tester-function-bind") {
+  rules = "usb-virtual-bus-tester-function.bind"
+  header_output = "usb-virtual-bus-tester-function-bind.h"
+  deps = [
+    ":fuchsia.usb.test",
+    "//src/devices/bind/fuchsia.usb",
+  ]
+}
+
+fuchsia_driver("virtual-bus-tester-function-driver") {
+  output_name = "virtual-bus-tester-function"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "peripheral.cc" ]
+  deps = [
+    ":usb-virtual-bus-tester-function-bind",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.function:fuchsia.hardware.usb.function_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+}
+
+fuchsia_driver_component("virtual-bus-tester-function") {
+  info = "virtual-bus-tester-function-info.json"
+  component_name = "virtual-bus-tester-function"
+  deps = [ ":virtual-bus-tester-function-driver" ]
+  colocate = true
+}
+
+test("usb-virtual-bus-test-bin") {
+  output_name = "usb-virtual-bus-test"
+  sources = [ "usb-virtual-bus-test.cc" ]
+  deps = [
+    ":fuchsia.hardware.usb.virtualbustest_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.virtual.bus:fuchsia.hardware.usb.virtual.bus_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/usb-virtual-bus-launcher",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("usb-virtual-bus-test") {
+  deps = [
+    ":usb-virtual-bus-test-bin",
+    ":virtual-bus-tester",
+    ":virtual-bus-tester-function",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/usb/drivers/usb-bus",
+    "//src/devices/usb/drivers/usb-composite",
+    "//src/devices/usb/drivers/usb-peripheral",
+    "//src/devices/usb/drivers/usb-virtual-bus",
+  ]
+}
+
+test("usb-virtual-bus-unit-test-bin") {
+  sources = [ "usb-virtual-bus-unit-test.cc" ]
+  output_name = "usb-virtual-bus-unit-test"
+  deps = [
+    ":common",
+    "//sdk/banjo/fuchsia.hardware.usb.dci:fuchsia.hardware.usb.dci_banjo_cpp",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("usb-virtual-bus-unit-test") {
+  deps = [ ":usb-virtual-bus-unit-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":usb-virtual-bus-test",
+    ":usb-virtual-bus-unit-test",
+  ]
+}

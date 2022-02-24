@@ -1,0 +1,117 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.driver.framework;
+
+using fuchsia.component;
+using fuchsia.component.decl;
+
+using zx;
+
+alias NodePropertyKeyString = string:256;
+alias NodePropertyKeyUint = uint32;
+alias NodePropertyValueUint = uint32;
+alias NodePropertyValueString = string:256;
+alias NodePropertyValueBool = bool;
+alias NodePropertyValueEnum = string:256;
+
+const MAX_OFFER_COUNT uint32 = fuchsia.component.MAX_DYNAMIC_OFFER_COUNT;
+const MAX_SYMBOL_COUNT uint8 = 64;
+const MAX_PROPERTY_COUNT uint8 = 64;
+
+const MAX_NODE_NAME_LENGTH uint8 = 128;
+const MAX_SYMBOL_NAME_LENGTH uint8 = 128;
+
+/// Definition of a symbol provided by a driver for a node. A symbol is local to
+/// a driver host.
+type NodeSymbol = table {
+    /// Name of the symbol.
+    1: name string:MAX_SYMBOL_NAME_LENGTH;
+
+    /// Virtual address of the symbol, within a driver host's process.
+    2: address zx.vaddr;
+};
+
+type NodePropertyKey = strict union {
+    1: int_value NodePropertyKeyUint;
+    2: string_value NodePropertyKeyString;
+};
+
+type NodePropertyValue = strict union {
+    1: int_value NodePropertyValueUint;
+    2: string_value NodePropertyValueString;
+    3: bool_value NodePropertyValueBool;
+};
+
+/// Definition of a property for a node. A property is commonly used to match a
+/// node to a driver for driver binding.
+type NodeProperty = table {
+    /// Key for the property.
+    1: key NodePropertyKey;
+
+    /// Value for the property.
+    2: value NodePropertyValue;
+};
+
+/// Arguments for adding a node.
+type NodeAddArgs = table {
+    /// Name of the node.
+    1: name string:MAX_NODE_NAME_LENGTH;
+
+    /// Capabilities to offer to the driver that is bound to this node.
+    2: offers vector<fuchsia.component.decl.Offer>:MAX_OFFER_COUNT;
+
+    /// Functions to provide to the driver that is bound to this node.
+    3: symbols vector<NodeSymbol>:MAX_SYMBOL_COUNT;
+
+    /// Properties of the node.
+    4: properties vector<NodeProperty>:MAX_PROPERTY_COUNT;
+};
+
+/// Protocol through which a parent node controls one of its children.
+protocol NodeController {
+    /// Removes the node and all of its children.
+    Remove();
+
+    /// Event that is triggered when the associated `Node` is bound to a driver.
+    -> OnBind();
+};
+
+/// Error codes for the Node protocol.
+type NodeError = strict enum {
+    // An internal error occurred.
+    INTERNAL = 1;
+    // The Node was removed from the topology.
+    NODE_REMOVED = 2;
+    // The Node's name is missing.
+    NAME_MISSING = 3;
+    /// The Node's name is invalid. Specifically, it must not contain a period
+    /// in its name.
+    NAME_INVALID = 4;
+    /// A sibling Node exists with the same name.
+    NAME_ALREADY_EXISTS = 5;
+    /// An offer for this Node is missing a source name.
+    OFFER_SOURCE_NAME_MISSING = 6;
+    /// An offer for this Node should not have a source or target.
+    OFFER_REF_EXISTS = 7;
+    /// A symbol for this Node is missing a name.
+    SYMBOL_NAME_MISSING = 8;
+    /// A symbol for this Node is missing an address.
+    SYMBOL_ADDRESS_MISSING = 9;
+    /// There is another symbol for this Node with the same name.
+    SYMBOL_ALREADY_EXISTS = 10;
+};
+
+/// Protocol through which a driver manages a node that it is bound to.
+protocol Node {
+    /// Adds a child node to this node.
+    ///
+    /// If `node` is present, this driver takes responsibility for binding to
+    /// the newly created child. Otherwise, the driver framework will locate an
+    /// appropriate driver to bind the child to.
+    AddChild(resource struct {
+        args NodeAddArgs;
+        controller server_end:NodeController;
+        node server_end:<Node, optional>;
+    }) -> (struct {}) error NodeError;
+};

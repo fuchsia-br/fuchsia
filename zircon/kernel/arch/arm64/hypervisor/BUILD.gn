@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+source_set("hypervisor") {
+  sources = [
+    "el2.S",
+    "el2_cpu_state.cc",
+    "gic/el2.S",
+    "gic/gicv2.cc",
+    "gic/gicv3.cc",
+    "guest.cc",
+    "vcpu.cc",
+    "vmexit.cc",
+  ]
+  deps = [
+    "//sdk/lib/fit",
+    "//zircon/kernel/dev/interrupt/arm_gic/common",
+    "//zircon/kernel/dev/interrupt/arm_gic/v2",
+    "//zircon/kernel/dev/interrupt/arm_gic/v3",
+    "//zircon/kernel/dev/psci",
+    "//zircon/kernel/dev/timer/arm_generic",
+    "//zircon/kernel/hypervisor:headers",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/ktrace",
+    "//zircon/system/ulib/affine",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

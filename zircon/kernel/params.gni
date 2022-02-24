@@ -1,0 +1,122 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/config/zircon/levels.gni")
+
+# TODO(fxbug.dev/67356): Get rid of zircon_kernel_disable_asserts
+import("//build/zircon/build_args.gni")
+_kernel_debug_level = zx_assert_level
+if (zircon_kernel_disable_asserts) {
+  _kernel_debug_level = 0
+}
+
+declare_args() {
+  # Maximum number of CPUs the kernel will run on (others will be ignored).
+  smp_max_cpus = 32
+
+  if (current_cpu == "arm64") {
+    smp_max_cpus = 16
+  }
+
+  # Virtual address where the kernel is mapped statically.  This is the
+  # base of addresses that appear in the kernel symbol table.  At runtime
+  # KASLR relocation processing adjusts addresses in memory from this base
+  # to the actual runtime virtual address.
+  if (current_cpu == "arm64") {
+    kernel_base = "0xffffffff00000000"
+  } else if (current_cpu == "x64") {
+    kernel_base = "0xffffffff80100000"  # Has KERNEL_LOAD_OFFSET baked into it.
+  }
+
+  # Enable kernel lock dependency tracking.
+  enable_lock_dep = false
+
+  # The level of detail for scheduler traces when enabled. Values greater than
+  # zero add increasing details at the cost of increased trace buffer use.
+  #
+  # 0 = Default kernel:sched tracing.
+  # 1 = Adds duration traces for key scheduler operations.
+  # 2 = Adds flow events from wakeup to running state.
+  # 3 = Adds detailed internal durations and probes.
+  scheduler_tracing_level = 0
+
+  # Enables scheduler queue tracing for trace-based scheduler performance
+  # analysis.
+  scheduler_queue_tracing_enabled = false
+
+  # Enables kernel tracing of futex interactions
+  futex_tracing_enabled = false
+
+  # Enables tracing of wait queue depths.  Used for post-processing analysis of
+  # how deep wait queues tend to be under various loads, as well as how
+  # frequently the change depth.
+  wait_queue_depth_tracing_enabled = false
+
+  # The level of detail for traces emitted by the VM system. Values greater than
+  # zero add increasing details at the cost of increased trace buffer use.
+  #
+  # 0 = Default kernel:* tracing.
+  # 1 = Adds flow events for asynchronous page requests.
+  # 2 = Adds duration events related to accessed faults and page faults.
+  # 3 = Adds duration events for PMM allocations and frees.
+  vm_tracing_level = 0
+
+  # Disable kernel PCI driver support. A counterpart of the the build
+  # flag platform_enable_user_pci in //src/devices/bus/drivers/pci/pci.gni.
+  disable_kernel_pci = false
+
+  # Extra macro definitions for kernel code, e.g. "DISABLE_KASLR",
+  # "ENABLE_KERNEL_LL_DEBUG".
+  kernel_extra_defines = []
+
+  # Enables various kernel debugging and diagnostic features.  Valid
+  # values are between 0-3.  The higher the value, the more that are
+  # enabled.  A value of 0 disables all of them.
+  #
+  # TODO(fxbug.dev/41790): This value is derived from assert_level.  Decouple
+  # the two and set kernel_debug_level independently.
+  kernel_debug_level = _kernel_debug_level
+
+  # Controls the verbosity of kernel dprintf messages. The higher the value,
+  # the more dprintf messages emitted. Valid values are 0-2 (inclusive):
+  #   0 - CRITCAL / ALWAYS
+  #   1 - INFO
+  #   2 - SPEW
+  kernel_debug_print_level = 2
+
+  # Enables the use of a virtually managed kernel heap instead of one managed
+  # directly out of the physmap. The virtual heap may have some performance and
+  # memory usage overheads, but will not exhaust due to fragmentation.
+  enable_virtual_heap = false
+
+  # Controls the granularity of allocation of the global pool of persistent RAM.
+  # All features which wish to use persistent RAM to preserve data across reboot
+  # must operate in allocations which are a multiple of this value.  The value
+  # should be a power of two, and typically should be a multiple of the
+  # cacheline size of the target architecture.
+  persistent_ram_allocation_granularity = 128
+
+  # Please refer to https://fuchsia.dev/fuchsia-src/development/debugging/jtrace
+  # for a description of these configuration options.
+  #
+  # Note that the special value "auto" is used only by the default definitions
+  # of the entries (below).  It acts as a special value which automatically
+  # chooses a default based on whether or not JTRACE is configured for
+  # persistent tracing, while still allowing a user to explicitly override the
+  # value regardless of whether persistent tracing is enabled or not.
+  jtrace_enabled = false
+  jtrace_last_entry_storage = 0
+  jtrace_target_buffer_size = "auto"
+  jtrace_use_large_entries = "auto"
+}
+
+declare_args() {
+  # Enable kernel lock dependency tracking tests.  By default this is
+  # enabled when tracking is enabled, but can also be eanbled independently
+  # to assess whether the tests build and *fail correctly* when lockdep is
+  # disabled.
+  enable_lock_dep_tests = enable_lock_dep
+}

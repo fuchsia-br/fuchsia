@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("mocks") {
+  testonly = true
+
+  sources = [
+    "mock_annotation_view.cc",
+    "mock_annotation_view.h",
+    "mock_focus_highlight_manager.cc",
+    "mock_focus_highlight_manager.h",
+  ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fxl",
+    "//src/ui/a11y/lib/annotation",
+    "//src/ui/a11y/lib/util",
+  ]
+}

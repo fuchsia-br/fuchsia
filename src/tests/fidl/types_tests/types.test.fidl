@@ -1,0 +1,193 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library test.types;
+
+using zx;
+
+type CopyableStruct = struct {
+    x int32;
+};
+
+type MoveOnlyStruct = resource struct {
+    h zx.handle:optional;
+};
+
+type VectorStruct = struct {
+    v vector<uint32>;
+};
+
+/// Verifies that user code can manipulate these union payloads.
+type TestUnion = strict resource union {
+    1: primitive int32;
+    2: copyable CopyableStruct;
+    3: move_only MoveOnlyStruct;
+};
+
+type TestXUnion = flexible resource union {
+    1: primitive int32;
+    2: copyable CopyableStruct;
+    3: h zx.handle;
+};
+
+type TestStrictXUnion = strict union {
+    1: primitive int32;
+    2: copyable CopyableStruct;
+};
+
+type TestStrictXUnionInStruct = struct {
+    xu TestStrictXUnion;
+};
+
+type TestNonResourceXUnion = flexible union {
+    1: primitive int32;
+};
+
+/// Verifies that user code can manipulate these bits.
+///
+/// We use a uint8 since most bitwise operations will cast their operands to
+/// int, and therefore special casting is required to properly compile.
+type StrictBits = strict bits : uint8 {
+    B = 2;
+    D = 4;
+    E = 8;
+};
+
+/// The members should be kept in sync with those in [`StrictBits`], as we have
+/// tests parameterized on both bits types.
+type FlexibleBits = flexible bits : uint8 {
+    B = 2;
+    D = 4;
+    E = 8;
+};
+
+/// Verifies that user code can build and access tables.
+type SampleTable = table {
+    1: x uint8;
+    2: y uint8;
+    3: vector_of_struct vector<CopyableStruct>;
+    4: b bool;
+};
+
+/// Verifies that an empty table compiles.
+type SampleEmptyTable = table {};
+
+protocol TestInterface {
+    TestMethod(resource struct {
+        u TestUnion;
+    }) -> (resource struct {
+        u TestUnion;
+    });
+};
+
+/// Verifies that method argument types don't conflict with user-defined types.
+type FooRequest = struct {
+    bar int32;
+};
+
+type FooResponse = struct {
+    bar int32;
+};
+
+protocol Baz {
+    Foo(struct {
+        req FooRequest;
+    }) -> (struct {
+        res FooResponse;
+    });
+};
+
+type TableWithSubTables = table {
+    1: t SampleTable;
+    2: vt vector<SampleTable>;
+    3: at array<SampleTable, 3>;
+};
+
+type StrictEnum = strict enum : uint32 {
+    B = 2;
+    D = 4;
+    E = 8;
+};
+
+type FlexibleEnum = flexible enum : uint32 {
+    B = 2;
+    D = 4;
+    E = 8;
+    @unknown
+    CUSTOM = 56;
+};
+
+type EmptyFlexibleEnum = flexible enum : uint32 {};
+
+type EmptyStruct = struct {};
+
+type TestTable = table {
+    1: x uint8;
+};
+
+type Uint64Table = table {
+    1: x uint64;
+};
+
+type TestResourceTable = resource table {
+    1: x uint8;
+};
+
+type HandleStruct = resource struct {
+    h zx.handle:EVENT;
+};
+
+type TestHandleTable = resource table {
+    1: hs HandleStruct;
+};
+
+type TableMaxOrdinal3WithReserved2 = table {
+    1: field_1 uint8;
+    2: reserved;
+    3: field_3 uint8;
+};
+
+/// Certain traits are only implemented for top level (i.e. request/response struct)
+/// types, since LLCPP only calls encode/decode on those top level types.
+/// Types used in tests that exercise these codepaths (e.g. involving HasFlexibleEnvelope)
+/// should be put in a request/response struct instead of a regular struct in order
+/// to reflect the actual paths exercised within a protocol.
+///
+/// For example, to test a union MyUnion, instead of:
+///   - declaring wrapper struct `struct MyUnionStruct { MyUnion xu };`
+///   - writing encode/decode tests in C++ using MyUnionStruct
+/// do:
+///   - add method `MyUnion() -> (MyUnion result);`
+///   - write tests in C++ using MsgWrapper::MyUnionResponse
+protocol MsgWrapper {
+    TestXUnion() -> (resource struct {
+        result TestXUnion;
+    });
+    TestNonResourceXUnion() -> (struct {
+        result TestNonResourceXUnion;
+    });
+    TestTable() -> (struct {
+        result TestTable;
+    });
+    TestResourceTable() -> (resource struct {
+        result TestResourceTable;
+    });
+};
+
+protocol TypesTest {
+    NonNullableChannel(resource struct {
+        channel zx.handle:CHANNEL;
+    });
+};
+
+protocol UsesAnonymous {
+    FooMethod(struct {
+        req_member table {
+            1: inner_table union {
+                1: data uint8;
+            };
+        };
+    }) -> (struct {}) error enum {
+        FOO = 1;
+    };
+};

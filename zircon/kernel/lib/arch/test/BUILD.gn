@@ -1,0 +1,46 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":arch-tests($host_toolchain)" ]
+}
+
+if (is_host) {
+  test("arch-tests") {
+    sources = [
+      "arm64-system-tests.cc",
+      "bug-tests.cc",
+      "cpuid-basic-tests.cc",
+      "cpuid-corpus-tests.cc",
+      "fake-cpuid-tests.cc",
+      "fake-msr-tests.cc",
+      "lbr-tests.cc",
+      "nop-tests.cc",
+      "power-tests.cc",
+      "speculation-tests.cc",
+    ]
+    deps = [
+      "//src/lib/fxl/test:gtest_main",
+      "//third_party/googletest:gtest",
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/arch/testing",
+      "//zircon/system/ulib/zxc",
+    ]
+  }
+}
+
+if (is_kernel) {
+  source_set("kernel-tests") {
+    sources = [ "random-tests.cc" ]
+    deps = [
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/unittest",
+    ]
+  }
+}

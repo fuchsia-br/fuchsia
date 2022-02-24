@@ -1,0 +1,22 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("heap") {
+  sources = [
+    "cxx_allocator.cc",
+    "heap_wrapper.cc",
+  ]
+  deps = [
+    "cmpctmalloc",
+    "//zircon/kernel/lib/console",
+    "//zircon/kernel/lib/virtual_alloc",
+
+    # TODO(fxbug.dev/51163): Remove headers when possible.
+    "//zircon/kernel/lib/instrumentation:headers",
+  ]
+}

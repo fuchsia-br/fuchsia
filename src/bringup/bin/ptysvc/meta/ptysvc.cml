@@ -1,0 +1,18 @@
+{
+    program: {
+        runner: "elf",
+        binary: "bin/ptysvc",
+    },
+    capabilities: [
+        { protocol: "fuchsia.hardware.pty.Device" },
+    ],
+    use: [
+        { protocol: "fuchsia.boot.WriteOnlyLog" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,43 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+library test.transport;
+
+using zx;
+
+@transport("Driver")
+protocol TwoWayTest {
+    TwoWay(struct {
+        payload uint32;
+    }) -> (struct {
+        payload uint32;
+    });
+};
+
+@transport("Driver")
+protocol OneWayTest {
+    OneWay(struct {
+        // The choice of byte vectors is intentional:
+        // It gives coverage to a case which potentially uses multiple iovec entries.
+        payload bytes;
+    });
+};
+
+@transport("Driver")
+protocol SendDriverClientEndTest {
+    SendDriverClientEnd(resource struct {
+        h client_end:OneWayTest;
+    }) -> (resource struct {
+        h client_end:OneWayTest;
+    });
+};
+
+@transport("Driver")
+protocol SendZirconHandleTest {
+    SendZirconHandle(resource struct {
+        h zx.handle:EVENT;
+    }) -> (resource struct {
+        h zx.handle:EVENT;
+    });
+};

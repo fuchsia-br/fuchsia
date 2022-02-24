@@ -1,0 +1,40 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO(pascallouis): Align with docs/contribute/governance/areas/_areas.yaml
+
+- Bluetooth
+- Build
+- Component Framework
+- Developer
+- Devices
+- Diagnostics
+- Driver SDK
+- Drivers
+- Experiences
+- FIDL
+- Firmware
+- General
+- Governance
+- Graphics
+- HCI
+- Identity
+- Kernel
+- Media
+- Metrics
+- Netstack
+- PosixCompat
+- Power
+- Recovery
+- Security
+- Sessions
+- Software Delivery
+- Storage
+- System
+- Testing
+- Toolchain
+- View System
+- Virtualization
+- Web
+- WLAN

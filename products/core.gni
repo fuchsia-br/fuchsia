@@ -1,0 +1,152 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/security/policies.gni")
+import("//products/bringup.gni")
+
+bootfs_only = false
+
+# Kernel command line arguments.
+product_bootfs_labels -=
+    [ "//products/kernel_cmdline:kernel.oom.behavior--jobkill" ]
+product_bootfs_labels +=
+    [ "//products/kernel_cmdline:kernel.oom.behavior--reboot" ]
+
+include_shell_commands_package = true
+
+product_system_image_deps = [
+  "//src/connectivity/bluetooth:core-system",
+
+  # Test drivers will only be loaded as tests require. They should be removed from production
+  # products that have limited storage.
+  # TODO(fxbug.dev/3150): Move to a regular package.
+  "//src/graphics/lib/magma/tests:test-drivers",
+]
+
+core_realm_package_name = "core"
+core_realm_shards = [
+  "//src/connectivity/network:virtualization-core-shard",
+  "//src/connectivity/wlan/wlancfg:wlancfg-core-shard",
+  "//src/connectivity/wlan/wlandevicemonitor:wlandevicemonitor-core-shard",
+  "//src/connectivity/wlan/wlanstack:wlanstack-core-shard",
+  "//src/developer/build_info:build_info_core_shard",
+  "//src/developer/memory/monitor:memory_monitor_core_shard",
+  "//src/developer/remote-control:laboratory-core-shard",
+  "//src/recovery/factory_reset:factory_reset_core_shard",
+  "//src/sys/pkg/bin/system-updater:system-updater-core-shard",
+  "//src/developer/memory/mem:core_shard",
+
+  # TODO(fxbug.dev/80375): only include in eng builds
+  "//src/sys/test_manager:test_manager_core_shard",
+  "//src/sys/pkg/bin/system-update-checker:system-update-checker-core-shard",
+]
+core_realm_restrict_persistent_storage = false
+
+base_package_labels += [
+  "//build/info:build-info",
+  "//garnet/bin/log_listener:log_listener",
+  "//garnet/bin/log_listener:log_listener_shell",
+  "//src/intl/intl_services:pkg_small",
+  "//src/intl/intl_services/config:sysmgr_small",
+  "//garnet/bin/setui:setui_service",
+  "//garnet/bin/sshd-host",
+  "//garnet/bin/sshd-host:config",
+  "//garnet/bin/sysmgr",
+  "//garnet/bin/sysmgr:network_config",
+  "//garnet/bin/sysmgr:services_config",
+  "//src/cobalt/bin/app:cobalt",
+  "//src/cobalt/bin/app:cobalt_registry",
+  "//src/cobalt/bin/app:config",
+  "//src/cobalt/bin/system-metrics:cobalt_system_metrics",
+  "//src/connectivity/bluetooth:core",
+  "//src/connectivity/management:network_config_default",
+  "//src/connectivity/network/mdns/bundles:config",
+  "//src/connectivity/network/mdns/bundles:services",
+  "//src/connectivity/network/netcfg:config-default",
+  "//src/connectivity/network",
+
+  # Serve fuchsia.intl.TimeZones through intl_services by default. This is
+  # needed in core.gni for tests that use the core image.
+  "//src/intl/intl_services/config:sysmgr_small_timezones",
+
+  # TODO(https://fxbug.dev/85821): remove once out-of-tree users no longer
+  # reference v1 components.
+  "//src/connectivity/network:network-legacy-deprecated",
+
+  # TODO(https://fxbug.dev/85742): Remove this target once out-of-tree
+  # integration tests inject components from network-legacy-deprecated.
+  "//src/connectivity/network:integration-test-deps",
+  "//src/connectivity/wlan:packages",
+  "//src/developer/build_info:build-info-service",
+  "//src/developer/forensics:pkg",
+  "//src/developer/forensics/snapshot:pkg",
+  "//src/developer/memory/monitor",
+  "//src/devices/sysmem/bin/sysmem_connector",
+  "//src/diagnostics/config/persistence",
+  "//src/diagnostics/config/triage:triage-detect",
+  "//src/diagnostics/detect:triage-detect",
+  "//src/diagnostics/kcounter:diagnostics-kcounter",
+  "//src/diagnostics/persistence:diagnostics-persistence",
+  "//src/diagnostics/log-stats:package",
+  "//src/diagnostics/sampler",
+  "//src/hwinfo:hwinfo",
+  "//src/hwinfo:default_product_config",
+  "//src/media/audio/bundles:audio_config",
+  "//src/recovery/factory_reset",
+  "//src/security/policy:appmgr_policy_eng",
+  "//src/security/root_ssl_certificates",
+  "//src/sys/activity",
+  "//src/sys/appmgr",
+  "//src/sys/appmgr:appmgr_scheme_config",
+
+  # All v1 components are allowed to use isolated-persistent-storage, even if
+  # they're not listed in the component ID index.
+  "//src/sys/appmgr:component_id_index_no_restrict_storage",
+  "//src/sys/appmgr:core_component_id_index",
+
+  "//src/sys/device_settings:device_settings_manager",
+  "//src/sys/pkg:core",
+  "//src/sys/pkg:system-update-checker",
+  "//src/sys/pkg/bin/system-update-committer:enable_reboot_on_verification_failure",
+  "//src/sys/stash:pkg",
+  "//src/sys/time/httpsdate_time_source:httpsdate-time-source",
+  "//src/sys/time/timekeeper",
+  "//src/sys/universe-resolver",
+
+  "//third_party/openssh-portable/fuchsia/developer-keys:ssh_config",
+]
+
+# Tools to control the pkg subsystem are in the base package set by default
+# so the software delivery system can be debugged and reconfigured without
+# access to the full universe package set.
+# Product configurations that lack an accessible shell environment should
+# remove these tools from the base package set.
+base_package_labels += [ "//src/sys/pkg:tools" ]
+
+# cargo-gnaw is currently part of all build graphs, but it should only
+# built by fx tooling
+base_package_labels += [ "//tools/cargo-gnaw:install-cargo-gnaw" ]
+
+cache_package_labels += [ "//src/developer/ffx:runtime" ]
+
+product_system_image_deps += [ "//bundles:tools-system" ]
+universe_package_labels += [ "//bundles:tools" ]
+
+product_bootfs_labels += [
+  # Core products have pkgfs, so include the base resolver.
+  "//src/sys/base-resolver:bootfs",
+]
+
+# Set the default pkgfs allowlist to use for all core-based products to the
+# "eng" allowlist.
+product_system_image_deps +=
+    [ "//src/security/policy:pkgfs_non_static_pkgs_allowlist_eng" ]
+
+# Set the SWD policy for core.gni, details can be found in
+# //build/security/policies_swd.gni.
+policy_labels.swd = "unrestricted"
+
+# Set the update_checker policy for core.gni, details can be found in
+# //build/security/policies_swd.gni.
+policy_labels.update_checker = "system_update_checker"

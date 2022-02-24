@@ -1,0 +1,109 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+import("//src/connectivity/network/drivers/network-device/ddk_source_split.gni")
+
+# TODO(https://fxbug.dev/75544): Get rid of this target once std::shared_mutex
+# and std::shared_lock have thread analysis annotations.
+source_set("shared_lock") {
+  sources = [ "public/locks.h" ]
+}
+
+ddk_source_split("device") {
+  sources = [
+    "definitions.h",
+    "device_interface.cc",
+    "device_interface.h",
+    "device_port.cc",
+    "device_port.h",
+    "log.h",
+    "port_watcher.cc",
+    "port_watcher.h",
+    "public/network_device.h",
+    "rx_queue.cc",
+    "rx_queue.h",
+    "session.cc",
+    "session.h",
+    "status_watcher.cc",
+    "status_watcher.h",
+    "tx_queue.cc",
+    "tx_queue.h",
+  ]
+
+  public_deps = [
+    ":shared_lock",
+    "//sdk/banjo/fuchsia.hardware.network.device:fuchsia.hardware.network.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.network.mac:fuchsia.hardware.network.mac_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.network:fuchsia.hardware.network_llcpp",
+    "//src/lib/vmo_store",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  ddk_deps = [ "//src/connectivity/network/drivers/network-device/mac:mac_ddk" ]
+  non_ddk_deps = [ "//src/connectivity/network/drivers/network-device/mac" ]
+}
+
+test("test_bin") {
+  output_name = "network-device-lib-test"
+  sources = [
+    "data_structs-test.cc",
+    "network_device-test.cc",
+    "status_watcher-test.cc",
+    "test_session.cc",
+    "test_session.h",
+    "test_util.cc",
+    "test_util.h",
+  ]
+
+  deps = [
+    ":device",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/predicates",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+fuchsia_unittest_package("network-device-lib-test") {
+  deps = [ ":test_bin" ]
+  manifest = "meta/network-device-lib-test.cmx"
+}
+
+test("microbenchmarks_bin") {
+  output_name = "network-device-microbenchmarks"
+  sources = [
+    "network_device-microbenchmarks.cc",
+    "test_session.cc",
+    "test_session.h",
+  ]
+
+  deps = [
+    ":device",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/perftest",
+  ]
+}
+
+fuchsia_unittest_package("network-device-microbenchmarks") {
+  deps = [ ":microbenchmarks_bin" ]
+  manifest = "meta/network-device-microbenchmarks.cmx"
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":network-device-lib-test",
+    ":network-device-microbenchmarks",
+  ]
+}

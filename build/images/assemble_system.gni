@@ -1,0 +1,1049 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/assembly/legacy.gni")
+import("//build/component/component_id_index.gni")
+import("//build/config.gni")
+import("//build/drivers/driver_manifest.gni")
+import("//build/images/assembly/generated_assembly_inputs.gni")
+import("//build/images/assembly/generated_board_config.gni")
+import("//build/images/assembly/generated_images_config.gni")
+import("//build/images/assembly/generated_partitions_config.gni")
+import("//build/images/assembly/generated_product_config.gni")
+import("//build/images/fvm.gni")
+import("//build/images/shell_commands.gni")
+import("//build/info/info.gni")
+import("//build/packages/package_metadata.gni")
+import("//build/python/python_action.gni")
+import("//build/security/verifier/verify_bootfs.gni")
+import("//build/security/verifier/verify_kernel_cmdline.gni")
+import("//build/security/verifier/verify_route_sources.gni")
+import("//build/security/verifier/verify_static_pkgs.gni")
+import("//build/zircon/tools.gni")
+import("//src/developer/ffx/build/ffx_action.gni")
+import("//src/storage/fshost/generated_fshost_config.gni")
+
+# Assembles a Fuchsia system.
+#
+# Given base, cache, and universe packages, assembles a Fuchsia system
+# containing those packages.
+#
+# Parameters:
+#
+#   image_name (optional; default: target_name)
+#     [string] A name to use for naming all outputs and generated files, instead
+#     of $target_name.
+#
+#   sysmgr_golden, sysmgr_golden_warn (optional, default: false)
+#     [path, boolean] Passed directly to the config_package template, see //build/config.gni.
+#
+#   output_dir (optional; default: target_out_dir)
+#     [string] The output directory into which the final system ZBI is written.
+#
+#   output_name (optional; default: <target_name>.zbi)
+#     [string] The name of the final system ZBI file.
+#
+#   cmdline_goldens (optional)
+#     [list of files] A list of possible kernel cmdline golden file to compare
+#     against. Verified if matches one of the goldens. At most two entries are
+#     supported for soft migration, if the content matches either of the entries,
+#     it is consider a match. Only one entry should be used for normal case.
+#
+#   bootfs_goldens (optional)
+#     [list of files] A list of possible bootFS golden file to compare against.
+#     Verified if matches one of the goldens. At most two entries are
+#     supported for soft migration, if the content matches either of the entries,
+#     it is consider a match. Only one entry should be used for normal case.
+#
+#   static_pkgs_goldens (optional)
+#     [list of files] A list of possible static pkgs golden file to compare
+#     against. Verified if matches one of the goldens. At most two entries are
+#     supported for soft migration, if the content matches either of the entries,
+#     it is consider a match. Only one entry should be used for normal case.
+#
+#   route_sources_config
+#     [string] A path to the config file to be used when invoking the
+#     route_sources verifier on the assembled system. This parameter is,
+#     temporarily, only available for the `fuchsia` image. For details, see
+#     fxbug.dev/85664.
+#
+#   testonly (optional)
+#     [bool] Usual GN meanings.
+#
+# Product parameters:
+#
+#   base_packages (required)
+#     [list of labels] The packages to include in the base package set.
+#
+#   base_driver_packages (optional)
+#     [list of labels] The driver packages to include in the base package set.
+#
+#   cache_packages (optional)
+#     [list of labels] The packages to cache in the images.
+#
+#   universe_packages (optional)
+#     [list of labels] The packages to build in addition to the base and cache
+#     sets. These packages do not contribute to the produced images directly,
+#     however they may contribute to the config-data and shell-commands meta
+#     packages.
+#
+#   meta_packages (optional)
+#     [list of labels] The packages to build in addition to the base and cache
+#     sets, but are base_packages themselves.  These are packages that contain
+#     files that are generated based on other packages in the base, cache,
+#     and/or universe sets, and therefore cannot be part of those sets directly,
+#     or a GN dependency cycle will result.
+#
+#   bootfs_labels (required)
+#     [list of labels] The objects installed on the bootfs partition of the
+#     generated ZBI.
+#
+#   system_image_deps (optional)
+#     [list of labels] The objects installed in the system image.
+#
+#   devmgr_config (default: [])
+#     [list of strings] List of arguments to add to /boot/config/devmgr.
+#     These arguments come after synthesized arguments to configure blobfs and
+#     pkgfs.
+#
+#   fshost_config (default: [])
+#     [list of strings] List of arguments to add to /boot/config/fshost. These
+#     arguments come before other arguments set by build args.
+#
+#   cmdline (optional)
+#     [list of strings] Kernel command line text.
+#
+#   cmdline_deps (optional)
+#     [list of labels] Dependencies with metadata including additional kernel
+#     command arguments to add to the ZBI.
+#
+#   include_component_id_index (default: false)
+#     [bool] Collect and merges a component id index from the base
+#     package set.
+#
+#   include_shell_commands (default: true)
+#     [bool] Whether to include shell commands. Should be set to false for
+#     build without shell access.
+#
+#   base_package_name (optional; default: "system_image")
+#     [string] The name to give the base package. For prime builds this
+#     should be "system_image_prime", so that the package does not override the
+#     non-prime package during publishing.
+#
+#   pkgfs_package_label (optional; default: //src/sys/pkg/bin/pkgfs/pkgfs)
+#     [GN label] The pkgfs implementation to use, for those assemblies that
+#     require one.
+#
+# Board parameters:
+#
+#   assembly_compress_blobs (default: true)
+#     [boolean] Whether the blobs added to the blobfs image should be compressed.
+#
+#   assembly_blob_layout_format (default: "compact")
+#     [string] The format blobfs should store blobs in. The valid values are "deprecated_padded" and
+#     "compact". The deprecated padded format is supported only for Astro devices and will be
+#     removed in the future (it wastes space).
+#
+#   check_production_tag (default: false)
+#      [bool] Whether to check there is no non_production_tag dependencies.
+#
+# Board: MinFS parameters:
+#
+#   minfs_minimum_data_bytes, minfs_maximum_bytes (optional)
+#     [int] Size options for minfs to pass to the fvm tool.
+#
+# Board: BlobFS parameters
+#
+#   blobfs_minimum_inodes, blobfs_minimum_data_bytes, blobfs_maximum_bytes (optional)
+#     [int] Size options for blobfs to pass to the fvm tool.
+#
+# Board: FVM parameters
+#
+#   generate_fvm (optional; default: true)
+#     [bool] Whether to generate a FVM image.
+#
+#   assembly_include_account_in_fvm (optional; default: false)
+#     [bool] Whether to include an account partition in the FVM image.
+#
+#   ramdisk_fvm_in_zbi (optional)
+#     [bool] Whether the FVM should be embedded into the ZBI as a ramdisk.
+#
+#   assembly_fvm_slice_size (optional; default: 1048576)
+#     [int] The slice size of the FVM.
+#
+#   fvm_truncate_to_length (optional)
+#     [int] The precise size to make the (non-sparse) FVM image. See
+#     documentation of the `--length` parameter of the `fvm` binary host tool
+#     for details.
+#
+# Board: ZBI arguments
+#
+#   zbi_name (optional; default: target_name)
+#     [string] The name to give the ZBI in the out directory.
+#     Typically: fuchsia, recovery, etc.
+#
+#   zbi_signing_script (optional)
+#     [path] Location of script to use to sign the ZBI.
+#
+#   zbi_signing_args (optional)
+#     [list of strings] Arguments to pass to the signing script.
+#
+template("assemble_system") {
+  assert(defined(invoker.base_packages), "Need to define base_packages")
+  assert(defined(invoker.bootfs_labels), "Need to define bootfs_labels")
+
+  # This should be removed once all clients are no longer supplying board_name.
+  not_needed(invoker, [ "board_name" ])
+
+  image_name = target_name
+  if (defined(invoker.image_name)) {
+    image_name = invoker.image_name
+  }
+
+  base_package_name = "system_image"
+  if (defined(invoker.base_package_name)) {
+    base_package_name = invoker.base_package_name
+  }
+
+  # Internal labels used for Image Assembly.
+  labels = {
+    base_packages_group = "${image_name}_base_packages"
+    cache_packages_group = "${image_name}_cache_packages"
+    meta_packages_group = "${image_name}_meta_packages"
+    all_packages_group = "${image_name}_packages"
+    legacy_assembly_input_bundle = "${image_name}_legacy_input_bundle"
+    product_assembly_config = "${image_name}_product_assembly_config"
+    image_assembly_config = "${image_name}_image_assembly_config"
+    compare_image_assembly_configs =
+        "${image_name}_compare_image_assembly_configs"
+    board_config = "${image_name}_board_config"
+    images_config = "${image_name}_images_config"
+    partitions_config = "${image_name}_partitions_config"
+    product_assembler = "${image_name}_product_assembler"
+    image_assembler = "${image_name}_image_assembler"
+    create_system = "${image_name}_create_system"
+    copy_vbmeta = "${image_name}_copy_vbmeta"
+    copy_zbi = "${image_name}_copy_zbi"
+    copy_zbi_signed = "${image_name}_copy_zbi_signed"
+    copy_zbi_manifest = "${image_name}_copy_zbi_manifest"
+    copy_images = "${image_name}_copy_images"
+    config_data = "${image_name}_config-data"
+    shell_commands = "${image_name}_shell_commands"
+    assembly_inputs = "${image_name}_assembly_inputs"
+    fshost_config = "${image_name}_fshost_config"
+    pkgfs_package_label = "//src/sys/pkg/bin/pkgfs"
+  }
+
+  # Intermediate files produced for Image Assembly.
+  files = {
+    product_assembly_config =
+        "$target_out_dir/${image_name}_product_assembly_config.json"
+    image_assembly_config =
+        "$target_out_dir/${image_name}_image_assembly_config.json"
+    board_config = "$target_out_dir/${image_name}_board_config.json"
+    images_config = "$target_out_dir/${image_name}_images_config.json"
+    partitions_config = "$target_out_dir/${image_name}_partitions.json"
+
+    outdir = "$target_out_dir/$image_name"
+    gendir = "$outdir/gen"
+
+    legacy_assembly_input_bundle_manifest =
+        "${outdir}/legacy/assembly_config.json"
+
+    # This file is created implicitly by ffx assembly product, so this is the
+    # path that it's expected to be found at, not the path that it's to be
+    # written to.
+    regenerated_image_assembly_config = "${outdir}/image_assembly.json"
+    config_data_manifest = "${outdir}/config_data.package_manifest.json"
+    compare_image_assembly_configs =
+        "${outdir}/compare_image_assembly_configs.verified"
+
+    zbi = "${outdir}/${image_name}.zbi"
+    zbi_signed = "${zbi}.signed"
+    vbmeta = "${outdir}/${image_name}.vbmeta"
+    base_package = "${outdir}/base.far"
+    minfs = "${outdir}/data.blk"
+    blobfs = "${outdir}/blob.blk"
+    fvm = "${outdir}/fvm.blk"
+    fvm_sparse = "${outdir}/fvm.sparse.blk"
+    fvm_blob_sparse = "${outdir}/fvm.blob.sparse.blk"
+    fvm_fastboot = "${outdir}/fvm.fastboot.blk"
+    base_package_manifest = "${outdir}/base_package_manifest.json"
+    packages = "${outdir}/packages.json"
+
+    zbi_manifest = "${gendir}/zbi.json"
+    blobfs_manifest = "${gendir}/blob.manifest"
+    blobs_json = "${gendir}/blobs.json"
+    static_packages = "${gendir}/${base_package_name}/data/static_packages"
+    cache_packages = "${gendir}/${base_package_name}/data/cache_packages"
+    base_meta_package = "${gendir}/${base_package_name}/meta/package"
+    base_pkg_abi_revision =
+        "${gendir}/${base_package_name}/meta/fuchsia.abi/abi-revision"
+    images_manifest = "${outdir}/images.json"
+    assembly_inputs = "${outdir}/assembly_inputs.json"
+
+    create_system_command_log = "${outdir}/new_commands.json"
+
+    # Determine which ZBI we are shipping.
+    zbi_final = zbi
+    if (defined(invoker.zbi_signing_script)) {
+      zbi_final = zbi_signed
+    }
+  }
+
+  _base_packages = invoker.base_packages
+  _base_driver_packages = []
+  _cache_packages = []
+  _universe_packages = []
+  _meta_packages = []
+  if (defined(invoker.base_driver_packages)) {
+    _base_driver_packages = invoker.base_driver_packages
+  }
+  _base_packages += _base_driver_packages
+
+  if (defined(invoker.cache_packages)) {
+    _cache_packages = invoker.cache_packages
+  }
+  if (defined(invoker.universe_packages)) {
+    _universe_packages = invoker.universe_packages
+  }
+  if (defined(invoker.meta_packages)) {
+    _meta_packages = invoker.meta_packages
+  }
+
+  generate_fvm = true
+  if (defined(invoker.generate_fvm)) {
+    generate_fvm = invoker.generate_fvm
+  }
+
+  system_image_deps = []
+  if (defined(invoker.system_image_deps) && generate_fvm) {
+    system_image_deps += invoker.system_image_deps
+  } else {
+    not_needed(invoker, [ "system_image_deps" ])
+  }
+
+  embed_fvm_in_zbi = false
+  if (defined(invoker.ramdisk_fvm_in_zbi)) {
+    embed_fvm_in_zbi = invoker.ramdisk_fvm_in_zbi && generate_fvm
+  }
+
+  devmgr_config = []
+  if (defined(invoker.devmgr_config)) {
+    devmgr_config = invoker.devmgr_config
+  }
+
+  fshost_config = []
+  if (defined(invoker.fshost_config)) {
+    fshost_config = invoker.fshost_config
+  }
+
+  include_shell_commands = true
+  if (defined(invoker.include_shell_commands)) {
+    include_shell_commands = invoker.include_shell_commands
+  }
+
+  # Generate the base driver manifest file that lists all available drivers
+  # collected from _base_driver_packages dependency tree. This manifest file
+  # will be included in the driver-manager-base-config package.
+  base_driver_manifest_label = "${image_name}_base-driver-manifest"
+  combined_driver_manifest(base_driver_manifest_label) {
+    forward_variables_from(invoker, [ "testonly" ])
+    manifest_name = "base-driver-manifest.json"
+    deps = _base_driver_packages
+  }
+
+  # The driver-manager-base-config package is read by Driver Manager to
+  # discover where the base drivers are located.
+  driver_manager_base_config_label = "${image_name}_driver-manager-base-config"
+  fuchsia_package(driver_manager_base_config_label) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    package_name = "driver-manager-base-config"
+    deps = [ ":${base_driver_manifest_label}" ]
+  }
+  _meta_packages += [ ":${driver_manager_base_config_label}" ]
+
+  # TODO(fxbug.dev/81290): Construct the shell commands package in the Image
+  # Assembler.
+  if (include_shell_commands) {
+    shell_commands(labels.shell_commands) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      package_name = "shell-commands"
+      deps = _base_packages + _cache_packages + _universe_packages
+    }
+    _meta_packages += [ ":${labels.shell_commands}" ]
+  } else {
+    not_needed([ "_universe_packages" ])
+  }
+
+  # For details, see //docs/development/components/component_id_index.md#system-assembly
+  component_id_index_config("${image_name}_component_id_index_config") {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    # collect and merge component ID indices from the base set.
+    deps = _base_packages
+  }
+
+  component_id_index_dep = []
+  component_id_index_config_data_dep = []
+  include_component_index = defined(invoker.include_component_id_index) &&
+                            invoker.include_component_id_index
+  if (include_component_index) {
+    component_id_index_dep = [ ":${image_name}_component_id_index_config" ]
+    component_id_index_config_data_dep =
+        [ ":${image_name}_component_id_index_config-config-data" ]
+  }
+  _meta_packages += component_id_index_dep
+
+  config_package(labels.config_data) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    package_name = "config-data"
+    deps = _base_packages + _cache_packages + _universe_packages +
+           component_id_index_config_data_dep
+    if (defined(invoker.sysmgr_golden)) {
+      sysmgr_golden = invoker.sysmgr_golden
+    }
+    if (defined(invoker.sysmgr_golden_warn)) {
+      sysmgr_golden_warn = invoker.sysmgr_golden_warn
+    }
+  }
+  _meta_packages += [ ":${labels.config_data}" ]
+
+  generated_fshost_config(labels.fshost_config) {
+    options = fshost_config
+    if (embed_fvm_in_zbi) {
+      fvm_ramdisk = true
+    }
+  }
+
+  # Create GN groups for each of the package sets.
+  group(labels.base_packages_group) {
+    forward_variables_from(invoker, [ "testonly" ])
+    public_deps = _base_packages
+  }
+
+  group(labels.cache_packages_group) {
+    forward_variables_from(invoker, [ "testonly" ])
+    public_deps = _cache_packages
+  }
+
+  # The group of generated packages that contain files that depend on metadata
+  # walks of the base/cache/universe package sets and therefore cannot be part
+  # of those package sets.
+  group(labels.meta_packages_group) {
+    forward_variables_from(invoker, [ "testonly" ])
+    public_deps = _meta_packages
+  }
+
+  #######
+  # Build the images using the Image Assembler.
+  #
+
+  generated_product_config(labels.image_assembly_config) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    output_path = files.image_assembly_config
+    kernel_image = "//zircon/kernel"
+
+    base_packages = []
+    if (generate_fvm) {
+      base_packages = _base_packages
+      base_packages += _meta_packages
+
+      if (defined(invoker.pkgfs_package_label)) {
+        base_packages += [ invoker.pkgfs_package_label ]
+      } else {
+        base_packages += [ labels.pkgfs_package_label ]
+      }
+
+      cache_packages = _cache_packages
+    }
+
+    boot_args = devmgr_config
+
+    # Search for BootFS files in these targets.
+    bootfs_labels = invoker.bootfs_labels
+    bootfs_labels += component_id_index_dep
+    bootfs_labels += [ "//zircon/kernel" ]
+    bootfs_labels += [ ":${labels.fshost_config}" ]
+
+    # Only builds with an FVM need base-resolver for pkgfs.
+    if (generate_fvm) {
+      bootfs_labels += [ "//src/sys/base-resolver:bootfs" ]
+    }
+
+    # If not building an FVM, then put the driver_manager config into bootfs
+    if (!generate_fvm) {
+      bootfs_labels += [ ":${driver_manager_base_config_label}" ]
+    }
+
+    extra_base_deps = system_image_deps
+
+    # Search for the Kernel cmdline in the BootFS dependencies.
+    cmdline_deps = invoker.bootfs_labels
+    if (defined(invoker.cmdline_deps)) {
+      cmdline_deps += invoker.cmdline_deps
+    }
+    if (defined(invoker.cmdline)) {
+      cmdline = invoker.cmdline
+    }
+  }
+
+  generated_board_config(labels.board_config) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                             "blobfs_minimum_inodes",
+                             "blobfs_minimum_data_bytes",
+                             "blobfs_maximum_bytes",
+                             "minfs_minimum_data_bytes",
+                             "minfs_maximum_bytes",
+                             "embed_fvm_in_zbi",
+                             "zbi_name",
+                             "zbi_signing_script",
+                             "zbi_signing_args",
+                             "fvm_truncate_to_length",
+                           ])
+    base_package_name = base_package_name
+    generate_fvm = generate_fvm
+    output_path = files.board_config
+
+    zbi_name = "${image_name}"
+    if (defined(invoker.zbi_name)) {
+      zbi_name = invoker.zbi_name
+    }
+
+    if (generate_fvm) {
+      fvm_slice_size = 1048576
+      if (defined(invoker.assembly_fvm_slice_size)) {
+        fvm_slice_size = invoker.assembly_fvm_slice_size
+      }
+
+      blob_layout_format = "compact"
+      if (defined(invoker.assembly_blob_layout_format)) {
+        blob_layout_format = invoker.assembly_blob_layout_format
+      }
+
+      compress_blobs = true
+      if (defined(invoker.assembly_compress_blobs)) {
+        compress_blobs = invoker.assembly_compress_blobs
+      }
+
+      assembly_include_account_in_fvm = false
+      if (defined(invoker.assembly_include_account_in_fvm)) {
+        assembly_include_account_in_fvm =
+            invoker.assembly_include_account_in_fvm
+      }
+    }
+  }
+
+  generated_images_config(labels.images_config) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                             "zbi_signing_script",
+                             "zbi_signing_args",
+                             "minfs_maximum_bytes",
+                             "minfs_minimum_data_bytes",
+                             "blobfs_maximum_bytes",
+                             "blobfs_minimum_data_bytes",
+                             "blobfs_minimum_inodes",
+                           ])
+
+    output_path = files.images_config
+    zbi_name = "${image_name}"
+    compress_blobs = compress_blobs
+    blob_layout_format = blob_layout_format
+    fvm_slice_size = fvm_slice_size
+    fvm_reserved_slices = fvm_reserved_slices
+    generate_fvm = generate_fvm
+  }
+
+  generated_partitions_config(labels.partitions_config) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    output_path = files.partitions_config
+    if (defined(invoker.use_esp) && invoker.use_esp) {
+      esp_image_path = "${root_build_dir}/fuchsia.esp.blk"
+      deps = [ "//build/images:esp" ]
+    }
+  }
+
+  check_production_tag = false
+  if (defined(invoker.check_production_tag)) {
+    check_production_tag = invoker.check_production_tag
+  }
+
+  generated_assembly_inputs(labels.assembly_inputs) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    product_config = files.image_assembly_config
+    board_config = files.board_config
+    output_path = files.assembly_inputs
+
+    deps = [
+      ":${labels.board_config}",
+      ":${labels.image_assembly_config}",
+    ]
+  }
+
+  generated_file(labels.product_assembly_config) {
+    outputs = [ files.product_assembly_config ]
+    output_conversion = "json"
+    contents = {
+      # This isn't used, except to validate that the file is read correctly.
+      build_type = "eng"
+    }
+  }
+
+  # Create the legacy assembly input bundle for the above-generated image
+  # assembly configuration.
+  legacy_assembly_input_bundle(labels.legacy_assembly_input_bundle) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    image_assembly_label = ":${image_name}"
+    bundles_dir = files.outdir
+    include_config_data = generate_fvm
+  }
+
+  # Run product assembly, but just to verify that the image assembly config
+  # that it generates matches that used to create the legacy input assembly
+  # bundles.
+  ffx_action(labels.product_assembler) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    # TODO(fxbug.dev/77290) - Add depfile support and then remove the following
+    hermetic_deps = false
+
+    args = [
+      "--config",
+      "assembly_enabled=true",
+      "assembly",
+      "product",
+      "--product",
+      rebase_path(files.product_assembly_config, root_build_dir),
+      "--input-bundles-dir",
+      rebase_path(files.outdir, root_build_dir),
+      "--outdir",
+      rebase_path(files.outdir, root_build_dir),
+    ]
+
+    deps = [
+      ":${labels.legacy_assembly_input_bundle}",
+      ":${labels.product_assembly_config}",
+    ]
+
+    inputs = [
+      files.product_assembly_config,
+      files.legacy_assembly_input_bundle_manifest,
+    ]
+
+    outputs = [ files.regenerated_image_assembly_config ]
+
+    # If there isn't an FVM, there won't be a config-data package, and so it
+    # won't be created by product assembly (it won't have any config data in
+    # the legacy or common configs.)
+    if (generate_fvm) {
+      outputs += [ files.config_data_manifest ]
+    }
+  }
+
+  python_action(labels.compare_image_assembly_configs) {
+    forward_variables_from(invoker, [ "testonly" ])
+    hermetic_deps = false
+
+    binary_label = "//build/assembly/scripts:compare_image_assembly_configs"
+    deps = [
+      ":${labels.image_assembly_config}",
+      ":${labels.product_assembler}",
+    ]
+    inputs = [
+      files.image_assembly_config,
+      files.regenerated_image_assembly_config,
+    ]
+    outputs = [ files.compare_image_assembly_configs ]
+    args = [
+      "--stamp",
+      rebase_path(files.compare_image_assembly_configs, root_build_dir),
+      rebase_path(files.image_assembly_config, root_build_dir),
+      rebase_path(files.regenerated_image_assembly_config, root_build_dir),
+    ]
+  }
+
+  ffx_action(labels.image_assembler) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    metadata = {
+      # We insert these barriers to prevent the dependencies of these images
+      # from leaking into images "higher up" in the dependency chain.
+      package_barrier = []
+      config_package_barrier = []
+      distribution_entries_barrier = []
+
+      if (defined(invoker.metadata)) {
+        forward_variables_from(invoker.metadata, "*")
+      }
+
+      if (generate_fvm) {
+        package_output_manifests = [ files.base_package_manifest ]
+      }
+    }
+
+    # TODO(fxbug.dev/77290) - Add depfile support and then remove the following
+    hermetic_deps = false
+
+    args = [
+      "--config",
+      "assembly_enabled=true",
+      "assembly",
+      "image",
+      "--product",
+      rebase_path(files.image_assembly_config, root_build_dir),
+      "--board",
+      rebase_path(files.board_config, root_build_dir),
+      "--log-commands",
+      "--gendir",
+      rebase_path(files.gendir, root_build_dir),
+      "--outdir",
+      rebase_path(files.outdir, root_build_dir),
+    ]
+
+    # The SDK produces a manifest, which is used by ffx to find the host tools.
+    deps = [ "//sdk:host_tools.modular($host_toolchain)" ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+    deps += [
+      ":${labels.board_config}",
+      ":${labels.image_assembly_config}",
+    ]
+
+    inputs = [
+      files.board_config,
+      files.image_assembly_config,
+    ]
+
+    outputs = [
+      files.zbi,
+      files.zbi_manifest,
+      files.packages,
+      files.images_manifest,
+    ]
+
+    if (defined(invoker.zbi_signing_script)) {
+      outputs += [ files.zbi_signed ]
+    }
+
+    if (use_vbmeta) {
+      outputs += [ files.vbmeta ]
+    }
+
+    # Base package dependencies and outputs, if this configuration uses them.
+    if (generate_fvm) {
+      fvm_tool_target = "//src/storage/bin/fvm($host_toolchain)"
+      fvm_tool_path = get_label_info(fvm_tool_target, "root_out_dir")
+      fvm_tool_path += "/fvm"
+
+      deps += [
+        blobfs_tool_target,
+        fvm_tool_target,
+      ]
+
+      inputs += [
+        blobfs_tool_path,
+        fvm_tool_path,
+      ]
+
+      outputs += [
+        # In the outdir.
+        files.base_package,
+        files.base_package_manifest,
+        files.minfs,
+        files.blobfs,
+        files.fvm,
+        files.fvm_sparse,
+        files.fvm_blob_sparse,
+
+        # In the gendir.
+        files.blobfs_manifest,
+        files.blobs_json,
+        files.static_packages,
+        files.cache_packages,
+        files.base_meta_package,
+        files.base_pkg_abi_revision,
+      ]
+
+      if (fvm_emmc_partition_size != false ||
+          fvm_ftl_nand_block_count != false) {
+        outputs += [ files.fvm_fastboot ]
+      }
+    }
+
+    if (check_production_tag) {
+      assert_no_deps = [ "//build/validate:non_production_tag" ]
+    }
+  }
+
+  ffx_action(labels.create_system) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    args = [
+      "--config",
+      "assembly_enabled=true",
+      "assembly",
+      "create-system",
+      "--images",
+      rebase_path(files.images_config, root_build_dir),
+      "--gendir",
+      rebase_path(files.gendir, root_build_dir),
+      "--outdir",
+      rebase_path(files.outdir, root_build_dir),
+    ]
+
+    deps = [ ":${labels.images_config}" ]
+    inputs = [ files.images_config ]
+    outputs = [ files.create_system_command_log ]
+  }
+
+  #######
+  # Optionally, copy the resulting ZBI to the specified directory.
+  #
+
+  if (defined(invoker.output_dir)) {
+    assert(
+        invoker.output_dir != target_out_dir,
+        "The specified output directory must be different from the default target_out_dir")
+
+    # The output name is the same as the original file by default.
+    # Otherwise, it takes the output_name, and strips any extension.
+    output_name = "${image_name}"
+    if (defined(invoker.output_name)) {
+      parts = string_split(invoker.output_name, ".")
+      output_name = parts[0]
+    }
+
+    copy(labels.copy_zbi) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      sources = [ files.zbi ]
+      outputs = [ "${invoker.output_dir}/${output_name}.zbi" ]
+      deps = [ ":${labels.image_assembler}" ]
+    }
+
+    copy(labels.copy_zbi_manifest) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      sources = [ files.zbi_manifest ]
+      outputs = [ "${invoker.output_dir}/${output_name}.zbi.json" ]
+      deps = [ ":${labels.image_assembler}" ]
+    }
+
+    if (defined(invoker.zbi_signing_script)) {
+      copy(labels.copy_zbi_signed) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        sources = [ files.zbi_signed ]
+        outputs = [ "${invoker.output_dir}/${output_name}.zbi.signed" ]
+        deps = [ ":${labels.image_assembler}" ]
+      }
+    }
+
+    if (use_vbmeta) {
+      copy(labels.copy_vbmeta) {
+        forward_variables_from(invoker,
+                               [
+                                 "testonly",
+                                 "visibility",
+                               ])
+        sources = [ files.vbmeta ]
+        outputs = [ "${invoker.output_dir}/${output_name}.vbmeta" ]
+        deps = [ ":${labels.image_assembler}" ]
+      }
+    }
+
+    group(labels.copy_images) {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      public_deps = [
+        ":${labels.copy_zbi_manifest}",
+        ":${labels.copy_zbi}",
+      ]
+      if (defined(invoker.zbi_signing_script)) {
+        public_deps += [ ":${labels.copy_zbi_signed}" ]
+      }
+      if (use_vbmeta) {
+        public_deps += [ ":${labels.copy_vbmeta}" ]
+      }
+    }
+  }
+
+  #######
+  # Check the golden files.
+  #
+
+  if (defined(invoker.cmdline_goldens)) {
+    verify_kernel_cmdline("${image_name}_cmdline_verify_files") {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      zbi = files.zbi_final
+      goldens = invoker.cmdline_goldens
+      zbi_target = ":${labels.image_assembler}"
+    }
+  }
+  if (defined(invoker.bootfs_goldens)) {
+    verify_bootfs_filelist("${image_name}_bootfs_verify_files") {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      zbi = files.zbi_final
+      goldens = invoker.bootfs_goldens
+      zbi_target = ":${labels.image_assembler}"
+    }
+  }
+  if (defined(invoker.static_pkgs_goldens)) {
+    verify_static_pkgs("${image_name}_static_pkgs_verify_files") {
+      forward_variables_from(invoker,
+                             [
+                               "testonly",
+                               "visibility",
+                             ])
+      zbi = files.zbi_final
+      zbi_target = ":${labels.image_assembler}"
+      blobfs_manifest = files.blobfs_manifest
+      blobfs_manifest_target = ":${labels.image_assembler}"
+      goldens = invoker.static_pkgs_goldens
+    }
+  }
+  if (defined(invoker.route_sources_config)) {
+    assert(
+        image_name == "fuchsia",
+        "assemble_system() { route_sources_config } is temporarily only available for the `fuchsia` image")
+    verify_route_sources("${image_name}_route_sources_verify_files") {
+      # TODO(fxbug.dev/85664): The testonly and the dependency on pm publish
+      # are both temporary; they will be fixed after all collectors use
+      # blobfs_manifest as the source of truth for loading blobs.
+      #
+      # Unlike other verifiers that rely on assembly metadata, the route_sources
+      # verifier depends on pm publish and is integrated into the build via the
+      # testonly //build/images:updates target.
+      testonly = true
+      forward_variables_from(invoker, [ "visibility" ])
+      zbi = files.zbi_final
+      zbi_target = ":${labels.image_assembler}"
+      blobfs_manifest = files.blobfs_manifest
+      blobfs_manifest_target = ":${labels.image_assembler}"
+      config_path = invoker.route_sources_config
+    }
+  }
+
+  group(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    # public_deps is used, so that the outputs of these dependencies are
+    # available to external targets.
+    public_deps = [
+      ":${labels.assembly_inputs}",
+      ":${labels.compare_image_assembly_configs}",
+      ":${labels.create_system}",
+      ":${labels.image_assembler}",
+      ":${labels.images_config}",
+      ":${labels.partitions_config}",
+    ]
+    if (defined(invoker.output_dir)) {
+      public_deps += [ ":${labels.copy_images}" ]
+    }
+
+    deps = []
+    if (defined(invoker.cmdline_goldens)) {
+      deps += [ ":${image_name}_cmdline_verify_files" ]
+    }
+    if (defined(invoker.bootfs_goldens)) {
+      deps += [ ":${image_name}_bootfs_verify_files" ]
+    }
+    if (defined(invoker.static_pkgs_goldens)) {
+      deps += [ ":${image_name}_static_pkgs_verify_files" ]
+    }
+
+    metadata = {
+      # Assemblies have some defined packages, such as the base package.
+      # This barrier prevents a Assembly#1 from including a depending Assembly#2
+      # packages in the package sets (base, cache, system) for Assembly#1.
+      assembly_package_barrier = []
+
+      assembly_inputs_barrier = []
+      assembly_inputs = [
+        {
+          path = rebase_path(files.assembly_inputs, root_build_dir)
+        },
+      ]
+    }
+
+    # Note: "${image_name}_route_sources_verify_files" dependency on pm-publish
+    # would create a dependency cycle if it were included here. Instead, it is
+    # integrated into the build via //build/images:updates.
+  }
+}

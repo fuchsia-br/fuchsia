@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/limbo_caller"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.exception.ProcessLimbo",
+            "fuchsia.kernel.RootJob",
+            "fuchsia.process.Launcher"
+        ]
+    }
+}

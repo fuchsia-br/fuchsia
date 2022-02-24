@@ -1,0 +1,32 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.kernel") {
+  sdk_category = "partner"
+  api = "fuchsia.kernel.api"
+
+  sources = [
+    "cpu-resource.fidl",
+    "debug-resource.fidl",
+    "hypervisor-resource.fidl",
+    "info-resource.fidl",
+    "ioport-resource.fidl",
+    "irq-resource.fidl",
+    "kernel-counter.fidl",
+    "kernel-debug.fidl",
+    "kernel-stats.fidl",
+    "mmio-resource.fidl",
+    "power-resource.fidl",
+    "root-job.fidl",
+    "smc-resource.fidl",
+    "vmex-resource.fidl",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.mem",
+    "//zircon/vdso/zx",
+  ]
+}

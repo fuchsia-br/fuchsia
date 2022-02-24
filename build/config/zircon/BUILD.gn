@@ -1,0 +1,499 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/board.gni")
+import("//build/config/build_id.gni")
+import("//build/config/clang/clang.gni")
+import("//build/config/clang/crash_diagnostics.gni")
+import("//build/config/compiler.gni")
+import("//build/config/linker.gni")
+import("//build/config/zircon/levels.gni")
+import("//build/toolchain/variant.gni")
+
+# NOTE: This file provides the GN configs used by Zircon toolchains
+# exclusively. See //build/toolchain/zircon/zircon_toolchain.gni.
+#
+# Major differences in the rewrite:
+#
+#  - Uses |zircon_toolchain| global variable, instead of |toolchain|.
+#
+#  - All code paths related to |is_host| has been removed (the Zircon toolchain
+#    are never used to build host binaries).
+
+# These flags are enabled by default in Fuchsia's Clang toolchain, but we set
+# them explicitly to support other Clang toolchains and Clang-based tools.
+config("clang_defaults") {
+  if (clang_embed_bitcode) {
+    cflags = [
+      "-Xclang",
+      "-fembed-bitcode=all",
+    ]
+  }
+  if (current_cpu == "x64") {
+    asmflags = [ "-Wa,--mrelax-relocations=yes" ]
+  }
+  if (current_os == "linux") {
+    cflags_cc = [ "-stdlib=libc++" ]
+    ldflags = [
+      "-stdlib=libc++",
+      "-unwindlib=",
+      "-rtlib=compiler-rt",
+    ]
+  }
+}
+
+config("compiler") {
+  # Per CPU targeting policy we always target the baseline when building the
+  # kernel, rather than using board_configs. This is done to reduce binary
+  # diversity. See: TODO RFC LINK HERE
+  configs = [ "//build/config:cpu_baseline" ]
+
+  compiler_flags = []
+  cflags_cc = []
+  defines = []
+  ldflags = []
+
+  # NOTE: This config should only be used with Zircon-specific toolchains
+  # but this BUILD.gn file is also included from non-Zircon ones. To
+  # avoid un-necessary GN errors, define a fake local zircon_toolchain
+  # scope to ensure this config() definitions executes properly even if
+  # it is never used.
+  if (zircon_toolchain == false) {
+    zircon_toolchain = {
+      target_tuple = ""
+      version_string = ""
+      include_dirs_cc = []
+      lib_dirs = []
+    }
+  }
+
+  # For GCC, the compiler command implies the target.
+  # For Clang, there's a single compiler command that takes `--target`.
+  if (!is_gcc) {
+    compiler_flags += [ "--target=${zircon_toolchain.target_tuple}" ]
+  }
+
+  if (linker != "") {
+    ldflags += [ "-fuse-ld=$linker" ]
+  }
+
+  if (defined(zircon_toolchain.version_string) &&
+      zircon_toolchain.version_string != "") {
+    # Nothing uses this define, but its presence on compilation command
+    # lines ensures that Ninja will rebuild things when a new compiler
+    # version arrives.
+    defines += [ "TOOLCHAIN_VERSION=${zircon_toolchain.version_string}" ]
+  }
+
+  # This is the default already on Fuchsia and maybe others, but never hurts.
+  cflags = [ "-fno-common" ]
+
+  configs += [
+    "//build/config:color_diagnostics",
+    # TODO: "$current_os:compiler",
+  ]
+  if (!is_gcc) {
+    configs += [ ":clang_defaults" ]
+  }
+
+  if (is_fuchsia) {
+    # TODO(mcgrathr): These should all be default in the compiler driver.
+    ldflags += [
+      "-Wl,-z,combreloc",
+      "-Wl,-z,relro",
+      "-Wl,-z,now",
+      "-Wl,-z,text",
+    ]
+
+    if (is_gcc) {
+      # This is predefined by Clang --target=*-fuchsia.
+      # But the GCC toolchain is the generic --target=*-elf one.
+      defines += [ "__Fuchsia__" ]
+
+      # These are done by default in the Clang toolchain.
+      cflags += [ "-fasynchronous-unwind-tables" ]
+      ldflags += [
+        "-Wl,--build-id",
+        "-Wl,--eh-frame-hdr",
+        "-Wl,--hash-style=gnu",
+      ]
+
+      # In the Clang toolchain assembly files with no explicit marker don't
+      # cause the presumption of executable stack as they do in GCC.
+      ldflags += [ "-Wl,-z,noexecstack" ]
+
+      if (current_cpu == "arm64") {
+        # x18 is reserved in the Fuchsia ABI so it can be used
+        # for things like -fsanitize=shadow-call-stack.
+        cflags += [ "-ffixed-x18" ]
+      }
+    } else {
+      # gcc defaults to enabling sized deallocation >= c++14; clang does not.
+      # Enable sized-deallocation for the kernel, so the heap implementation can
+      # optimize for or check generated sizes.
+      cflags += [ "-fsized-deallocation" ]
+
+      # TODO(mcgrathr): This should be default in the compiler driver.
+      ldflags += [ "-Wl,--pack-dyn-relocs=relr" ]
+
+      # TODO(fxbug.dev/53078): Eventually the default in the compler driver.
+      ldflags += [ "-Wl,-z,rel" ]
+    }
+  } else if (current_os == "win") {
+    # This enables build ID-like PDB UUIDs without timestamp.
+    ldflags += [ "-Wl,/Brepro" ]
+  }
+
+  if (!is_gcc && crash_diagnostics_dir != "") {
+    compiler_flags += [ "-fcrash-diagnostics-dir=" +
+                        rebase_path(crash_diagnostics_dir, root_build_dir) ]
+  }
+
+  # The toolchain-supplied headers come after include_dirs from targets and
+  # configs but before libc.
+  foreach(dir, zircon_toolchain.include_dirs_cc) {
+    cflags_cc += [
+      "-isystem",
+      rebase_path(dir, root_build_dir),
+    ]
+  }
+
+  lib_dirs = zircon_toolchain.lib_dirs
+
+  asmflags = compiler_flags
+  cflags += compiler_flags
+  ldflags += compiler_flags
+
+  if (is_fuchsia && build_id_format != "") {
+    ldflags += [ "-Wl,--build-id=$build_id_format" ]
+  }
+}
+
+config("nolibc") {
+  ldflags = [ "-nostartfiles" ]
+
+  # Don't use -nostdlib, because the builtins (or libgcc) are what we want
+  # and are otherwise annoying to find and specify.  It's just the -lc that
+  # we really want to defeat, and that's handled by giving a -L that will
+  # find exactly nothing but a dummy libc.so.  Clang has -nolibc to kill
+  # the -lc, but for C++ it still uses -lm under -nolibc.  So this is still
+  # needed to make -lm into a dummy, though for -lc only GCC needs it.
+  lib_dirs = [ "libc-dummy" ]
+
+  if (is_gcc) {
+    # Include this in every link.
+    # Note GN requires "./" so it doesn't think this should mean a -l switch.
+    libs = [ "./dso_handle.ld" ]
+  } else {
+    # TODO(mcgrathr): GCC 9 has -nolibc, so use it when we get that toolchain.
+    ldflags += [ "-nolibc" ]
+  }
+}
+
+config("freestanding") {
+  cflags = [ "-ffreestanding" ]
+
+  # In Clang -fasynchronous-unwind-tables is the default for *-fuchsia
+  # targets.  But -ffreestanding defeats that (in target-independent logic
+  # in the Clang driver).  So add it back explicitly.  For GCC, it's
+  # already added explicitly in :compiler regardless so don't double it.
+  if (!is_gcc) {
+    cflags += [ "-fasynchronous-unwind-tables" ]
+  }
+
+  ldflags = cflags
+}
+
+config("data_sections") {
+  cflags = [ "-fdata-sections" ]
+  ldflags = cflags
+}
+
+# The 'default_assert_level' will point to one of the assert_level_XXX values
+# below. This allows targets or toolchains to opt out from the default and
+# select a specific value.
+config("assert_level_0") {
+  defines = [
+    "ZX_ASSERT_LEVEL=0",
+    "NDEBUG",
+  ]
+}
+
+group("assert_level_0_deps") {
+}
+
+config("assert_level_1") {
+  defines = [ "ZX_ASSERT_LEVEL=1" ]
+}
+
+group("assert_level_1_deps") {
+}
+
+config("assert_level_2") {
+  defines = [ "ZX_ASSERT_LEVEL=2" ]
+}
+
+group("assert_level_2_deps") {
+}
+
+config("default_assert_level") {
+  assert(
+      zx_assert_level >= 0 && zx_assert_level <= 2,
+      "Invalid zx_assert_level value '$zx_assert_level', valid values are 0, 1 or 2")
+  configs = [ ":assert_level_$zx_assert_level" ]
+}
+
+group("default_assert_level_deps") {
+  # Implicit dependencies for 'default_assert_level' config.
+}
+
+# This is separate from default_optimize so it can be removed.
+config("default_icf") {
+  if (optimize != "none" && optimize != "debug") {
+    # Our code should never rely on C's unique function pointer semantics,
+    # which is broken by --icf=all for sometimes substantial space savings.
+    configs = [ "//build/config:icf" ]
+  }
+}
+
+config("default_template_backtrace_limit") {
+  cflags_cc = [ "-ftemplate-backtrace-limit=0" ]
+}
+
+config("no_threadsafe_statics") {
+  cflags_cc = [ "-fno-threadsafe-statics" ]
+  cflags_objcc = cflags_cc
+}
+
+config("default_include_dirs") {
+  include_dirs = [ "//zircon/system/public" ]
+}
+
+config("no_stack_protector") {
+  cflags = [ "-fno-stack-protector" ]
+}
+
+config("no_safestack") {
+  if (!is_gcc) {
+    cflags = [ "-fno-sanitize=safe-stack" ]
+  }
+  configs = [ ":no_stack_protector" ]
+}
+
+group("no_safestack_deps") {
+  # Each config added to a zircon_toolchain_suite() must have a corresponding
+  # _deps group listing implicit dependencies if needed.
+}
+
+config("no_fuzzer") {
+  if (!is_gcc) {
+    cflags = [ "-fno-sanitize=fuzzer" ]
+  }
+}
+
+# TODO(fxbug.dev/27266) Remove this once the warning with fit::variant is addressed.
+config("no_maybe_uninitialized") {
+  if (is_gcc) {
+    cflags = [ "-Wno-maybe-uninitialized" ]
+  }
+}
+
+config("machine") {
+  if (is_fuchsia) {
+    # TODO(fxbug.dev/32157): Really need to get this nailed down once and for all
+    # and set by default in the compiler driver (Clang at least).
+    ldflags = [ "-Wl,-z,max-page-size=4096" ]
+  }
+}
+
+# TODO(fxbug.dev/54322): Use the config under //third_party/ulib/musl once the C
+# library has been migrated to the GN build.
+config("musl_headers") {
+  _musl_dir = "//zircon/third_party/ulib/musl"
+  visibility = [
+    "${_musl_dir}/*",
+    "//zircon/system/ulib/c:*",
+  ]
+  cflags = [
+    "-idirafter",
+    rebase_path("${_musl_dir}/include", root_build_dir),
+  ]
+  asmflags = cflags
+}
+
+config("user") {
+  defines = [ "_ALL_SOURCE" ]
+  configs = [
+    ":nolibc",
+    ":musl_headers",
+  ]
+}
+
+config("user_executable") {
+  # NOTE: Was only used in the 'user' Zircon build environment, which is
+  # implemented by the Fuchsia build using the 'target' toolchain instead,
+  # so this is not needed here.
+}
+
+config("integer-paranoia") {
+  cflags = [
+    "-fsanitize=integer-divide-by-zero,signed-integer-overflow",
+    "-fsanitize-undefined-trap-on-error",
+  ]
+}
+
+config("static-libc++") {
+  if (current_os == "mac") {
+    # The macOS driver doesn't support -static-libstdc++ properly, so pass
+    # the libraries directly.  This has to locate the files explicitly in
+    # the toolchain, because -lc++ would look for the shared library.
+    ldflags = [
+      "-nostdlib++",
+
+      # NOTE: the path below was relative to toolchain.tool_dir in the Zircon build
+      # but the Fuchsia one doesn't support GCC-based host builds at all, so this
+      # is assuming Clang is always used instead.
+      "${rebased_clang_prefix}/../lib/libc++.a",
+    ]
+  } else {
+    ldflags = [ "-static-libstdc++" ]
+
+    # TODO(fxbug.dev/26846): The implicitly linked static libc++.a depends on these.
+    if (current_os == "linux") {
+      libs = [
+        "dl",
+        "pthread",
+      ]
+    }
+  }
+}
+
+# This config is used for code that needs to be purely position-independent
+# without using dynamic relocation.  Since the compiler doesn't generally make
+# guarantees about this, it's sometimes necessary to disable specific optimizations
+# to ensure the code with this requirement doesn't get compiled in ways that won't
+# work.  This config can be changed to add switches when those needs arise.
+config("pure") {
+}
+
+config("rodso") {
+  configs = [ ":pure" ]
+  if (is_gcc) {
+    inputs = [ "rodso.ld" ]
+    ldflags = [ "-Wl,-T," + rebase_path(inputs[0], root_build_dir) ]
+  }
+}
+
+group("rodso_deps") {
+}
+
+# This has to be variant() rather than config() to be used in the toolchain
+# configs list.
+variant("tiny") {
+  cflags = [ "-mcmodel=tiny" ]
+  asmflags = cflags
+  ldflags = cflags
+}
+
+# TODO(fxbug.dev/54322): Move this to //zircon/kernel/BUILD.gn once the kernel has been
+# migrated to the Fuchsia build.
+# For any standalone static binary.
+config("standalone") {
+  ldflags = [
+    "-nostdlib",
+    "-static",
+  ]
+
+  cflags = [
+    "-ffreestanding",
+    "-include",
+    rebase_path("//zircon/kernel/include/hidden.h", root_build_dir),
+
+    # We want `.debug_frame` for the kernel (fxbug.dev/30023).  And we still want
+    # asynchronous unwind tables.  Alas there's (currently) no way to
+    # achieve this with our GCC.  At the moment we compile with
+    # `-fno-omit-frame-pointer`, which is good because we link with
+    # `--gc-sections`, which means `.eh_frame` gets discarded so GCC-built
+    # kernels don't have any unwind info (except for assembly)!  Assembler
+    # code has its own way of requesting `.debug_frame` vs `.eh_frame` with
+    # the `.cfi_sections` directive.
+    "-fno-unwind-tables",
+  ]
+
+  cflags_cc = [
+    # Underlying kernel heap only has default alignment of 8 bytes, so pass
+    # this to the compiler as the default new alignment.
+    "-faligned-new=8",
+  ]
+
+  if (current_cpu == "x64") {
+    # This only matters in an environment where interrupt handlers might
+    # push trap frames in the same privilege level, like the kernel.
+    # e.g. Multiboot probably doesn't actually need it, but it doesn't hurt.
+    cflags += [ "-mno-red-zone" ]
+  } else if (current_cpu == "arm64") {
+    # This matters if vector registers are not available, e.g. in the kernel
+    # since the they hold unsaved user state, or in the physmem environment
+    # because they might not be enabled in hardware yet.
+    cflags += [ "-mgeneral-regs-only" ]
+  }
+
+  if (is_gcc && current_os == "fuchsia") {
+    cflags += [ "-fpie" ]
+  }
+
+  if (!is_gcc && current_os == "fuchsia") {
+    # In the Fuchsia-target toolchains there's no way to prevent the
+    # compiler driver from passing -pie, so negate it.  BFD ld doesn't
+    # have --no-pie, but arm64-elf-gcc doesn't pass -pie either.
+    ldflags += [ "-Wl,--no-pie" ]
+  }
+
+  if (!is_gcc) {
+    # Disable the implicit addition of toolchain-provided libraries to
+    # the link by the compiler driver.  No toolchain-provided library is
+    # compatible with the kernel's internal ABI.
+    #
+    # TODO(fxbug.dev/27356): Clang doesn't have a single straightforward switch to
+    # disable all such libraries, though it certainly should.  It
+    # provides separate switches to disable the profiling/coverage
+    # runtime and to disable all the flavors of runtime implied by
+    # -fsanitize=... switches (including any such defaults).  It will
+    # still provide other incompatible libraries to the link, but they
+    # won't have any effect since they don't define any symbols the link
+    # needs.  However, this is a fragile situation that could easily
+    # break.
+    ldflags += [
+      "-noprofilelib",
+      "-fno-sanitize-link-runtime",
+    ]
+  }
+
+  configs = [ "//build/config:no_exceptions" ]
+}
+
+# Statically linked posititon independent executable.
+#
+# These have to be variant() rather than config() to be used in the toolchain
+# configs list.
+variant("static-pie-compile") {
+  cflags = [ "-fPIE" ]
+}
+
+variant("static-pie-link") {
+  ldflags = [
+    "-Wl,-pie",
+    "-Wl,--no-dynamic-linker",
+  ]
+}
+
+# Disallow C++ static initializers in functions that require runtime init.
+config("forbid-guard-variables") {
+  if (!is_gcc) {
+    cflags_cc = [
+      "-Xclang",
+      "-fforbid-guard-variables",
+    ]
+  }
+}

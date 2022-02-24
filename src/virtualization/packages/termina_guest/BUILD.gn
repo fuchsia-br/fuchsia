@@ -1,0 +1,83 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/virtualization/packages/guest_package.gni")
+
+declare_args() {
+  # The termina kernel image.
+  #
+  # Defaults to the common linux kernel image from CIPD, but can be overridden to use a
+  # custom kernel for development purposes.
+  termina_kernel = "//prebuilt/virtualization/packages/termina_guest/kernel/${target_cpu}/vm_kernel"
+
+  # The termina disk image.
+  #
+  # Defaults to the disk image from CIPD, but can be overridden to use a
+  # custom disk for development purposes.
+  termina_disk = "//prebuilt/virtualization/packages/termina_guest/images/${target_cpu}/vm_rootfs.img"
+
+  # The termina tools disk image.
+  #
+  # Defaults to the disk image from CIPD, but can be overridden to use a
+  # custom disk for development purposes.
+  termina_tools = "//prebuilt/virtualization/packages/termina_guest/images/${target_cpu}/vm_tools.img"
+
+  # The termina extras disk image.
+  #
+  # Defaults to the disk image from CIPD, but can be overridden to use a
+  # custom disk for development purposes.
+  termina_extras = "//prebuilt/virtualization/packages/termina_guest/images/${target_cpu}/vm_extras.img"
+}
+
+_kernel_artifact_path = "${target_out_dir}/vm_kernel"
+_rootfs_artifact_path = "${target_out_dir}/vm_rootfs"
+_tools_artifact_path = "${target_out_dir}/vm_tools"
+_extras_artifact_path = "${target_out_dir}/vm_extras"
+
+guest_prebuilt("kernel") {
+  source = termina_kernel
+  output = _kernel_artifact_path
+}
+
+guest_prebuilt("rootfs") {
+  source = termina_disk
+  output = _rootfs_artifact_path
+}
+
+guest_prebuilt("tools") {
+  source = termina_tools
+  output = _tools_artifact_path
+}
+
+guest_prebuilt("extras") {
+  source = termina_extras
+  output = _extras_artifact_path
+}
+
+guest_package("termina_guest") {
+  deps = [
+    ":kernel",
+    ":rootfs",
+    ":tools",
+  ]
+  cmdline = "console=hvc0 root=/dev/vda rw"
+  linux = _kernel_artifact_path
+
+  rootfs_name = "rootfs.img"
+  tools_name = "vm_tools.img"
+  resources = [
+    {
+      path = _rootfs_artifact_path
+      dest = "${rootfs_name}"
+    },
+    {
+      path = _tools_artifact_path
+      dest = "${tools_name}"
+    },
+  ]
+  block_devices = [
+    "data/${rootfs_name},ro",
+    "data/${tools_name},ro",
+  ]
+}

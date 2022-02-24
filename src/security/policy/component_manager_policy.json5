@@ -1,0 +1,512 @@
+{
+    security_policy: {
+        job_policy: {
+            ambient_mark_vmo_exec: [
+                "/core/appmgr",
+                "/core/test_manager/elf_test_ambient_exec_runner",
+
+                // The v2 Flutter and Dart JIT runners (which are not used for
+                // release builds) execute VMOs in order to run Flutter and
+                // Dart components.
+                // TODO(fxb/88626): These runners are configured in
+                // experiences.git (a product) and references to them do not
+                // belong in fuchsia.git (the platform). Add support for
+                // per-product policies and remove the runners from here.
+                "/core/session-manager/session:session/dart_jit_runner",
+                "/core/session-manager/session:session/flutter_jit_runner",
+                "/core/session-manager/session:session/workstation_session/login_shell/ermine_shell/chrome",
+
+                // We allow tests to access ambient executability in the same
+                // way that we're permissive with use of the components v1
+                // deprecated-ambient-replace-as-executable feature and
+                // VmexResource protocol on eng builds.
+                "/core/test_manager/system-tests:**",
+            ],
+            main_process_critical: [
+                "/bootstrap/archivist",
+                "/bootstrap/driver_manager",
+                "/bootstrap/fshost",
+                "/bootstrap/power_manager",
+                "/bootstrap/shutdown_shim",
+            ],
+            create_raw_processes: [
+                "/core/starnix_manager/starnix_runner",
+                "/core/test_manager/starnix_test_runner/starnix_runner",
+                "/core/test_manager/starnix_unit_test_runner",
+            ],
+        },
+        capability_policy: [
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.boot.RootResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/driver_manager",
+
+                    // Driver component names vary depending on the
+                    // exact hardware configuration of the board.
+                    // Grant all drivers the ability to access the root
+                    // resource because of this.
+                    // TODO(fxbug.dev/93188): remove this once the root
+                    // resource is not widely used.
+                    "/bootstrap/boot-drivers:**",
+                    "/bootstrap/pkg-drivers:**",
+                    "/bootstrap/netsvc",
+                    "/bootstrap/svchost",
+                    "/core",
+                    "/core/test_manager/system-tests:**",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.CpuResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/power_manager",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.DebugResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console",
+                    "/core",
+                    "/core/debug_serial",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.HypervisorResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.InfoResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.IoportResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.IrqResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.RootJob",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/driver_manager",
+                    "/bootstrap/netsvc",
+                    "/bootstrap/svchost",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.RootJobForInspect",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/memory_monitor",
+                    "/core/test_manager/system-tests:**",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.MmioResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.PowerResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.SmcResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/core",
+                ],
+            },
+            {
+                source_moniker: "<component_manager>",
+                source: "component",
+                source_name: "fuchsia.kernel.VmexResource",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/fshost/blobfs",
+                    "/core",
+                    "/core/starnix_manager/starnix_runner",
+                    "/core/test_manager/starnix_test_runner/starnix_runner",
+                    "/core/test_manager/system-tests:**",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "bin",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "blob",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/appmgr",
+                    "/core/pkg-cache",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "pkgfs",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/appmgr",
+                    "/core/pkg-cache",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "minfs",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/appmgr",
+                    "/core/minfs",
+                    "/core/ssh-key-manager",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "minfs-delayed",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/base_resolver",
+                    "/bootstrap/fshost",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "system",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/driver_manager",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/appmgr",
+                    "/core/system-updater",
+                    "/core/system-update-checker",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "tmp",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/fshost",
+                    "/bootstrap/netsvc",
+                    "/core",
+                    "/core/appmgr",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "build-info",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/fshost",
+                    "/core/build-info",
+                    "/core/feedback",
+                    "/core/omaha-client-service",
+                    "/core/system-updater",
+
+                    // TODO(fxbug.dev/91934): Once we can define test realms out of tree
+                    // we should remove this.
+                    "/core/test_manager/chromium-tests:**",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost",
+                source: "component",
+                source_name: "deprecated-misc-storage",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/fshost",
+                    "/core/system-updater",
+                    "/core/system-update-checker",
+                ],
+            },
+            {
+                source_moniker: "/bootstrap/fshost/blobfs",
+                source: "component",
+                source_name: "blob-exec",
+                capability: "directory",
+                target_monikers: [
+                    "/bootstrap/fshost",
+                    "/bootstrap/fshost/blobfs",
+                ],
+            },
+            {
+                // We restrict access to PackageResolver because it gives direct access to package
+                // handles which provide executability which bypass VX security policy.
+                source_moniker: "/core/pkg-resolver",
+                source: "component",
+                source_name: "fuchsia.pkg.PackageResolver",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/console-launcher",
+
+                    // This is only used when the kernel commandline flag devmgr.enable-ephemeral
+                    // is set, which enables loading drivers ephemerally. This is intended for
+                    // eng builds only.
+                    "/bootstrap/driver_manager",
+                    "/bootstrap/netsvc",
+
+                    // system-updater still runs as a v1 component and is a
+                    // valid client of PackageResolver.  appmgr has its own
+                    // allowlist for v1 components accessing pkg-resolver.
+                    "/core",
+                    "/core/full-resolver",
+                    "/core/universe-resolver",
+                    "/core/system-update-checker",
+                    "/core/system-updater",
+                ],
+            },
+            {
+                // We restrict access to PackageCache because it gives direct access to package
+                // handles which provide executability which bypass VX security policy.
+                source_moniker: "/core/pkg-cache",
+                source: "component",
+                source_name: "fuchsia.pkg.PackageCache",
+                capability: "protocol",
+                target_monikers: [
+                    "/core",
+                    "/core/pkg-resolver",
+                    "/core/system-updater",
+                ],
+            },
+            {
+                // We restrict access to RetainedPackages because it gives callers the ability
+                // to override certain package garbage collection behavior intended to only be
+                // used by the system updater.
+                source_moniker: "/core/pkg-cache",
+                source: "component",
+                source_name: "fuchsia.pkg.RetainedPackages",
+                capability: "protocol",
+                target_monikers: [
+                    "/core/system-updater",
+                ],
+            },
+            {
+                // We restrict access to base-resolver's ComponentResolver protocol because we
+                // expect only parts of component framework to be able to access it.
+                source_moniker: "/bootstrap/base-resolver",
+                source: "component",
+                source_name: "fuchsia.sys2.ComponentResolver",
+                capability: "protocol",
+                target_monikers: [
+                    "/core/full-resolver",
+                ],
+            },
+
+            // Only route Component resolver to test manager and system tests.
+            // TODO(fxbug.dev/86464): Remove this once we have facet API
+            {
+                source_moniker: "/core/full-resolver",
+                source: "component",
+                source_name: "fuchsia.sys2.ComponentResolver",
+                capability: "protocol",
+                target_monikers: [
+                    "/core/test_manager",
+                    "/core/test_manager/system-tests:**",
+                    "/core/full-resolver",
+                ],
+            },
+
+            //TODO(fxbug.dev/91765) - Remove source moniker after from target.
+            {
+                source_moniker: "/bootstrap/cr50_agent",
+                source: "component",
+                source_name: "fuchsia.tpm.cr50.PinWeaver",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/cr50_agent",
+                    "/core",
+                    "/core/account",
+                    "/core/account/credential_manager",
+                ],
+            },
+
+            //TODO(fxbug.dev/91765) - Remove source moniker after from target.
+            {
+                source_moniker: "/bootstrap/cr50_agent",
+                source: "component",
+                source_name: "fuchsia.tpm.cr50.Cr50",
+                capability: "protocol",
+                target_monikers: [
+                    "/bootstrap",
+                    "/bootstrap/cr50_agent",
+                    "/bootstrap/console-launcher",
+                    "/bootstrap/miscsvc",
+                    "/core",
+                    "/core/appmgr",
+                ],
+            },
+
+            // TODO(fxbug.dev/91765) - Remove source moniker after from target.
+            {
+                source_moniker: "/core/account/credential_manager",
+                source: "component",
+                source_name: "fuchsia.identity.credential.CredentialManager",
+                capability: "protocol",
+                target_monikers: [
+                    "/core/account/credential_manager",
+                    "/core/account/password_authenticator",
+                ],
+            },
+
+            // TODO(https://fxbug.dev/91765)
+            {
+                source_moniker: "/core/account/password_authenticator",
+                source: "component",
+                source_name: "fuchsia.identity.account.AccountManager",
+                capability: "protocol",
+                target_monikers: [
+                    "/core",
+                    "/core/account",
+                    "/core/account/password_authenticator",
+                    "/core/session-manager/session:session",
+                    "/core/session-manager/session:session/workstation_session",
+                    "/core/session-manager/session:session/workstation_session/login_shell",
+                ],
+            },
+
+            // TODO(https://fxbug.dev/93790): not security policy; split out into separate file.
+            // TODO(https://fxbug.dev/93579): once product assembly supports product-specific
+            // components running in the network realm, remove this policy.
+            {
+                source_moniker: "/core/network/netstack",
+                source: "component",
+                source_name: "fuchsia.posix.socket.raw.Provider",
+                capability: "protocol",
+                target_monikers: [
+                    "/core/network",
+                    "/core/network/netstack",
+                    "/core/lowpan-ot-driver",
+                ],
+            },
+        ],
+        child_policy: {
+            reboot_on_terminate: [
+                "/bootstrap/driver_index",
+                "/core",
+                "/core/appmgr",
+                "/core/network/netstack",
+                "/core/omaha-client-service",
+                "/core/setui_service",
+                "/core/system-update-checker",
+                "/core/system-update-committer",
+                "/core/wlancfg",
+                "/core/wlandevicemonitor",
+                "/core/wlanstack",
+            ],
+        },
+        debug_registration_policy: [
+            {
+                debug: "protocol",
+                environment_name: "test-env",
+                source_moniker: "/core/test_manager/debug_data",
+                source_name: "fuchsia.debugdata.DebugData",
+                target_moniker: "/core/test_manager",
+            },
+        ],
+    },
+}

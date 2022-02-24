@@ -1,0 +1,331 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dart/dart_library.gni")
+import("//build/dart/test.gni")
+import("//build/testing/environments.gni")
+import("//build/testing/host_test_data.gni")
+
+# This directory contains Dart wrappers for running performance tests
+# that are defined elsewhere in the Fuchsia tree.
+#
+# The test wrappers in this directory are split into multiple test
+# executables (dart_test targets here) because the Fuchsia Infra tools
+# for retrying tests and tracking flakes operate on the granularity of
+# test executables.
+
+test_list = [
+  "archivist_benchmarks_test",
+  "audio_mixer_profiler_test",
+  "dart_inspect_benchmarks_test",
+  "diagnostics_benchmarks_test",
+  "fidlc_microbenchmarks_test",
+  "flatland_benchmarks_test",
+  "garnet_input_latency_benchmarks_test",
+  "kernel_boot_stats_test",
+  "microbenchmarks_test",
+  "netstack_benchmarks_test",
+  "network_device_microbenchmarks_test",
+  "storage_benchmarks_test",
+  "rust_inspect_benchmarks_test",
+  "rust_inspect_reader_benchmarks_test",
+]
+foreach(target_name, test_list) {
+  dart_test(target_name) {
+    sources = [
+      "$target_name.dart",
+      "helpers.dart",
+      "summarize.dart",
+    ]
+
+    deps = [
+      "//sdk/testing/sl4f/client",
+      "//third_party/dart-pkg/pub/args",
+      "//third_party/dart-pkg/pub/logging",
+      "//third_party/dart-pkg/pub/meta",
+      "//third_party/dart-pkg/pub/test",
+      "//third_party/dart-pkg/pub/tuple",
+    ]
+
+    non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+
+    environments = [
+      atlas_env,
+      nuc_env,
+      vim3_env,
+    ]
+
+    # TODO(fxbug.dev/51799): Enable for all tests.
+    if (target_name == "kernel_boot_stats_test" ||
+        target_name == "audio_mixer_profiler_test") {
+      environments += [
+        astro_env,
+        sherlock_env,
+      ]
+    }
+
+    # TODO(fxbug.dev/92173): Enable for vim3.
+    if (target_name == "flatland_benchmarks_test") {
+      environments -= [ vim3_env ]
+    }
+  }
+}
+
+dart_test("summarize_perf_results_test") {
+  sources = [
+    "summarize.dart",
+    "summarize_test.dart",
+  ]
+
+  deps = [
+    "//sdk/testing/sl4f/client",
+    "//third_party/dart-pkg/pub/args",
+    "//third_party/dart-pkg/pub/logging",
+    "//third_party/dart-pkg/pub/meta",
+    "//third_party/dart-pkg/pub/test",
+    "//third_party/dart-pkg/pub/tuple",
+  ]
+
+  non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+}
+test_list += [ "summarize_perf_results_test" ]
+
+flutter_test_list = [
+  # fxbug.dev/60742
+  # "button_flutter_benchmarks_test",
+
+  # fxbug.dev/56644
+  # "clockface_flutter_benchmarks_test",
+
+  # fxbug.dev/59483
+  # "scroll_flutter_benchmarks_test",
+]
+foreach(target_name, flutter_test_list) {
+  dart_test(target_name) {
+    sources = [ "flutter/$target_name.dart" ]
+
+    deps = [
+      "//sdk/testing/sl4f/client",
+      "//sdk/testing/sl4f/flutter_driver_sl4f",
+      "//third_party/dart-pkg/pub/test",
+    ]
+
+    non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+
+    environments = [
+      atlas_env,
+      nuc_env,
+    ]
+  }
+}
+
+# Split the following tests into shards so that each shard fits
+# within the default time limit.
+shards = [
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+]
+total_shards = "8"
+shard_test_list = [
+  "fidl_microbenchmarks_test",
+  "netstack_iperf_test",
+]
+foreach(test, shard_test_list) {
+  foreach(shard, shards) {
+    target_name = test + "_shard_" + shard
+    dart_test(target_name) {
+      sources = [
+        test + ".dart",
+        "helpers.dart",
+        "summarize.dart",
+      ]
+
+      args = [
+        "--total-shards=" + total_shards,
+        "--shard-index=" + shard,
+      ]
+
+      deps = [
+        "//sdk/testing/sl4f/client",
+        "//third_party/dart-pkg/pub/args",
+        "//third_party/dart-pkg/pub/logging",
+        "//third_party/dart-pkg/pub/meta",
+        "//third_party/dart-pkg/pub/test",
+        "//third_party/dart-pkg/pub/tuple",
+      ]
+
+      non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+
+      environments = [
+        # TODO(fxb/88635): netstack_iperf fails on altas_env
+        # atlas_env,
+        nuc_env,
+        vim3_env,
+      ]
+    }
+    test_list += [ target_name ]
+  }
+}
+
+if (is_host) {
+  host_test_data("runtime_deps") {
+    sources = [
+      "$root_out_dir/catapult_converter",
+      "$root_out_dir/trace2json",
+    ]
+    outputs = [ "$target_gen_dir/runtime_deps/{{source_file_part}}" ]
+
+    deps = [
+      "//garnet/bin/catapult_converter:converter_bin",
+      "//garnet/bin/trace2json:bin",
+    ]
+
+    # TODO(fxbug.dev/48350): Enable host build for non-linux hosts as well.
+    if (host_os == "linux") {
+      sources += [ "$root_out_dir/iperf3" ]
+      deps += [ "//third_party/iperf:bin" ]
+    }
+  }
+}
+
+group("package_deps_for_infra_only") {
+  testonly = true
+  public_deps = [
+    "//src/diagnostics:benchmarks",
+    "//src/lib/diagnostics:benchmarks",
+    "//src/media/audio/audio_core/mixer/tools:audio_mixer_profiler",
+    "//src/tests/benchmarks:kernel-boot-benchmarks",
+    "//src/tests/benchmarks/fidl:benchmarks",
+    "//src/tests/microbenchmarks:fuchsia_microbenchmarks_perftestmode",
+
+    # Many tests use sl4f to communicate with the target.
+    "//src/testing/sl4f",
+
+    # These are used by netstack benchmarks.
+    "//src/connectivity/network/tests/benchmarks",
+    "//third_party/iperf",
+
+    # Used by network device benchmarks.
+    "//src/connectivity/network/drivers/network-device/device:network-device-microbenchmarks",
+
+    # These are used by flatland_benchmarks.
+    "//src/ui/examples:flatland-examples",
+
+    # These are used by garnet_input_latency_benchmarks.
+    "//src/sys/activity",
+    "//src/ui/examples/simplest_app",
+    "//src/ui/examples/yuv_to_image_pipe",
+    "//src/ui/tools:present_view",
+
+    # These are used by the flutter benchmarks.
+    "//src/experiences/benchmarks/bin/button_flutter:button_flutter",
+    "//src/experiences/benchmarks/bin/clockface_flutter:clockface-flutter",
+    "//src/experiences/benchmarks/bin/scroll_flutter:scroll-flutter",
+
+    # These are used by storage_benchmarks_test
+    "//src/storage/bin/odu:odu",
+    "//src/storage/bin/start-storage-benchmark:start-storage-benchmark",
+  ]
+}
+
+group("test") {
+  testonly = true
+
+  deps = [ ":package_deps_for_infra_only" ]
+
+  foreach(target_name, test_list) {
+    deps += [ ":$target_name($host_toolchain)" ]
+  }
+
+  foreach(target_name, flutter_test_list) {
+    deps += [ ":$target_name($host_toolchain)" ]
+  }
+}
+
+group("touch_input_test") {
+  testonly = true
+
+  deps = [
+    ":touch_input_latency_benchmarks_test($host_toolchain)",
+    "//src/testing/sl4f",
+    "//src/ui/tests/integration_input_tests/touch:tests",
+  ]
+}
+
+# Runs the benchmark for touch latency
+dart_test("touch_input_latency_benchmarks_test") {
+  sources = [
+    "helpers.dart",
+    "summarize.dart",
+    "touch_input_latency_benchmarks_test.dart",
+  ]
+
+  deps = [
+    "//sdk/testing/sl4f/client",
+    "//third_party/dart-pkg/pub/args",
+    "//third_party/dart-pkg/pub/logging",
+    "//third_party/dart-pkg/pub/meta",
+    "//third_party/dart-pkg/pub/test",
+    "//third_party/dart-pkg/pub/tuple",
+  ]
+
+  non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+
+  environments = [
+    atlas_env,
+    nuc_env,
+  ]
+}
+
+# Unit tests of processing logic
+group("tests") {
+  testonly = true
+  deps = [
+    ":flutter_startup_time_metric_test($host_toolchain)",
+    ":touch_input_latency_metric_test($host_toolchain)",
+  ]
+}
+
+dart_test("touch_input_latency_metric_test") {
+  sources = [
+    "helpers.dart",
+    "summarize.dart",
+    "touch_input_latency_metric_test.dart",
+  ]
+
+  deps = [
+    "//sdk/testing/sl4f/client",
+    "//third_party/dart-pkg/pub/args",
+    "//third_party/dart-pkg/pub/logging",
+    "//third_party/dart-pkg/pub/meta",
+    "//third_party/dart-pkg/pub/test",
+    "//third_party/dart-pkg/pub/tuple",
+  ]
+}
+
+dart_test("flutter_startup_time_metric_test") {
+  sources = [
+    "flutter/flutter_startup_time_metric_test.dart",
+    "flutter/helpers.dart",
+    "helpers.dart",
+    "summarize.dart",
+  ]
+
+  deps = [
+    "//sdk/testing/sl4f/client",
+    "//sdk/testing/sl4f/flutter_driver_sl4f",
+    "//third_party/dart-pkg/git/flutter/packages/flutter_driver",
+    "//third_party/dart-pkg/pub/args",
+    "//third_party/dart-pkg/pub/logging",
+    "//third_party/dart-pkg/pub/meta",
+    "//third_party/dart-pkg/pub/test",
+    "//third_party/dart-pkg/pub/tuple",
+  ]
+}

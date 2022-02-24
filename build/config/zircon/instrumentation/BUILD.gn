@@ -1,0 +1,22 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# ubsan-trap is pure instrumentation with no runtime.
+config("ubsan-trap") {
+  if (is_gcc) {
+    compiler_flags = [
+      "-fsanitize=undefined",
+      "-fsanitize-undefined-trap-on-error",
+    ]
+  } else {
+    compiler_flags = [ "-fsanitize-trap=undefined" ]
+  }
+  asmflags = compiler_flags
+  cflags = compiler_flags
+  ldflags = compiler_flags
+}
+
+config("instrumented-stack-size") {
+  defines = [ "CUSTOM_DEFAULT_STACK_SIZE=16384" ]
+}

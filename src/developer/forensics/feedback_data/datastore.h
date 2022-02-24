@@ -1,0 +1,89 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SRC_DEVELOPER_FORENSICS_FEEDBACK_DATA_DATASTORE_H_
+#define SRC_DEVELOPER_FORENSICS_FEEDBACK_DATA_DATASTORE_H_
+
+#include <lib/async/dispatcher.h>
+#include <lib/fpromise/promise.h>
+#include <lib/sys/cpp/service_directory.h>
+#include <lib/zx/time.h>
+
+#include <memory>
+
+#include "src/developer/forensics/feedback/annotations/annotation_manager.h"
+#include "src/developer/forensics/feedback/annotations/types.h"
+#include "src/developer/forensics/feedback/device_id_provider.h"
+#include "src/developer/forensics/feedback_data/annotations/annotation_provider.h"
+#include "src/developer/forensics/feedback_data/annotations/types.h"
+#include "src/developer/forensics/feedback_data/attachments/types.h"
+#include "src/developer/forensics/feedback_data/inspect_data_budget.h"
+#include "src/developer/forensics/utils/cobalt/logger.h"
+#include "src/developer/forensics/utils/cobalt/metrics.h"
+#include "src/developer/forensics/utils/fit/timeout.h"
+#include "src/developer/forensics/utils/previous_boot_file.h"
+
+namespace forensics {
+namespace feedback_data {
+
+// Holds data useful to attach in feedback reports (crash, user feedback or bug reports).
+//
+// Data can be annotations or attachments.
+//
+// Some data are:
+// * static and collected at startup, e.g., build version or hardware info.
+// * dynamic and collected upon data request, e.g., uptime or logs.
+// * collected synchronously, e.g., build version or uptime.
+// * collected asynchronously, e.g., hardware info or logs.
+// * pushed by other components, we called these "non-platform" to distinguish them from the
+//   "platform".
+//
+// Because of dynamic asynchronous data, the data requests can take some time and return a
+// ::fpromise::promise.
+class Datastore {
+ public:
+  Datastore(async_dispatcher_t* dispatcher, std::shared_ptr<sys::ServiceDirectory> services,
+            cobalt::Logger* cobalt, const AnnotationKeys& annotation_allowlist,
+            const AttachmentKeys& attachment_allowlist,
+            feedback::AnnotationManager* annotation_manager,
+            feedback::DeviceIdProvider* device_id_provider, InspectDataBudget* inspect_data_budget);
+
+  ::fpromise::promise<Annotations> GetAnnotations(zx::duration timeout);
+  ::fpromise::promise<Attachments> GetAttachments(zx::duration timeout);
+
+  // Exposed for testing purposes.
+  Datastore(async_dispatcher_t* dispatcher, std::shared_ptr<sys::ServiceDirectory> services,
+            feedback::DeviceIdProvider* device_id_provider, const char* limit_data_flag_path);
+
+  Annotations GetImmediatelyAvailableAnnotations() {
+    return annotation_manager_->ImmediatelyAvailable();
+  }
+  const Attachments& GetStaticAttachments() const { return static_attachments_; }
+
+  void DropStaticAttachment(const AttachmentKey& key, Error error);
+
+ private:
+  ::fpromise::promise<Attachment> BuildAttachment(const AttachmentKey& key, zx::duration timeout);
+  ::fpromise::promise<AttachmentValue> BuildAttachmentValue(const AttachmentKey& key,
+                                                            zx::duration timeout);
+  fit::Timeout MakeCobaltTimeout(cobalt::TimedOutData data, zx::duration timeout);
+
+  async_dispatcher_t* dispatcher_;
+  const std::shared_ptr<sys::ServiceDirectory> services_;
+  cobalt::Logger* cobalt_;
+  const AnnotationKeys annotation_allowlist_;
+  AttachmentKeys attachment_allowlist_;
+
+  feedback::AnnotationManager* annotation_manager_;
+  Attachments static_attachments_;
+
+  std::vector<std::unique_ptr<AnnotationProvider>> reusable_annotation_providers_;
+
+  InspectDataBudget* inspect_data_budget_;
+};
+
+}  // namespace feedback_data
+}  // namespace forensics
+
+#endif  // SRC_DEVELOPER_FORENSICS_FEEDBACK_DATA_DATASTORE_H_

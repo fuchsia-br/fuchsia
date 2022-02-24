@@ -1,0 +1,56 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+group("account_manager_integration") {
+  testonly = true
+  deps = [
+    ":account_manager_integration_test",
+    "//src/identity/bin/dev_auth_provider",
+    "//src/identity/bin/dev_authenticator",
+  ]
+}
+
+rustc_test("test") {
+  name = "account_manager_integration_test"
+  edition = "2018"
+
+  source_root = "tests/lib.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.auth:fuchsia.auth-rustc",
+    "//sdk/fidl/fuchsia.identity.account:fuchsia.identity.account-rustc",
+    "//sdk/fidl/fuchsia.stash:fuchsia.stash-rustc",
+    "//src/identity/lib/account_common",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "tests/account.rs",
+    "tests/lib.rs",
+  ]
+}
+
+fuchsia_unittest_package("account_manager_integration_test") {
+  package_deps_for_infra_only = [
+    "//src/identity/bin/account_handler:account_handler",
+    "//src/identity/bin/account_manager:account_manager",
+    "//src/identity/bin/dev_authenticator:dev_authenticator",
+  ]
+  deps = [ ":test" ]
+  manifest = "meta/account_manager_integration_test.cmx"
+}

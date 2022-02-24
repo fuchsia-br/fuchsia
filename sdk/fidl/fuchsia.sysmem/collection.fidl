@@ -1,0 +1,545 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.sysmem;
+
+using zx;
+
+const MAX_COUNT_DUPLICATES uint32 = 64;
+
+/// A BufferCollectionToken is not a BufferCollection, but rather a way to
+/// identify a potential shared BufferCollection prior to the BufferCollection
+/// being allocated.
+///
+/// We use a channel for the BufferCollectionToken instead of a single eventpair
+/// (pair) because this way we can detect error conditions like a participant
+/// dying mid-create.
+protocol BufferCollectionToken {
+    /// This method can be used to add more participants prior to creating a
+    /// shared BufferCollection. A new token will be returned for each entry in
+    /// the `rights_attenuation_masks` array. The return value is the client
+    /// ends of each new participant token.
+    ///
+    /// In contrast to Duplicate(), no Sync() is needed after calling this
+    /// method.
+    ///
+    /// All tokens must be turned in via BindSharedCollection() or Close() for a
+    /// BufferCollection to be successfully created.
+    ///
+    /// In each entry of `rights_attenuation_masks`, rights bits that are zero
+    /// will be absent in the buffer VMO rights obtainable via the corresponding
+    /// returned token. This allows an initiator or intermediary participant to
+    /// attenuate the rights available to a participant. This does not allow a
+    /// participant to gain rights that the participant doesn't already have.
+    /// The value ZX_RIGHT_SAME_RIGHTS can be used to specify that no
+    /// attenuation should be applied.
+    DuplicateSync(struct {
+        rights_attenuation_masks vector<zx.rights>:MAX_COUNT_DUPLICATES;
+    }) -> (resource struct {
+        tokens vector<client_end:BufferCollectionToken>:MAX_COUNT_DUPLICATES;
+    });
+
+    /// This method can be used to add a participant prior to creating a shared
+    /// BufferCollection. It should only be used instead of DuplicateSync in
+    /// performance sensitive cases where it would be undesireable to wait for
+    /// sysmem to respond as part of each duplicate.
+    ///
+    /// After sending one or more Duplicate() messages, and before sending the
+    /// created tokens to other participants (or to other Allocator channels),
+    /// the client should send a Sync() and wait for its response.  The Sync()
+    /// call can be made on the token, or on the BufferCollection obtained by
+    /// passing this token to BindSharedCollection().  Either will ensure that
+    /// the server knows about the tokens created via Duplicate() before the
+    /// other participant sends the token to the server via separate Allocator
+    /// channel.
+    ///
+    /// All tokens must be turned in via BindSharedCollection() or Close() for a
+    /// BufferCollection to be successfully created.
+    ///
+    /// When a client calls BindSharedCollection() to turn in a
+    /// BufferCollectionToken, the server will process all Duplicate() messages
+    /// before closing down the BufferCollectionToken.  This allows the client
+    /// to Duplicate() and immediately turn in the BufferCollectionToken using
+    /// BindSharedCollection, then later transfer the client end of token_request
+    /// to another participant - the server will notice the existence of the
+    /// token_request before considering this BufferCollectionToken fully closed.
+    ///
+    /// `rights_attenuation_mask` rights bits that are zero in this mask will be
+    /// absent in the buffer VMO rights obtainable via the client end of
+    /// token_request. This allows an initiator or intermediary participant to
+    /// attenuate the rights available to a participant. This does not allow a
+    /// participant to gain rights that the participant doesn't already have.
+    /// The value ZX_RIGHT_SAME_RIGHTS can be used to specify that no
+    /// attenuation should be applied.
+    ///
+    /// These values for rights_attenuation_mask result in no attenuation:
+    ///   * ZX_RIGHT_SAME_RIGHTS (preferred)
+    ///   * 0xFFFFFFFF (this is reasonable when an attenuation mask is computed)
+    ///   * 0 (deprecated - do not use 0 - an ERROR will go to the log)
+    ///
+    /// `token_request` is the server end of a BufferCollectionToken channel.
+    /// The client end of this channel acts as another participant in creating the
+    /// shared BufferCollection.
+    Duplicate(resource struct {
+        rights_attenuation_mask uint32;
+        token_request server_end:BufferCollectionToken;
+    });
+
+    /// Ensure that previous Duplicate() messages have been received server side,
+    /// so that it's safe to send the client end of token_request to another
+    /// participant knowing the server will recognize the token when it's sent
+    /// into BindSharedCollection by the other participant.
+    ///
+    /// Other options include waiting for each Duplicate() to complete
+    /// individually (using separate call to BufferCollectionToken.Sync() after
+    /// each), or calling Sync() on BufferCollection after this token has
+    /// been turned in via BindSharedCollection().
+    ///
+    /// Calling BufferCollectionToken.Sync() on a token that isn't/wasn't a
+    /// valid sysmem token risks the Sync() hanging forever.  See
+    /// ValidateBufferCollectionToken() for one way to mitigate the possibility
+    /// of a hostile/fake BufferCollectionToken at the cost of one round trip.
+    ///
+    /// Another way to mitigate is to avoid calling Sync() on the token, and
+    /// instead later deal with potential failure of BufferCollection.Sync() if
+    /// the original token was invalid.  This option can be preferable from a
+    /// performance point of view, but requires client code to delay sending
+    /// tokens duplicated from this token until after client code has converted
+    /// this token to a BufferCollection and received successful response from
+    /// BufferCollection.Sync() (or received OnDuplicatedTokensKnownByServer()).
+    ///
+    /// Prefer using BufferCollection.Sync() instead, when feasible (see above).
+    /// When BufferCollection.Sync() isn't feasible, the caller must already
+    /// know that this token is/was valid, or BufferCollectionToken.Sync() may
+    /// hang forever.  See ValidateBufferCollectionToken() to check token
+    /// validity first if the token isn't already known to be (is/was) valid.
+    Sync() -> ();
+
+    /// Normally a participant will convert the token into a BufferCollection
+    /// view, but a particpant is also free to Close() the token (and then close
+    /// the channel immediately or shortly later in response to server closing
+    /// its end), which avoids causing logical buffer collection failure.
+    /// Normally an unexpected token channel close will cause
+    /// logical buffer collection failure.
+    Close();
+
+    /// Set a name for VMOs in this buffer collection. The name may be truncated shorter. The name
+    /// only affects VMOs allocated after it's set - this call does not rename existing VMOs. If
+    /// multiple clients set different names then the larger priority value will win.
+    SetName(struct {
+        priority uint32;
+        name string:64;
+    });
+
+    /// Set information about the current client that can be used by sysmem to
+    /// help debug leaking memory and hangs waiting for constraints. |name| can
+    /// be an arbitrary string, but the current process name (see
+    /// fsl::GetCurrentProcessName()) is a good default. |id| can be an arbitrary
+    /// id, but the current process ID (see fsl::GetCurrentProcessKoid()) is a
+    /// good default.
+    SetDebugClientInfo(struct {
+        name string:64;
+        id uint64;
+    });
+
+    /// Sysmem logs a warning if not all clients have set constraints 5 seconds
+    /// after creating a collection. Clients can call this method to change
+    /// when the log is printed. If multiple client set the deadline, it's
+    /// unspecified which deadline will take effect.
+    SetDebugTimeoutLogDeadline(struct {
+        deadline zx.time;
+    });
+
+    /// A dispensable token can fail after buffers are logically allocated
+    /// without causing failure of its parent (if any).
+    ///
+    /// The dispensable token participates in constraints aggregation along with
+    /// its parent before logical buffer allocation.  If the dispensable token
+    /// fails before buffers are logically allocated, the failure propagates to
+    /// the dispensable token's parent.
+    ///
+    /// After buffers are logically allocated, failure of the dispensable token
+    /// (or any child of the dispensable token) does not propagate to the
+    /// dispensable token's parent.  Failure does propagate from a normal
+    /// child of a dispensable token to the dispensable token.  Failure
+    /// of a child is blocked from reaching its parent if the child is attached,
+    /// or if the child is dispensable and the failure occurred after logical
+    /// allocation.
+    ///
+    /// A dispensable token can be used in cases where a participant needs to
+    /// provide constraints, but after buffers are allocated, the participant
+    /// can fail without causing buffer collection failure from the parent's
+    /// point of view.
+    ///
+    /// In contrast, AttachToken() can be used to create a token which does not
+    /// participate in constraints aggregation with its parent, and whose
+    /// failure at any time does not propagate to its parent, and whose delay
+    /// providing constraints does not prevent the parent from completing its
+    /// buffer allocation.
+    ///
+    /// An initiator may in some scenarios choose to initially use a dispensable
+    /// token for a given instance of a participant, and then later if the first
+    /// instance of that participant fails, a new second instance of that
+    /// participant my be given a token created with AttachToken().
+    ///
+    /// If a client uses this message, the client should not rely on the
+    /// client's own BufferCollectionToken or BufferCollection channel to close
+    /// from the server end due to abrupt failure of any BufferCollectionToken
+    /// or BufferCollection that the client has SetDispensable() and given out
+    /// to another process.  For this reason, the client should take extra care
+    /// to notice failure of that other process via other means.
+    ///
+    /// SetDispensable() on an already-dispensable token is idempotent.
+    SetDispensable();
+};
+
+/// BufferCollection is a connection directly from a participant to sysmem re.
+/// a logical BufferCollection; typically the logical BufferCollection is shared
+/// with other participants.  In other words, an instance of the BufferCollection
+/// interface is a view of a "logical buffer collection".
+///
+/// This connection exists to facilitate async indication of when the logical
+/// BufferCollection has been populated with buffers.
+///
+/// Also, the channel's closure by the server is an indication to the client
+/// that the client should close all VMO handles that were obtained from the
+/// BufferCollection ASAP.
+///
+/// Also, this interface may in future allow specifying constraints in other
+/// ways, and may allow for back-and-forth negotiation of constraints to some
+/// degree.
+///
+/// This interface may in future allow for more than 64 VMO handles per
+/// BufferCollection, but currently the limit is 64.
+///
+/// This interface may in future allow for allocating/deallocating single
+/// buffers.
+///
+/// Some initiators may wait a short duration until all old logical
+/// BufferCollection VMO handles have closed (or until the short duration times
+/// out) before allocating a new BufferCollection, to help control physical
+/// memory fragmentation and avoid overlap of buffer allocation lifetimes for
+/// the old and new collections. Collections can be large enough that it's worth
+/// avoiding allocation overlap (in time).
+@for_deprecated_c_bindings
+protocol BufferCollection {
+    /// See comments on BufferCollectionToken::Sync().
+    Sync() -> ();
+
+    /// Provide BufferCollectionConstraints to the logical BufferCollection.
+    ///
+    /// A participant may only call SetConstraints() once.
+    ///
+    /// Sometimes the initiator is a participant only in the sense of wanting to
+    /// keep an eye on success/failure to populate with buffers, and zx.status on
+    /// failure.  In that case, `has_constraints` can be false, and `constraints`
+    /// will be ignored.
+    ///
+    /// VMO handles will not be provided to the client that sends null
+    /// constraints - that can be intentional for an initiator that doesn't need
+    /// VMO handles.  Not having VMO handles doesn't prevent the initator from
+    /// adjusting which portion of a buffer is considered valid and similar, but
+    /// the initiator can't hold a VMO handle open to prevent the logical
+    /// BufferCollection from cleaning up if the logical BufferCollection needs
+    /// to go away regardless of the initiator's degree of involvement for
+    /// whatever reason.
+    ///
+    /// For population of buffers to be attempted, all holders of a
+    /// BufferCollection client channel need to call SetConstraints() before
+    /// sysmem will attempt to allocate buffers.
+    ///
+    /// `has_constraints` if false, the constraints are effectively null, and
+    /// `constraints` are ignored.  The sender of null constraints won't get any
+    /// VMO handles in BufferCollectionInfo, but can still find out how many
+    /// buffers were allocated and can still refer to buffers by their
+    /// buffer_index.
+    ///
+    /// `constraints` are constraints on the buffer collection.
+    SetConstraints(struct {
+        has_constraints bool;
+        constraints BufferCollectionConstraints;
+    });
+
+    /// This request completes when buffers have been allocated, responds with
+    /// some failure detail if allocation has been attempted but failed.
+    ///
+    /// The following must occur before buffers will be allocated:
+    ///   * All BufferCollectionToken(s) of the logical BufferCollectionToken
+    ///     must be turned in via BindSharedCollection().
+    ///   * All BufferCollection(s) of the logical BufferCollection must have had
+    ///     SetConstraints() sent to them.
+    ///
+    /// Returns `ZX_OK` if successful.
+    /// Returns `ZX_ERR_NO_MEMORY` if the request is valid but cannot be
+    /// fulfilled due to resource exhaustion.
+    /// Returns `ZX_ERR_ACCESS_DENIED` if the caller is not permitted to
+    /// obtain the buffers it requested.
+    /// Returns `ZX_ERR_INVALID_ARGS` if the request is malformed.
+    /// Returns `ZX_ERR_NOT_SUPPORTED` if request is valid but cannot be
+    /// satisfied, perhaps due to hardware limitations.
+    ///
+    /// `buffer_collection_info` has the VMO handles and other related info.
+    WaitForBuffersAllocated() -> (resource struct {
+        status zx.status;
+        buffer_collection_info BufferCollectionInfo_2;
+    });
+
+    /// This returns the same result code as WaitForBuffersAllocated if the
+    /// buffer collection has been allocated or failed, or `ZX_ERR_UNAVAILABLE`
+    /// if WaitForBuffersAllocated would block.
+    CheckBuffersAllocated() -> (struct {
+        status zx.status;
+    });
+
+    /// The CloseBuffer() doesn't immediately force all VMO handles to that
+    /// buffer to close, but it does close any handle held by sysmem, and does
+    /// notify all participants of the desire to close the buffer at which point
+    /// each participant that's listening may close their handle to the buffer.
+    ///
+    /// Only a particpant with write can do this.  Coordination among multiple
+    /// participants with write is outside of the scope of this interface.
+    ///
+    /// `buffer_index` indicates which buffer to close.  If the buffer is already
+    /// closed this has no effect (idempotent).
+    CloseSingleBuffer(struct {
+        buffer_index uint64;
+    });
+
+    /// This allocates a new buffer that is consistent with the most recent call
+    /// to SetConstraints(), if possible.  If not possible, this indicates the
+    /// failure via OnNewBufferAllocated().
+    ///
+    /// Only a participant with write can do this.  Coordination among multiple
+    /// participants with write is outside the scope of this interface.
+    ///
+    /// The participant is (intentionally) never informed of other participant's
+    /// constraints.
+    AllocateSingleBuffer(struct {
+        buffer_index uint64;
+    });
+
+    /// Completes when AllocateBuffer is done.  Callers who wish to avoid
+    /// blocking a thread while waiting can use OnAllocateSingleBufferDone()
+    /// instead.
+    WaitForSingleBufferAllocated(struct {
+        buffer_index uint64;
+    }) -> (resource struct {
+        status zx.status;
+        buffer_info SingleBufferInfo;
+    });
+
+    /// A participant can use this message to have sysmem verify that this
+    /// buffer_index exists.  This message is intentionally ignored by the
+    /// server if the buffer_index _does_ exist.  In that case, the client will
+    /// see OnAllocateSingleBufferDone() soon with status == `ZX_OK` (if the
+    /// client hasn't already seen that message).  If on the other hand the
+    /// buffer_index does not exist, this message causes the server to send
+    /// OnAllocateSingleBufferDone() with status == `ZX_ERR_NOT_FOUND`.  A
+    /// particpant will typically use this when the participant receives a new
+    /// buffer_index that the participant doesn't yet know about, to ensure that
+    /// the participant won't be waiting forever for the
+    /// OnAllocateSingleBufferDone() message regarding this buffer_index.
+    CheckSingleBufferAllocated(struct {
+        buffer_index uint64;
+    });
+
+    /// The server handles unexpected failure of a BufferCollection by failing
+    /// the whole logical buffer collection.  Partly this is to expedite closing
+    /// VMO handles.  If a participant would like to cleanly close a
+    /// BufferCollection view without causing logical buffer collection failure,
+    /// the participant can send Close() before closing the client end of the
+    /// BufferCollection channel.  If this is the last BufferCollection view, the
+    /// logical buffer collection will still go away.
+    Close();
+
+    /// Set a name for VMOs in this buffer collection. The name may be truncated shorter. The name
+    /// only affects VMOs allocated after it's set - this call does not rename existing VMOs. If
+    /// multiple clients set different names then the larger priority value will win.
+    SetName(struct {
+        priority uint32;
+        name string:64;
+    });
+
+    /// See BufferCollectionToken.SetClientDebugInfo.
+    SetDebugClientInfo(struct {
+        name string:64;
+        id uint64;
+    });
+
+    /// Optionally sent before SetConstraints() to set constraints related to
+    /// clear (not encrypted, not in protected/secure memory) aux buffers.  This
+    /// is only valid when sent before SetConstraints().  Invalid settings may
+    /// not result in channel closure until SetConstraints() is received by
+    /// sysmem.
+    SetConstraintsAuxBuffers(struct {
+        constraints BufferCollectionConstraintsAuxBuffers;
+    });
+
+    /// Allows getting any aux buffers allocated after using
+    /// SetConstraintsAuxBuffers().
+    ///
+    /// Sending this message is not permitted until WaitForBuffersAllocated() completes.
+    ///
+    /// On failure, status will be a failing status and
+    /// buffer_collection_info_aux_buffers won't be filled out, and won't have
+    /// any handles.
+    ///
+    /// On success, status will be ZX_OK, and buffer_count will be the same as
+    /// the main buffer_count from WaitForBuffersAllocated().
+    ///
+    /// If a participant specified "allow_clear_aux_buffers_for_secure" true but
+    /// "need_clear_aux_buffers_for_secure" false (or not set), the participant
+    /// can determine if aux buffers were allocated by looking at buffer[0].vmo.
+    /// If buffer 0 has no vmo, aux VMOs were not allocated.  The resulting
+    /// status will still be ZX_OK in this case, and buffer_count will still be
+    /// filled out to match the main buffer_count.
+    ///
+    /// It's legal for a participant that set
+    /// "allow_clear_aux_buffers_for_secure" false to call GetAuxBuffers(), in
+    /// which case buffer[0].vmo will not be set.
+    GetAuxBuffers() -> (resource struct {
+        status zx.status;
+        buffer_collection_info_aux_buffers BufferCollectionInfo_2;
+    });
+
+    /// Create a new token, for trying to add a new participant to an existing
+    /// collection, if the existing collection's buffer counts, constraints,
+    /// and participants allow.
+    ///
+    /// This can be useful in replacing a failed participant, and/or in
+    /// adding/re-adding a participant after buffers have already been
+    /// allocated.
+    ///
+    /// Failure of an attached token / collection does not propagate to the
+    /// parent of the attached token.  Failure does propagate from a normal
+    /// child of a dispensable token to the dispensable token.  Failure
+    /// of a child is blocked from reaching its parent if the child is attached,
+    /// or if the child is dispensable and the failure occurred after logical
+    /// allocation.
+    ///
+    /// An initiator may in some scenarios choose to initially use a dispensable
+    /// token for a given instance of a participant, and then later if the first
+    /// instance of that participant fails, a new second instance of that
+    /// participant my be given a token created with AttachToken().
+    ///
+    /// From the point of view of the client end of the BufferCollectionToken
+    /// channel, the token acts like any other token.  The client can
+    /// Duplicate() the token as needed, and can send the token to a different
+    /// process.  The token should be converted to a BufferCollection channel
+    /// as normal by calling BindSharedCollection().  SetConstraints() should
+    /// be called on that BufferCollection channel.
+    ///
+    /// A success result from WaitForBuffersAllocated() means the new
+    /// participant's constraints were satisfiable using the already-existing
+    /// buffer collection, the already-established BufferCollectionInfo
+    /// including image format constraints, and the already-existing other
+    /// participants and their buffer counts.  A failure result means the new
+    /// participant's constraints cannot be satisfied using the existing
+    /// buffer collection and its already-logically-allocated participants.
+    /// Creating a new collection instead may allow all participant's
+    /// constraints to be satisfied, assuming SetDispensable() is used in place
+    /// of AttachToken(), or a normal token is used.
+    ///
+    /// A token created with AttachToken() performs constraints aggregation with
+    /// all constraints currently in effect on the buffer collection, plus the
+    /// attached token under consideration plus child tokens under the attached
+    /// token which are not themselves an attached token or under such a token.
+    ///
+    /// Allocation of buffer_count to min_buffer_count_for_camping etc is
+    /// first-come first-served, but a child can't logically allocate before
+    /// all its parents have sent SetConstraints().
+    ///
+    /// See also SetDispensable(), which in contrast to AttachToken(), has the
+    /// created token + children participate in constraints aggregation along
+    /// with its parent.
+    ///
+    /// The newly created token needs to be Sync()ed to sysmem before the new
+    /// token can be passed to BindSharedCollection().  The Sync() of the new
+    /// token can be accomplished with BufferCollection.Sync() on this
+    /// BufferCollection.  Alternately BufferCollectionToken.Sync() on the new
+    /// token also works.  A BufferCollectionToken.Sync() can be started after
+    /// any BufferCollectionToken.Duplicate() messages have been sent via the
+    /// newly created token, to also sync those additional tokens to sysmem
+    /// using a single round-trip.
+    ///
+    /// These values for rights_attenuation_mask result in no attenuation (note
+    /// that 0 is not on this list; 0 will output an ERROR to the system log
+    /// to help diagnose the bug in client code):
+    ///   * ZX_RIGHT_SAME_RIGHTS (preferred)
+    ///   * 0xFFFFFFFF (this is reasonable when an attenuation mask is computed)
+    AttachToken(resource struct {
+        rights_attenuation_mask uint32;
+        token_request server_end:BufferCollectionToken;
+    });
+
+    /// AttachLifetimeTracking:
+    ///
+    /// AttachLifetimeTracking() is intended to allow a client to wait until an
+    /// old logical buffer collection is fully or mostly deallocated before
+    /// attempting allocation of a new logical buffer collection.
+    ///
+    /// Attach an eventpair endpoint to the logical buffer collection, so that
+    /// the server_end will be closed when the number of buffers allocated
+    /// drops to 'buffers_remaining'.  The server_end won't close until after
+    /// logical allocation has completed.
+    ///
+    /// If logical allocation fails, such as for an attached sub-tree (using
+    /// AttachToken()), the server_end will close during that failure regardless
+    /// of the number of buffers potenitally allocated in the overall logical
+    /// buffer collection.
+    ///
+    /// Multiple eventpair endpoints can be attached, with an enforced limit of
+    /// SYSMEM_LIFETIME_TRACKING_EVENTPAIR_PER_BUFFER_COLLECTION_CHANNEL_MAX.
+    ///
+    /// The lifetime signalled by this event includes asynchronous cleanup of
+    /// allocated buffers, and this asynchronous cleanup cannot occur until all
+    /// holders of VMO handles to the buffers have closed those VMO handles.
+    /// Therefore clients should take care not to become blocked forever waiting
+    /// for ZX_EVENTPAIR_PEER_CLOSED to be signalled, especially if any of the
+    /// participants using the logical buffer collection are less trusted or
+    /// less reliable.
+    ///
+    /// The buffers_remaining parameter allows waiting for all but
+    /// buffers_remaining buffers to be fully deallocated.  This can be useful
+    /// in situations where a known number of buffers are intentionally not
+    /// closed so that the data can continue to be used, such as for keeping the
+    /// last available video picture displayed in the UI even if the video
+    /// stream was using protected output buffers.  It's outside the scope of
+    /// the BufferCollection interface (at least for now) to determine how many
+    /// buffers may be held without closing, but it'll typically be in the range
+    /// 0-2.
+    ///
+    /// This mechanism is meant to be compatible with other protocols providing
+    /// a similar AttachLifetimeTracking() mechanism, in that duplicates of the
+    /// same event can be sent to more than one AttachLifetimeTracking(), and
+    /// the ZX_EVENTPAIR_PEER_CLOSED will be signalled when all the lifetime
+    /// over conditions are met (all holders of duplicates have closed their
+    /// handle(s)).
+    ///
+    /// A maximum of
+    /// SYSMEM_LIFETIME_TRACKING_EVENTPAIR_PER_BUFFER_COLLECTION_CHANNEL_MAX
+    /// AttachLifetimeTracking() messages are allowed per BufferCollection
+    /// channel.
+    ///
+    /// There is no way to cancel an attach.  Closing the client end of the
+    /// eventpair doesn't subtract from the number of pending attach(es).
+    ///
+    /// Closing the client's end doesn't result in any action by the server.
+    /// If the server listens to events from the client end at all, it is for
+    /// debug logging only.
+    ///
+    /// The server intentionally doesn't "trust" any bits signalled by the
+    /// client.  This mechanism intentionally uses only ZX_EVENTPAIR_PEER_CLOSED
+    /// which can't be triggered early, and is only triggered when all handles
+    /// to server_end are closed.  No meaning is associated with any of the
+    /// other signal bits, and clients should functionally ignore any other
+    /// signal bits on either end of the eventpair or its peer.
+    ///
+    /// The server_end may lack ZX_RIGHT_SIGNAL or ZX_RIGHT_SIGNAL_PEER, but
+    /// must have ZX_RIGHT_DUPLICATE (and must have ZX_RIGHT_TRANSFER to
+    /// transfer without causing CodecFactory channel failure).
+    AttachLifetimeTracking(resource struct {
+        server_end zx.handle:EVENTPAIR;
+        buffers_remaining uint32;
+    });
+};

@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+group("test") {
+  testonly = true
+  deps = [ ":linenoise-test" ]
+}
+
+test("linenoise-test") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "linenoise_tests.cc" ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zxtest",
+    "//zircon/third_party/ulib/linenoise",
+  ]
+}
+
+bootfs_test("linenoise-test-bootfs-test") {
+  name = "linenoise-test"
+  deps = [ ":linenoise-test" ]
+}

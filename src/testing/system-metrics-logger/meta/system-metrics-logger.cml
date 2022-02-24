@@ -1,0 +1,25 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/system_metrics_logger",
+    },
+    capabilities: [
+        { protocol: "fuchsia.systemmetrics.test.SystemMetricsLogger" },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.device.Controller",
+                "fuchsia.kernel.Stats",
+                "fuchsia.tracing.provider.Registry",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.systemmetrics.test.SystemMetricsLogger",
+            from: "self",
+        },
+    ],
+}

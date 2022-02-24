@@ -1,0 +1,93 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("max98373-bind") {
+  rules = "max98373.bind"
+  header_output = "max98373-bind.h"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.acpi" ]
+}
+
+fuchsia_driver("max98373-driver") {
+  output_name = "max98373"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "max98373.cc" ]
+  deps = [
+    ":max98373-bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.acpi:fuchsia.hardware.acpi_llcpp",
+    "//src/devices/i2c/lib/device-protocol-i2c-channel",
+    "//src/devices/lib/acpi",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/media/audio/lib/simple-codec",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("max98373") {
+  component_name = "max98373"
+  deps = [ ":max98373-driver" ]
+  info = "max98373-info.json"
+  colocate = true
+}
+
+test("max98373-test") {
+  output_name = "max98373-test"
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "max98373-test.cc",
+    "max98373.cc",
+  ]
+  deps = [
+    ":max98373-bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp_mock",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.acpi:fuchsia.hardware.acpi_llcpp",
+    "//src/devices/i2c/lib/device-protocol-i2c-channel",
+    "//src/devices/i2c/testing/mock-i2c",
+    "//src/devices/lib/acpi",
+    "//src/devices/testing/mock-ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/media/audio/lib/simple-codec",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/mock-function",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("max98373-test-package") {
+  package_name = "max98373-test"
+  deps = [ ":max98373-test" ]
+
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":max98373-bind_test",
+    ":max98373-test-package",
+  ]
+}

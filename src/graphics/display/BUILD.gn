@@ -1,0 +1,48 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+
+group("drivers") {
+  testonly = true
+  deps = [
+    "drivers/aml-canvas",
+    "drivers/aml-hdmi:aml-hdmi",
+    "drivers/amlogic-display",
+    "drivers/display",
+    "drivers/dsi-dw",
+    "drivers/fake:fake-display",
+    "drivers/goldfish-display",
+    "drivers/intel-i915",
+    "drivers/simple:simple.amd-kaveri",
+    "drivers/simple:simple.bochs",
+    "drivers/simple:simple.gga",
+    "drivers/simple:simple.intel",
+    "drivers/simple:simple.nv",
+    "drivers/simple:simple.vmware",
+    "drivers/ssd1306:ssd1306_driver",
+  ]
+}
+
+group("tools") {
+  # Most bundle groupings in the Fuchsia build system are specified as testonly. As the build system
+  # does not provide a way to specify "tools not intended for shipping to end users", we mark this
+  # as `testonly` to achieve that purpose.
+  testonly = true
+  deps = [ "bin/display-tool" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":display-fuzzers",
+    "bin/display-factory-test",
+    "drivers:tests",
+    "lib:tests",
+  ]
+}
+
+fuzzers_package("display-fuzzers") {
+  cpp_fuzzers = [ "lib/edid:edid-fuzzer" ]
+}

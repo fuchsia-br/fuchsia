@@ -1,0 +1,69 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+config("wlan_config") {
+  include_dirs = [ "." ]
+}
+
+driver_bind_rules("wlan_bind") {
+  rules = "wlan.bind"
+  header_output = "wlan_bind.h"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.wlan" ]
+}
+
+fuchsia_driver("wlan_driver-driver") {
+  output_name = "wlan"
+  sources = [
+    "device.cc",
+    "device.h",
+    "driver.cc",
+    "probe_sequence.cc",
+    "probe_sequence.h",
+  ]
+
+  deps = [
+    ":wlan_bind",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.softmac:fuchsia.hardware.wlan.softmac_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.internal:fuchsia.wlan.internal_banjo_c",
+    "//src/connectivity/wlan/lib/mlme/cpp:mlme",
+    "//src/devices/lib/dev-operation",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+  configs += [ "//build/config/fuchsia:enable_zircon_asserts" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("wlan_driver") {
+  component_name = "wlan"
+  deps = [ ":wlan_driver-driver" ]
+  info = "wlan_driver-info.json"
+  colocate = true
+}
+
+fuchsia_system_package("wlan") {
+  package_name = "wlan-system"
+
+  deps = [ ":wlan_driver" ]
+  allowed_in_extra_deps = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":wlan_bind_test" ]
+}

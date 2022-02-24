@@ -1,0 +1,25 @@
+[
+    {
+        "device": {
+            "fuchsia.BIND_PROTOCOL": "fuchsia.bluetooth.BIND_PROTOCOL.DEVICE"
+        },
+        "expected": "abort",
+        "name": "Incorrect_Protocol"
+    },
+    {
+        "device": {
+            "fuchsia.acpi.hid": "\"PNP0303\"",
+            "fuchsia.BIND_COMPOSITE": "1"
+        },
+        "expected": "match",
+        "name": "HID"
+    },
+    {
+        "device": {
+            "fuchsia.acpi.first_cid": "\"PNP0303\"",
+            "fuchsia.BIND_COMPOSITE": "1"
+        },
+        "expected": "match",
+        "name": "CID"
+    }
+]

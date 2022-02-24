@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/netstack_external_network_test_client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.device.NameProvider",
+            "fuchsia.net.name.Lookup",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

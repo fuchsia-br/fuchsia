@@ -1,0 +1,94 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/component_manifest_resources.gni")
+import("//build/test.gni")
+
+executable("ptysvc") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "main.cc" ]
+  deps = [
+    ":common",
+    "//sdk/lib/fdio",
+    "//src/sys/lib/stdout-to-debuglog/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+  ]
+}
+
+source_set("common") {
+  visibility = [ ":*" ]
+  sources = [
+    "fifo.cc",
+    "fifo.h",
+    "pty-client-device.cc",
+    "pty-client-device.h",
+    "pty-client-vnode.h",
+    "pty-client.cc",
+    "pty-client.h",
+    "pty-server-device.cc",
+    "pty-server-device.h",
+    "pty-server-vnode.h",
+    "pty-server.cc",
+    "pty-server.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_llcpp",
+    "//sdk/lib/fit",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fs-pty",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("ptysvc-test") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+
+  sources = [ "pty-tests.cc" ]
+  deps = [
+    ":common",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+component_manifest_resources("bootfs") {
+  sources = [ "meta/ptysvc.cml" ]
+}
+
+fuchsia_unittest_package("ptysvc-test-pkg") {
+  package_name = "ptysvc-test"
+  deps = [ ":ptysvc-test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":ptysvc-test-pkg" ]
+}

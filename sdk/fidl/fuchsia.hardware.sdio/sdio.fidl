@@ -1,0 +1,114 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.sdio;
+
+using zx;
+
+/// SDIO max block size is 2048, so this is an arbitrary limit of 1024 blocks.
+const MAX_TRANSFER_SIZE uint32 = 0x200000;
+
+type SdioFuncHwInfo = struct {
+    manufacturer_id uint32;
+    product_id uint32;
+    max_blk_size uint32;
+    max_tran_speed uint32;
+    fn_intf_code uint8;
+};
+
+type SdioDeviceCapabilities = strict enum : uint32 {
+    MULTI_BLOCK = 0x1;
+    SRW = 0x2;
+    DIRECT_COMMAND = 0x4;
+    SUSPEND_RESUME = 0x8;
+    LOW_SPEED = 0x10;
+    HIGH_SPEED = 0x20;
+    HIGH_POWER = 0x40;
+    FOUR_BIT_BUS = 0x80;
+    HS_SDR12 = 0x100;
+    HS_SDR25 = 0x200;
+    UHS_SDR50 = 0x400;
+    UHS_SDR104 = 0x800;
+    UHS_DDR50 = 0x1000;
+    TYPE_A = 0x2000;
+    TYPE_B = 0x4000;
+    TYPE_C = 0x8000;
+    TYPE_D = 0x10000;
+};
+
+type SdioDeviceHwInfo = struct {
+    /// number of sdio funcs including func 0
+    num_funcs uint32;
+    sdio_vsn uint32;
+    cccr_vsn uint32;
+    caps uint32;
+};
+
+type SdioHwInfo = struct {
+    dev_hw_info SdioDeviceHwInfo;
+    funcs_hw_info array<SdioFuncHwInfo, 8>;
+    host_max_transfer_size uint32;
+};
+
+type SdioRwTxn = resource struct {
+    addr uint32;
+    data_size uint32;
+    incr bool;
+    write bool;
+    use_dma bool;
+    /// Used if use_dma is true
+    dma_vmo zx.handle:<VMO, optional>;
+    /// Used if use_dma is false
+    virt vector<uint8>:<MAX_TRANSFER_SIZE, optional>;
+    /// offset into dma_vmo or virt
+    buf_offset uint64;
+};
+
+protocol Device {
+    GetDevHwInfo() -> (struct {
+        hw_info SdioHwInfo;
+        /// The function number of this device.
+        function uint8;
+    }) error zx.status;
+    EnableFn() -> (struct {}) error zx.status;
+    DisableFn() -> (struct {}) error zx.status;
+    EnableFnIntr() -> (struct {}) error zx.status;
+    DisableFnIntr() -> (struct {}) error zx.status;
+    UpdateBlockSize(struct {
+        blk_sz uint16;
+        deflt bool;
+    }) -> (struct {}) error zx.status;
+    GetBlockSize() -> (struct {
+        cur_blk_size uint16;
+    }) error zx.status;
+    DoRwTxn(resource struct {
+        txn SdioRwTxn;
+    }) -> (resource struct {
+        txn SdioRwTxn;
+    }) error zx.status;
+    DoRwByte(struct {
+        write bool;
+        addr uint32;
+        write_byte uint8;
+    }) -> (struct {
+        read_byte uint8;
+    }) error zx.status;
+    GetInBandIntr() -> (resource struct {
+        irq zx.handle:INTERRUPT;
+    }) error zx.status;
+    /// The following functions access the card common control registers (CCCR) on function 0.
+    /// Aborts an I/O operation occurring on the specified function.
+    IoAbort() -> (struct {}) error zx.status;
+    /// Returns true if an interrupt is pending for function fn_idx, false otherwise.
+    IntrPending() -> (struct {
+        pending bool;
+    }) error zx.status;
+    /// Reads or writes to a vendor CCCR register. addr must be in [0xF0, 0xFF].
+    DoVendorControlRwByte(struct {
+        write bool;
+        addr uint8;
+        write_byte uint8;
+    }) -> (struct {
+        read_byte uint8;
+    }) error zx.status;
+};

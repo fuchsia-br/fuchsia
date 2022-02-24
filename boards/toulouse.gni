@@ -1,0 +1,32 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//boards/common/x64-common.gni")
+
+board_bootfs_labels = [
+  "//boards/kernel_cmdline:toulouse",
+  "//src/security/policy/zxcrypt:null",
+]
+
+board_zedboot_bootfs_labels = [
+  "//boards/kernel_cmdline:toulouse",
+  "//src/security/policy/zxcrypt:null",
+]
+
+board_recovery_bootfs_labels = [
+  "//boards/kernel_cmdline:toulouse",
+  "//src/security/policy/zxcrypt:null",
+]
+
+board_system_image_deps = [
+  "//garnet/packages/prod:drivers-system",
+  "//garnet/packages/prod:wlan_drivers",
+  "//src/media/audio/bundles:virtual_audio_driver",
+]
+
+board_package_labels = [
+  "//boards:verify_zedboot_cmdline_params_for_toulouse",
+  "//src/power/thermd",
+  "//src/power/thermd:config",
+]

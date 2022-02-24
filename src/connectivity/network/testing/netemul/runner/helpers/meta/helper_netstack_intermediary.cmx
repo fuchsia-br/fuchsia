@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/guest_netstack_intermediary"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.netemul.network.FakeEndpoint",
+            "fuchsia.netemul.network.NetworkContext"
+        ]
+    }
+}

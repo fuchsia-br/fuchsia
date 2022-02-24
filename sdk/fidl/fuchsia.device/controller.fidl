@@ -1,0 +1,200 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.device;
+
+using zx;
+using fuchsia.io;
+
+/// Maxmium length for a device name
+const MAX_DEVICE_NAME_LEN uint64 = 32;
+/// Maximum length of a device path
+const MAX_DEVICE_PATH_LEN uint64 = 1024;
+/// Maxmium length for a driver name
+const MAX_DRIVER_NAME_LEN uint64 = 32;
+/// Maximum length for a driver path
+const MAX_DRIVER_PATH_LEN uint64 = 1024;
+/// Maximum device power states. In future this should account
+/// for performance states.
+const MAX_DEVICE_POWER_STATES uint32 = 5;
+const MIN_DEVICE_POWER_STATES uint32 = 2; // D0 & D3COLD
+const MAX_DEVICE_PERFORMANCE_STATES uint32 = 20;
+const MIN_DEVICE_PERFORMANCE_STATES uint32 = 1; // Fully performant state
+
+/// Signal that will be active on a device event handle if the device's read() method
+/// will return data.
+const DEVICE_SIGNAL_READABLE uint32 = fuchsia.io.DEVICE_SIGNAL_READABLE;
+/// Signal that will be active on a device event handle if the device has some out-of-band
+/// mechanism that needs attention.
+/// This is primarily used by the PTY support.
+const DEVICE_SIGNAL_OOB uint32 = fuchsia.io.DEVICE_SIGNAL_OOB;
+/// Signal that will be active on a device event handle if the device's write() method
+/// will accept data.
+const DEVICE_SIGNAL_WRITABLE uint32 = fuchsia.io.DEVICE_SIGNAL_WRITABLE;
+/// Signal that will be active on a device event handle if the device has encountered an error.
+/// This is primarily used by the PTY support.
+const DEVICE_SIGNAL_ERROR uint32 = fuchsia.io.DEVICE_SIGNAL_ERROR;
+/// Signal that will be active on a device event handle if the device has been disconnected.
+/// This is primarily used by the PTY support.
+const DEVICE_SIGNAL_HANGUP uint32 = fuchsia.io.DEVICE_SIGNAL_HANGUP;
+
+type DevicePowerState = strict enum : uint8 {
+    /// Mandatory Working state. Device is fully functional, can take I/O,
+    /// issue interrupts. This state is mandatory for all devices
+    /// The device enters into this state by default, when powered on.
+    DEVICE_POWER_STATE_D0 = 0;
+    /// [OPTIONAL] Device is not working when in this state. It cannot process
+    /// I/O nor issue interrupts, unless it is armed for some special interrupts
+    /// that can wake up the system/device. When in this state, the restore time
+    /// of getting back to working state is less than other low-power states
+    /// Power savings in this state are lesser than other low power states.
+    /// Device may retain some hardware context and full initialization
+    /// may not be needed when resuming from this state.
+    DEVICE_POWER_STATE_D1 = 1;
+    /// [OPTIONAL] Device is not working when in this state. It cannot process
+    /// I/O nor issue interrupts, unless it is armed for some special interrupts
+    /// that can wake up the system/device. When in this state, the restore time
+    /// of getting back to working state is more than DEVICE_POWER_STATE_D1 and
+    /// less than restore time of getting back from DEVICE_POWER_STATE_D3HOT,
+    /// DEVICE_POWER_STATE_D3COLD. Power savings in this state are lesser
+    /// than DEVICE_POWER_STATE_D3COLD, DEVICE_POWER_STATE_D3HOT.
+    /// Device may retain some hardware context and full initialization
+    /// may not be needed when resuming from this state.
+    DEVICE_POWER_STATE_D2 = 2;
+    /// [OPTIONAL] Device is not working when in this state. It cannot process
+    /// I/O nor issue interrupts, unless it is armed for some special interrupts
+    /// that can wake up the system/device. When in this state, the restore time
+    /// of getting back to working state is more than DEVICE_POWER_STATE_D1,
+    /// DEVICE_POWER_STATE_D3HOT and less than restore time of getting back from
+    /// DEVICE_POWER_STATE_D3COLD. Power savings in this state are lesser
+    /// than DEVICE_POWER_STATE_D3COLD. Device has no context and full initialization
+    /// by the device driver when resuming from this state.
+    /// Although the device is completely off, it is still powered on and is enumerable.
+    DEVICE_POWER_STATE_D3HOT = 3;
+    /// [MANDATORY] Device is not working when in this state. It cannot process
+    /// I/O nor issue interrupts, unless it is armed for some special interrupts
+    /// that can wake up the system/device. When in this state, the restore time
+    /// of getting back to working state is more than all other low power states.
+    /// Power savings are more compared to all other low-power states.
+    /// Device has no context and full initialization by the device driver when
+    /// resuming from this state. In this state, the power to this device is turned off.
+    /// Device may be powered by other auxiliary supplies to support wake capability.
+    DEVICE_POWER_STATE_D3COLD = 4;
+};
+
+/// [MANDATORY] Default performance state when the device is in DEVICE_POWER_STATE_D0
+const DEVICE_PERFORMANCE_STATE_P0 uint32 = 0;
+
+// TODO(ravoorir): This should be table when the Controller protocol moves off of simple layout.
+type DevicePowerStateInfo = struct {
+    state_id DevicePowerState;
+
+    /// Is this state supported?
+    is_supported bool;
+
+    /// Restore time for coming out of this state to working D0 state.
+    restore_latency int64;
+
+    /// Is this device wakeup_capable?
+    wakeup_capable bool;
+
+    /// Deepest system system sleep state that the device can wake the system from.
+    system_wake_state int32;
+};
+
+/// Performance state info for a device. A performance state is relevant only
+/// when the device is in non-sleeping working device power state.
+type DevicePerformanceStateInfo = struct {
+    state_id int32;
+    /// Restore time for coming out of this state to fully working performance state.
+    restore_latency int64;
+    /// Is this state supported?
+    is_supported bool;
+    // TODO(ravoorir): Explore how more device specific metadata can be saved here.
+    // Maybe a union of metadata coming from different devices.
+};
+
+type SystemPowerStateInfo = struct {
+    // TODO(ravoorir): This can be removed when all clients move away from the suspend_flag.
+    suspend_flag uint32;
+    /// Should wakeup be enabled from this system state?
+    wakeup_enable bool;
+
+    /// Device power state that the device should be in, for this system power state.
+    dev_state DevicePowerState;
+    /// Performance state that the device should be in, for this system power state.
+    /// Only applicable, if the dev_state is a working state (DEVICE_POWER_STATE_D0).
+    performance_state uint32;
+};
+
+/// Interface for manipulating a device in a devhost
+protocol Controller {
+    /// Attempt to bind the requested driver to this device. This should just be the name of the
+    /// shared object for the driver e.g. "fvm.so". A full path can be specified but this is
+    /// deprecated.
+    Bind(struct {
+        driver string:MAX_DRIVER_PATH_LEN;
+    }) -> (struct {}) error zx.status;
+
+    /// This api will unbind all the children of this device and bind the
+    /// requested driver. If the driver is empty, it will autobind.
+    /// The Rebind will not return until the bind completes. The name is the same as for the Bind
+    /// call.
+    Rebind(struct {
+        driver string:MAX_DRIVER_PATH_LEN;
+    }) -> (struct {}) error zx.status;
+
+    /// This api will unbind all the children of this device synchronously.
+    /// This will avoid watching for device removal by the clients.
+    UnbindChildren() -> (struct {}) error zx.status;
+
+    /// Disconnect this device and allow its parent to be bound again.
+    /// This may not complete before it returns.
+    ScheduleUnbind() -> (struct {}) error zx.status;
+
+    /// Return the topological path for this device
+    GetTopologicalPath() -> (struct {
+        path string:MAX_DEVICE_PATH_LEN;
+    }) error zx.status;
+
+    /// Return the current logging flags for this device's driver
+    GetMinDriverLogSeverity() -> (struct {
+        status zx.status;
+        severity uint32;
+    });
+    /// Set the logging flags for this device's driver.
+    SetMinDriverLogSeverity(struct {
+        severity uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Runs compatibility tests for the driver that binds to this device.
+    /// The `hook_wait_time` is the time that the driver expects to take for
+    /// each device hook in nanoseconds.
+    /// Returns whether the driver passed the compatibility check.
+    RunCompatibilityTests(struct {
+        hook_wait_time int64;
+    }) -> (struct {
+        status uint32;
+    });
+
+    /// Gets the current performance state of the device.
+    GetCurrentPerformanceState() -> (struct {
+        out_state uint32;
+    });
+
+    /// Set the performance state of this device to the requested performance state. This is only
+    /// called for the current device and none of the descendants are aware of the state
+    /// transition.
+    /// Returns ZX_OK, if the device is in a working state and the performance state is changed to
+    /// requested_state successfully. out_state will be same as requested_state.
+    /// Returns error status, if switching to the requested_state was unsuccessful. out_state
+    /// is the state that the device is currently in.
+    SetPerformanceState(struct {
+        requested_state uint32;
+    }) -> (struct {
+        status zx.status;
+        out_state uint32;
+    });
+};

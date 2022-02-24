@@ -1,0 +1,37 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//third_party/cobalt/metrics_registry.gni")
+
+visibility = [
+  "//src/modular/bin/basemgr/*",
+  "//src/modular/bin/sessionmgr/*",
+]
+
+metrics_registry("basemgr_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 2165403525
+  generate_cc = true
+  namespace = "cobalt_registry"
+  generate_binarypb = false
+}
+
+source_set("cobalt") {
+  sources = [
+    "cobalt.cc",
+    "cobalt.h",
+  ]
+
+  public_deps = [
+    ":basemgr_metrics_registry",
+    "//sdk/lib/sys/cpp",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.cobalt",
+    "//src/lib/callback",
+    "//src/lib/cobalt/cpp:cobalt_logger",
+  ]
+}

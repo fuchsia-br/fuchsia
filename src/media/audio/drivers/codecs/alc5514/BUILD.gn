@@ -1,0 +1,46 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("alc5514_bind") {
+  rules = "alc5514.bind"
+  header_output = "alc5514_bind.h"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.acpi" ]
+}
+
+fuchsia_driver("alc5514-driver") {
+  output_name = "alc5514"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "alc5514.cc" ]
+  deps = [
+    ":alc5514_bind",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp",
+    "//src/devices/i2c/lib/device-protocol-i2c",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("alc5514") {
+  component_name = "alc5514"
+  deps = [ ":alc5514-driver" ]
+  info = "alc5514-info.json"
+  colocate = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":alc5514_bind_test" ]
+}

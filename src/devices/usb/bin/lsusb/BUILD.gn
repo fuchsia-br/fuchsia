@@ -1,0 +1,91 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/test.gni")
+import("//build/testing/environments.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":lsusb-lib-tests",
+    ":lsusb-test",
+  ]
+}
+
+test("lsusb-test-bin") {
+  testonly = true
+  output_name = "lsusb-test"
+  visibility = [ ":*" ]
+
+  sources = [ "test.cc" ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/runtime",
+    "//zircon/system/ulib/syslog",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+rustc_library("lib") {
+  name = "lsusb"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager-rustc",
+    "//sdk/fidl/fuchsia.hardware.usb.device:fuchsia.hardware.usb.device-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zerocopy",
+    "//src/lib/zircon/rust:fuchsia-zircon-status",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+  ]
+  sources = [
+    "src/args.rs",
+    "src/descriptors.rs",
+    "src/lib.rs",
+  ]
+}
+
+rustc_binary("lsusb") {
+  if (is_fuchsia) {
+    configs += [ "//build/config/rust:bootfs" ]
+  }
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_unittest_package("lsusb-lib-tests") {
+  deps = [ ":lib_test" ]
+}
+
+# A simple test utility that returns the integer value provided to it in its first argument.
+
+fuchsia_unittest_package("lsusb-test") {
+  manifest = "meta/lsusb-test.cmx"
+  deps = [
+    ":lsusb",
+    ":lsusb-test-bin",
+  ]
+  test_specs = {
+    environments = [ nuc_env ]
+  }
+}

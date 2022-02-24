@@ -1,0 +1,54 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("devices") {
+  deps = [
+    "bin",
+    "bind",
+    "lib",
+    "tools",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "acpi:tests",
+    "bin:tests",
+    "block:tests",
+    "board:tests",
+    "bus:tests",
+    "clock:tests",
+    "cpu:tests",
+    "gpio:tests",
+    "i2c:tests",
+    "lib:tests",
+    "light-sensor:tests",
+    "mcu:tests",
+    "misc:tests",
+    "ml:tests",
+    "nand:tests",
+    "pci:tests",
+    "power:tests",
+    "pwm:tests",
+    "radar:tests",
+    "ram:tests",
+    "registers:tests",
+    "rtc:tests",
+    "securemem:tests",
+    "serial:tests",
+    "spi:tests",
+    "sysmem:tests",
+    "tee:tests",
+    "temperature:tests",
+    "testing:tests",
+    "tests",
+    "tests:tests",
+    "thermal:tests",
+    "tools:tests",
+    "tpm:tests",
+    "usb:tests",
+    "usb/tests",
+  ]
+}

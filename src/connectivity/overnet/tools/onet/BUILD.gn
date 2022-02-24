@@ -1,0 +1,39 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/host.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_binary("bin") {
+  name = "onet"
+  edition = "2018"
+
+  deps = [
+    "//src/connectivity/overnet/lib/onet_tool",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+  ]
+
+  non_rust_deps = [ "//third_party/boringssl" ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_shell_package("onet") {
+  deps = [ ":bin" ]
+  manifest = "meta/onet.cmx"
+}
+
+group("tests") {
+  testonly = true
+}
+
+install_host_tools("host") {
+  deps = [ ":bin" ]
+  outputs = [ "onet" ]
+}

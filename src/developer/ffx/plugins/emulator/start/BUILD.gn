@@ -1,0 +1,38 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+if (is_host) {
+  ffx_plugin("ffx_emulator_start") {
+    version = "0.1.0"
+    edition = "2018"
+    with_unit_tests = true
+    args_deps = [
+      "//src/developer/ffx/config:lib",
+      "//src/developer/ffx/plugins/emulator/configuration:ffx_emulator_config",
+    ]
+    deps = [
+      "//sdk/fidl/fuchsia.developer.bridge:fuchsia.developer.bridge-rustc",
+      "//src/developer/ffx/lib/errors:lib",
+      "//src/developer/ffx/lib/fms:lib",
+      "//src/developer/ffx/lib/pbms:lib",
+      "//src/developer/ffx/lib/port_picker:lib",
+      "//src/developer/ffx/plugins/emulator/common:ffx_emulator_common",
+      "//src/developer/ffx/plugins/emulator/configuration:ffx_emulator_config",
+      "//src/developer/ffx/plugins/emulator/engines:ffx_emulator_engines",
+      "//third_party/rust_crates:regex",
+    ]
+    args_sources = [ "src/args.rs" ]
+    sources = [
+      "src/lib.rs",
+      "src/pbm.rs",
+    ]
+  }
+
+  group("tests") {
+    testonly = true
+    deps = [ ":ffx_emulator_start_test($host_toolchain)" ]
+  }
+}

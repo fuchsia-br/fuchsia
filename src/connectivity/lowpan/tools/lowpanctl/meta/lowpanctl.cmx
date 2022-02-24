@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/lowpanctl"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.factory.lowpan.FactoryLookup",
+            "fuchsia.lowpan.device.Lookup"
+        ]
+    }
+}

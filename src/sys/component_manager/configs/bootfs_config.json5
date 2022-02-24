@@ -1,0 +1,60 @@
+{
+    debug: false,
+    maintain_utc_clock: true,
+    use_builtin_process_launcher: true,
+    out_dir_contents: "hub",
+    num_threads: 2,
+    namespace_capabilities: [
+        {
+            directory: "boot",
+            path: "/boot",
+            rights: [
+                "rx*",
+            ],
+        },
+    ],
+    builtin_capabilities: [
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.kernel.CpuResource",
+                "fuchsia.kernel.DebugResource",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.InfoResource",
+                "fuchsia.kernel.IoportResource",
+                "fuchsia.kernel.IrqResource",
+                "fuchsia.kernel.KernelStats",
+                "fuchsia.kernel.MmioResource",
+                "fuchsia.kernel.PowerResource",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.SmcResource",
+                "fuchsia.kernel.Stats",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.process.Launcher",
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.sys2.EventSource",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.time.Maintenance",
+            ],
+        },
+        {
+            runner: "elf",
+        },
+        {
+            resolver: "boot_resolver",
+        },
+        {
+            event: "directory_ready",
+        },
+    ],
+    component_id_index_path: "/boot/config/component_id_index",
+    log_destination: "klog",
+    builtin_boot_resolver: "boot",
+    reboot_on_terminate_enabled: true,
+}

@@ -1,0 +1,113 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Protocol:Interface:WireMessagingHeader" }}
+{{- range .TwoWayMethods }}
+  {{- if eq .Transport.Name "Driver" }}
+  {{- template "Method:CompleterBase:driver/MessagingHeader" . }}
+  {{- else }}
+  {{- template "Method:CompleterBase:WireMessagingHeader" . }}
+  {{- end }}
+{{- end }}
+
+// Pure-virtual interface to be implemented by a server.
+// This interface uses typed channels (i.e. |{{ .Transport.Namespace }}::ClientEnd<SomeProtocol>|
+// and |{{ .Transport.Namespace }}::ServerEnd<SomeProtocol>|).
+template<>
+class {{ .WireServer }} : public ::fidl::internal::IncomingMessageDispatcher {
+  public:
+  {{ .WireServer.Self }}() = default;
+  virtual ~{{ .WireServer.Self }}() = default;
+
+  // The FIDL protocol type that is implemented by this server.
+  using _EnclosingProtocol = {{ . }};
+
+{{ "" }}
+  {{- range .Methods }}
+    {{- if .HasRequest }}
+    using {{ .WireCompleterAlias.Self }} = {{ .WireCompleter }};
+    using {{ .WireRequestViewAlias.Self }} = {{ .WireRequestView }};
+
+  {{ .Docs }}
+  virtual void {{ .Name }}(
+    {{- if eq .Transport.Name "Driver" }}
+    {{ .WireRequestViewArg }} request, fdf::Arena& arena, {{ .WireCompleterArg }}& _completer)
+    {{- else }}
+    {{ .WireRequestViewArg }} request, {{ .WireCompleterArg }}& _completer)
+    {{- end }}
+      {{- if .Transitional -}}
+        { _completer.Close(ZX_ERR_NOT_SUPPORTED); }
+      {{- else -}}
+        = 0;
+      {{- end }}
+{{ "" }}
+    {{- end }}
+  {{- end }}
+
+  private:
+  {{- /* Note that this implementation is snake_case to avoid name conflicts. */}}
+  void dispatch_message(
+    ::fidl::IncomingMessage&& msg, ::fidl::Transaction* txn,
+    ::fidl::internal::IncomingTransportContext transport_context) final;
+};
+{{- end }}
+
+
+
+{{- define "Protocol:Interface:NaturalMessagingHeader" }}
+{{- range .ClientMethods }}
+  {{- template "Method:Request:NaturalMessagingHeader" . }}
+{{- end }}
+
+{{- range .TwoWayMethods }}
+  {{- template "Method:CompleterBase:NaturalMessagingHeader" . }}
+{{- end }}
+
+template<>
+class {{ .NaturalServer }} : public ::fidl::internal::IncomingMessageDispatcher {
+  public:
+  {{ .NaturalServer.Self }}() = default;
+  virtual ~{{ .NaturalServer.Self }}() = default;
+
+  // The FIDL protocol type that is implemented by this server.
+  using _EnclosingProtocol = {{ .Wire }};
+
+{{ "" }}
+  {{- range .ClientMethods }}
+  using {{ .NaturalRequestAlias.Self }} = {{ .NaturalRequest }};
+  using {{ .NaturalCompleterAlias.Self }} = {{ .NaturalCompleter }};
+
+  {{ .Docs }}
+  virtual void {{ .Name }}(
+      {{- .NaturalRequestAlias.Self }}& request, {{ .NaturalCompleterArg }}& completer
+  )
+    {{- if .Transitional -}}
+      { completer.Close(ZX_ERR_NOT_SUPPORTED); }
+    {{- else -}}
+      = 0;
+    {{- end }}
+{{ "" }}
+  {{- end }}
+
+  private:
+  {{- /* Note that this implementation is snake_case to avoid name conflicts. */}}
+  void dispatch_message(
+    ::fidl::IncomingMessage&& msg, ::fidl::Transaction* txn,
+    ::fidl::internal::IncomingTransportContext transport_context) final;
+};
+{{- end }}
+
+
+
+{{- define "Protocol:Interface:NaturalMessagingSource" }}
+{{- range .ClientMethods }}
+  {{- template "Method:Request:NaturalMessagingSource" . }}
+{{- end }}
+
+{{- range .TwoWayMethods }}
+  {{- template "Method:CompleterBase:NaturalMessagingSource" . }}
+{{- end }}
+{{- end }}

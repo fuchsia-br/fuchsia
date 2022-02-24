@@ -1,0 +1,40 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("repo") {
+  sources = [
+    "add.go",
+    "add_test.go",
+    "config.go",
+    "config_test.go",
+  ]
+
+  deps = [ "//third_party/golibs:github.com/theupdateframework/go-tuf" ]
+
+  # The following dependencies are for add.go, which has a +build directive to
+  # only build when not targeting fuchsia. The sftp package features syscall
+  # usage which cannot be compiled for fuchsia.
+  if (!is_fuchsia) {
+    deps += [
+      "//third_party/golibs:github.com/pkg/sftp",
+      "//third_party/golibs:golang.org/x/crypto",
+      "//tools/lib/logger",
+      "//tools/lib/retry",
+      "//tools/net/sshutil",
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":repo_tests($host_toolchain)" ]
+}
+
+go_test("repo_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/src/sys/pkg/lib/repo" ]
+  deps = [ ":repo" ]
+}

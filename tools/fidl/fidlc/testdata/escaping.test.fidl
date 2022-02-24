@@ -1,0 +1,4 @@
+library test.escaping;
+
+/// "pleaseescapethisdocommentproperly"
+type DocCommentWithQuotes = struct {};

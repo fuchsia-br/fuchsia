@@ -1,0 +1,128 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+source_set("common") {
+  sources = [
+    "advertising_data.cc",
+    "advertising_data.h",
+    "bounded_inspect_list_node.cc",
+    "bounded_inspect_list_node.h",
+    "byte_buffer.cc",
+    "byte_buffer.h",
+    "device_address.cc",
+    "device_address.h",
+    "device_class.cc",
+    "device_class.h",
+    "error.h",
+    "expiring_set.h",
+    "host_error.cc",
+    "host_error.h",
+    "identifier.cc",
+    "identifier.h",
+    "inspectable.h",
+    "linked_list.h",
+    "log.cc",
+    "log.h",
+    "manufacturer_names.cc",
+    "manufacturer_names.h",
+    "metrics.cc",
+    "metrics.h",
+    "packet_view.h",
+    "pipeline_monitor.h",
+    "random.h",
+    "retire_log.cc",
+    "retire_log.h",
+    "slab_allocator.cc",
+    "slab_allocator.h",
+    "slab_allocator_traits.h",
+    "slab_buffer.h",
+    "supplement_data.cc",
+    "supplement_data.h",
+    "task_domain.h",
+    "test_helpers.cc",
+    "test_helpers.h",
+    "to_string.h",
+    "uint128.h",
+    "uint256.h",
+    "uuid.cc",
+    "uuid.h",
+    "windowed_inspect_numeric_property.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/connectivity/bluetooth/lib/cpp-string",
+    "//src/connectivity/bluetooth/lib/cpp-type",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(fxbug.dev/46637): The ByteBuffer interface relies inherently on
+  # misaligned operations and spreads the misalignment to the caller by vending
+  # references to misaligned memory. See ByteBuffer::As and
+  # MutableByBuffer::AsMutable.
+  public_configs = [ ":undefined_behavior_misaligned_memory" ]
+}
+
+config("undefined_behavior_misaligned_memory") {
+  cflags = [ "-fno-sanitize=alignment" ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "advertising_data_unittest.cc",
+    "bounded_inspect_list_node_unittest.cc",
+    "byte_buffer_unittest.cc",
+    "device_address_unittest.cc",
+    "device_class_unittest.cc",
+    "error_unittest.cc",
+    "expiring_set_unittest.cc",
+    "identifier_unittest.cc",
+    "inspectable_unittest.cc",
+    "log_unittest.cc",
+    "manufacturer_names_unittest.cc",
+    "metrics_unittest.cc",
+    "packet_view_unittest.cc",
+    "pipeline_monitor_unittest.cc",
+    "retire_log_unittest.cc",
+    "slab_allocator_traits_unittest.cc",
+    "slab_allocator_unittest.cc",
+    "supplement_data_unittest.cc",
+    "task_domain_unittest.cc",
+    "uuid_unittest.cc",
+    "windowed_inspect_numeric_property_unittest.cc",
+  ]
+
+  deps = [
+    ":common",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+bt_gtest_package("bt-host-common-tests") {
+  with_death_tests = true
+  deps = [ ":tests" ]
+}
+
+fuzzer("advertising_data_fuzzer") {
+  sources = [ "advertising_data_fuzztest.cc" ]
+  deps = [
+    ":common",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzztest_driver",
+  ]
+}

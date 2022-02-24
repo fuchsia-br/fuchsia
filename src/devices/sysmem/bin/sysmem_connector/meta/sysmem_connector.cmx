@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/sysmem_connector"
+    },
+    "sandbox": {
+        "dev": [
+            "class/sysmem"
+        ],
+        "services": [
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

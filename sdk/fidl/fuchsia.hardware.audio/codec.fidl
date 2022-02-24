@@ -1,0 +1,179 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.audio;
+
+using zx;
+using fuchsia.hardware.audio.signalprocessing;
+
+/// Textual information about the codec.
+type CodecInfo = struct {
+    /// Unique identifier for the codec.
+    unique_id string:UNIQUE_ID_SIZE;
+
+    /// Name of the codec manufacturer.
+    manufacturer string:MAX_UI_STRING_SIZE;
+
+    /// Product name of the codec.
+    product_name string:MAX_UI_STRING_SIZE;
+};
+
+/// Gain type of representation.
+type GainType = strict enum : uint8 {
+    /// Gain specified in dB, for example -103.0dB or +3.2dB.
+    DECIBELS = 1;
+
+    /// Gain specified as a percentage, for example 10.0% or 80.5%.
+    PERCENT = 2;
+};
+
+/// Gain format/parameters.
+type GainFormat = table {
+    /// Specifies what the numbers for gain represent, e.g. a percentage. Required.
+    1: type GainType;
+
+    /// Minimum gain. Required.
+    2: min_gain float32;
+
+    /// Maximum gain. Required.
+    3: max_gain float32;
+
+    /// Gain step in decibels, this value must not be negative, but may be zero to convey an
+    /// effectively continuous range of values. Must not exceed `max_gain_db` - `min_gain_db`.
+    /// Required.
+    4: gain_step float32;
+
+    /// Gain mute capability. If not included, mute is not supported.
+    5: can_mute bool;
+
+    /// Automatic Gain Control (AGC) capability. If not included, AGC is not supported.
+    6: can_agc bool;
+};
+
+/// Codec format information.
+type CodecFormatInfo = table {
+    /// The driver's best estimate of the external delay (in nanoseconds) present in the pipeline
+    /// for the chosen format. When precisely synchronizing presentation across multiple entities
+    /// (e.g. devices), the external delay should be taken into account. Optional.
+    /// If not included `external_delay` is unknown.
+    1: external_delay zx.duration;
+
+    /// The driver's best estimate of the amount of time (in nanoseconds) it takes the hardware to
+    /// actually start playback/capture after a `Start` command is issued.
+    /// It may take some time for the hardware to get into fully operational mode, for example due
+    /// a power state change. This delay must be taken into account if not getting the initial audio
+    /// samples played or captured is not acceptable. Optional.
+    /// If not included `turn_on_delay` is unknown.
+    2: turn_on_delay zx.duration;
+
+    /// The driver's best estimate of the amount of time (in nanoseconds) it takes the hardware to
+    /// actually stop playback/capture after a `Stop` command is issued.
+    /// It may take some time for the hardware to get into fully stopped mode, for example due
+    /// a power state change. This delay must be taken into account if playback/capture of samples
+    /// after a 'Stop' command is not acceptable. Optional.
+    /// If not included `turn_off_delay` is unknown.
+    3: turn_off_delay zx.duration;
+};
+
+/// For an overview see
+/// [[Audio Codec Interface]](https://fuchsia.dev/fuchsia-src/concepts/drivers/driver_architectures/audio_drivers/audio_codec).
+protocol Codec {
+    /// Allows providing driver health state.
+    compose Health;
+
+    /// Allows providing signal processing capabilities.
+    compose fuchsia.hardware.audio.signalprocessing.Connector;
+
+    /// Resets the codec.
+    /// `Reset` returns when the reset is completed. If the driver can't successfully reset the
+    /// codec it will close the codec protocol channel, in this case the client may obtain a new
+    /// codec protocol channel and retry.
+    Reset() -> ();
+
+    /// Retrieves textual information about the codec.
+    GetInfo() -> (struct {
+        info CodecInfo;
+    });
+
+    /// Stops the codec operation.
+    /// `Stop` returns when configuring the codec to stop is completed but it does not wait for
+    /// the hardware to actually stop playback/capture, i.e. `turn_off_delay` impact is not
+    /// taken into account to return from `Stop`.
+    /// The `stop_time` value (in the CLOCK_MONOTONIC timeline) indicates when when configuring
+    /// the codec to stop is completed.
+    /// If the driver can't successfully configure the codec to stop it will close the codec
+    /// protocol channel, in this case the client may obtain a new codec protocol channel and retry.
+    Stop() -> (struct {
+        start_time zx.time;
+    });
+
+    /// Start/Re-start the codec operation.
+    /// `Start` returns when configuring the codec to start is completed but it does not wait for
+    /// the hardware to actually start playback/capture, i.e. `turn_on_delay` impact is not
+    /// taken into account to return from `Start`.
+    /// The `start_time` value (in the CLOCK_MONOTONIC timeline) indicates when when configuring
+    /// the codec to start is completed.
+    /// If the driver can't successfully start the codec it will close the codec protocol channel,
+    /// in this case the client may obtain a new codec protocol channel and retry.
+    Start() -> (struct {
+        start_time zx.time;
+    });
+
+    /// Retrieves bridgeable mode from a codec.
+    IsBridgeable() -> (struct {
+        supports_bridged_mode bool;
+    });
+
+    /// Sets a codec's bridged mode.  Only required if the codec supports bridged mode as specified
+    /// by IsBridgeable's reply.
+    SetBridgedMode(struct {
+        enable_bridged_mode bool;
+    });
+
+    /// Retrieves the DAI formats supported by the codec, if not available at the time the codec
+    /// may reply with an error status and the controller may retry at a later time.
+    /// Retrieving multiple DaiSupportedFormats allows for cases where exclusive
+    /// combinations of the parameters in DaiSupportedFormats may be supported.
+    GetDaiFormats() -> (struct {
+        formats vector<DaiSupportedFormats>:MAX_COUNT_FORMATS;
+    }) error zx.status;
+
+    /// Sets the DAI format to be used in the interface between the controller and codec, if
+    /// the codec is not able to support the DAI format anymore, e.g. for a removable component
+    /// then the function may return an error status.
+    SetDaiFormat(struct {
+        format DaiFormat;
+    }) -> (struct {
+        state CodecFormatInfo;
+    }) error zx.status;
+
+    /// Retrieves gain format.
+    GetGainFormat() -> (struct {
+        gain_format GainFormat;
+    });
+
+    /// Retrieves Plug Detect Capabilities.
+    GetPlugDetectCapabilities() -> (struct {
+        plug_detect_capabilities PlugDetectCapabilities;
+    });
+
+    /// Get the gain state via a hanging get. The driver will reply to the first `WatchGainState`
+    /// sent by the client and this reply must include a `gain_db` set to 0dB or lower. The driver
+    /// will not respond to subsequent client `WatchGainState` calls until the gain state changes
+    /// from what was most recently reported.
+    WatchGainState() -> (struct {
+        gain_state GainState;
+    });
+
+    /// Client update of the gain state.
+    SetGainState(struct {
+        target_state GainState;
+    });
+
+    /// Get the plug detect state via a hanging get. The driver will reply to the first
+    /// `WatchPlugState` sent by the client. The driver will not respond to subsequent client
+    /// `WatchPlugState` calls until the plug state changes from what was most recently reported.
+    WatchPlugState() -> (struct {
+        plug_state PlugState;
+    });
+};

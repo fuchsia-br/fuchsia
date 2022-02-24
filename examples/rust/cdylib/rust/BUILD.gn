@@ -1,0 +1,19 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_cdylib.gni")
+
+# NOTE: This target does not link properly due to changes
+# in our build system. See https://fxbug.dev/74403 for
+# details.
+rustc_cdylib("crust-shared") {
+  output_name = "crust_shared_rust"
+
+  # TODO(fxbug.dev/74403): rustc_cdylib() does not support
+  # explicit sources lists yet.
+  # sources = [ "src/lib.rs" ]
+
+  edition = "2018"
+  public = [ "crust.h" ]
+}

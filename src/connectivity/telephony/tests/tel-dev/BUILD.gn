@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_library.gni")
+
+rustc_library("tel_dev") {
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//sdk/fidl/fuchsia.device:fuchsia.device-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.telephony.snoop:fuchsia.telephony.snoop-rustc",
+    "//src/connectivity/telephony/lib/tel-devmgr/fidl:devmgr-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/at_test_common.rs",
+    "src/component_test.rs",
+    "src/isolated_devmgr.rs",
+    "src/lib.rs",
+    "src/snooper_test.rs",
+  ]
+}

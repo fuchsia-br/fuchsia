@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/intl_services"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.settings.Intl"
+        ]
+    }
+}

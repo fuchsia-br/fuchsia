@@ -1,0 +1,27 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/shutdown-shim",
+        lifecycle: { stop_event: "notify" },
+    },
+    capabilities: [
+        { protocol: "fuchsia.hardware.power.statecontrol.Admin" },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.device.manager.SystemStateTransition",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.sys2.SystemController",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "self",
+        },
+    ],
+}

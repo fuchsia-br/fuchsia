@@ -1,0 +1,35 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dart/dart_app.gni")
+
+dart_app("log-validator-dart-puppet") {
+  components = [
+    {
+      component_name = "log-validator-dart-puppet"
+      component_type = "dart"
+      main_dart = "lib/main.dart"
+      package_root = "."
+      sources = [ "main.dart" ]
+      deps = [
+        "../../fidl:validate",
+        "//sdk/dart/fidl",
+        "//sdk/dart/fuchsia_logger",
+        "//sdk/dart/fuchsia_services",
+        "//sdk/dart/zircon",
+        "//sdk/fidl/fuchsia.diagnostics.stream",
+        "//sdk/fidl/fuchsia.mem",
+        "//src/diagnostics/lib/streams/dart:fuchsia_diagnostic_streams",
+      ]
+    },
+  ]
+
+  meta = [
+    {
+      path = rebase_path("meta/puppet.cmx")
+      dest = "log-validator-dart-puppet.cmx"
+    },
+  ]
+}

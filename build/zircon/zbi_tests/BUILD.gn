@@ -1,0 +1,28 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This provides metadata in the //:images and //:zbi_tests schemas
+# transliterated from the Zircon data for //zircon/:zbi_tests and the
+# subset of //zircon/:images it refers to.
+group("zbi_tests") {
+  visibility = [
+    "//:default",
+    "//:images",
+    "//:zbi_tests",
+  ]
+  testonly = true
+
+  deps = [
+    "//src/bringup/bin/bootsvc/integration_test:bootsvc-integration-tests",
+    "//src/bringup/bin/bootsvc/integration_test:bootsvc-root-job-test",
+    "//src/bringup/lib/mexec/tests",
+    "//zircon/kernel/phys:tests",
+    "//zircon/kernel/phys:tests",
+    "//zircon/system/utest/core:core-tests",
+  ]
+
+  if (current_cpu == "x64") {
+    deps += [ "//zircon/system/utest/core:core-tests-hpet" ]
+  }
+}

@@ -1,0 +1,52 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.i2cimpl;
+
+using zx;
+
+/// See `Transact` below for usage.
+type I2cImplOp = struct {
+    address uint16;
+    @buffer
+    @mutable
+    data vector<uint8>:MAX;
+    is_read bool;
+    stop bool;
+};
+
+/// Low-level protocol for i2c drivers.
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol I2cImpl {
+    /// First bus ID that this I2cImpl controls, zero-indexed.
+    GetBusBase() -> (struct {
+        base uint32;
+    });
+    /// Number of buses that this I2cImpl supports.
+    GetBusCount() -> (struct {
+        count uint32;
+    });
+    GetMaxTransferSize(struct {
+        bus_id uint32;
+    }) -> (struct {
+        s zx.status;
+        size uint64;
+    });
+    /// Sets the bitrate for the i2c bus in KHz units.
+    SetBitrate(struct {
+        bus_id uint32;
+        bitrate uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+    /// |Transact| assumes that all ops buf are not null.
+    /// |Transact| assumes that all ops length are not zero.
+    /// |Transact| assumes that at least the last op has stop set to true.
+    Transact(struct {
+        bus_id uint32;
+        op vector<I2cImplOp>:MAX;
+    }) -> (struct {
+        status zx.status;
+    });
+};

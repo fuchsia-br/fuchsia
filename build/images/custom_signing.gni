@@ -1,0 +1,22 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # If non-empty, the given script will be invoked to produce a signed ZBI
+  # image. The given script must accept -z for the input zbi path, and -o for
+  # the output signed zbi path. The path must be in GN-label syntax (i.e.
+  # starts with //).
+  custom_signing_script = ""
+
+  # If `custom_signing_script` is not empty, a list of dependencies for the script.
+  custom_signing_script_deps = []
+
+  # If `custom signing script` is not empty, a list of host tool labels, without
+  # a toolchain, that the script depends on. The reason why these are not in
+  # `custom_signing_script_deps` is because these definitions are typically in
+  # board-specific .gni files where `host_os` or `host_toolchain` are not
+  # defined yet. Because these are imported from `args.gn` before `BUILDCONFIG.gn`
+  # is actually parsed.
+  custom_signing_script_tools = []
+}

@@ -1,0 +1,21 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/input-pipeline"
+    },
+    "sandbox": {
+        "features": [
+            "config-data"
+        ],
+        "services": [
+            "fuchsia.input.injection.InputDeviceRegistry",
+            "fuchsia.media.sounds.Player",
+            "fuchsia.recovery.FactoryReset",
+            "fuchsia.ui.pointerinjector.Registry",
+            "fuchsia.ui.pointerinjector.configuration.Setup",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/mock_cobalt"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.cobalt.test.LoggerQuerier",
+            "fuchsia.metrics.MetricEventLoggerFactory",
+            "fuchsia.metrics.test.MetricEventLoggerQuerier"
+        ]
+    }
+}

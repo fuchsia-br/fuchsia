@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/telephony"
+    },
+    "sandbox": {
+        "dev": [
+            "class/qmi-transport"
+        ],
+        "services": [
+            "fuchsia.sys.Launcher"
+        ]
+    }
+}

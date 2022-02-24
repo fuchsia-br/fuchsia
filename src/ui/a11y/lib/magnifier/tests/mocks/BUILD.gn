@@ -1,0 +1,52 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("mocks") {
+  testonly = true
+
+  public_deps = [
+    ":mock_magnification_handler",
+    ":mock_magnifier",
+  ]
+}
+
+source_set("mock_magnifier") {
+  testonly = true
+
+  public = [ "mock_magnifier.h" ]
+
+  sources = [ "mock_magnifier.cc" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.accessibility" ]
+
+  deps = [ "//third_party/googletest:gtest" ]
+}
+
+source_set("mock_magnification_handler") {
+  testonly = true
+
+  public = [ "mock_magnification_handler.h" ]
+
+  sources = [ "mock_magnification_handler.cc" ]
+
+  public_deps = [
+    ":clip_space_transform",
+    "//sdk/fidl/fuchsia.accessibility",
+    "//sdk/lib/fidl/cpp",
+    "//src/lib/callback",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [ "//third_party/googletest:gtest" ]
+}
+
+source_set("clip_space_transform") {
+  testonly = true
+
+  public = [ "clip_space_transform.h" ]
+
+  sources = [ "clip_space_transform.cc" ]
+
+  public_deps = [ "//third_party/glm" ]
+}

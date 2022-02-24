@@ -1,0 +1,230 @@
+{{/*
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Protocol:ClientImpl:WireMessagingHeader" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+template<>
+class {{ .WireWeakOnewayClientImpl }} : public ::fidl::internal::ClientImplBase {
+ public:
+  using ClientImplBase::ClientImplBase;
+
+  {{- range .OneWayMethods }}
+    {{- template "Method:WireWeakOnewayClientImpl:WireMessagingHeader" . }}
+  {{- end }}
+};
+
+template<>
+class {{ .WireWeakAsyncClientImpl }} final : public {{ .WireWeakOnewayClientImpl }} {
+ public:
+  using {{ .WireWeakOnewayClientImpl.Self }}::{{ .WireWeakOnewayClientImpl.Self }};
+
+  {{- range .TwoWayMethods }}
+    {{- template "Method:WireWeakAsyncClientImpl:WireMessagingHeader" . }}
+  {{- end }}
+};
+
+template<>
+class {{ .WireWeakOnewayBufferClientImpl }} : public ::fidl::internal::BufferClientImplBase {
+ public:
+  using BufferClientImplBase::BufferClientImplBase;
+
+  {{- range .OneWayMethods }}
+    {{- template "Method:ClientImplOnewayBuffer:WireMessagingHeader" . }}
+  {{- end }}
+};
+
+template<>
+class {{ .WireWeakAsyncBufferClientImpl }} final : public {{ .WireWeakOnewayBufferClientImpl }} {
+ public:
+  using {{ .WireWeakOnewayBufferClientImpl.Self }}::{{ .WireWeakOnewayBufferClientImpl.Self }};
+
+  {{- range .TwoWayMethods }}
+    {{- template "Method:ClientImplAsyncBuffer:WireMessagingHeader" . }}
+  {{- end }}
+};
+
+{{- if .Transport.HasSyncClient }}
+template<>
+class {{ .WireWeakSyncClientImpl }} final : public {{ .WireWeakOnewayClientImpl }} {
+ public:
+  using {{ .WireWeakOnewayClientImpl.Self }}::{{ .WireWeakOnewayClientImpl.Self }};
+
+  {{- range .TwoWayMethods }}
+    {{- template "Method:WireWeakSyncClientImpl:WireMessagingHeader" . }}
+  {{- end }}
+};
+{{- end }}
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Protocol:ClientImpl:WireMessagingSource" }}
+  {{ EnsureNamespace ""}}
+  {{- IfdefFuchsia -}}
+
+  {{- range .OneWayMethods }}
+    {{- template "Method:WireWeakOnewayClientImpl:WireMessagingSource" . }}
+  {{- end }}
+  {{- range .TwoWayMethods }}
+    {{- template "Method:WireWeakAsyncClientImpl:WireMessagingSource" . }}
+  {{- end }}
+  {{- range .OneWayMethods }}
+    {{- template "Method:ClientImplOnewayBuffer:WireMessagingSource" . }}
+  {{- end }}
+  {{- range .TwoWayMethods }}
+    {{- template "Method:ClientImplAsyncBuffer:WireMessagingSource" . }}
+  {{- end }}
+
+  {{- if .Transport.HasSyncClient }}
+    {{- range .TwoWayMethods }}
+      {{- template "Method:WireWeakSyncClientImpl:WireMessagingSource" . }}
+    {{- end }}
+  {{- end }}
+
+  {{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Method:ClientAsyncRequestArgumentsWithResult:Helper" -}}
+{{ if .HasRequestPayload }}{{ .RequestPayload }}&& payload, {{ end }}
+{{ printf "%s&& _callback" .CallbackType }}
+{{- end }}
+
+{{- define "Method:ClientAsyncRequestArgumentsWithResponse:Helper" -}}
+{{ if .HasRequestPayload }}{{ .RequestPayload }}&& payload, {{ end }}
+{{ printf "%s&& _callback" .ClientResponseCallbackType }}
+{{- end }}
+
+{{- define "Method:ClientRequestArgumentsOneWay:Helper" -}}
+{{ if .HasRequestPayload }}{{ .RequestPayload }}&& payload{{ end }}
+{{- end }}
+
+
+{{- define "Protocol:Client:NaturalMessagingHeader" }}
+{{- IfdefFuchsia -}}
+
+{{- range .Events }}
+{{- template "Method:Event:NaturalMessagingHeader" . }}
+{{- end }}
+
+{{- range .TwoWayMethods }}
+
+{{- template "Method:Response:NaturalMessagingHeader" . }}
+
+{{- EnsureNamespace "" }}
+template <>
+class {{ .ClientCallbackTraits }} final {
+ public:
+  {{ .ClientCallbackTraits.Self }}() = delete;
+  using ResultCallback =
+      ::fit::callback<void (::fitx::result<::fidl::Error, {{ .NaturalResponse }}>&)>;
+  using ResponseCallback = ::fit::callback<void ({{ .NaturalResponse }}&)>;
+};
+{{ end }}
+
+{{- EnsureNamespace "" }}
+template<>
+class {{ .NaturalClientImpl }} final : public ::fidl::internal::NaturalClientBase {
+ public:
+  using NaturalClientBase::NaturalClientBase;
+
+  {{- range .TwoWayMethods }}
+  {{- .Docs }}
+  void {{ .Name }}({{ template "Method:ClientAsyncRequestArgumentsWithResult:Helper" . }}) const;
+{{ "" }}
+  {{- .Docs }}
+  void {{ .Name }}({{ template "Method:ClientAsyncRequestArgumentsWithResponse:Helper" . }}) const;
+{{ "" }}
+  {{- end }}
+
+  {{- range .OneWayMethods }}
+  {{- .Docs }}
+  ::fitx::result<::fidl::Error> {{ .Name }}(
+      {{- template "Method:ClientRequestArgumentsOneWay:Helper" . }}) const;
+{{ "" }}
+  {{- end }}
+};
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Protocol:Client:NaturalMessagingSource" }}
+{{- IfdefFuchsia }}
+
+{{- range .Events }}
+{{- template "Method:Event:NaturalMessagingSource" . }}
+{{- end }}
+
+{{- range .TwoWayMethods }}
+
+{{- template "Method:Response:NaturalMessagingSource" . }}
+
+{{- EnsureNamespace "" }}
+void {{ $.NaturalClientImpl.NoLeading }}::{{ .Name }}(
+    {{- template "Method:ClientAsyncRequestArgumentsWithResult:Helper" . }}) const {
+  ::fidl::internal::NaturalMessageEncoder<::fidl::internal::ChannelTransport> _encoder{ {{ .OrdinalName }} };
+  return messenger().TwoWay(
+      {{- if .HasRequestPayload -}}
+        &{{ .Request.WireCodingTable }}
+      {{- else -}}
+        nullptr
+      {{- end -}},
+      ::fidl::internal::EncodeTransactionalMessageWithoutValidating(
+          _encoder {{- if .HasRequestPayload }}, std::move(payload){{ end }}),
+      ::fidl::internal::MakeResponseContext<
+          {{ .NaturalResponse }}, {{ .CallbackType }}
+      >({{ .OrdinalName }}, std::move(_callback))
+  );
+}
+
+{{- EnsureNamespace "" }}
+void {{ $.NaturalClientImpl.NoLeading }}::{{ .Name }}(
+    {{- template "Method:ClientAsyncRequestArgumentsWithResponse:Helper" . }}) const {
+  ::fidl::internal::NaturalMessageEncoder<::fidl::internal::ChannelTransport> _encoder{ {{ .OrdinalName }} };
+  return messenger().TwoWay(
+      {{- if .HasRequestPayload -}}
+        &{{ .Request.WireCodingTable }}
+      {{- else -}}
+        nullptr
+      {{- end -}},
+      ::fidl::internal::EncodeTransactionalMessageWithoutValidating(
+          _encoder {{- if .HasRequestPayload }}, std::move(payload){{ end }}),
+      ::fidl::internal::MakeResponseContext<
+          {{ .NaturalResponse }}, {{ .ClientResponseCallbackType }}
+      >({{ .OrdinalName }}, std::move(_callback))
+  );
+}
+{{ end }}
+
+{{- range .OneWayMethods }}
+
+{{- EnsureNamespace "" }}
+::fitx::result<::fidl::Error>
+{{ $.NaturalClientImpl.NoLeading }}::{{ .Name }}(
+    {{- template "Method:ClientRequestArgumentsOneWay:Helper" . }}) const {
+  ::fidl::internal::NaturalMessageEncoder<::fidl::internal::ChannelTransport> _encoder{ {{ .OrdinalName }} };
+  ::fidl::Result result = messenger().OneWay(
+      {{- if .HasRequestPayload -}}
+        &{{ .Request.WireCodingTable }}
+      {{- else -}}
+        nullptr
+      {{- end -}},
+      ::fidl::internal::EncodeTransactionalMessageWithoutValidating(
+          _encoder {{- if .HasRequestPayload }}, std::move(payload){{ end }}));
+  return ::fidl::internal::ToFitxResult(result);
+}
+{{ end }}
+
+
+
+{{- EndifFuchsia }}
+{{- end }}

@@ -1,0 +1,221 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.block.volume;
+using fuchsia.io;
+using zx;
+using fuchsia.hardware.block.partition as partition;
+
+/// VolumeManagerInfo describes the properties of the volume manager and not each individual volume.
+@for_deprecated_c_bindings
+type VolumeManagerInfo = struct {
+    /// Size of a single slice, in bytes.
+    slice_size uint64;
+
+    /// Number of slices the volume manager is able use right now. This counts the
+    /// allocated_slice_count plus the number of available slices.
+    slice_count uint64;
+
+    /// Number of slices currently assigned to partitions.
+    assigned_slice_count uint64;
+
+    /// The maximum capacity which the Volume Manager could grow to utilize if the partition
+    /// containing the Volume Manager itself expands (i.e., the Volume Manager is initialized on a
+    /// GPT partition that has extended beyond the originally allocated capacity). This value is
+    /// the number of entries reserved in the volume manager header and is not related to the size
+    /// of the physical device (which may be larger or smaller).
+    maximum_slice_count uint64;
+
+    /// Largest value that can be used for a virtual slice number.
+    max_virtual_slice uint64;
+};
+
+@for_deprecated_c_bindings
+type VolumeInfo = struct {
+    /// Number of slices allocated to the volume.
+    partition_slice_count uint64;
+
+    /// Limit on the maximum slices assigned to this partition, if there is one. If the size of the
+    /// partition is not limited, this value will be 0. Partitions can grow into free slices
+    /// available in the volume manager as long as their slices are less than or equal to this
+    /// value.
+    ///
+    /// The partition may be larger than this limit if a smaller limit was applied after the
+    /// partition had already grown to the current size.
+    ///
+    /// See `VolumeManager.GetPartitionLimit()`
+    slice_limit uint64;
+};
+
+/// Indicates that the partition should be created as inactive, implying that it
+/// will be destroyed on reboot (unless activated by a call to "Activate").
+const ALLOCATE_PARTITION_FLAG_INACTIVE uint32 = 0x00000001;
+
+/// VolumeManager controls a collection of Volumes.
+protocol VolumeManager {
+    /// Allocates a virtual partition with the requested features.
+    ///
+    /// `slice_count` is the number of slices initially allocated to the partition, at
+    /// offset zero. The number of slices allocated to a new partition must be at least one.
+    /// `type` and `value` indicate type and instance GUIDs for the partition, respectively.
+    /// `name` indicates the name of the new partition.
+    AllocatePartition(struct {
+        slice_count uint64;
+        type partition.GUID;
+        instance partition.GUID;
+        name string:partition.NAME_LENGTH;
+        flags uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Gets the VolumeManagerInfo describing this instance of the `VolumeManager`.
+    GetInfo() -> (struct {
+        status zx.status;
+        info box<VolumeManagerInfo>;
+    });
+
+    /// Atomically marks a vpartition (by instance GUID) as inactive, while finding
+    /// another partition (by instance GUID) and marking it as active.
+    ///
+    /// If the "old" partition does not exist, the GUID is ignored.
+    /// If the "old" partition is the same as the "new" partition, the "old"
+    /// GUID is ignored.
+    /// If the "new" partition does not exist, `ZX_ERR_NOT_FOUND` is returned.
+    ///
+    /// This function does not destroy the "old" partition, it just marks it as
+    /// inactive -- to reclaim that space, the "old" partition must be explicitly
+    /// destroyed.  This destruction can also occur automatically when the FVM driver
+    /// is rebound (i.e., on reboot).
+    ///
+    /// This function may be useful for A/B updates within the FVM,
+    /// since it will allow activating updated partitions.
+    Activate(struct {
+        old_guid partition.GUID;
+        new_guid partition.GUID;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Retrieves the allocation limit for the partition. A return value of 0 indicates that there
+    /// is no limit and the partition can be extended as long as there is available space on the
+    /// device.
+    ///
+    /// The partition may be larger than this limit if a smaller limit was applied after the
+    /// partition had already grown to the current size.
+    ///
+    /// Currently the partition limit is not persisted across reboots but this may change in the
+    /// future.
+    GetPartitionLimit(struct {
+        guid partition.GUID;
+    }) -> (struct {
+        status zx.status;
+        slice_count uint64;
+    });
+
+    /// Sets the allocation limit for the partition. Partitions can not be extended beyond their
+    /// allocation limit. The partition limit will never shrink partitions so if this value is
+    /// less than the current partition size, it will keep the current size but prevent further
+    /// growth.
+    ///
+    /// The allocation limits are on the VolumeManager API rather than on the partition because
+    /// they represent a higher capability level. These limits are designed to put guards on
+    /// users of the block device (and hence the Volume API).
+    ///
+    /// Currently the partition limit is not persisted across reboots but this may change in the
+    /// future.
+    SetPartitionLimit(struct {
+        guid partition.GUID;
+        slice_count uint64;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Renames the specified partition. Any existing devices that include the name of the partition
+    /// in their topological path might *not* reflect the name change until the next time that the
+    /// device is instantiated.
+    SetPartitionName(struct {
+        guid partition.GUID;
+        name string:<partition.NAME_LENGTH>;
+    }) -> (struct {}) error zx.status;
+};
+
+/// An arbitrary cap on the number of slices which may be requested when querying
+/// for allocation information from a volume.
+const MAX_SLICE_REQUESTS uint32 = 16;
+
+/// VsliceRange describes a range of virtual slices: start, length, and allocated status.
+///
+/// These ranges are returned in an ordered container, which implicitly describes the
+/// starting offset, starting from the "index zero" slice.
+@for_deprecated_c_bindings
+type VsliceRange = struct {
+    /// True if the virtual slices are allocated, false otherwise.
+    allocated bool;
+
+    /// The number of contiguous virtual slices.
+    count uint64;
+};
+
+/// Volume is a partition which may access virtually-mapped blocks within a device.
+@for_deprecated_c_bindings
+protocol Volume {
+    compose partition.Partition;
+
+    /// Returns the number of contiguous allocated (or unallocated) vslices
+    /// starting from each vslice.
+    ///
+    // TODO(smklein): Replace array with vector; doing so would be non-simple.
+    QuerySlices(struct {
+        start_slices vector<uint64>:MAX_SLICE_REQUESTS;
+    }) -> (struct {
+        status zx.status;
+        response array<VsliceRange, MAX_SLICE_REQUESTS>;
+        response_count uint64;
+    });
+
+    /// Returns the information about this volume and the volume manager it is embedded in.
+    GetVolumeInfo() -> (struct {
+        status zx.status;
+        manager box<VolumeManagerInfo>;
+        volume box<VolumeInfo>;
+    });
+
+    /// Extends the mapping of this partition.
+    ///
+    /// The ability to extend the partition is dependent on having sufficient free space on the
+    /// underlying device, having sufficient free slots for tracking the bytes in the volume
+    /// manager header, and the partition limit (see VolumeManager.SetPartitionLimit).
+    Extend(struct {
+        start_slice uint64;
+        slice_count uint64;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Shrinks a virtual partition. Returns `ZX_OK` if ANY slices are
+    /// freed, even if part of the requested range contains unallocated slices.
+    Shrink(struct {
+        start_slice uint64;
+        slice_count uint64;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Destroys the current partition, removing it from the VolumeManager, and
+    /// freeing all underlying storage. The connection to the volume is also closed.
+    Destroy() -> (struct {
+        status zx.status;
+    });
+};
+
+/// This protocol is intended for servers that handles both hardware.block.Volume
+/// and io.Node.
+///
+/// In the C++ implementation, such a server is able to test for the requests
+/// from each protocol. However, Rust bindings make it difficult to do
+/// so and requires that we create a new protocol that is composed of the two.
+protocol VolumeAndNode {
+    compose Volume;
+    compose fuchsia.io.Node;
+};

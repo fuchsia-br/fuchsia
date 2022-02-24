@@ -1,0 +1,101 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.sysmem2;
+
+using zx;
+
+/// Sysmem Heaps can have different support for different coherency
+/// domains. This table contains the support status for each coherency
+/// domain of a Heap.
+///
+/// Each member property should correspond to a coherency domain defined
+/// in the CoherencyDomain enum.
+type CoherencyDomainSupport = table {
+    1: cpu_supported bool;
+    2: ram_supported bool;
+    3: inaccessible_supported bool;
+};
+
+/// Memory properties for a sysmem Heap.
+/// Heaps send its properties to sysmem device at registration time based
+/// on which sysmem can select the correct Heap to use.
+type HeapProperties = table {
+    /// Status of support for coherency domains.
+    1: coherency_domain_support CoherencyDomainSupport;
+    /// Indicates whether sysmem needs to clear VMOs allocated by the Heap.
+    2: need_clear bool;
+    /// Some heaps provide pre-cleared allocations, but haven't flushed the
+    /// zeroes to RAM yet.  Flush is also performed if need_clear is true.
+    3: need_flush bool;
+};
+
+/// Manages resources on a specific sysmem heap.
+protocol Heap {
+    /// Request a new memory allocation of `size` on heap.
+    /// For heaps which don't permit CPU access to the buffer data, this
+    /// will create a VMO with an official size, but which never has any
+    /// physical pages.  For such heaps, the VMO is effectively used as
+    /// an opaque buffer identifier.
+    ///
+    /// Heaps should defer allocation of any associated resources until
+    /// CreateResource(), because the caller of AllocateVmo() may simply
+    /// delete the returned VMO with no further notification to the heap.
+    /// In contrast, after CreateResource(), the caller guarantees that
+    /// DestroyResource() or heap channel closure will occur.
+    ///
+    /// The caller guarantees that CreateResource() will be called prior
+    /// to the returned VMO or any associated child VMO being used.
+    AllocateVmo(struct {
+        size uint64;
+    }) -> (resource struct {
+        s zx.status;
+        vmo zx.handle:<VMO, optional>;
+    });
+
+    /// Create resources and associate heap-specific resources with the
+    /// passed-in VMO. Resources can be hardware specific and their
+    /// lifetime don't have to be tied to `vmo`. `vmo` must be a VMO
+    /// (or a direct or indirect child of a VMO) acquired through a call
+    /// to AllocateVmo method above.  If the passed-in vmo is a child VMO,
+    /// its size must match the size of the parent VMO created by
+    /// AllocateVmo().  For heaps that permit CPU access, the passed-in
+    /// VMO must not have a copy-on-write relationship with the parent
+    /// VMO, but rather a pass-through relationship. Successful return
+    /// status indicate that Heap has established a mapping between
+    /// VMO and hardware specific resources.
+    ///
+    /// The returned id must be passed to DestroyResource() later when
+    /// resources associated with VMO are no longer needed, unless the
+    /// heap channel closes first.
+    ///
+    /// The heap must not own/keep a handle to VMO, or any derived child
+    /// VMO, or any VMAR mapping to VMO, as any of those would keep VMO
+    /// alive beyond all sysmem participant usages of the vmo; instead
+    /// the heap can get the vmo's koid for the heap's mapping.
+    CreateResource(resource struct {
+        vmo zx.handle:VMO;
+        buffer_settings SingleBufferSettings;
+    }) -> (struct {
+        s zx.status;
+        id uint64;
+    });
+
+    /// Destroy previously created resources.
+    DestroyResource(struct {
+        id uint64;
+    }) -> ();
+
+    /// This event is triggered when the Heap is registered. Properties
+    /// of this Heap will be sent to the sysmem device in the event.
+    ///
+    /// Implementations should guarantee that this event should be sent
+    /// immediately when it binds to a channel, and this event should be
+    /// triggered only once per Heap instance.
+    // TODO(fxbug.dev/57690): Remove this event and pass in HeapProperties when
+    // registering sysmem Heaps after we migrate sysmem banjo proxying
+    // to FIDL.
+    -> OnRegister(struct {
+        properties HeapProperties;
+    });
+};

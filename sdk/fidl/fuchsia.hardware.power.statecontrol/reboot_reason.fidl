@@ -1,0 +1,31 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.power.statecontrol;
+
+/// Why the system reboots.
+// Contact OWNERS before adding a new value.
+type RebootReason = strict enum {
+    USER_REQUEST = 1;
+
+    /// A new system update has been downloaded.
+    SYSTEM_UPDATE = 2;
+
+    /// Applying the system update has failed.
+    RETRY_SYSTEM_UPDATE = 8;
+
+    HIGH_TEMPERATURE = 3;
+    FACTORY_DATA_RESET = 6;
+
+    /// Sessionmgr has failed.
+    SESSION_FAILURE = 4;
+
+    /// sysmgr crashed.
+    SYSMGR_FAILURE = 5;
+
+    /// A critical system component has failed.
+    CRITICAL_COMPONENT_FAILURE = 7;
+
+    /// A boot partition change was effected.
+    ZBI_SWAP = 9;
+};

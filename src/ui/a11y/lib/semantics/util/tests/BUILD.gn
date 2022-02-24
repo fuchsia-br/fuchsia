@@ -1,0 +1,25 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":semantics_util_tests" ]
+}
+
+executable("semantics_util_tests") {
+  output_name = "semantics_util_tests"
+
+  testonly = true
+
+  sources = [ "semantic_transform_unittest.cc" ]
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/ui/a11y/lib/semantics/util",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

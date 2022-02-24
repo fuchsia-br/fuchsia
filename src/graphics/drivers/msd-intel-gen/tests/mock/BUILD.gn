@@ -1,0 +1,21 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+source_set("mock") {
+  public_configs = [
+    "$msd_intel_gen_build_root:msd_tests_include_config",
+    "$msd_intel_gen_build_root:msd_src_include_config",
+  ]
+
+  public_deps = [
+    "$magma_build_root/include:msd",
+    "$magma_build_root/src/magma_util:macros",
+    "$magma_build_root/src/magma_util/platform:buffer",
+    "$msd_intel_gen_build_root/src",
+  ]
+
+  sources = [ "mock_mapped_batch.h" ]
+}

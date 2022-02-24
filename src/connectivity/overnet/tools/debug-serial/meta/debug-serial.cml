@@ -1,0 +1,23 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/debug_serial",
+    },
+    capabilities: [
+        {
+            protocol: [ "fuchsia.hardware.serial.NewDeviceProxy" ],
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.kernel.DebugResource" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: [ "fuchsia.hardware.serial.NewDeviceProxy" ],
+            from: "self",
+        },
+    ],
+}

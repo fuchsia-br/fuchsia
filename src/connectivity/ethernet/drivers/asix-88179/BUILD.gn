@@ -1,0 +1,148 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+
+driver_bind_rules("ethernet_ax88179_bind") {
+  rules = "ethernet_ax88179.bind"
+  header_output = "ethernet_ax88179-bind.h"
+  bind_output = "asix-88179.bindbc"
+  tests = "ethernet_ax88179-bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.usb" ]
+}
+
+driver_bind_rules("fake_usb_ax88179_bind") {
+  rules = "fake_usb_ax88179.bind"
+  header_output = "fake_usb_ax88179-bind.h"
+  tests = "fake_usb_ax88179-bind-tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.usb",
+    "//src/devices/bind/fuchsia.usb.comm",
+  ]
+}
+
+fuchsia_driver("asix-88179-driver") {
+  output_name = "asix-88179"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "asix-88179.cc" ]
+  deps = [
+    ":ethernet_ax88179_bind",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//sdk/lib/fit",
+    "//src/devices/lib/dev-operation",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/third_party/ulib/cksum",
+  ]
+}
+
+fuchsia_driver_component("asix-88179") {
+  component_name = "asix-88179"
+  deps = [ ":asix-88179-driver" ]
+  info = "asix-88179-info.json"
+  colocate = true
+}
+
+fidl("asix-88179-test-helper") {
+  name = "fuchsia.hardware.ax88179"
+  sources = [ "hooks.test.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+fuchsia_driver("fake-asix-88179-driver") {
+  output_name = "fake-asix-88179"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "asix-88179-function.cc" ]
+  deps = [
+    ":asix-88179-test-helper",
+    ":asix-88179-test-helper_llcpp",
+    ":fake_usb_ax88179_bind",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.function:fuchsia.hardware.usb.function_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+}
+
+fuchsia_driver_component("fake-asix-88179") {
+  component_name = "fake-asix-88179"
+  deps = [ ":fake-asix-88179-driver" ]
+  info = "fake-asix-88179-info.json"
+  colocate = true
+}
+
+test("asix-88179-integration") {
+  output_name = "asix-88179-integration-test"
+  sources = [ "asix-88179-test.cc" ]
+  deps = [
+    ":asix-88179-test-helper_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.virtual.bus:fuchsia.hardware.usb.virtual.bus_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/usb-virtual-bus-launcher",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("asix-88179-integration-test") {
+  deps = [
+    ":asix-88179",
+    ":asix-88179-integration",
+    ":fake-asix-88179",
+    "//src/connectivity/ethernet/drivers/ethernet",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/usb/drivers/usb-bus",
+    "//src/devices/usb/drivers/usb-composite",
+    "//src/devices/usb/drivers/usb-peripheral",
+    "//src/devices/usb/drivers/usb-virtual-bus",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":asix-88179-integration-test",
+    ":ethernet_ax88179_bind_test",
+    ":fake_usb_ax88179_bind_test",
+  ]
+}

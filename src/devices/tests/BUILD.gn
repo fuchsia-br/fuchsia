@@ -1,0 +1,69 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  deps = [
+    "autobind:tests",
+    "bind-fail-test",
+    "bind-test-v2",
+    "composite-driver-v1:tests",
+    "ddk-environment-test:tests",
+    "ddk-fallback-test:tests",
+    "ddk-fallback-test-v2:tests",
+    "ddk-fidl-test:tests",
+    "ddk-firmware-test:tests",
+    "ddk-instance-lifecycle-test",
+    "ddk-lifecycle:tests",
+    "ddk-metadata-test",
+    "ddk-power:tests",
+    "ddk-runcompatibilityhook:tests",
+    "device-watcher:tests",
+    "driver-development:tests",
+    "driver-inspect-test",
+    "driver-runtime:tests",
+    "fidl-protocol:tests",
+    "fx-logger:tests",
+    "isolateddevmgr:tests",
+    "libdriver-integration-test",
+    "string-bind-test",
+    "v2:tests",
+  ]
+}
+
+group("drivers") {
+  testonly = true
+  deps = [
+    "autobind:drivers",
+    "bind-fail-test:driver",
+    "bind-test-v2:bind-test-driver-v2",
+    "composite-driver-v1:drivers",
+    "ddk-environment-test:ddk-environment-test",
+    "ddk-fallback-test:ddk-fallback-test",
+    "ddk-fallback-test:ddk-not-fallback-test",
+    "ddk-fallback-test-v2:ddk-fallback-test-driver",
+    "ddk-fidl-test:fidl-async-llcpp-driver",
+    "ddk-fidl-test:fidl-llcpp-driver",
+    "ddk-firmware-test:ddk-firmware-test-driver",
+    "ddk-instance-lifecycle-test:driver",
+    "ddk-lifecycle:ddk-lifecycle-test",
+    "ddk-metadata-test:driver",
+    "ddk-power:ddk-power-test",
+    "ddk-power:ddk-power-test-child",
+    "ddk-runcompatibilityhook:ddk-runcompatibilityhook-test",
+    "ddk-runcompatibilityhook:ddk-runcompatibilityhook-test-child",
+    "device-watcher:test-driver",
+    "driver-inspect-test:driver",
+    "driver-runtime:child",
+    "driver-runtime:parent",
+    "fidl-protocol:child",
+    "fidl-protocol:parent",
+    "isolateddevmgr:isolateddevmgr-test-driver",
+    "mock-device:mock-device",
+    "string-bind-test:child-driver",
+    "string-bind-test:parent-driver",
+    "sysdev:sysdev",
+    "v2:drivers",
+  ]
+}

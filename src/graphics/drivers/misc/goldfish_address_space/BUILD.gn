@@ -1,0 +1,95 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("goldfish_address_space-bind") {
+  rules = "goldfish_address_space.bind"
+  header_output = "goldfish_address_space-bind.h"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.pci" ]
+}
+
+common_deps = [
+  ":goldfish_address_space-bind",
+  "//sdk/banjo/fuchsia.hardware.goldfish.addressspace:fuchsia.hardware.goldfish.addressspace_banjo_cpp",
+  "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp",
+  "//sdk/fidl/fuchsia.hardware.goldfish:fuchsia.hardware.goldfish_llcpp",
+  "//src/devices/lib/driver",
+  "//src/devices/lib/mmio",
+  "//src/devices/pci/lib/device-protocol-pci",
+  "//src/lib/ddk",
+  "//src/lib/ddktl",
+  "//zircon/system/ulib/fbl",
+  "//zircon/system/ulib/fidl",
+  "//zircon/system/ulib/fidl-async",
+  "//zircon/system/ulib/fidl-utils",
+  "//zircon/system/ulib/trace",
+  "//zircon/system/ulib/trace:trace-driver",
+  "//zircon/system/ulib/zircon-internal",
+  "//zircon/system/ulib/zx",
+]
+
+fuchsia_driver("address_space_driver-driver") {
+  output_name = "goldfish_address_space"
+
+  sources = [ "address_space_device.cc" ]
+
+  deps = common_deps
+  configs += [ "//build/config/fuchsia:enable_zircon_asserts" ]
+
+  configs += [ "//build/config:all_source" ]
+}
+
+fuchsia_driver_component("address_space_driver") {
+  component_name = "goldfish_address_space"
+  deps = [ ":address_space_driver-driver" ]
+  info = "address_space_driver-info.json"
+  colocate = true
+}
+
+fuchsia_driver_package("goldfish_address_space") {
+  driver_components = [ ":address_space_driver" ]
+}
+
+test("goldfish-address-space-test") {
+  output_name = "goldfish-address-space-test"
+  sources = [
+    "address_space_device.cc",
+    "address_space_device_test.cc",
+  ]
+  deps =
+      common_deps + [
+        "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp_mock",
+        "//src/devices/testing/fake-bti",
+        "//src/devices/testing/mock-ddk",
+        "//zircon/system/ulib/async-loop:async-loop-cpp",
+        "//zircon/system/ulib/mmio-ptr:mmio-ptr-fake",
+        "//zircon/system/ulib/mock-function",
+        "//zircon/system/ulib/sync",
+        "//zircon/system/ulib/zircon-internal",
+        "//zircon/system/ulib/zx",
+        "//zircon/system/ulib/zxtest",
+      ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("goldfish-address-space-test-package") {
+  package_name = "goldfish-address-space-test"
+  deps = [ ":goldfish-address-space-test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":goldfish_address_space-bind_test" ]
+
+  if (target_cpu == "x64") {
+    deps += [ ":goldfish-address-space-test-package" ]
+  }
+}

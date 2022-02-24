@@ -1,0 +1,61 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("fidl") {
+  public_deps = [
+    ":fidl-lint",
+    ":fidlfmt",
+    "fidl_api_diff:host",
+    "fidl_api_summarize:host",
+    "fidlc:host",
+    "fidlcparsequality:host",
+    "fidldoc($host_toolchain)",
+    "fidlgen_dart:host",
+    "fidlgen_go:host",
+    "fidlgen_hlcpp:host",
+    "fidlgen_libfuzzer:host",
+    "fidlgen_llcpp:host",
+    "fidlgen_rust:host",
+    "fidlgen_syzkaller:host",
+    "fidlmerge:host",
+    "gidl:host",
+    "gidl-format:host",
+    "lib",
+    "measure-tape/src:host",
+  ]
+}
+
+group("fidlfmt") {
+  if (current_os != "fuchsia") {
+    deps = [ "fidlc:fidl-format" ]
+  }
+}
+
+group("fidl-lint") {
+  if (current_os != "fuchsia") {
+    deps = [ "fidlc:fidl-lint" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "fidl_api_diff:tests",
+    "fidl_api_summarize:tests",
+    "fidlc:tests",
+    "fidldoc:tests",
+    "fidlgen_dart:tests",
+    "fidlgen_go:tests",
+    "fidlgen_hlcpp:tests",
+    "fidlgen_libfuzzer:tests",
+    "fidlgen_llcpp:tests",
+    "fidlgen_rust:tests",
+    "fidlgen_syzkaller:tests",
+    "gidl:tests",
+    "gidl-format:tests",
+    "lib:tests",
+    "measure-tape:tests",
+  ]
+}

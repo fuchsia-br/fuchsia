@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/getifaddrs-test"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.stack.Stack",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

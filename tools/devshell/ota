@@ -1,0 +1,93 @@
+#!/bin/bash
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Software delivery
+### perform a system OTA on a connected device
+
+## usage: fx ota [--help] [--build|--no-build]
+##
+##   --build | --no-build   Build (or not) the 'updates' target before initiating OTA.
+##   --help                 Print out this message.
+##
+## Ask the connected Fuchsia device to do an OTA.
+## Depending on the flags, this command will attempt to build the necessary
+## dependencies ('fx build updates') before requesting the OTA.
+##
+## The default for --build is defined by the "incremental" feature:
+##    'fx --enable=incremental ota'  defaults to '--build'
+##    'fx --disable=incremental ota'  defaults to '--no-build'
+##
+## A package server needs to be running and this command will fail if it is not.
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/updates.sh || exit $?
+fx-config-read
+
+function needs-update {
+  local system_image_merkle="${FUCHSIA_BUILD_DIR}"/obj/build/images/fuchsia/fuchsia/base.merkle
+  [[ $(fx-command-run shell 'read ver < /system/meta;echo $ver') != $(<"${system_image_merkle}") ]]
+}
+
+function target-using-omaha-client {
+  [[ "$(ffx component select capability fuchsia.update.Manager)" == *"/core/omaha-client-service"* ]]
+}
+
+function main {
+  local build=false
+  local build_targets=("updates")
+  if is_feature_enabled "incremental"; then
+    # In incremental workflows, these defaults have changed.
+    # Keep old behavior if incremental is not enabled.
+    build=true
+    build_targets=("build/images:packages" "build/images/fuchsia:update")
+  fi
+  while (( $# )); do
+    case "$1" in
+      --help)
+        fx-command-help
+        exit 0
+        ;;
+      --no-build)
+        build=false
+        ;;
+      --build)
+        build=true
+        ;;
+      *)
+       fx-error 'Invalid syntax'
+       fx-command-help
+       exit 1
+    esac
+    shift
+  done
+
+  check-for-package-server || return 1
+
+  if target-using-omaha-client; then
+    fx-warn "The target device is using omaha-client for update management, which will not"
+    fx-warn "OTA from this host. Consider 'fx force-ota-from-devhost' to bypass omaha-client."
+  fi
+
+  if $build; then
+    fx-info "Building/refreshing ${build_targets[@]}"
+    fx-command-run build "${build_targets[@]}" || return 1
+  fi
+
+  # Note: the following command continues to run as the system goes into
+  # reboot, so we lose SSH connection before it "completes". As such the
+  # following command completes with error, but that is not actually an error.
+  fx-command-run shell update check-now --monitor
+
+  fx-command-run wait
+
+  fx-command-run shell update wait-for-commit
+
+  if needs-update; then
+    fx-error "After update, system appears still out of date. OTA may have failed. Run 'fx log' for details."
+    return 1
+  fi
+}
+
+main "$@"

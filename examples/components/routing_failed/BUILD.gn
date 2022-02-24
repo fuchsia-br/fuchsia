@@ -1,0 +1,17 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+fuchsia_component("echo_realm") {
+  manifest = "meta/echo_realm.cml"
+}
+
+fuchsia_package("components-routing-failed-example") {
+  deps = [
+    ":echo_realm",
+    "echo_client",
+    "echo_server:echo_server_components",
+  ]
+}

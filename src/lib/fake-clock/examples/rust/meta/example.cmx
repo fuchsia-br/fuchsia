@@ -1,0 +1,9 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/fake-clock/lib/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/rust_example_bin"
+    }
+}

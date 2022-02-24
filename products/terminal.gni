@@ -1,0 +1,78 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/core.gni")
+
+core_realm_package_name = "core-terminal"
+core_realm_shards += []
+
+base_package_labels += [
+  "//src/devices/sysmem/bin/sysmem_connector",
+  "//src/ui/bin/root_presenter",
+  "//src/ui/bin/root_presenter:configs",
+  "//src/ui/scenic:configs",
+  "//src/fonts",
+  "//src/graphics/bin/vulkan_loader",
+  "//src/intl/intl_services/config:sysmgr",
+  "//src/intl/intl_services:pkg",
+  "//src/ui/a11y",
+
+  # TODO(fxbug.dev/82822): Remove after out-of-tree tests migrate to
+  # text_manager.
+  "//src/ui/bin/text:ime_service",
+  "//src/ui/bin/text:text_manager",
+]
+base_package_labels -= [ "//src/intl/intl_services/config:sysmgr_small" ]
+
+# Add build type config data
+base_package_labels += [ "//src/fonts:build_type_eng" ]
+
+cache_package_labels += [
+  "//src/fonts:open-fonts-collection",
+  "//src/ui/bin/terminal",
+  "//src/ui/scenic",
+  "//src/ui/tools/tiles",
+]
+
+# End to end (E2E) product test runtime dependencies. Must be added to cache,
+# not universe, so the test can run on bots where there is no package server.
+#
+# TODO(fxbug.dev/9892): Support a package server on bots so this can be added to
+# universe like the tests.
+cache_package_labels += [
+  # Used for Chromium tests for example:
+  #    //src/chromium/web_runner_tests:tests
+  "//src/testing/fidl/intl_property_manager",
+
+  # Used to mock out display hardware.
+  "//src/ui/bin/hardware_display_controller_provider",
+
+  # General end to end dependencies.
+  "//src/tests/end_to_end/bundles:end_to_end_deps",
+  "//src/tests/end_to_end/bundles:terminal_end_to_end_deps",
+
+  # CFv2 test framework.
+  "//src/sys/run_test_suite",
+]
+
+# Add SDK tools set to "cache" so these tools are automatically available in
+# QEMU images generated for the SDK, but in cache, so they can be updated.
+cache_package_labels += [ "//sdk/bundles:tools" ]
+
+core_realm_shards += [ "//src/media/codec:codec_factory_shard" ]
+
+universe_package_labels += [
+  # E2E Product Tests. They don't produce fuchsia packages, but host
+  # executables, and must just be included somewhere in the build configuration
+  # of the product.
+  "//src/tests/end_to_end/screen_is_not_black:tiles_test",
+  "//src/tests/end_to_end/sl4f:test",
+  "//src/tests/end_to_end/perf:test",
+  "//src/tests/end_to_end/time_sync:test",
+
+  # Only for products in which Flutter is supported.
+  "//src/tests/intl/timezone:tests-for-flutter",
+
+  "//src/fonts:open-fonts",
+]

@@ -1,0 +1,39 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("wlan-sae") {
+  with_unit_tests = true
+  edition = "2018"
+  deps = [
+    "//sdk/fidl/fuchsia.wlan.ieee80211:fuchsia.wlan.ieee80211-rustc",
+    "//src/connectivity/wlan/lib/common/rust:wlan-common",
+    "//src/connectivity/wlan/lib/ieee80211",
+    "//src/connectivity/wlan/lib/statemachine:wlan-statemachine",
+    "//src/lib/mundane",
+    "//third_party/boringssl/rust/boringssl-sys",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:num",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/boringssl.rs",
+    "src/ecc.rs",
+    "src/frame.rs",
+    "src/hmac_utils.rs",
+    "src/lib.rs",
+    "src/state.rs",
+  ]
+}
+
+fuchsia_unittest_package("wlan-sae-tests") {
+  deps = [ ":wlan-sae_test" ]
+}

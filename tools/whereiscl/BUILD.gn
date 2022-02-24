@@ -1,0 +1,54 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/host.gni")
+
+go_library("lib") {
+  deps = [ ":netutil" ]
+  sources = [
+    "changeinfo.go",
+    "changeinfo_test.go",
+    "gistatus.go",
+    "gistatus_test.go",
+  ]
+}
+
+go_library("main") {
+  name = "main"
+  source_dir = "cmd"
+  sources = [ "whereiscl.go" ]
+  deps = [ ":lib" ]
+}
+
+go_library("netutil") {
+  source_dir = "netutil"
+  sources = [ "netutil.go" ]
+}
+
+go_binary("whereiscl") {
+  gopackage = "main"
+  deps = [ ":main" ]
+}
+
+install_host_tools("host") {
+  deps = [ ":whereiscl" ]
+  outputs = [ "whereiscl" ]
+}
+
+go_library("testhelper") {
+  source_dir = "testhelper"
+  sources = [ "testhelper.go" ]
+}
+
+go_test("whereiscl_test") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/whereiscl" ]
+  deps = [
+    ":lib",
+    ":testhelper",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}

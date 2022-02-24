@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/network_speed_test"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.http.Loader",
+            "fuchsia.net.stack.Stack"
+        ]
+    }
+}

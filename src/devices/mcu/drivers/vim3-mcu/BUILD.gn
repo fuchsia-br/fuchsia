@@ -1,0 +1,81 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("vim3_mcu_bind") {
+  rules = "vim3_mcu.bind"
+  header_output = "vim3_mcu_bind.h"
+  tests = "bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.i2c",
+    "//src/devices/bind/fuchsia.khadas.platform",
+  ]
+}
+
+fuchsia_driver("vim3-mcu-driver") {
+  output_name = "vim3-mcu"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "vim3-mcu.cc" ]
+  deps = [
+    ":vim3_mcu_bind",
+    "//src/devices/i2c/lib/device-protocol-i2c",
+    "//src/devices/i2c/lib/device-protocol-i2c-channel",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/pretty",
+  ]
+}
+
+fuchsia_driver_component("vim3-mcu") {
+  component_name = "vim3-mcu"
+  deps = [ ":vim3-mcu-driver" ]
+  info = "vim3-mcu-info.json"
+  colocate = true
+}
+
+test("vim3-mcu-test-bin") {
+  output_name = "vim3-mcu-test"
+  sources = [
+    "vim3-mcu-test.cc",
+    "vim3-mcu.cc",
+  ]
+  deps = [
+    ":vim3_mcu_bind",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/lib/fit",
+    "//src/devices/i2c/lib/device-protocol-i2c",
+    "//src/devices/i2c/lib/device-protocol-i2c-channel",
+    "//src/devices/i2c/testing/mock-i2c",
+    "//src/devices/testing/no_ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("vim3-mcu-test") {
+  deps = [ ":vim3-mcu-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":vim3-mcu-test",
+    ":vim3_mcu_bind_test",
+  ]
+}

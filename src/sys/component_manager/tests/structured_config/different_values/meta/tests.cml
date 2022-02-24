@@ -1,0 +1,28 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/different_values_integration_tests",
+    },
+    children: [
+        {
+            name: "receiver",
+            url: "#meta/receiver.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: "test.structuredconfig.receiver.ConfigReceiverPuppet",
+            from: "#receiver",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#receiver",
+        },
+    ],
+}

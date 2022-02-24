@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/example_player"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.media.sessions2.Publisher"
+        ]
+    }
+}

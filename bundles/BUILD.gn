@@ -1,0 +1,222 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/drivers/assert_driver_components.gni")
+import("//build/drivers/check_included_drivers.gni")
+import("//build/drivers/create_all_drivers_doc.gni")
+import("//src/sys/root/build/root.gni")
+
+group("tools") {
+  testonly = true
+  public_deps = [
+    "//build/tools/formatjson5:install($host_toolchain)",
+    "//garnet/bin/run_test_component:run-test-component",
+    "//garnet/packages/prod:cmdutils",
+    "//garnet/packages/prod:debug_agent",
+    "//garnet/packages/prod:far",
+    "//garnet/packages/prod:run",
+    "//garnet/packages/prod:tracing",
+    "//garnet/packages/testing:all",
+    "//src/camera:tools",
+    "//src/connectivity:tools",
+    "//src/connectivity/bluetooth/tools",
+    "//src/connectivity/bluetooth/tools/bt-snoop",
+    "//src/developer/debug/zxdb:zxdb_host",
+    "//src/developer/fastboot",
+    "//src/developer/ffx:ffx_tool",
+    "//src/developer/ffx:runtime",
+    "//src/developer/forensics/exceptions/limbo_client:limbo-client",
+    "//src/developer/memory/mem",
+    "//src/devices/lib/bind",
+    "//src/diagnostics/tool:diag_tool_host($host_toolchain)",
+    "//src/diagnostics/triage:install($host_toolchain)",
+    "//src/graphics/display:tools",
+    "//src/graphics/lib/magma:magma-tools",
+    "//src/identity:tools",
+    "//src/lib/chunked-compression:chunked-compress-host-tool",
+    "//src/lib/icu:tools",
+    "//src/media/bundles:tools",
+    "//src/recovery/factory_reset:tools",
+    "//src/security/scrutiny",
+    "//src/storage:tools",
+    "//src/sys/locate",
+    "//src/sys/pkg/bin/pm",
+    "//src/sys/pkg/bin/pm:host",
+    "//src/sys/run_test_suite",
+    "//src/sys/tools/activity-ctl",
+    "//src/sys/tools/cs",
+    "//src/sys/tools/log",
+    "//src/sys/tools/runmany",
+    "//src/ui/tools:scenic",
+    "//src/ui/tools/tiles_ctl",
+    "//third_party/boringssl:boringssl_tool",
+    "//third_party/cobalt:host",
+    "//third_party/curl",
+    "//third_party/iperf",
+    "//third_party/openssh-portable:openssh-tools",
+    "//tools",
+    "//tools/check-licenses:host($host_toolchain)",
+    "//tools/sys-realm-analyzer:host($host_toolchain)",
+    "//tools/whereiscl:host($host_toolchain)",
+  ]
+  deps = [ "//build/validate:non_production_tag" ]
+}
+
+# Same as "tools" above, but for tools that are hosted by the system package.
+group("tools-system") {
+  testonly = true
+  deps = [ "//src/connectivity/bluetooth/hci/emulator" ]
+}
+
+group("build_infra") {
+  public_deps = [ "//tools:build_infra" ]
+}
+
+group("test_infra") {
+  testonly = true
+  public_deps = [ "//tools:test_infra" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    "fidl:tests",
+    "//build:tests",
+    "//examples:tests",
+    "//garnet/packages/tests:all",
+    "//scripts:tests",
+    "//sdk:tests",
+    "//src:tests",
+    "//third_party/go:tests",
+    "//third_party/re2:tests",
+    "//tools:tests",
+  ]
+}
+
+# A collection of all stress tests available in-tree. The tests in this group will be built
+# and run on the core.qemu-x64-stress builder.
+group("stress-tests") {
+  testonly = true
+  public_deps = [
+    "//src/diagnostics/archivist/tests/stress-test",
+    "//src/storage/stress-tests",
+    "//src/sys/component_manager/stress_tests_alt",
+    "//src/ui/tests/scenic-stress-tests:tests",
+    "//src/zircon/tests/stress-tests:tests",
+  ]
+}
+
+group("kitchen_sink") {
+  testonly = true
+  public_deps = [
+    ":tests",
+    "//bundles:tools",
+    "//examples",
+    "//garnet/packages:all",
+    "//garnet/packages/config:amber",
+    "//garnet/packages/config:network",
+    "//garnet/packages/config:openssh_keys",
+    "//src/connectivity/telephony",
+    "//src/graphics/examples",
+    "//src/lib/ui/carnelian:examples",
+    "//src/media/audio/bundles:virtual_audio_driver",
+    "//src/media/bundles:examples",
+    "//src/media/bundles:services",
+    "//src/media/bundles:tools",
+  ]
+}
+
+# While we don't necessarily want to run all tests on devices with limited
+# flash, we should run a few amlogic-HW-dependent tests on astro and/or
+# sherlock.  This list is those tests.  This list intentionally doesn't include
+# all of :tests above.
+group("amlogic_hw_dependent_tests") {
+  testonly = true
+
+  public_deps = [
+    "//src/media/codec:hw_dependent_tests",
+    "//src/media/stream_processors:hw_dependent_tests",
+
+    # Verify communication with amlogic optee.
+    "//src/security/tee_manager:optee_smoke_test",
+  ]
+}
+
+# Binaries that form the base of every single product.
+group("bootstrap") {
+  deps = [
+    "//src/bringup/bundles:bootstrap",
+    "//src/devices/bundles:bootstrap-bin",
+    "//src/diagnostics/bundles:bootstrap",
+    "//src/power/bundles:bootstrap",
+    "//src/storage/bundles:bootstrap",
+    "//src/sys/bundles:bootstrap",
+  ]
+}
+
+# Binaries that form the base of every single zedboot image.
+group("bootstrap-zedboot") {
+  deps = [
+    "//src/bringup/bundles:zedboot",
+    "//src/devices/bundles:bootstrap-bin",
+    "//src/power/bundles:bootstrap",
+    "//src/storage/bundles:bootstrap",
+    "//src/sys/bundles:bootstrap",
+  ]
+}
+
+# Debugging tools installed on the boot image.
+group("debugging") {
+  deps = [
+    "//build/validate:non_production_tag",
+    "//src/bringup/bundles:debugging",
+    "//src/connectivity/bundles:debugging",
+    "//src/developer/bundles:debugging",
+    "//src/devices/bundles:debugging",
+    "//src/storage/bundles:debugging",
+    "//src/sys/bundles:debugging",
+    "//src/zircon/bundles:debugging",
+  ]
+}
+
+# Diagnostics tools installed on the boot image.
+group("diagnostics-eng") {
+  deps = [ "//src/diagnostics/bundles:dev-tools" ]
+}
+
+# Group including all drivers in the fuchsia repo except for templates.
+group("drivers-not-templates") {
+  testonly = true
+  deps = [
+    "//examples/drivers",
+    "//src/camera:drivers",
+    "//src/connectivity/bundles:drivers",
+    "//src/devices/bundles:drivers",
+    "//src/diagnostics/validator/logs/ddk/log-test-driver",
+    "//src/graphics/bundles:drivers",
+    "//src/lib/isolated_devmgr:crash-device",
+    "//src/lib/isolated_devmgr:test-device",
+    "//src/media/bundles:drivers",
+    "//src/storage/fvm/driver:driver",
+    "//src/ui/bundles:drivers",
+    "//zircon/third_party/dev/ethernet/e1000:e1000",
+  ]
+}
+
+# Group including all drivers in the fuchsia repo. Useful for ensuring
+# all driver continue to build without needing to build every board.
+check_included_drivers("drivers-build-only") {
+  testonly = true
+  contains_all_drivers = true
+  deps = [
+    ":drivers-not-templates",
+    "//tools/create/goldens/my-driver-cpp:component",
+  ]
+}
+
+# Group including all drivers to extract documentation from.
+create_all_drivers_doc("create_all_drivers_doc") {
+  testonly = true
+  deps = [ ":drivers-not-templates" ]
+}

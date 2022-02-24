@@ -1,0 +1,164 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.virtualization;
+
+using fuchsia.hardware.ethernet;
+using fuchsia.io;
+using fuchsia.wayland;
+using zx;
+
+const MAX_BLOCK_DEVICE_ID uint8 = 20;
+const MAX_MEMORY uint8 = 32;
+const MAX_BLOCK_DEVICES uint8 = 32;
+const MAX_NET_DEVICES uint8 = 32;
+const MAX_INTERRUPTS uint8 = 128;
+
+/// Type of kernel used by a guest.
+type KernelType = strict enum {
+    ZIRCON = 0;
+    LINUX = 1;
+};
+
+/// Memory policy for a MemorySpec.
+type MemoryPolicy = strict enum {
+    /// Map a VMO as cached memory into a guest physical address space.
+    GUEST_CACHED = 0;
+    /// Map a VMO with 1:1 correspondence with host memory as cached memory into
+    /// a guest physical address space.
+    HOST_CACHED = 1;
+    /// Map a VMO with 1:1 correspondence with host memory as device memory into
+    /// a guest physical address space.
+    HOST_DEVICE = 2;
+};
+
+/// Properties describing a region of guest physical address space.
+type MemorySpec = struct {
+    /// Base address of a region of guest physical address space.
+    base zx.gpaddr;
+    /// Size of a region of guest physical address space.
+    size uint64;
+    /// Memory policy of a region of guest physical address space.
+    policy MemoryPolicy;
+};
+
+/// Mode of the file backing a block device.
+type BlockMode = strict enum {
+    /// Reads and writes are allowed.
+    READ_WRITE = 0;
+    /// Only reads are allowed.
+    READ_ONLY = 1;
+    /// Writes are allowed, but are stored in memory, not to disk.
+    VOLATILE_WRITE = 2;
+};
+
+/// Data format of the file backing a block device.
+type BlockFormat = strict enum {
+    /// File IO. All reads and writes go directly to disk as a flat file.
+    FILE = 0;
+    /// QCOW image. All reads and writes go to a QCOW image.
+    QCOW = 1;
+    /// Block IO. All reads and writes go to a block server.
+    BLOCK = 2;
+};
+
+/// Properties describing a block device.
+type BlockSpec = resource struct {
+    /// The ID used to identify the block device.
+    id string:MAX_BLOCK_DEVICE_ID;
+    /// The access mode for the block device.
+    mode BlockMode;
+    /// The data format of the block device.
+    format BlockFormat;
+    /// The client channel for the block device.
+    client zx.handle:CHANNEL;
+};
+
+/// Properites describing a network device.
+type NetSpec = struct {
+    /// MAC address for the network device.
+    mac_address fuchsia.hardware.ethernet.MacAddress;
+    /// Whether to bridge the network device with the host network device.
+    enable_bridge bool;
+};
+
+/// Properties describing a virtio_wl device.
+type WaylandDevice = resource struct {
+    /// The amount of guest-physical address space to allocate for virtio_wl
+    /// buffers.
+    ///
+    /// Default to a 1GiB allocation.
+    memory uint64 = 1073741824;
+
+    /// The server for new virtio_wl connections.
+    server client_end:fuchsia.wayland.Server;
+};
+
+/// Properties describing a virtio_magma device.
+type MagmaDevice = struct {
+    /// The amount of guest-physical address space to allocate for virtio_magma
+    /// buffers.
+    ///
+    /// Default to a 16GiB allocation.
+    memory uint64 = 17179869184;
+};
+
+/// The configuration required to start up a guest.
+type GuestConfig = resource table {
+    /// Type of kernel to load. Cannot be changed from the command-line.
+    1: kernel_type KernelType;
+    /// File to load the kernel from. Cannot be changed from the command-line.
+    2: kernel client_end:fuchsia.io.File;
+    /// File to load the initial RAM disk from. Cannot be changed from the
+    /// command-line.
+    3: ramdisk client_end:fuchsia.io.File;
+    /// File to load the dtb overlay for a Linux kernel from. Cannot be changed
+    /// from the command-line.
+    4: dtb_overlay client_end:fuchsia.io.File;
+    /// Kernel command-line to use. Cannot be changed from the command-line.
+    5: cmdline string:MAX;
+    /// Additional kernel command-lines to append to the main command-line.
+    6: cmdline_add vector<string:MAX>:MAX;
+
+    /// The number of CPUs to provide to a guest.
+    7: cpus uint8;
+    /// The layout of memory to be mapped into a guest.
+    8: memory vector<MemorySpec>:MAX_MEMORY;
+    /// A list of physical interrupts to bind to.
+    9: interrupts vector<uint32>:MAX_INTERRUPTS;
+    /// A list of block devices to give a guest. Cannot be changed from the
+    /// command-line.
+   10: block_devices vector<BlockSpec>:MAX_BLOCK_DEVICES;
+    /// A list of specifications for network devices.
+   11: net_devices vector<NetSpec>:MAX_NET_DEVICES;
+    /// Optional virtio-wl device.
+   12: wayland_device WaylandDevice;
+    /// Optional virtio-magma device.
+   13: magma_device MagmaDevice;
+
+    /// Whether to add a default network device (assumed if absent).
+   14: default_net bool;
+    /// Enable virtio-balloon (assumed if absent).
+   15: virtio_balloon bool;
+    /// Enable virtio-console (assumed if absent).
+   16: virtio_console bool;
+    /// Enable virtio-gpu (assumed if absent).
+   17: virtio_gpu bool;
+    /// Enable virtio-rng (assumed if absent).
+   18: virtio_rng bool;
+    /// Enable virtio-vsock (assumed if absent).
+   19: virtio_vsock bool;
+    /// Enable virtio-sound (assumed if absent).
+   20: virtio_sound bool;
+    /// Enable input streams (capture) for virtio-sound (false if absent).
+   21: virtio_sound_input bool;
+};
+
+/// Protocol to provide a guest's configuration.
+@discoverable
+protocol GuestConfigProvider {
+    /// Get the |guest_config|.
+    Get() -> (resource struct {
+        guest_config GuestConfig;
+    });
+};

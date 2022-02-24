@@ -1,0 +1,556 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/virtualization/buildtools/linux_paths.gni")
+import("//src/virtualization/buildtools/romfs_image.gni")
+
+# Packages required to run the guest integration tests.
+guest_packages = [
+  "//src/virtualization/bin",
+  "//src/virtualization/packages",
+]
+
+linux_tests_label = "//src/virtualization/packages/debian_guest:tests"
+resource("debian_tests_img") {
+  sources = [ get_label_info(linux_tests_label, "target_out_dir") +
+              "/debian/tests.img" ]
+  outputs = [ "data/linux_tests.img" ]
+  deps = [ linux_tests_label ]
+}
+
+termina_extras_label = "//src/virtualization/packages/termina_guest:extras"
+resource("termina_extras_img") {
+  sources =
+      [ get_label_info(termina_extras_label, "target_out_dir") + "/vm_extras" ]
+  outputs = [ "data/vm_extras.img" ]
+  deps = [ termina_extras_label ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":guest_unit_tests",
+    ":virtualization_block_tests_pkg",
+    ":virtualization_core_tests_pkg",
+    ":virtualization_net_tests_pkg",
+    ":virtualization_vsock_tests_pkg",
+    "hypervisor",
+  ]
+
+  # TODO(fxbug.dev/12616): These tests currently do not work on arm64.
+  if (current_cpu == "x64") {
+    deps += [
+      # TODO(fxbug.dev/64348): These tests needs to be reworked so that they
+      # interact correctly with Scenic.
+      # ":virtualization_gpu_tests_pkg",
+      # ":virtualization_input_tests_pkg",
+      ":termina_integration_tests",
+    ]
+  }
+
+  # Ensure guest packages are available in the manifest.
+  data_deps = guest_packages
+}
+
+source_set("logger") {
+  visibility = [ ":*" ]
+  sources = [
+    "logger.cc",
+    "logger.h",
+  ]
+}
+
+source_set("periodic_logger") {
+  visibility = [ ":*" ]
+  sources = [
+    "periodic_logger.cc",
+    "periodic_logger.h",
+  ]
+  deps = [ "//src/lib/fxl" ]
+  public_deps = [ "//zircon/system/ulib/zx" ]
+}
+
+source_set("backtrace_watchdog") {
+  visibility = [ ":*" ]
+  sources = [
+    "backtrace_watchdog.cc",
+    "backtrace_watchdog.h",
+  ]
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/inspector",
+    "//zircon/system/ulib/task-utils",
+  ]
+  public_deps = [ "//zircon/system/ulib/zx" ]
+}
+
+source_set("socket_logger") {
+  visibility = [
+    "//src/connectivity/network/testing/netemul/*",
+    "//src/virtualization/*",
+  ]
+  sources = [
+    "socket_logger.cc",
+    "socket_logger.h",
+  ]
+  public_deps = [
+    ":logger",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("guest_console") {
+  visibility = [
+    "//src/connectivity/network/testing/netemul/*",
+    "//src/virtualization/*",
+  ]
+  sources = [
+    "guest_console.cc",
+    "guest_console.h",
+    "socket.cc",
+    "socket.h",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.virtualization",
+    "//src/lib/fxl",
+  ]
+  public_deps = [
+    ":logger",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("guest_constants") {
+  visibility = [
+    "//src/connectivity/network/testing/netemul/*",
+    "//src/virtualization/*",
+  ]
+  public = [ "guest_constants.h" ]
+}
+
+source_set("fake_netstack") {
+  testonly = true
+  visibility = [
+    "//src/connectivity/network/testing/netemul/*",
+    "//src/virtualization/*",
+  ]
+  public = [ "fake_netstack.h" ]
+  sources = [ "fake_netstack.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.network",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.net.virtualization",
+    "//sdk/fidl/fuchsia.netstack",
+    "//src/connectivity/lib/network-device/cpp",
+    "//src/lib/inet",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp/testing:cpp",
+  ]
+}
+
+source_set("fake_scenic") {
+  visibility = [ ":*" ]
+  testonly = true
+  sources = [
+    "fake_scenic.cc",
+    "fake_scenic.h",
+  ]
+
+  deps = [
+    "//src/lib/fostr/fidl/fuchsia.ui.gfx",
+    "//src/lib/fostr/fidl/fuchsia.ui.scenic",
+    "//src/lib/fxl",
+  ]
+  public_deps = [ "//sdk/fidl/fuchsia.ui.scenic" ]
+}
+
+executable("unit_tests") {
+  testonly = true
+  output_name = "guest_unit_tests"
+  sources = [
+    "guest_console_test.cc",
+    "periodic_logger_test.cc",
+  ]
+  deps = [
+    ":guest_console",
+    ":periodic_logger",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("test_main") {
+  testonly = true
+  visibility = [ ":*" ]
+  sources = [ "test_main.cc" ]
+  deps = [
+    ":logger",
+    "//src/lib/fxl/test:test_settings",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("lib") {
+  visibility = [ ":*" ]
+  testonly = true
+  sources = [
+    "enclosed_guest.cc",
+    "enclosed_guest.h",
+    "guest_test.h",
+  ]
+
+  deps = [
+    ":backtrace_watchdog",
+    ":guest_console",
+    ":guest_constants",
+    ":periodic_logger",
+    ":socket_logger",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.sysinfo",
+    "//sdk/lib/fit-promise",
+    "//zircon/system/ulib/zxc",
+  ]
+  public_deps = [
+    ":fake_netstack",
+    ":fake_scenic",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/virtualization/lib/grpc",
+    "//src/virtualization/lib/vsh:client",
+    "//src/virtualization/third_party/vm_tools:vm_cc_proto",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_unittest_package("guest_unit_tests") {
+  deps = [ ":unit_tests" ]
+}
+
+executable("virtualization_core_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "core_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":test_main",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+group("test_images") {
+  testonly = true
+  deps = [
+           ":termina_extras_img",
+           ":debian_tests_img",
+           ":linux_extras_img",
+           termina_extras_label,
+           linux_tests_label,
+         ] + guest_packages
+}
+
+fuchsia_test_component("virtualization_core_tests_cmp") {
+  component_name = "virtualization_core_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_core_tests",
+  ]
+  manifest = "meta/virtualization_core_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_core_tests_pkg") {
+  package_name = "virtualization-core-tests"
+  test_components = [ ":virtualization_core_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+executable("virtualization_block_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "virtio_block_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":test_main",
+    "//src/virtualization/bin/vmm/device:qcow_test_data",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_test_component("virtualization_block_tests_cmp") {
+  component_name = "virtualization_block_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_block_tests",
+  ]
+  manifest = "meta/virtualization_block_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_block_tests_pkg") {
+  package_name = "virtualization-block-tests"
+  test_components = [ ":virtualization_block_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+executable("virtualization_gpu_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "virtio_gpu_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":periodic_logger",
+    ":test_main",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_test_component("virtualization_gpu_tests_cmp") {
+  component_name = "virtualization_gpu_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_gpu_tests",
+  ]
+  manifest = "meta/virtualization_gpu_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_gpu_tests_pkg") {
+  package_name = "virtualization-gpu-tests"
+  test_components = [ ":virtualization_gpu_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+executable("virtualization_input_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "virtio_input_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":test_main",
+  ]
+}
+
+fuchsia_test_component("virtualization_input_tests_cmp") {
+  component_name = "virtualization_input_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_input_tests",
+  ]
+  manifest = "meta/virtualization_input_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_input_tests_pkg") {
+  package_name = "virtualization-input-tests"
+  test_components = [ ":virtualization_input_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+executable("virtualization_net_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "virtio_net_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":test_main",
+    "//src/lib/inet",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_test_component("virtualization_net_tests_cmp") {
+  component_name = "virtualization_net_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_net_tests",
+  ]
+  manifest = "meta/virtualization_net_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_net_tests_pkg") {
+  package_name = "virtualization-net-tests"
+  test_components = [ ":virtualization_net_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+executable("virtualization_vsock_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "virtio_vsock_tests.cc" ]
+
+  deps = [
+    ":guest_console",
+    ":lib",
+    ":test_main",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_test_component("virtualization_vsock_tests_cmp") {
+  component_name = "virtualization_vsock_tests"
+  deps = [
+    ":test_images",
+    ":virtualization_vsock_tests",
+  ]
+  manifest = "meta/virtualization_vsock_tests.cmx"
+}
+
+fuchsia_test_package("virtualization_vsock_tests_pkg") {
+  package_name = "virtualization-vsock-tests"
+  test_components = [ ":virtualization_vsock_tests_cmp" ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_component("virtio_block_test_util_cmp") {
+  component_name = "virtio_block_test_util"
+  deps = [ "virtio_block_test_util" ]
+  manifest = "virtio_block_test_util/meta/virtio_block_test_util.cmx"
+}
+
+fuchsia_component("virtio_rng_test_util_cmp") {
+  component_name = "virtio_rng_test_util"
+  deps = [ "virtio_rng_test_util" ]
+  manifest = "virtio_rng_test_util/meta/virtio_rng_test_util.cmx"
+}
+
+fuchsia_component("virtio_net_test_util_cmp") {
+  component_name = "virtio_net_test_util"
+  deps = [ "virtio_net_test_util" ]
+  manifest = "virtio_net_test_util/meta/virtio_net_test_util.cmx"
+}
+
+fuchsia_component("virtio_vsock_test_util_cmp") {
+  component_name = "virtio_vsock_test_util"
+  deps = [ "virtio_vsock_test_util" ]
+  manifest = "virtio_vsock_test_util/meta/virtio_vsock_test_util.cmx"
+}
+
+fuchsia_package("virtualization_test_utils_pkg") {
+  package_name = "virtualization-test-utils"
+  deps = [
+    ":virtio_block_test_util_cmp",
+    ":virtio_net_test_util_cmp",
+    ":virtio_rng_test_util_cmp",
+    ":virtio_vsock_test_util_cmp",
+  ]
+}
+
+romfs_image("extras") {
+  testonly = true
+
+  deps = [
+    "//src/graphics/lib/magma/tests/integration:virtmagma_conformance_tests(${linux_exe_toolchain})",
+    "//src/graphics/lib/magma/tests_linux/unit_tests:virtmagma_vulkan_unit_tests(${linux_exe_toolchain})",
+  ]
+
+  inputs = [
+    "${linux_exe_path}/virtmagma_vulkan_unit_tests",
+    "${linux_exe_path}/virtmagma_conformance_tests",
+  ]
+
+  output = "$target_out_dir/linux/extras.img"
+}
+
+executable("termina_integration_tests_bin") {
+  visibility = [ ":*" ]
+  output_name = "termina_integration_tests"
+  testonly = true
+
+  sources = [
+    "virtio_magma_tests.cc",
+    "virtio_sound_tests.cc",
+    "virtio_wl_tests.cc",
+  ]
+
+  deps = [
+    ":lib",
+    ":test_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+group("termina") {
+  testonly = true
+  deps = guest_packages
+  deps += [ ":termina_integration_tests" ]
+}
+
+resource("linux_extras_img") {
+  testonly = true
+  sources = [ "$target_out_dir/linux/extras.img" ]
+  outputs = [ "data/extras.img" ]
+  deps = [ ":extras" ]
+}
+
+fuchsia_test_component("termina_integration_tests_cmp") {
+  component_name = "termina_integration_tests"
+  deps = [
+    ":termina_integration_tests_bin",
+    ":test_images",
+  ]
+  manifest = "meta/termina_integration_tests.cmx"
+}
+
+fuchsia_test_package("termina_integration_tests") {
+  test_components = [ ":termina_integration_tests_cmp" ]
+  test_specs = {
+    environments = [ nuc_env ]
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

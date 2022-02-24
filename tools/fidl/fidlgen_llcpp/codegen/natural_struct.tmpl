@@ -1,0 +1,179 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Struct:ForwardDeclaration:NaturalTypesHeader" }}
+{{ EnsureNamespace . }}
+class {{ .Name }};
+{{- end }}
+
+{{- define "Struct:NaturalTypesHeader" }}
+{{ EnsureNamespace . }}
+{{ if .IsResourceType }}
+{{- IfdefFuchsia -}}
+{{- end }}
+extern "C" const fidl_type_t {{ .CodingTableType.Name }};
+
+{{ .Docs }}
+class {{ .Name }} final {
+ private:
+  struct Storage_;
+ public:
+  {{ .Name }}(Storage_ storage) noexcept : storage_(std::move(storage)) {}
+
+  {{- if len .Members }}
+    {{ .Name }}(
+    {{- range $i, $m := .Members }}
+      {{- if $i }}, {{ end }}
+      {{- $m.Type }} {{ $m.Name }}
+    {{- end }}) noexcept
+    : storage_({
+    {{- range $i, $m := .Members }}
+      {{- if $i }}, {{ end }}
+      .{{ $m.Name }} = std::move({{ $m.Name}})
+    {{- end }}
+    }) {}
+  {{- end }}
+  {{ .Name }}() : {{ .Name }}(Storage_{}) {}
+
+  {{ .Name }}({{ .Name }}&&) noexcept = default;
+  {{ .Name }}& operator=({{ .Name }}&&) noexcept = default;
+  {{- if not .IsResourceType }}
+    {{ .Name }}(const {{ .Name }}& other) noexcept : {{ .Name }}(other.CloneStorage_()){}
+    {{ .Name }}& operator=(const {{ .Name }}& other) noexcept {
+      storage_ = other.CloneStorage_();
+      return *this;
+    }
+
+    bool operator==(const {{ .Name }}& other) const noexcept {
+      return ::fidl::internal::NaturalStructCodingTraits<{{ . }},
+          {{ .TypeShapeV1.InlineSize }}, {{ .TypeShapeV2.InlineSize }}>::Equal(this, &other);
+    }
+    bool operator!=(const {{ .Name }}& other) const noexcept {
+      return !::fidl::internal::NaturalStructCodingTraits<{{ . }},
+          {{ .TypeShapeV1.InlineSize }}, {{ .TypeShapeV2.InlineSize }}>::Equal(this, &other);
+    }
+  {{- end }}
+
+  {{- range .Members }}
+    {{ .Docs }}
+    {{- if .Type.IsPrimitiveType }}
+      {{ .Type }}
+    {{- else }}
+      const {{ .Type }} &
+    {{- end }}
+    {{ .Name }}() const {
+      return storage_.{{ .Name }};
+    }
+
+    {{ .Docs }}
+    {{ .Type }}& {{ .Name }}() {
+      return storage_.{{ .Name }};
+    }
+  {{- end }}
+ private:
+  struct Storage_ final {
+    {{- range .Members }}
+      {{- .Docs }}
+      {{ .Type }} {{ .Name }}
+      {{- if .DefaultValue.IsSet }}
+        = {{ .DefaultValue }};
+      {{- else }}
+        {};
+      {{- end }}
+    {{- end }}
+  };
+
+  Storage_ storage_;
+  {{- if not .IsResourceType }}
+    Storage_ CloneStorage_() const;
+  {{- end }}
+
+  friend struct ::fidl::internal::NaturalStructCodingTraits<{{ . }},
+      {{ .TypeShapeV1.InlineSize }}, {{ .TypeShapeV2.InlineSize }}>;
+  friend struct ::fidl::internal::MemberVisitor<{{ . }}>;
+  static constexpr auto kMembers = std::make_tuple(
+    {{- range $i, $m := .Members }}
+      {{- if $i }}, {{ end -}}
+      ::fidl::internal::NaturalStructMember<Storage_, {{ $m.Type }}>{
+        &Storage_::{{ $m.Name }}, {{ $m.OffsetV1 }}, {{ $m.OffsetV2 }}
+        {{- if $m.HandleInformation -}}
+          ,std::make_optional<::fidl::internal::NaturalHandleInformation>({
+            .object_type = {{ $m.HandleInformation.ObjectType }},
+            .rights = {{ $m.HandleInformation.Rights }}
+          })
+        {{- end -}}
+      }
+    {{- end -}}
+  );
+
+};
+
+{{ if .IsResourceType }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+
+{{- define "Struct:Traits:NaturalTypesHeader" }}
+  {{- IfdefFuchsia -}}
+
+  extern "C" const fidl_type_t {{ .CodingTableType.Self }};
+
+  {{ if .IsResourceType }}
+  template <>
+  struct IsResource<{{ . }}> : public std::true_type {};
+  {{- end }}
+  template <>
+  struct IsFidlType<{{ . }}> : public std::true_type {};
+
+  template <>
+  struct {{ .TypeTraits }} final {
+  public:
+    static constexpr const fidl_type_t* kCodingTable = &{{ .CodingTableType.Self }};
+  };
+
+  template <>
+  struct internal::NaturalCodingTraits<{{ . }}> final
+    : public ::fidl::internal::NaturalStructCodingTraits<{{ . }},
+        {{ .TypeShapeV1.InlineSize }}, {{ .TypeShapeV2.InlineSize }}> {};
+
+  {{ if .TypeShapeV1.HasPadding }}
+  template<>
+  struct HasPadding<{{ . }}> : public std::true_type {};
+  {{ end }}
+
+  {{ if .FullDeclMemcpyCompatibleDeps }}
+  template<>
+  struct internal::NaturalIsMemcpyCompatible<{{ . }}> : public internal::BoolConstant<
+      !HasPadding<{{ . }}>::value
+  {{- range .FullDeclMemcpyCompatibleDeps }}
+      && internal::NaturalIsMemcpyCompatible<{{ .Unified }}>::value
+    {{- end -}}
+  > {};
+  {{ end }}
+  {{- EndifFuchsia -}}
+{{- end }}
+
+
+{{- define "Struct:NaturalTypesSource" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+
+
+{{- EndifFuchsia -}}
+
+{{- if not .IsResourceType }}
+  {{ . }}::Storage_ {{ .NoLeading }}::CloneStorage_() const {
+    return Storage_{
+      {{- range $i, $m := .Members }}
+        {{- if $i }}, {{ end }}
+        ::fidl::internal::NaturalClone(storage_.{{ .Name }})
+      {{- end }}
+    };
+  }
+{{- end }}
+
+{{- end }}

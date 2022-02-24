@@ -1,0 +1,128 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/environments.gni")
+import("//build/testing/host_test_data.gni")
+
+CORE_DEPS = [
+  "//sdk/fidl/fuchsia.overnet:fuchsia.overnet-rustc",
+  "//sdk/fidl/fuchsia.overnet.protocol:fuchsia.overnet.protocol-rustc",
+  "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+  "//src/connectivity/overnet/lib/quic",
+  "//src/lib/cutex",
+  "//src/lib/async-utils",
+  "//src/lib/fidl/rust/fidl",
+  "//src/lib/fuchsia-async",
+  "//src/lib/zircon/rust:fuchsia-zircon-status",
+  "//third_party/boringssl/rust/boringssl-sys",
+  "//third_party/rust_crates:anyhow",
+  "//third_party/rust_crates:async-lock",
+  "//third_party/rust_crates:base64",
+  "//third_party/rust_crates:byteorder",
+  "//third_party/rust_crates:crc",
+  "//third_party/rust_crates:event-listener",
+  "//third_party/rust_crates:futures",
+  "//third_party/rust_crates:lazy_static",
+  "//third_party/rust_crates:libc",
+  "//third_party/rust_crates:log",
+  "//third_party/rust_crates:assert_matches",
+  "//third_party/rust_crates:parking_lot",
+  "//third_party/rust_crates:pin-project",
+  "//third_party/rust_crates:rand",
+  "//third_party/rust_crates:thiserror",
+  "//third_party/rust_crates/mirrors/quiche",
+  "//third_party/boringssl",
+]
+
+if (is_fuchsia) {
+  CORE_DEPS += [ "//src/lib/zircon/rust:fuchsia-zircon" ]
+} else {
+  CORE_DEPS += [ "//third_party/rust_crates:tempfile" ]
+}
+
+CORE_SOURCES = [
+  "src/coding.rs",
+  "src/future_help.rs",
+  "src/handle_info.rs",
+  "src/labels.rs",
+  "src/lib.rs",
+  "src/link/mod.rs",
+  "src/link/frame_label.rs",
+  "src/link/ping_tracker.rs",
+  "src/peer/mod.rs",
+  "src/peer/framed_stream.rs",
+  "src/proxy/mod.rs",
+  "src/proxy/run/mod.rs",
+  "src/proxy/run/main.rs",
+  "src/proxy/run/spawn.rs",
+  "src/proxy/run/xfer.rs",
+  "src/proxy/stream.rs",
+  "src/proxy/handle/mod.rs",
+  "src/proxy/handle/channel.rs",
+  "src/proxy/handle/event_pair.rs",
+  "src/proxy/handle/signals.rs",
+  "src/proxy/handle/socket.rs",
+  "src/router/diagnostics_service.rs",
+  "src/router/mod.rs",
+  "src/router/routes.rs",
+  "src/router/security_context.rs",
+  "src/router/service_map.rs",
+  "src/router/link_status_updater.rs",
+  "src/stat_counter.rs",
+  "src/test_util.rs",
+]
+
+rustc_library("core") {
+  name = "overnet_core"
+  edition = "2018"
+  deps = CORE_DEPS
+  sources = CORE_SOURCES
+}
+
+rustc_test("core_test") {
+  name = "overnet_core_test"
+  edition = "2018"
+
+  deps = CORE_DEPS + [
+           "//third_party/rust_crates:arbitrary",
+           "//src/lib/fuchsia",
+         ]
+
+  if (is_host) {
+    deps += [ ":test_certs" ]
+    args = [ "--test-threads=1" ]
+  }
+  sources = CORE_SOURCES
+}
+
+if (is_host) {
+  host_test_data("test_certs") {
+    sources = [
+      "//third_party/rust_crates/mirrors/quiche/examples/cert.crt",
+      "//third_party/rust_crates/mirrors/quiche/examples/cert.key",
+      "//third_party/rust_crates/mirrors/quiche/examples/rootca.crt",
+    ]
+
+    outputs = [ "$root_out_dir/overnet_test_certs/{{source_file_part}}" ]
+  }
+}
+
+fuchsia_unittest_package("overnet-core-tests") {
+  manifest = "meta/overnet_core_lib_test.cmx"
+  deps = [
+    ":core_test",
+    "//src/connectivity/overnet/overnetstack:certificates",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":core_test($host_toolchain)",
+    ":overnet-core-tests",
+  ]
+}

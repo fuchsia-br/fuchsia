@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "sandbox": {
+        "features": [
+            "isolated-persistent-storage"
+        ],
+        "services": [
+            "fuchsia.location.namedplace.RegulatoryRegionWatcher",
+            "fuchsia.net.mdns.Publisher",
+            "fuchsia.net.mdns.Subscriber"
+        ]
+    },
+    "program": {
+        "binary": "bin/lowpan_ot_driver_bin_test"
+    }
+}

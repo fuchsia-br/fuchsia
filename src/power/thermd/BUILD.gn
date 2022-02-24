@@ -1,0 +1,83 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+
+if (target_cpu == "x64") {
+  executable("bin") {
+    output_name = "thermd"
+
+    sources = [ "thermd.cc" ]
+
+    deps = [
+      "//sdk/banjo/fuchsia.hardware.scpi:fuchsia.hardware.scpi_banjo_cpp",
+      "//sdk/fidl/fuchsia.hardware.gpu.clock:fuchsia.hardware.gpu.clock_c_client",
+      "//sdk/fidl/fuchsia.hardware.thermal:fuchsia.hardware.thermal_c",
+      "//sdk/fidl/fuchsia.kernel",
+      "//sdk/lib/fdio",
+      "//src/lib/ddk",
+      "//zircon/system/ulib/async",
+      "//zircon/system/ulib/async-default",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/fdio-caller",
+      "//zircon/system/ulib/fzl",
+      "//zircon/system/ulib/trace",
+      "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+
+if (target_cpu == "arm64") {
+  rustc_binary("bin") {
+    name = "thermd"
+    edition = "2018"
+    with_unit_tests = true
+
+    deps = [
+      "//sdk/fidl/fuchsia.hardware.gpu.clock:fuchsia.hardware.gpu.clock-rustc",
+      "//sdk/fidl/fuchsia.hardware.thermal:fuchsia.hardware.thermal-rustc",
+      "//src/lib/fdio/rust:fdio",
+      "//src/lib/fidl/rust/fidl",
+      "//src/lib/fuchsia-async",
+      "//src/lib/syslog/rust:syslog",
+      "//src/lib/zircon/rust:fuchsia-zircon",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:futures",
+      "//third_party/rust_crates:thiserror",
+    ]
+
+    sources = [ "src/main.rs" ]
+  }
+
+  fuchsia_unittest_package("thermd-bin-tests") {
+    manifest = "meta/thermd_bin_test.cmx"
+    deps = [ ":bin_test" ]
+  }
+}
+
+fuchsia_package_with_single_component("thermd") {
+  if (target_cpu == "arm64") {
+    manifest = "meta/thermd_arm.cmx"
+  } else {
+    manifest = "meta/thermd.cmx"
+  }
+  deps = [ ":bin" ]
+}
+
+config_data("config") {
+  for_pkg = "sysmgr"
+  sources = [ "thermd.config" ]
+}
+
+group("tests") {
+  testonly = true
+
+  if (target_cpu == "arm64") {
+    deps = [ ":thermd-bin-tests" ]
+  }
+}

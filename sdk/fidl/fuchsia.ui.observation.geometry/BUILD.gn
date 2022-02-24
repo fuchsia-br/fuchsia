@@ -1,0 +1,28 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+import("//tools/fidl/measure-tape/measure_tape.gni")
+
+fidl("fuchsia.ui.observation.geometry") {
+  sdk_category = "internal"
+  sources = [ "provider.fidl" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.math",
+    "//zircon/vdso/zx",
+  ]
+}
+
+measure_tape("measure_tape_for_geometry") {
+  target_binding = "hlcpp"
+  target_types = [
+    "fuchsia.ui.observation.geometry/ViewDescriptor",
+    "fuchsia.ui.observation.geometry/ViewTreeSnapshot",
+    "fuchsia.ui.observation.geometry/Error",
+  ]
+  fidls = [
+    ":fuchsia.ui.observation.geometry",
+    "//sdk/fidl/fuchsia.math",
+  ]
+}

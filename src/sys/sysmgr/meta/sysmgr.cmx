@@ -1,0 +1,25 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/sysmgr"
+    },
+    "sandbox": {
+        "features": [
+            "config-data"
+        ],
+        "pkgfs": [
+            "packages"
+        ],
+        "services": [
+            "fuchsia.hardware.power.statecontrol.Admin",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Loader"
+        ],
+        "system": [
+            "bin",
+            "pkgs"
+        ]
+    }
+}

@@ -1,0 +1,101 @@
+{
+    include: [ "syslog/elf_stdio.shard.cml" ],
+    program: {
+        binary: "bin/netsvc",
+    },
+    use: [
+        // For ethernet device access.
+        {
+            directory: "dev-class-ethernet",
+            rights: [ "rw*" ],
+            path: "/dev/class/ethernet",
+        },
+
+        // For network device access.
+        {
+            directory: "dev-class-network",
+            rights: [ "rw*" ],
+            path: "/dev/class/network",
+        },
+
+        // For netcp access.
+        {
+            directory: "boot",
+            rights: [ "rx*" ],
+            path: "/boot",
+        },
+
+        // Directories below this are for netruncmd access.
+        {
+            directory: "bin",
+            rights: [ "rx*" ],
+            path: "/bin",
+        },
+        {
+            directory: "blob",
+            rights: [ "rw*" ],
+            path: "/blob",
+        },
+        {
+            directory: "minfs",
+            rights: [ "rw*" ],
+            path: "/data",
+        },
+        {
+            directory: "install",
+            rights: [ "rw*" ],
+            path: "/install",
+        },
+        {
+            directory: "pkgfs",
+            rights: [ "rx*" ],
+            path: "/pkgfs",
+        },
+        {
+            directory: "system",
+            rights: [ "rx*" ],
+            path: "/system",
+        },
+        {
+            directory: "tmp",
+            rights: [ "rw*" ],
+            path: "/tmp",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.NameProvider",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.pty.Device",
+                "fuchsia.kernel.Counter",
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.Stats",
+                "fuchsia.logger.Log",
+                "fuchsia.paver.Paver",
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.pkg.RepositoryManager",
+                "fuchsia.pkg.rewrite.Engine",
+                "fuchsia.process.Launcher",
+                "fuchsia.process.Resolver",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.Launcher",
+                "fuchsia.sys.Loader",
+                "fuchsia.sysinfo.SysInfo",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.controller.Controller",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.virtualconsole.SessionManager",
+            ],
+        },
+    ],
+}

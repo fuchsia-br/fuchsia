@@ -1,0 +1,185 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+source_set("lib") {
+  sources = [
+    "args.cc",
+    "cpu_stress.cc",
+    "cpu_stressor.cc",
+    "cpu_workloads.cc",
+    "device.cc",
+    "flash_stress.cc",
+    "hwstress.cc",
+    "light_stress.cc",
+    "memory_patterns.cc",
+    "memory_range.cc",
+    "memory_stats.cc",
+    "memory_stress.cc",
+    "profile_manager.cc",
+    "status.cc",
+    "temperature_sensor.cc",
+    "util.cc",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.block",
+    "//sdk/fidl/fuchsia.hardware.block.volume",
+    "//sdk/fidl/fuchsia.hardware.light",
+    "//sdk/fidl/fuchsia.hardware.thermal",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl",
+    "//src/lib/storage/fs_management",
+    "//src/lib/uuid",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/cmdline",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # We want to optimize as much as possible for speed, under the assumption
+  # that this will also optimize for generating code that will maximise the
+  # amount of stress placed on the system (e.g., more heat for CPU tests).
+  configs += [ "//build/config:optimize_speed" ]
+}
+
+executable("bin") {
+  output_name = "hwstress"
+
+  sources = [ "main.cc" ]
+
+  deps = [ ":lib" ]
+}
+
+# Traditional CLI package.
+fuchsia_shell_package("hwstress_cli") {
+  package_name = "hwstress-cli"
+  deps = [ ":bin" ]
+}
+
+# CFv1 package.
+# We generate an in-package CMX file for the top-level "hwstress"
+# binary, and also for each style of test we run.
+#
+# This is to help automated tests seperate logs for the different
+# styles of test, where currently the CFv1 component name is the
+# only mechanism we have to do this.
+_hwstress_binaries = [
+  "hwstress",
+  "cpu",
+  "memory",
+  "flash",
+  "led",
+]
+_hwstress_components = []
+foreach(hwstress_name, _hwstress_binaries) {
+  fuchsia_component("${hwstress_name}_component") {
+    component_name = "${hwstress_name}"
+    manifest = "meta/hwstress.cmx"
+    deps = [ ":bin" ]
+  }
+  _hwstress_components += [ ":${hwstress_name}_component" ]
+}
+
+fuchsia_package("hwstress_pkg") {
+  package_name = "hwstress"
+  deps = _hwstress_components
+}
+
+# Tests using CFv1.
+executable("hwstress_test") {
+  testonly = true
+
+  sources = [
+    "args_test.cc",
+    "cpu_stress_test.cc",
+    "cpu_stressor_test.cc",
+    "cpu_workloads_test.cc",
+    "hwstress_test.cc",
+    "light_stress_test.cc",
+    "memory_patterns_test.cc",
+    "memory_range_test.cc",
+    "memory_stats_test.cc",
+    "memory_stress_test.cc",
+    "profile_manager_test.cc",
+    "status_test.cc",
+    "temperature_sensor_test.cc",
+    "util_test.cc",
+  ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/fdio",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/predicates",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+# Tests requiring support from the CFv2 (or requiring support from libraries that depend on CFv2).
+executable("hwstress_v2_test") {
+  testonly = true
+
+  sources = [ "flash_stress_test.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/fdio",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/predicates",
+    "//src/storage/testing:storage_driver_test_support",  # requires CFv2.
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+fuchsia_test_component("hwstress_v1_test_pkg") {
+  manifest = "meta/hwstress_test.cmx"
+  deps = [ ":hwstress_test" ]
+}
+
+fuchsia_test_component("hwstress_v2_test_pkg") {
+  manifest = "meta/hwstress_v2_test.cml"
+  deps = [
+    ":hwstress_v2_test",
+    "//src/storage/testing:storage_driver_test_realm",
+  ]
+}
+
+fuchsia_test_package("hwstress_test_pkg") {
+  package_name = "hwstress-tests"
+  test_components = [
+    ":hwstress_v1_test_pkg",
+    ":hwstress_v2_test_pkg",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":hwstress_test_pkg" ]
+}
+
+group("hwstress") {
+  testonly = true
+  public_deps = [
+    ":hwstress_cli",
+    ":hwstress_pkg",
+  ]
+}

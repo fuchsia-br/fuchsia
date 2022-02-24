@@ -1,0 +1,36 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+fuchsia_package_with_single_component("touch-gfx-client") {
+  testonly = true
+  manifest = "meta/touch-gfx-client.cmx"
+  deps = [ ":touch-gfx-client-binary" ]
+}
+
+executable("touch-gfx-client-binary") {
+  testonly = true
+  output_name = "touch-gfx-client"
+
+  sources = [ "touch-gfx-client.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.gfx",
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fostr/fidl/fuchsia.ui.gfx",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fxl",
+    "//src/ui/tests/integration_input_tests/touch:test.touch",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}

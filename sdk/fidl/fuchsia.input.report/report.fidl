@@ -1,0 +1,46 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.input.report;
+
+using zx;
+
+/// `InputReport` is a single report that is created by an input device.
+type InputReport = table {
+    /// `event_time` is in nanoseconds when the event was recorded.
+    1: event_time zx.time;
+    /// `mouse` is the report generated if the device contains a mouse.
+    2: mouse MouseInputReport;
+    /// `sensor` is the report generated if the device contains a sensor.
+    4: sensor SensorInputReport;
+    /// `touch` is the report generated if the device contains a touch device.
+    5: touch TouchInputReport;
+    /// `keyboard` is the report generated if the device contains a keyboard.
+    6: keyboard KeyboardInputReport;
+    /// `consumer_controls` is the report generated if the device contains a
+    /// ConsumerControl device.
+    7: consumer_control ConsumerControlInputReport;
+
+    /// Unique ID to connect trace async begin/end events.
+    3: trace_id uint64;
+    /// The Descriptor that describes this InputReport will have a matching
+    /// ReportID. If this doesn't exist, report_id is 0.
+    8: report_id uint8;
+};
+
+/// A single report containing output information for an input device.
+/// Output information typically represents device output to the user
+/// (E.g: LEDs, tactile feedback, etc).
+type OutputReport = table {
+    1: keyboard KeyboardOutputReport;
+};
+
+/// A single report containing the feature information for an input device.
+/// Feature reports obtained from the device show the current state of the
+/// device. Sending a feature report to the device sets the device in that
+/// state.
+type FeatureReport = table {
+    1: sensor SensorFeatureReport;
+
+    2: touch TouchFeatureReport;
+};

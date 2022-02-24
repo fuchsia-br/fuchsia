@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/direct_input_child"
+    },
+    "sandbox": {
+        "dev": [
+            "class/input-report"
+        ],
+        "services": [
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Launcher",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

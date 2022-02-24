@@ -1,0 +1,37 @@
+{
+    "annotation_allowlist": [
+        "build.board",
+        "build.is_debug",
+        "build.latest-commit-date",
+        "build.product",
+        "build.version",
+        "build.version.previous-boot",
+        "device.board-name",
+        "device.feedback-id",
+        "device.uptime",
+        "device.utc-time",
+        "hardware.board.name",
+        "hardware.board.revision",
+        "hardware.product.language",
+        "hardware.product.locale-list",
+        "hardware.product.manufacturer",
+        "hardware.product.model",
+        "hardware.product.name",
+        "hardware.product.regulatory-domain",
+        "hardware.product.sku",
+        "system.boot-id.current",
+        "system.boot-id.previous",
+        "system.last-reboot.reason",
+        "system.last-reboot.uptime",
+        "system.timezone.primary",
+        "system.update-channel.current",
+        "system.update-channel.target"
+    ],
+    "attachment_allowlist": [
+        "build.snapshot.xml",
+        "inspect.json",
+        "log.kernel.txt",
+        "log.system.previous_boot.txt",
+        "log.system.txt"
+    ]
+}

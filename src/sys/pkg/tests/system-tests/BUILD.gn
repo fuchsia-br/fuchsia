@@ -1,0 +1,180 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/host.gni")
+import("//build/images/vbmeta.gni")
+import("//build/testing/environments.gni")
+import("//build/testing/host_test_data.gni")
+import("//src/sys/pkg/tests/system-tests/system-tests.gni")
+
+if (is_host) {
+  host_test_data("test_tools") {
+    sources = [
+      "$host_tools_dir/device-finder",
+      "//prebuilt/tools/artifacts/artifacts",
+      "//prebuilt/tools/lkg/lkg",
+    ]
+    outputs = [ "$root_out_dir/test_data/system-tests/{{source_file_part}}" ]
+    public_deps = [ "//tools/net/device-finder:host($host_toolchain)" ]
+  }
+
+  if (use_vbmeta) {
+    host_test_data("test_avb_atx_metadata") {
+      sources = [ avb_atx_metadata ]
+      outputs = [ "$root_out_dir/test_data/system-tests/avb_atx_metadata.bin" ]
+    }
+
+    host_test_data("test_avb_key") {
+      sources = [ avb_key ]
+      outputs = [ "$root_out_dir/test_data/system-tests/atx_psk.pem" ]
+    }
+  }
+
+  go_library("system_tests_lib") {
+    testonly = true
+    name = "go.fuchsia.dev/fuchsia/src/sys/pkg/tests/system-tests/..."
+    deps = [
+      "//src/testing/host-target-testing",
+      "//tools/botanist:constants",
+      "//tools/lib/color",
+      "//tools/lib/logger",
+    ]
+    non_go_deps = [ ":test_tools" ]
+    if (use_vbmeta) {
+      non_go_deps += [
+        ":test_avb_atx_metadata",
+        ":test_avb_key",
+      ]
+    }
+    sources = [
+      "check/check.go",
+      "pave/pave.go",
+      "reboot_test/config.go",
+      "reboot_test/reboot_test.go",
+      "script/script.go",
+      "tracking_test/config.go",
+      "tracking_test/tracking_test.go",
+      "upgrade_test/config.go",
+      "upgrade_test/upgrade_test.go",
+    ]
+  }
+
+  # Add this to go_test()'s environments to disable a test in infra
+  disabled_env = {
+    tags = [ "system-tests-disabled" ]  # Tells infra not to run this by default
+    dimensions = host_env.dimensions
+  }
+
+  go_test("system_tests_reboot") {
+    gopackages =
+        [ "go.fuchsia.dev/fuchsia/src/sys/pkg/tests/system-tests/reboot_test" ]
+    environments = [ disabled_env ]
+    deps = [ ":system_tests_lib" ]
+    non_go_deps = [ "//src/testing/sl4f" ]
+  }
+
+  go_test("system_tests_tracking") {
+    gopackages = [
+      "go.fuchsia.dev/fuchsia/src/sys/pkg/tests/system-tests/tracking_test",
+    ]
+    environments = [ disabled_env ]
+    deps = [ ":system_tests_lib" ]
+    non_go_deps = [ "//src/testing/sl4f" ]
+  }
+
+  go_test("system_tests_upgrade") {
+    gopackages =
+        [ "go.fuchsia.dev/fuchsia/src/sys/pkg/tests/system-tests/upgrade_test" ]
+    environments = [ disabled_env ]
+    deps = [ ":system_tests_lib" ]
+    non_go_deps = [ "//src/testing/sl4f" ]
+  }
+}
+
+group("system_tests") {
+  testonly = true
+  deps = [
+    ":system_tests_reboot($host_toolchain)",
+    ":system_tests_tracking($host_toolchain)",
+    ":system_tests_upgrade($host_toolchain)",
+  ]
+}
+
+if (is_linux || is_mac) {
+  system_test_reboot_suite("nuc-release-reboot") {
+    environments = [
+      {
+        dimensions = {
+          device_type = "Intel NUC Kit NUC7i5DNHE"
+        }
+        tags = [ "e2e-isolated" ]
+      },
+    ]
+    timeout = "10m"
+    cycle_count = "5"
+    cycle_timeout = "2m"
+  }
+
+  system_test_reboot_suite("nuc-release-reboot-longevity") {
+    environments = [
+      {
+        dimensions = {
+          device_type = "Intel NUC Kit NUC7i5DNHE"
+        }
+        tags = [ "e2e-isolated-longevity" ]
+      },
+    ]
+    timeout = "4h"
+    cycle_count = "100"
+    cycle_timeout = "2m"
+  }
+
+  system_test_upgrade_suite("nuc-release-upgrade") {
+    downgrade_release_builder =
+        "fuchsia/global.ci/workstation.x64-release-e2e-isolated"
+
+    environments = [
+      {
+        dimensions = {
+          device_type = "Intel NUC Kit NUC7i5DNHE"
+        }
+        tags = [ "e2e-isolated" ]
+      },
+    ]
+    pave_timeout = "10m"
+    cycle_count = "1"
+    cycle_timeout = "10m"
+  }
+
+  system_test_upgrade_suite("nuc-release-upgrade-longevity") {
+    downgrade_release_builder =
+        "fuchsia/global.ci/core.x64-release-nuc_in_basic_envs"
+
+    environments = [
+      {
+        dimensions = {
+          device_type = "Intel NUC Kit NUC7i5DNHE"
+        }
+        tags = [ "e2e-isolated-longevity" ]
+      },
+    ]
+    timeout = "4h"
+    pave_timeout = "10m"
+    cycle_count = "40"
+    cycle_timeout = "10m"
+  }
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":nuc-release-reboot($host_toolchain)",
+    ":nuc-release-reboot-longevity($host_toolchain)",
+    ":nuc-release-upgrade($host_toolchain)",
+    ":nuc-release-upgrade-longevity($host_toolchain)",
+    ":system_tests",
+  ]
+}

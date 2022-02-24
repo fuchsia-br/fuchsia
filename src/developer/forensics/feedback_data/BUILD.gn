@@ -1,0 +1,238 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config.gni")
+
+visibility = [ "//src/developer/forensics/*" ]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("archive_accessor") {
+  sources = [
+    "archive_accessor_ptr.cc",
+    "archive_accessor_ptr.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.diagnostics",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/utils:errors",
+    "//src/developer/forensics/utils/fidl:oneshot_ptr",
+    "//src/developer/forensics/utils/fit",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fostr/fidl/fuchsia.diagnostics",
+  ]
+}
+
+source_set("config") {
+  sources = [
+    "config.cc",
+    "config.h",
+  ]
+
+  public_deps = [
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/files",
+    "//third_party/rapidjson",
+  ]
+}
+
+source_set("constants") {
+  sources = [ "constants.h" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//src/developer/forensics/feedback/annotations",
+    "//src/developer/forensics/utils:storage_size",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+}
+
+source_set("data_provider") {
+  public = [ "data_provider.h" ]
+
+  sources = [
+    "data_provider.cc",
+    "data_provider.h",
+    "image_conversion.cc",
+    "image_conversion.h",
+  ]
+
+  public_deps = [
+    ":inspect_budget",
+    ":metadata",
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/lib/timekeeper:system",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":constants",
+    ":datastore",
+    "//sdk/fidl/fuchsia.images",
+    "//sdk/fidl/fuchsia.mem",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/annotations:utils",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/utils:archive",
+    "//src/developer/forensics/utils/fit",
+    "//src/lib/fostr/fidl/fuchsia.images",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/uuid",
+    "//third_party/libpng",
+  ]
+}
+
+source_set("data_provider_controller") {
+  sources = [
+    "data_provider_controller.cc",
+    "data_provider_controller.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/lib/syslog/cpp",
+  ]
+
+  deps = [
+    ":constants",
+    "//src/lib/files",
+  ]
+}
+
+source_set("datastore") {
+  sources = [
+    "datastore.cc",
+    "datastore.h",
+  ]
+
+  public_deps = [
+    ":inspect_budget",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/feedback:device_id_provider",
+    "//src/developer/forensics/feedback_data/annotations:annotation_providers",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/utils:previous_boot_file",
+    "//src/developer/forensics/utils/cobalt",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data/annotations:annotation_providers",
+    "//src/developer/forensics/feedback_data/annotations:static_annotations",
+    "//src/developer/forensics/feedback_data/attachments:attachment_providers",
+    "//src/developer/forensics/feedback_data/attachments:static_attachments",
+  ]
+}
+
+source_set("default_annotations") {
+  sources = [
+    "default_annotations.cc",
+    "default_annotations.h",
+  ]
+
+  public_deps = [
+    "//src/developer/forensics/feedback:constants",
+    "//src/developer/forensics/utils:errors",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/files",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("errors") {
+  sources = [ "errors.h" ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/utils:errors",
+  ]
+}
+
+source_set("inspect_budget") {
+  sources = [
+    "inspect_data_budget.cc",
+    "inspect_data_budget.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/developer/forensics/utils:archive",
+    "//src/developer/forensics/utils:inspect_node_manager",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+
+  deps = [
+    ":constants",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/utils:inspect_protocol_stats",
+  ]
+}
+
+source_set("metadata") {
+  sources = [
+    "metadata.cc",
+    "metadata.h",
+    "metadata_schema.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit-promise",
+    "//src/developer/forensics/feedback_data/annotations:types",
+    "//src/developer/forensics/feedback_data/attachments:types",
+    "//src/developer/forensics/utils:utc_time_provider",
+  ]
+
+  deps = [
+    ":constants",
+    ":errors",
+    "//src/developer/forensics/utils:errors",
+    "//third_party/rapidjson",
+  ]
+}
+
+source_set("main") {
+  sources = [
+    "main.cc",
+    "main.h",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback/fidl:fuchsia.feedback.internal",
+    "//src/developer/forensics/feedback/migration/shell:main",
+  ]
+
+  visibility += [ "//src/developer/forensics:*" ]
+}

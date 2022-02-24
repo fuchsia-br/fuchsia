@@ -1,0 +1,341 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+
+source_set("use_media_decoder_source_set") {
+  testonly = true
+
+  sources = [
+    "cleartvp.cc",
+    "in_stream.cc",
+    "in_stream_buffer.cc",
+    "in_stream_file.cc",
+    "in_stream_http.cc",
+    "in_stream_peeker.cc",
+    "test/decoder_conformance_test.cc",
+    "test/use_video_decoder_test.cc",
+    "use_aac_decoder.cc",
+    "use_aac_decoder.h",
+    "use_video_decoder.cc",
+    "use_video_decoder.h",
+    "util.cc",
+    "util.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.mediacodec",
+    "//sdk/fidl/fuchsia.net.http",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl",
+    "//src/media/lib/codec_impl:fourcc",
+    "//third_party/boringssl:crypto",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.securemem",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/ui/base_view",
+    "//src/media/audio/lib/wav",
+    "//src/media/lib/raw_video_writer:raw_video_writer",
+    "//src/media/lib/test:codec_buffer",
+    "//src/media/lib/test:codec_client",
+    "//src/media/lib/test:one_shot_event",
+    "//src/security/tee/tee-client-api",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/syslog",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("use_media_decoder") {
+  testonly = true
+
+  output_name = "use_media_decoder"
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":use_media_decoder_source_set",
+    "//src/media/lib/test:one_shot_event",
+  ]
+}
+
+# This test target uses the AAC decoder the same way as the example program and
+# then also verifies the output data (without writing an output file).
+executable("use_aac_decoder_test") {
+  testonly = true
+  output_name = "use_aac_decoder_test"
+
+  sources = [ "test/use_aac_decoder_test.cc" ]
+
+  deps = [
+    ":use_media_decoder_source_set",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+# This test target uses the h264 decoder the same way as the example program and
+# then also verifies the output data (without writing an output file).
+test("use_h264_decoder_test") {
+  testonly = true
+
+  output_name = "use_h264_decoder_test"
+
+  sources = [ "test/use_h264_decoder_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_decoder_frame_num_gaps_test") {
+  testonly = true
+
+  output_name = "use_h264_decoder_frame_num_gaps_test"
+
+  sources = [ "test/use_h264_decoder_frame_num_gaps_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_sw_decoder_test") {
+  testonly = true
+
+  output_name = "use_h264_sw_decoder_test"
+
+  sources = [ "test/use_h264_sw_decoder_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_multi_decoder_test") {
+  testonly = true
+
+  output_name = "use_h264_multi_decoder_test"
+
+  sources = [ "test/use_h264_multi_decoder_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_multi_decoder_flake_repro_test") {
+  testonly = true
+
+  output_name = "use_h264_multi_decoder_flake_repro_test"
+
+  sources = [ "test/use_h264_multi_decoder_flake_repro_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_decoder_stream_switching_test") {
+  testonly = true
+
+  output_name = "use_h264_decoder_stream_switching_test"
+
+  sources = [ "test/use_h264_decoder_stream_switching_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_multi_decoder_stream_switching_test") {
+  testonly = true
+
+  output_name = "use_h264_multi_decoder_stream_switching_test"
+
+  sources = [ "test/use_h264_multi_decoder_stream_switching_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_multi_decoder_concurrent_stream_switching_test") {
+  testonly = true
+
+  output_name = "use_h264_multi_decoder_concurrent_stream_switching_test"
+
+  sources =
+      [ "test/use_h264_multi_decoder_concurrent_stream_switching_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_decoder_secure_output_test") {
+  testonly = true
+
+  output_name = "use_h264_decoder_secure_output_test"
+
+  sources = [ "test/use_h264_decoder_secure_output_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_multi_decoder_secure_output_test") {
+  testonly = true
+
+  output_name = "use_h264_multi_decoder_secure_output_test"
+
+  sources = [ "test/use_h264_multi_decoder_secure_output_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_h264_decoder_secure_input_output_test") {
+  testonly = true
+
+  output_name = "use_h264_decoder_secure_input_output_test"
+
+  sources = [ "test/use_h264_decoder_secure_input_output_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_test"
+
+  sources = [ "test/use_vp9_decoder_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_1280x546_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_1280x546_test"
+
+  sources = [ "test/use_vp9_decoder_1280x546_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_stream_switching_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_stream_switching_test"
+
+  sources = [ "test/use_vp9_decoder_stream_switching_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_skip_first_frame_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_skip_first_frame_test"
+
+  sources = [ "test/use_vp9_decoder_skip_first_frame_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_24_output_frames_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_24_output_frames_test"
+
+  sources = [ "test/use_vp9_decoder_24_output_frames_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_secure_output_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_secure_output_test"
+
+  sources = [ "test/use_vp9_decoder_secure_output_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("use_vp9_decoder_secure_input_output_test") {
+  testonly = true
+
+  output_name = "use_vp9_decoder_secure_input_output_test"
+
+  sources = [ "test/use_vp9_decoder_secure_input_output_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("vp9_decoder_conformance_test") {
+  testonly = true
+
+  output_name = "vp9_decoder_conformance_test"
+
+  sources = [ "test/vp9_decoder_conformance_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+test("h264_decoder_conformance_test") {
+  testonly = true
+
+  output_name = "h264_decoder_conformance_test"
+
+  sources = [ "test/h264_decoder_conformance_test.cc" ]
+
+  deps = [ ":use_media_decoder_source_set" ]
+}
+
+source_set("decoder_fuzzer") {
+  testonly = true
+  sources = [ "test/video_decoder_fuzzer_test.cc" ]
+
+  public_deps = [
+    ":use_media_decoder_source_set",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/syslog",
+  ]
+}
+
+test("h264_decoder_fuzzer_test") {
+  testonly = true
+
+  output_name = "h264_decoder_fuzzer_test"
+
+  sources = [ "test/h264_decoder_fuzzer_test.cc" ]
+
+  deps = [ ":decoder_fuzzer" ]
+}
+
+test("h264_decoder_malformed_stream_test") {
+  testonly = true
+
+  output_name = "h264_decoder_malformed_stream_test"
+
+  sources = [ "test/h264_decoder_malformed_stream_test.cc" ]
+
+  deps = [
+    ":decoder_fuzzer",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+test("h264_multi_decoder_fuzzer_test") {
+  testonly = true
+
+  output_name = "h264_multi_decoder_fuzzer_test"
+
+  sources = [ "test/h264_multi_decoder_fuzzer_test.cc" ]
+
+  deps = [ ":decoder_fuzzer" ]
+}
+
+test("vp9_decoder_fuzzer_test") {
+  testonly = true
+
+  output_name = "vp9_decoder_fuzzer_test"
+
+  sources = [ "test/vp9_decoder_fuzzer_test.cc" ]
+
+  deps = [ ":decoder_fuzzer" ]
+}

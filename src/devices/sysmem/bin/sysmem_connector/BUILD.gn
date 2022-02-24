@@ -1,0 +1,74 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("sysmem_connector_executable") {
+  output_name = "sysmem_connector"
+
+  sources = [
+    "app.cc",
+    "main.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/lib/sys/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/sysmem-connector",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+# TODO(fxbug.dev/83213) Retain v1 component while out of tree tests need it.
+fuchsia_component("sysmem_connector_v1") {
+  component_name = "sysmem_connector"
+  manifest = "meta/sysmem_connector.cmx"
+  deps = [ ":sysmem_connector_executable" ]
+}
+
+fuchsia_component("sysmem_connector_v2") {
+  component_name = "sysmem_connector"
+  manifest = "meta/sysmem_connector.cml"
+  deps = [ ":sysmem_connector_executable" ]
+}
+
+fuchsia_package("sysmem_connector") {
+  deps = [
+    ":sysmem_connector_v1",
+    ":sysmem_connector_v2",
+  ]
+}
+
+executable("sysmem_connector_test_executable") {
+  testonly = true
+  output_name = "sysmem_connector_test"
+
+  sources = [ "test/sysmem_connector_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_test_component("sysmem_connector_test_component") {
+  manifest = "meta/sysmem_connector_test.cml"
+  deps = [ ":sysmem_connector_test_executable" ]
+}
+
+fuchsia_test_package("sysmem_connector_test") {
+  test_components = [ ":sysmem_connector_test_component" ]
+  deps = [
+    ":sysmem_connector",
+    ":sysmem_connector_v2",
+  ]
+}

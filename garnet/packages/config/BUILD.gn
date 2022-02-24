@@ -1,0 +1,56 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# WARNING: This file was machine-generated from previous json files and
+# will eventually be deleted.
+
+group("network") {
+  public_deps = [
+    "//garnet/bin/sysmgr:network_config",
+    "//garnet/packages/config:services",
+  ]
+}
+
+group("openssh_keys") {
+  testonly = true
+  public_deps =
+      [ "//third_party/openssh-portable/fuchsia/developer-keys:ssh_config" ]
+}
+
+group("router") {
+  testonly = true
+  public_deps = [
+    "//garnet/bin/sysmgr:router_config",
+    "//garnet/packages/config:services",
+  ]
+}
+
+group("amber") {
+  testonly = true
+  public_deps = [ "//garnet/packages/config:network" ]
+}
+
+# WARNING: Known to infrastructure.
+group("amber_auto_ota") {
+  testonly = true
+  public_deps = [ "//src/sys/pkg/bin/system-update-checker:auto_update" ]
+}
+
+group("terminal") {
+  testonly = true
+  public_deps = [ "//src/ui/bin/terminal:tiles_config" ]
+}
+
+group("services") {
+  public_deps = [ "//garnet/bin/sysmgr:services_config" ]
+}
+
+group("shortcut") {
+  public_deps = [ "//src/ui/bin/shortcut:configs" ]
+}
+
+group("ui_policy") {
+  testonly = true
+  public_deps = [ "//garnet/packages/config:services" ]
+}

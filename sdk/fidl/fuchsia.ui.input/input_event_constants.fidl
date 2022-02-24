@@ -1,0 +1,31 @@
+// Copyright 2014 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.ui.input;
+
+/// Keyboard modifiers
+const kModifierNone uint32 = 0;
+const kModifierCapsLock uint32 = 1;
+const kModifierLeftShift uint32 = 2;
+const kModifierRightShift uint32 = 4;
+const kModifierShift uint32 = 6; // (kModifierLeftShift | kModifierRightShift);
+const kModifierLeftControl uint32 = 8;
+const kModifierRightControl uint32 = 16;
+const kModifierControl uint32 = 24; // (kModifierLeftControl | kModifierRightControl);
+const kModifierLeftAlt uint32 = 32;
+const kModifierRightAlt uint32 = 64;
+const kModifierAlt uint32 = 96; // (kModifierLeftAlt | kModifierRightAlt);
+const kModifierLeftSuper uint32 = 128;
+const kModifierRightSuper uint32 = 256;
+const kModifierSuper uint32 = 384; // (kModifierLeftSuper | kModifierRightSuper);
+
+/// Mouse buttons
+const kMousePrimaryButton uint32 = 1;
+const kMouseSecondaryButton uint32 = 2;
+const kMouseTertiaryButton uint32 = 4;
+
+/// Stylus buttons
+const kStylusPrimaryButton uint32 = 1;
+const kStylusSecondaryButton uint32 = 2;
+
+// end-no-format

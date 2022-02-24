@@ -1,0 +1,26 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+source_set("mock-acpi") {
+  testonly = true
+  sources = [
+    "device.cc",
+    "mock-acpi.cc",
+    "mock-pci.cc",
+  ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.pciroot:fuchsia.hardware.pciroot_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.acpi:fuchsia.hardware.acpi_llcpp",
+    "//sdk/fidl/fuchsia.hardware.i2c:fuchsia.hardware.i2c_llcpp",
+    "//sdk/fidl/fuchsia.hardware.spi:fuchsia.hardware.spi_llcpp",
+    "//src/devices/bind/fuchsia.acpi:bind.fuchsia.acpi",
+    "//src/devices/lib/acpi",
+    "//third_party/acpica",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zxc",
+  ]
+}

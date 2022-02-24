@@ -1,0 +1,112 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/rust/rustc_binary.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":scene_manager_tests" ]
+}
+
+rustc_binary("scene_manager_bin") {
+  name = "scene_manager"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.input.injection:fuchsia.input.injection-rustc",
+    "//sdk/fidl/fuchsia.session:fuchsia.session-rustc",
+    "//sdk/fidl/fuchsia.session.scene:fuchsia.session.scene-rustc",
+    "//sdk/fidl/fuchsia.settings:fuchsia.settings-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//sdk/fidl/fuchsia.ui.accessibility.view:fuchsia.ui.accessibility.view-rustc",
+    "//sdk/fidl/fuchsia.ui.app:fuchsia.ui.app-rustc",
+    "//sdk/fidl/fuchsia.ui.composition:fuchsia.ui.composition-rustc",
+    "//sdk/fidl/fuchsia.ui.input:fuchsia.ui.input-rustc",
+    "//sdk/fidl/fuchsia.ui.pointerinjector.configuration:fuchsia.ui.pointerinjector.configuration-rustc",
+    "//sdk/fidl/fuchsia.ui.scenic:fuchsia.ui.scenic-rustc",
+    "//sdk/fidl/fuchsia.ui.shortcut:fuchsia.ui.shortcut-rustc",
+    "//sdk/fidl/fuchsia.ui.views:fuchsia.ui.views-rustc",
+    "//src/intl:icudtl",
+    "//src/lib/async-utils",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/icu_data/rust",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/ui/fuchsia-scenic",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/ui/lib/input_pipeline",
+    "//src/ui/lib/scene_management",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.ui.scenic:fuchsia.ui.scenic-rustc",
+    "//sdk/fidl/fuchsia.ui.views:fuchsia.ui.views-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component-test",
+  ]
+
+  sources = [
+    "src/input_device_registry_server.rs",
+    "src/input_pipeline.rs",
+    "src/main.rs",
+  ]
+}
+
+resource("cursor") {
+  sources = [ "resources/cursor.png" ]
+  outputs = [ "data/cursor.png" ]
+}
+
+fuchsia_component("scene_manager_component") {
+  component_name = "scene_manager"
+  manifest = "meta/scene_manager.cml"
+  deps = [ ":scene_manager_bin" ]
+}
+
+fuchsia_package("scene_manager") {
+  deps = [
+    ":cursor",
+    ":scene_manager_component",
+  ]
+}
+
+fuchsia_test_component("scene_manager_bin_test_component") {
+  component_name = "scene_manager_bin_test"
+  manifest = "meta/scene_manager_bin_test.cml"
+  deps = [ ":scene_manager_bin_test" ]
+}
+
+fuchsia_test_package("scene_manager_tests") {
+  package_deps_for_infra_only = [ "//src/ui/scenic:scenic_pkg" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "AEMU"
+        }
+      },
+    ]
+  }
+  test_components = [ ":scene_manager_bin_test_component" ]
+  deps = [
+    ":scene_manager_component",
+    "//src/cobalt/bin/testing/mock_cobalt:component_v2",
+    "//src/lib/fuchsia-component-test/realm_builder_server:fuchsia-component-test",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider-cmv2-component",
+  ]
+}

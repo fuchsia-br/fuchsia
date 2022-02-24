@@ -1,0 +1,14 @@
+{
+    include: [
+        "syslog/client.shard.cml",
+        "//src/sys/test_runners/gtest/default.shard.cml",
+    ],
+    program: {
+        binary: "test/storage_operation",
+    },
+    use: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+        },
+    ],
+}

@@ -1,0 +1,18 @@
+library test.protocolrequest;
+
+protocol Child {};
+
+protocol Parent {
+    GetChild() -> (resource struct {
+        c client_end:Child;
+    });
+    GetChildRequest() -> (resource struct {
+        r server_end:Child;
+    });
+    TakeChild(resource struct {
+        c client_end:Child;
+    });
+    TakeChildRequest(resource struct {
+        r server_end:Child;
+    });
+};

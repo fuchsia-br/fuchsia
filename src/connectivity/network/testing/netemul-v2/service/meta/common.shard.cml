@@ -1,0 +1,75 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//sdk/lib/driver_test_realm/meta/realm_builder.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    children: [
+        {
+            name: "network-tun",
+            url: "#meta/network-tun.cm",
+        },
+    ],
+    collections: [
+        {
+            name: "netemul",
+            environment: "#netemul_env",
+            durability: "transient",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+            from: "parent",
+            to: "#netemul",
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [
+                "#netemul",
+                "#network-tun",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.net.tun.Control" ],
+            from: "#network-tun",
+            to: "#netemul",
+        },
+        {
+            storage: [
+                "cache",
+                "data",
+            ],
+            from: "parent",
+            to: "#netemul",
+        },
+    ],
+    environments: [
+        {
+            name: "netemul_env",
+            extends: "realm",
+            runners: [
+                {
+                    runner: "realm_builder",
+                    from: "#realm_builder_server",
+                },
+            ],
+            resolvers: [
+                {
+                    resolver: "realm_builder_resolver",
+                    from: "#realm_builder_server",
+                    scheme: "realm-builder",
+                },
+            ],
+
+            // Prevent timing flakiness in CQ by setting a 10min stop timeout,
+            // so tests that exercise lifecycle control can check for clean
+            // exit.
+            __stop_timeout_ms: 600000,
+        },
+    ],
+}

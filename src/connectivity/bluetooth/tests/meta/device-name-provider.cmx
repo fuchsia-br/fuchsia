@@ -1,0 +1,9 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/device-name-provider"
+    },
+    "sandbox": {}
+}

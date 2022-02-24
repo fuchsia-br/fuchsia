@@ -1,0 +1,12 @@
+{
+    "program": {
+        "data": "data/one-flutter"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.sys.Environment",
+            "fuchsia.ui.scenic.Scenic",
+            "test.touch.ResponseListener"
+        ]
+    }
+}

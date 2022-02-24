@@ -1,0 +1,15 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.kernel;
+
+using zx;
+
+/// Protocol for providing an SMC resource with access to all valid ranges.
+@discoverable
+protocol SmcResource {
+    /// Get the SMC resource handle.
+    Get() -> (resource struct {
+        smc_resource zx.handle:RESOURCE;
+    });
+};

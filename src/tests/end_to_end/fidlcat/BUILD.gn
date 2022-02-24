@@ -1,0 +1,137 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dart/test.gni")
+import("//build/fidl/fidl.gni")
+import("//build/host.gni")
+import("//build/testing/environments.gni")
+import("//build/testing/host_test_data.gni")
+
+_shared_out_dir = get_label_info(":bogus(${target_toolchain})", "root_out_dir")
+
+dart_test("fidlcat_test") {
+  sources = [ "fidlcat_test.dart" ]
+
+  deps = [
+    "//sdk/testing/sl4f/client",
+    "//third_party/dart-pkg/pub/logging",
+    "//third_party/dart-pkg/pub/mockito",
+    "//third_party/dart-pkg/pub/test",
+  ]
+
+  non_dart_deps = [ ":runtime_deps($host_toolchain)" ]
+
+  package_deps_for_infra_only = [
+    "//src/developer/debug/debug_agent($default_toolchain)",
+    "//src/testing/fidl/echo_client_placeholder($default_toolchain)",
+    "//src/testing/fidl/echo_server_placeholder($default_toolchain)",
+    "//src/testing/sl4f($default_toolchain)",
+  ]
+
+  args = [ "--data-dir=" + rebase_path(_shared_out_dir) ]
+
+  # Runs on "main" builders (try and ci) in QEMU environments, but only on x64,
+  # as we don't currently support Dart on arm64 hosts.
+  environments = []
+  if (is_host && target_cpu == "x64") {
+    environments = [ emu_env ]
+  }
+}
+
+# Extract the symbols for the given ELF file from the .build-id directory.
+template("generate_symbols") {
+  assert(defined(invoker.library_label), "Must define 'library_label'")
+  assert(defined(invoker.library_path), "Must define 'library_path'")
+  assert(defined(invoker.output), "Must define 'output'")
+
+  action(target_name) {
+    deps = [ invoker.library_label ]
+    inputs = [
+      invoker.library_path,
+      "//build/images/elfinfo.py",
+    ]
+    outputs = [ invoker.output ]
+
+    script = "generate_debug.sh"
+    depfile = "${invoker.output}.d"
+
+    args = [
+      "--build-id-dir",
+      rebase_path("$root_build_dir/.build-id", root_build_dir),
+      "--build-id-script",
+      rebase_path("//build/images/elfinfo.py", root_build_dir),
+      "--binary",
+      rebase_path(invoker.library_path, root_build_dir),
+      "--output",
+      rebase_path(invoker.output, root_build_dir),
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+    ]
+  }
+}
+
+generate_symbols("echo_client_sym") {
+  library_label =
+      "//src/testing/fidl/echo_client_placeholder:bin($target_toolchain)"
+  library_path = "$_shared_out_dir/echo_client_placeholder"
+  output = "${target_gen_dir}/echo_client_placeholder.debug"
+}
+
+# Examples FIDL library required by save/replay .proto tests recorded against
+# legacy FIDL examples
+fidl("echo") {
+  testonly = true
+  name = "fidl.examples.echo"
+  visibility = [ ":*" ]
+  sources = [ "echo.test.fidl" ]
+}
+
+if (is_host) {
+  host_test_data("runtime_deps") {
+    sources = [
+      # We have to list all required FIDL IR explicitly here or they will not be
+      # present when we execute the test.
+      # This must be kept in sync with the list of FIDL IR in the test itself.
+      "$_shared_out_dir/fidling/gen/sdk/fidl/fuchsia.io/fuchsia.io.fidl.json",
+      "$_shared_out_dir/fidling/gen/sdk/fidl/fuchsia.mem/fuchsia.mem.fidl.json",
+      "$_shared_out_dir/fidling/gen/sdk/fidl/fuchsia.sys/fuchsia.sys.fidl.json",
+      "$_shared_out_dir/fidling/gen/src/testing/fidl/placeholders.fidl.json",
+      "$_shared_out_dir/fidling/gen/src/tests/end_to_end/fidlcat/echo.fidl.json",
+      "$host_tools_dir/fidlcat",
+      "${target_gen_dir}/echo_client_placeholder.debug",
+      "//src/tests/end_to_end/fidlcat/echo.proto",
+      "//src/tests/end_to_end/fidlcat/echo_client.proto",
+      "//src/tests/end_to_end/fidlcat/echo_client_sync.proto",
+      "//src/tests/end_to_end/fidlcat/echo_sync_crash.proto",
+      "//src/tests/end_to_end/fidlcat/goldens/fidl_examples_echo__echo.test.cc.golden",
+      "//src/tests/end_to_end/fidlcat/goldens/fidl_examples_echo__echo_sync.test.cc.golden",
+      "//src/tests/end_to_end/fidlcat/snapshot.proto",
+    ]
+
+    outputs = [ "$target_gen_dir/runtime_deps/{{source_file_part}}" ]
+
+    deps = [
+      ":echo",
+      ":echo_client_sym",
+      "//garnet/packages/prod:run",
+      "//garnet/packages/tools:sl4f",
+      "//sdk/fidl/fuchsia.io($fidl_toolchain)",
+      "//sdk/fidl/fuchsia.mem($fidl_toolchain)",
+      "//sdk/fidl/fuchsia.sys($fidl_toolchain)",
+      "//src/developer/debug/debug_agent",
+      "//src/testing/fidl:placeholders",
+      "//tools/fidlcat:fidlcat_host($host_toolchain)",
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":fidlcat_test($host_toolchain)",
+    "//src/testing/fidl/echo_client_placeholder",
+    "//src/testing/fidl/echo_server_placeholder",
+  ]
+}

@@ -1,0 +1,50 @@
+#!/bin/bash
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+function find_tree_root {
+  local parent="$1"
+  if [[ ! -d "$parent" ]]; then
+    return 1
+  fi
+  while [[ ! -d "${parent}/.jiri_root" ]]; do
+    parent="$(dirname "${parent}")"
+    if [[ "$parent" == "/" ]]; then
+      return 1
+    fi
+  done
+  echo "$parent"
+}
+
+# We walk the parent directories looking for .jiri_root rather than using
+# BASH_SOURCE so that we find the fuchsia_dir enclosing the current working
+# directory instead of the one containing this file in case the user has
+# multiple source trees and is picking up this file from another one.
+#
+# NOTE: The FUCHSIA_DIR environment variable is ignored here because it
+# could point to a different Fuchsia checkout in some developer setups.
+#
+# This logic is replicated in //scripts/fx, //scripts/hermetic_env,
+# //scripts/zsh_completion/_fx, and //src/developer/ffx/scripts. For
+# consistency, copy any changes here to those files as well.
+if ! fuchsia_dir="$(find_tree_root "$(pwd)")"; then
+  echo >&2 "ERROR: Cannot find the Platform Source Tree in a parent of the current directory: $(pwd)"
+  exit 1
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+if [[ "${script_dir}" != "${fuchsia_dir}"* ]]; then
+  echo >&2 "ERROR: You are executing fx from outside of the current source tree"
+  echo >&2 "ERROR: This is not supported as fx does not have a stable internal API"
+  echo >&2
+  echo >&2 "    'ffx' was executed from: ${BASH_SOURCE[0]}"
+  echo >&2 "    'fuchsia directory' resolved to: ${fuchsia_dir}"
+  echo >&2
+  echo >&2 "To run a command in the current Fuchsia directory, run fx from:"
+  echo >&2 "  ${fuchsia_dir}/scripts/fx ffx"
+  exit 1
+fi
+
+exec "${fuchsia_dir}"/scripts/fx ffx "$@"

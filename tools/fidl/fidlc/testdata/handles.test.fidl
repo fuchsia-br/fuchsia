@@ -1,0 +1,89 @@
+library test.handles;
+
+using zx;
+
+// This is not a reference to library zx to avoid complexity in the test data.
+// A local handle is defined here that contains subtypes that this test cares
+// about.
+type obj_type = strict enum : uint32 {
+    NONE = 0;
+    PROCESS = 1;
+    THREAD = 2;
+    VMO = 3;
+    CHANNEL = 4;
+    EVENT = 5;
+    PORT = 6;
+    INTERRUPT = 9;
+    LOG = 12;
+    SOCKET = 14;
+    RESOURCE = 15;
+    EVENTPAIR = 16;
+    JOB = 17;
+    VMAR = 18;
+    FIFO = 19;
+    GUEST = 20;
+    VCPU = 21;
+    TIMER = 22;
+    IOMMU = 23;
+    BTI = 24;
+    PROFILE = 25;
+    PMT = 26;
+    SUSPEND_TOKEN = 27;
+    PAGER = 28;
+    EXCEPTION = 29;
+    CLOCK = 30;
+    STREAM = 31;
+    MSI = 32;
+};
+
+resource_definition handle : uint32 {
+    properties {
+        subtype obj_type;
+        rights zx.rights;
+    };
+};
+
+protocol SomeProtocol {};
+
+alias aliased_plain_handle = handle;
+alias aliased_subtype_handle = handle:VMO;
+alias aliased_rights_handle = handle:<VMO, zx.rights.DUPLICATE>;
+
+type Handles = resource struct {
+    plain_handle handle;
+
+    bti_handle handle:BTI;
+    channel_handle handle:CHANNEL;
+    clock_handle handle:CLOCK;
+    debuglog_handle handle:LOG;
+    event_handle handle:EVENT;
+    eventpair_handle handle:EVENTPAIR;
+    exception_handle handle:EXCEPTION;
+    fifo_handle handle:FIFO;
+    guest_handle handle:GUEST;
+    interrupt_handle handle:INTERRUPT;
+    iommu_handle handle:IOMMU;
+    job_handle handle:JOB;
+    pager_handle handle:PAGER;
+    pmt_handle handle:PMT;
+    port_handle handle:PORT;
+    process_handle handle:PROCESS;
+    profile_handle handle:PROFILE;
+    resource_handle handle:RESOURCE;
+    socket_handle handle:SOCKET;
+    suspendtoken_handle handle:SUSPEND_TOKEN;
+    thread_handle handle:THREAD;
+    timer_handle handle:TIMER;
+    vcpu_handle handle:VCPU;
+    vmar_handle handle:VMAR;
+    vmo_handle handle:VMO;
+
+    rights_handle handle:<VMO, zx.rights.DUPLICATE | zx.rights.READ>;
+
+    aliased_plain_handle_field aliased_plain_handle;
+    aliased_subtype_handle_field aliased_subtype_handle;
+    aliased_rights_handle_field aliased_rights_handle;
+
+    some_protocol client_end:SomeProtocol;
+    request_some_protocol server_end:SomeProtocol;
+};

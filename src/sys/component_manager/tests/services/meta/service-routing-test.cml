@@ -1,0 +1,43 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "//sdk/lib/syslog/client.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+    ],
+    program: {
+        binary: "bin/service_routing_test_bin",
+    },
+    collections: [
+        {
+            name: "branches",
+            durability: "transient",
+        },
+    ],
+    use: [
+        { protocol: "fuchsia.sys2.EventSource" },
+        {
+            event: [
+                "discovered",
+                "started",
+            ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#branches",
+        },
+    ],
+}

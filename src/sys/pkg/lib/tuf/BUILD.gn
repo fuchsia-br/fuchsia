@@ -1,0 +1,100 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("tuf_lib_test") {
+  edition = "2018"
+
+  source_root = "//third_party/rust_crates/vendor/tuf/src/lib.rs"
+
+  configs -= [ "//build/config/rust:2018_idioms" ]
+
+  deps = [
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:data-encoding",
+    "//third_party/rust_crates:derp",
+    "//third_party/rust_crates:futures-executor",
+    "//third_party/rust_crates:futures-io",
+    "//third_party/rust_crates:futures-util",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:itoa",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:matches",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:percent-encoding",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:ring",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_derive",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:untrusted",
+    "//third_party/rust_crates:url",
+  ]
+
+  sources = [
+    "//third_party/rust_crates/vendor/tuf/src/client.rs",
+    "//third_party/rust_crates/vendor/tuf/src/crypto.rs",
+    "//third_party/rust_crates/vendor/tuf/src/database.rs",
+    "//third_party/rust_crates/vendor/tuf/src/error.rs",
+    "//third_party/rust_crates/vendor/tuf/src/format_hex.rs",
+    "//third_party/rust_crates/vendor/tuf/src/interchange/cjson/mod.rs",
+    "//third_party/rust_crates/vendor/tuf/src/interchange/cjson/pretty.rs",
+    "//third_party/rust_crates/vendor/tuf/src/interchange/cjson/shims.rs",
+    "//third_party/rust_crates/vendor/tuf/src/interchange/mod.rs",
+    "//third_party/rust_crates/vendor/tuf/src/lib.rs",
+    "//third_party/rust_crates/vendor/tuf/src/metadata.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repo_builder.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository/ephemeral.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository/error_repo.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository/file_system.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository/http.rs",
+    "//third_party/rust_crates/vendor/tuf/src/repository/track_repo.rs",
+    "//third_party/rust_crates/vendor/tuf/src/util.rs",
+    "//third_party/rust_crates/vendor/tuf/src/verify.rs",
+  ]
+
+  inputs = [
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-4096.pkcs1.der",
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-2048.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-1",
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-2048.pkcs1.der",
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-2048.spki.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-1.spki.der",
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-4096.spki.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-5.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-3.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-1.pub",
+    "//third_party/rust_crates/vendor/tuf/tests/rsa/rsa-4096.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-4.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-1.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-2.pk8.der",
+    "//third_party/rust_crates/vendor/tuf/tests/ed25519/ed25519-6.pk8.der",
+  ]
+}
+
+fuchsia_component("test-component") {
+  component_name = "tuf-lib-test"
+  visibility = [ ":*" ]
+  testonly = true
+  deps = [ ":tuf_lib_test" ]
+  manifest = "meta/tuf-lib-test.cml"
+}
+
+fuchsia_test_package("rust-tuf-tests") {
+  test_components = [ ":test-component" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":rust-tuf-tests" ]
+}

@@ -1,0 +1,80 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("utils") {
+  testonly = true
+  deps = [
+    ":clock",
+    ":cobalt_utils_unittests",
+    ":fuchsia_http_client",
+  ]
+}
+
+source_set("fuchsia_http_client") {
+  sources = [
+    "fuchsia_http_client.cc",
+    "fuchsia_http_client.h",
+  ]
+
+  deps = [ "//src/lib/fsl" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.net.http",
+    "//src/lib/callback",
+    "//third_party/cobalt/src/lib/statusor",
+    "//third_party/cobalt/src/public/lib:http_client",
+  ]
+}
+
+source_set("clock") {
+  sources = [
+    "clock.cc",
+    "clock.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//third_party/cobalt/src/public/lib:clock_interfaces",
+  ]
+}
+
+source_set("base64") {
+  sources = [ "base64.h" ]
+
+  public_deps = [ "//third_party/modp_b64" ]
+}
+
+source_set("status_utils") {
+  sources = [ "status_utils.h" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.cobalt" ]
+}
+
+executable("cobalt_utils_unittests") {
+  testonly = true
+
+  sources = [
+    "base64_test.cc",
+    "clock_test.cc",
+    "cobalt_utils_unittests_main.cc",
+    "fuchsia_http_client_test.cc",
+  ]
+
+  deps = [
+    ":base64",
+    ":clock",
+    ":fuchsia_http_client",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/cobalt/bin/testing:fake_http_loader",
+    "//src/lib/fsl",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-testing",
+  ]
+}

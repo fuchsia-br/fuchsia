@@ -1,0 +1,16 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+@transport("Syscall")
+protocol eventpair {
+    /// Create an event pair.
+    eventpair_create(struct {
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        out0 handle:EVENT;
+        out1 handle:EVENT;
+    });
+};

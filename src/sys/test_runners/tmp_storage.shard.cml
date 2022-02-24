@@ -1,0 +1,8 @@
+{
+    use: [
+        {
+            storage: "tmp",
+            path: "/tmp",
+        },
+    ],
+}

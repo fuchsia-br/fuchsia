@@ -1,0 +1,44 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("bootpart_bind") {
+  disable_autobind = true
+  rules = "bootpart.bind"
+  header_output = "bootpart_bind.h"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.hardware.block" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":bootpart_bind_test" ]
+}
+
+fuchsia_driver("bootpart-driver") {
+  output_name = "bootpart"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "bootpart.c" ]
+  deps = [
+    ":bootpart_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/sync",
+    "//zircon/third_party/ulib/cksum",
+  ]
+}
+
+fuchsia_driver_component("bootpart") {
+  component_name = "bootpart"
+  deps = [ ":bootpart-driver" ]
+  info = "bootpart-info.json"
+  colocate = true
+}

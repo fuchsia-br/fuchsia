@@ -1,0 +1,27 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("blackout") {
+  testonly = true
+  public_deps = [
+    "blobfs-checkerboard",
+    "minfs-fsck",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    "blackout-host:tests",
+    "blackout-target:tests",
+  ]
+}
+
+# the integration group enables the rust test harness version of the power failure tests. this group
+# shouldn't be included in normal test targets - they are intended to be run under specific
+# conditions in CI as opposed to for every change in CQ or being run locally.
+group("integration") {
+  testonly = true
+  public_deps = [ "blobfs-checkerboard:integration" ]
+}

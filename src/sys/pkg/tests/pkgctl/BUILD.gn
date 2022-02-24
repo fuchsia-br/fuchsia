@@ -1,0 +1,74 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/renamed_binary.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "pkgctl_integration_test"
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.space:fuchsia.space-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-url",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/lib/testing/fuchsia-hyper-test-support",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_test_component("pkgctl_integration_test-component") {
+  component_name = "pkgctl-integration-test"
+  manifest = "meta/pkgctl-integration-test.cmx"
+  deps = [ ":driver" ]
+}
+
+renamed_binary("pkgctl-binary") {
+  dest = "bin/pkgctl"
+  source = "$root_out_dir/multi_universal_tool"
+  source_deps = [ "//src/sys/pkg/bin/multi-universal-tool" ]
+}
+
+fuchsia_component("pkgctl-component") {
+  component_name = "pkgctl"
+  manifest = "//src/sys/pkg/bin/pkgctl/meta/pkgctl.cmx"
+  deps = [ ":pkgctl-binary" ]
+}
+
+fuchsia_test_package("pkgctl-integration-tests") {
+  test_components = [ ":pkgctl_integration_test-component" ]
+  deps = [
+    ":pkgctl-component",
+    "//src/connectivity/network/dns:component-legacy",
+    "//src/connectivity/network/http-client:component-legacy",
+    "//src/connectivity/network/netstack:component-legacy",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":pkgctl-integration-tests" ]
+}

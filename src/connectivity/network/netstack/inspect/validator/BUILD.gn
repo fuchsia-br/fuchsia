@@ -1,0 +1,49 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/toolchain.gni")
+
+go_library("validator") {
+  name = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack/inspect/validator"
+
+  deps = [
+    "//src/connectivity/network/netstack/inspect",
+    "//src/lib/component",
+  ]
+
+  sources = [ "main.go" ]
+}
+
+go_binary("puppet_bin") {
+  gopackage = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack/inspect/validator"
+
+  deps = [
+    ":validator",
+    "//src/diagnostics/validator/inspect/fidl:validate($go_toolchain)",
+    "//src/lib/component",
+  ]
+}
+
+fuchsia_unittest_component("puppet") {
+  deps = [ ":puppet_bin" ]
+  manifest = "meta/puppet.cmx"
+}
+
+fuchsia_unittest_component("validator-component") {
+  deps = [ "//src/diagnostics/validator/inspect:validator_bin" ]
+  manifest = "meta/validator.cmx"
+}
+
+fuchsia_test_package("inspect-validator-tests-go") {
+  deps = [ ":puppet" ]
+  test_components = [ ":validator-component" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":inspect-validator-tests-go" ]
+}

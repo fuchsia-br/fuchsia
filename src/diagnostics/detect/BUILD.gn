@@ -1,0 +1,117 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_library.gni")
+
+config_data("enable-report-filing") {
+  for_pkg = "triage-detect"
+  sources = [ "configs/enable-filing.json" ]
+  outputs = [ "config.json" ]
+}
+
+rustc_library("lib") {
+  name = "detect"
+  edition = "2018"
+  with_unit_tests = true
+
+  visibility = [
+    "//src/diagnostics/detect/*",
+    "//src/diagnostics/launcher/*",
+  ]
+
+  deps = [
+    ":triage-detect-config",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics-rustc",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//src/diagnostics/lib/inspect-fetcher",
+    "//src/diagnostics/lib/triage",
+    "//src/lib/diagnostics/inspect/derive",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/injectable-time",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_derive",
+    "//third_party/rust_crates:serde_json5",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "src/delay_tracker.rs",
+    "src/diagnostics.rs",
+    "src/lib.rs",
+    "src/snapshot.rs",
+    "src/triage_shim.rs",
+  ]
+
+  test_deps = []
+}
+
+fuchsia_component_manifest("triage-detect-manifest") {
+  manifest = "meta/triage-detect.cml"
+  component_name = "triage-detect"
+  restricted_features = [ "structured_config" ]
+}
+
+fuchsia_structured_config_values("triage-detect-prod-config") {
+  cm_target = ":triage-detect-manifest"
+  values = "configs/default.json5"
+}
+
+fuchsia_structured_config_values("triage-detect-test-config") {
+  cm_target = ":triage-detect-manifest"
+  values = "configs/integration-test.json5"
+}
+
+fuchsia_structured_config_rust_lib("triage-detect-config") {
+  cm_target = ":triage-detect-manifest"
+}
+
+fuchsia_component("triage-detect-component") {
+  cm_target = ":triage-detect-manifest"
+  deps = [ "//src/diagnostics/launcher:bin" ]
+}
+
+fuchsia_package("triage-detect") {
+  deps = [
+    ":triage-detect-component",
+    ":triage-detect-prod-config",
+  ]
+}
+
+fuchsia_unittest_package("triage-detect-tests") {
+  deps = [ ":lib_test" ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":triage-detect-tests",
+    "//src/diagnostics/detect/integration",
+  ]
+}

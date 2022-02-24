@@ -1,0 +1,79 @@
+#!/bin/bash
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Device management
+### attach to a serial console
+## usage: fx serial [device-path]
+##
+## If no device path is given, a list of options will be presented.
+##
+## If the selected device is not readable by the active user account, it will
+## first be chmod'd to provide access to the current user.
+##
+## Exit the session with CTRL+o
+##
+## In order to have arrow keys work, execute `export TERM=xterm; /boot/bin/sh`
+## on in the console.
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+fx-config-read
+
+if ! which socat > /dev/null 2>&1; then
+  fx-error "The command \`socat\` was not found!"
+  if [[ "$(uname)" == "Linux" ]]; then
+    fx-error "  maybe \`apt install socat\`"
+  else
+    fx-error "  maybe \`brew install socat\`"
+  fi
+  exit 1
+fi
+
+DEVICE="$1"
+if [[ -z "$DEVICE" ]]; then
+  options=($(find /dev -maxdepth 1 -name ttyUSB\* -or -name tty.SLAB_USBtoUART\* -or -name tty.usbserial\*))
+  if [[ "${#options}" = 0 ]]; then
+    fx-error "No known serial devices found, specify one exactly."
+    exit 1
+  fi
+  echo >&2 "Select a serial device from the following list:"
+  select device in "${options[@]}"; do
+    DEVICE="$device"
+    break
+  done
+fi
+
+if [[ ! -e "$DEVICE" ]]; then
+  fx-error "$DEVICE not found"
+  exit 1
+fi
+
+if [[ ! -r "$DEVICE" ]]; then
+  if [[ "$(uname)" == "Linux" ]]; then
+    owninggroup=$(stat "$DEVICE" --printf="%G")
+    if [[ ! -r "$DEVICE" ]]; then
+      fx-error "$DEVICE is not readable by $USER"
+      fx-error " fix: sudo usermod -a -G "$owninggroup" $USER"
+      fx-error "You need to start a new login session for a group change to take effect"
+      exit 1
+    fi
+  else
+    fx-warn "$DEVICE is not readable by $USER"
+    fx-warn "Fix the permissions on $DEVICE or group membership of $USER"
+  fi
+fi
+
+echo >&2 "SERIAL: Connecting to $DEVICE..."
+echo >&2 "SERIAL: Use CTRL-o to exit"
+echo >&2 "SERIAL: Run: \`export TERM=xterm; /boot/bin/sh\` for improved key bindings"
+
+# This is the method recommended in the socat manual to detect the presence /
+# omission of this feature.
+if $(socat -hh |grep ' b[1-9]' > /dev/null); then
+  speed="b115200"
+else
+  speed="ospeed=115200,ispeed=115200"
+fi
+
+exec socat -,sane,cfmakeraw,escape=0x0f "file:${DEVICE}",sane,cfmakeraw,"${speed}",cs8,parenb=0,cstopb=1,ixoff=0,ixon=0,crtscts=0,clocal=1,nonblock=1

@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/thermd_bin_test"
+    },
+    "sandbox": {
+        "dev": [
+            "class/gpu-thermal",
+            "class/thermal",
+            "misc"
+        ]
+    }
+}

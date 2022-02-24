@@ -1,0 +1,218 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+/// The neighbor table helps decide where to send IP packets. It allows for the
+/// translation between IP addresses and MAC addresses.
+///
+/// With current implementations, the neighbor table uses the ARP or NDP
+/// protocol to dynamically discover new neighbor entries for IPv4 or IPv6
+/// addresses, respectively.
+///
+/// This library enables inspection and manipulation of the neighbor table.
+///  * See [`fuchsia.net.neighbor/View`] for viewing neighbor table entries and
+///    interface configuration.
+///  * See [`fuchsia.net.neighbor/Controller`] for adding static neighbor table
+///    entries, removing entries, and updating interface configuration.
+///
+/// # Important Concepts
+///
+///
+/// [`Entry`] represents a neighboring device and is stored in the neighbor
+/// table, which is also managed by the networking stack.
+///
+/// [`UnreachabilityConfig`] holds the various parameters used for tweaking the
+/// behavior of Neighbor Unreachability Detection (NUD). This allows
+/// implementations to operate over links with widely varying performance
+/// characteristics.
+///
+/// # Privacy Considerations
+///
+/// The Neighbor API deals with MAC addresses, which are device identifiers and
+/// should not be exposed to most applications. There are separate protocols for
+/// inspecting and modifying the neighbor table; this is done to protect
+/// sensitive data.
+///
+/// # Security Considerations
+///
+/// The Neighbor API enables clients to view and manipulate the neighbor table,
+/// which should both be privileged actions and granted only to trusted
+/// applications. Additionally, not all clients will need both read and write
+/// access. This has been addressed by splitting methods into two protocols:
+/// Viewer for read methods and Controller for write methods.
+///
+/// This API is not concerned with throttling consumption of ARP or NDP
+/// messages. If a DoS of ARP/NDP packets reaches this API, the damage had
+/// already been done. Once the packets reach the control plane, they are
+/// processed by the networking stack where the DoS would first manifest.
+library fuchsia.net.neighbor;
+
+using fuchsia.net;
+using zx;
+
+/// Returns entries and events from the neighbor table. Clients can open an
+/// iterator using the [`fuchsia.net.neighbor/View.EntryIterator`] method.
+///
+/// An atomic snapshot of the neighbor table is queued for clients upon opening
+/// an EntryIterator. This snapshot consists of `existing` entries followed by
+/// an [`IdleEvent`]. No other types of events will be sent before an
+/// [`IdleEvent`].
+protocol EntryIterator {
+    /// Take items from the iterator. If no items are available, block until one
+    /// is; otherwise, return immediately with items queued since the last
+    /// invocation.
+    ///
+    /// This does not guarantee that, when blocking, only one item will be
+    /// returned; implementations may debounce or batch events.
+    ///
+    /// Attempt to maintain one in-flight `GetNext` call as much as possible.
+    /// If `GetNext` is not constantly polled, the networking stack might hit an
+    /// upper limit on the number of buffered events, resulting in dropping.
+    /// Should this happen, this connection will be closed with a
+    /// `ZX_ERR_IO_OVERRUN` epitaph.
+    ///
+    /// If there is more than one in-flight `GetNext` call, callers are put into
+    /// a queue and will receive responses in FIFO order.
+    ///
+    /// - response `events` a list of events that occurred since the last
+    ///     invocation of this method.
+    GetNext() -> (struct {
+        events vector<@generated_name("EntryIteratorItem") strict union {
+            /// An existing entry in the neighbor table. Does not indicate that
+            /// an event occurred.
+            1: existing Entry;
+
+            /// Event indicating the iterator will no longer return `existing`
+            /// items.
+            2: idle @generated_name("IdleEvent") struct {};
+
+            /// Empty event for indicating there are no more
+            /// [`EntryIteratorItem.existing`] items to yield.
+            3: added Entry;
+
+            /// Event indicating an entry has changed.
+            4: changed Entry;
+
+            /// Event indicating an entry has been removed from the neighbor
+            /// table.
+            5: removed Entry;
+        }>:MAX_ITEM_BATCH_SIZE;
+    });
+};
+
+/// The maximum number of [`EntryIteratorItem`] returned in a
+/// [`EntryIterator.GetNext`] response.
+//
+// This has been calculated with the following function:
+//   MAX_EVENT_BATCH_SIZE = floor_pow2(
+//     (ZX_CHANNEL_MAX_MSG_BYTES - RESPONSE_BYTES) / MAX_EVENT_BYTES
+//   )
+// where,
+//   ZX_CHANNEL_MAX_MSG_BYTES = 65536 bytes
+//   RESPONSE_BYTES = size of [`EntryIterator.GetNext`] response = 32 bytes
+//   MAX_ITEM_BYTES = max size of [`EntryIteratorItem`] = 208 bytes
+//
+// It's rounded down to the next power of two for aesthetics and decreased
+// sensitivity to changes to the underlying data structures.
+// This value will need to be recomputed if any of the above numbers change.
+const MAX_ITEM_BATCH_SIZE uint64 = 256;
+
+/// Inspect the neighbor table and related interface configuration.
+@discoverable
+protocol View {
+    /// Open a connection to an [`EntryIterator`] for listing existing entries
+    /// and optionally watching for state changes.
+    ///
+    /// + request `it` grants access to the [`EntryIterator`].
+    /// + request `options` specifies the behavior of the [`EntryIterator`].
+    OpenEntryIterator(resource struct {
+        it server_end:EntryIterator;
+        /// Options for modifying the behavior of an [`EntryIterator`].
+        options @generated_name("EntryIteratorOptions") table {};
+    });
+
+    /// View the current configurations of an interface.
+    ///
+    /// + request `interface` interface to read configurations from.
+    /// + request `ip_version` the IP version to read configurations from.
+    /// - response `config` a snapshot of the interface's configuration.
+    /// * error `ZX_ERR_NOT_FOUND` if `interface` does not exist.
+    // TODO(fxbug.dev/59058): Reading configuration should be moved to
+    // interface-scoped protocols in fuchsia.net.interfaces.
+    GetUnreachabilityConfig(struct {
+        interface fuchsia.net.interface_id;
+        ip_version fuchsia.net.IpVersion;
+    }) -> (struct {
+        config UnreachabilityConfig;
+    }) error zx.status;
+};
+
+/// Modify the neighbor table and related interface configuration.
+@discoverable
+protocol Controller {
+    /// Create a static entry. If a conflict is found, overwrite the existing
+    /// entry. Conflicts occur when two entries have the same interface
+    /// identifier and IP address.
+    ///
+    /// + request `interface` identifier for the interface used for
+    ///     communicating with the neighbor.
+    /// + request `neighbor` IP address of the neighbor.
+    /// + request `mac` MAC address of the neighbor.
+    /// * error `ZX_ERR_NOT_FOUND` if `interface` does not exist.
+    /// * error `ZX_ERR_NOT_SUPPORTED` if `interface` does not keep a neighbor
+    ///     table (e.g. point-to-point links).
+    AddEntry(struct {
+        interface fuchsia.net.interface_id;
+        neighbor fuchsia.net.IpAddress;
+        mac fuchsia.net.MacAddress;
+    }) -> (struct {}) error zx.status;
+
+    /// Delete a dynamic or static entry.
+    ///
+    /// + request `interface` identifier for the interface associated with the
+    ///     entry to be deleted.
+    /// + request `neighbor` IP address of the entry to be deleted.
+    /// * error `ZX_ERR_NOT_FOUND` if no entries match `interface` and
+    ///   `neighbor`.
+    /// * error `ZX_ERR_NOT_SUPPORTED` if `interface` does not keep a neighbor
+    ///     table (e.g. point-to-point links).
+    RemoveEntry(struct {
+        interface fuchsia.net.interface_id;
+        neighbor fuchsia.net.IpAddress;
+    }) -> (struct {}) error zx.status;
+
+    /// Delete all dynamic and static entries belonging to an interface.
+    ///
+    /// + request `interface` identifier for the interface associated with the
+    ///     entries to be deleted.
+    /// + request `ip_version` the IP version to clear entries from.
+    /// * error `ZX_ERR_NOT_FOUND` if `interface` does not exist.
+    /// * error `ZX_ERR_NOT_SUPPORTED` if `interface` does not keep a neighbor
+    ///     table (e.g. point-to-point links).
+    ClearEntries(struct {
+        interface fuchsia.net.interface_id;
+        ip_version fuchsia.net.IpVersion;
+    }) -> (struct {}) error zx.status;
+
+    /// Change the configuration of the neighbor discovery algorithm for an
+    /// interface.
+    ///
+    /// + request `interface` the interface to be configured.
+    /// + request `ip_version` the IP version to be configured.
+    /// + request `config` used for updating the configuration for an interface.
+    ///     Only the specified fields will be changed. All other fields will
+    ///     remain the same as the original configuration.
+    /// * error `ZX_ERR_NOT_FOUND` if `interface` references an interface that
+    ///     does not exist.
+    /// * error `ZX_ERR_NOT_SUPPORTED` if `interface` references an interface
+    ///     that does not keep a neighbor table (e.g. point-to-point links).
+    /// * error `ZX_ERR_INVALID_ARGS` if `config` contains an invalid value,
+    ///     see [`fuchsia.net.neighbor/UnreachabilityConfig`] for the list of
+    ///     constraints.
+    // TODO(fxbug.dev/59058): Updating configuration should be moved to
+    // interface-scoped protocols in fuchsia.net.interfaces.
+    UpdateUnreachabilityConfig(struct {
+        interface fuchsia.net.interface_id;
+        ip_version fuchsia.net.IpVersion;
+        config UnreachabilityConfig;
+    }) -> (struct {}) error zx.status;
+};

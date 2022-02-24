@@ -1,0 +1,22 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.ui.views") {
+  sdk_category = "partner"
+
+  sources = [
+    "commands.fidl",
+    "flatland_tokens.fidl",
+    "focuser.fidl",
+    "view.fidl",
+    "view_ref.fidl",
+    "view_ref_focused.fidl",
+    "view_ref_installed.fidl",
+    "view_token.fidl",
+  ]
+
+  public_deps = [ "//zircon/vdso/zx" ]
+}

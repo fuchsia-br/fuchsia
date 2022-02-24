@@ -1,0 +1,81 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("usb_peripheral_test-bind") {
+  rules = "usb_peripheral_test.bind"
+  header_output = "usb_peripheral_test-bind.h"
+  tests = "tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.google.usb",
+    "//src/devices/bind/fuchsia.usb",
+  ]
+}
+
+if (is_fuchsia) {
+  import("//build/drivers.gni")
+
+  fuchsia_driver("usb-peripheral-test-driver") {
+    output_name = "usb-peripheral-test"
+    configs += [
+      "//build/config:all_source",
+      "//build/config/fuchsia:enable_zircon_asserts",
+    ]
+    sources = [ "driver.cc" ]
+    deps = [
+      ":usb_peripheral_test-bind",
+      "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.usb.function:fuchsia.hardware.usb.function_banjo_cpp",
+      "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+      "//src/devices/lib/driver",
+      "//src/devices/usb/lib/usb",
+      "//src/lib/ddk",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/sync",
+    ]
+  }
+
+  fuchsia_driver_component("usb-peripheral-test") {
+    info = "usb-peripheral-test-info.json"
+    component_name = "usb-peripheral-test"
+    deps = [ ":usb-peripheral-test-driver" ]
+    colocate = true
+  }
+
+  group("tests") {
+    testonly = true
+    deps = [
+      ":tests($host_toolchain)",
+      ":usb_peripheral_test-bind_test",
+    ]
+  }
+} else if (current_os == "linux") {
+  import("//build/test.gni")
+
+  test("usb-peripheral-test") {
+    if (is_fuchsia) {
+      fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+      if (configs + fdio_config - fdio_config != configs) {
+        configs -= fdio_config
+      }
+    }
+    output_name = "usb-peripheral-test"
+    sources = [ "test.cc" ]
+    deps = [
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/zxtest",
+      "//zircon/third_party/ulib/usbhost",
+    ]
+  }
+
+  group("tests") {
+    testonly = true
+    deps = [ ":usb-peripheral-test" ]
+  }
+} else {
+  group("tests") {
+  }
+}

@@ -1,0 +1,125 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+library fuchsia.wlan.common;
+
+/// Indicates where and how scan logic is orchestrated.
+/// See IEEE 802.11-2016 11.1.4.2 and 11.1.4.3.
+/// This is a discovery extension, expected to be used for softmac only.
+type ScanOffloadExtension = struct {
+    /// If true, driver orchestrates scans; otherwise MLME must do so.
+    supported bool;
+};
+
+/// Indicates where and how probe responses are to be handled.
+/// See IEEE 802.11-2016 11.1.4.3.
+/// This is a discovery extension, expected to be used for softmac only.
+type ProbeResponseOffloadExtension = struct {
+    /// If true, driver responds to probe requests; otherwise MLME must respond.
+    supported bool;
+};
+
+/// Features related to discovery of potential BSSs.
+/// See IEEE 802.11-2016 11.1.4.2 and 11.1.4.3.
+type DiscoverySupport = struct {
+    scan_offload ScanOffloadExtension;
+    probe_response_offload ProbeResponseOffloadExtension;
+};
+
+/// Indicates where and how rate selection logic is orchestrated.
+/// See IEEE 802.11-2016 10.7.
+/// This is a MAC sublayer extension, expected to be used for softmac only.
+type RateSelectionOffloadExtension = struct {
+    /// If true, driver orchestrates rate selection; otherwise MLME must do so.
+    supported bool;
+};
+
+/// Indicates where data plane is implemented.
+type DataPlaneType = strict enum : uint8 {
+    ETHERNET_DEVICE = 1;
+    GENERIC_NETWORK_DEVICE = 2;
+};
+
+/// Indicates where the data plane is implemented.
+/// This is a MAC sublayer extension, usable for fullmac or softmac. This
+/// extension is not part of the 802.11-2016 spec.
+// TODO(fxbug.dev/92660) Move/remove extension, it's not a real feature.
+type DataPlaneExtension = struct {
+    data_plane_type DataPlaneType;
+};
+
+/// Indicates where MAC layer is implemented.
+type MacImplementationType = strict enum : uint8 {
+    SOFTMAC = 1;
+    // Other implementations (e.g. FULLMAC) may be added in the future.
+};
+
+/// Feature-like information specific to the device.
+/// This is a MAC sublayer extension. This extension is not part of the
+/// 802.11-2016 spec.
+// TODO(fxbug.dev/92660) Move/remove extension, it's not a real feature.
+type DeviceExtension = struct {
+    /// Indicates that device is not a real hardware device. This extension only
+    /// exists to support the SYNTH value in
+    /// fuchsia.hardware.ethernet/EthernetFeature.
+    // TODO(fxbug.dev/93516) Adjust/adapt for GND DeviceClass.
+    is_synthetic bool;
+    /// Indicates where MAC layer is implemented.
+    mac_implementation_type MacImplementationType;
+    /// Indicates whether device supports transmission reports.
+    tx_status_report_supported bool;
+};
+
+/// Features related to the MAC sublayer (below MLME).
+/// See IEEE 802.11-2016 10.
+type MacSublayerSupport = struct {
+    rate_selection_offload RateSelectionOffloadExtension;
+    data_plane DataPlaneExtension;
+    device DeviceExtension;
+};
+
+/// Indicates where simultaneous authentication of equals (SAE) is handled.
+type SaeHandler = strict enum : uint8 {
+    DRIVER = 1;
+    SME = 2;
+};
+
+/// Simultaneous Authentication of Equals.
+/// See IEEE 802.11-2016 12.4.
+/// This is a security feature, usable for fullmac or softmac.
+type SaeFeature = struct {
+    supported bool;
+    handler SaeHandler;
+};
+
+/// Management Frame Protection.
+/// See IEEE 802.11-2016 4.5.4.9.
+/// This is a security feature, usable for fullmac or softmac.
+type MfpFeature = struct {
+    supported bool;
+};
+
+/// Features related to security / access control and data confidentiality.
+/// See IEEE 802.11-2016 4.5.4 and 802.11-2016 12.
+type SecuritySupport = struct {
+    sae SaeFeature;
+    mfp MfpFeature;
+};
+
+/// Dynamic Frequency Selection.
+/// See IEEE 802.11-2016 11.9.
+/// This is a spectrum management feature, usable for fullmac or softmac.
+type DfsFeature = struct {
+    /// If true, driver implements DFS procedures (e.g. vacate channel upon
+    /// detecting RADAR). Based on whether the driver implements DFS procedures,
+    /// higher layers may adjust their logic (e.g. to include/exclude channels
+    /// that require DFS).
+    supported bool;
+};
+
+/// Features related to spectrum management.
+/// See IEEE 802.11-2016 4.5.5, 11.8, and 11.9.
+type SpectrumManagementSupport = struct {
+    dfs DfsFeature;
+};

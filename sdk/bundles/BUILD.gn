@@ -1,0 +1,63 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Packages added to the universe set complementing SDK images.
+group("tools") {
+  testonly = true
+  public_deps = [
+    ":core-tools",
+    "//src/chromium:web_engine",
+    "//src/chromium:web_runner",
+  ]
+}
+
+group("core-tools") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:cmdutils",
+    "//garnet/packages/prod:debug_agent",
+    "//garnet/packages/prod:far",
+    "//garnet/packages/prod:run",
+    "//garnet/packages/prod:sbase",
+    "//garnet/packages/prod:setui_client",
+    "//garnet/packages/prod:tiles",
+    "//garnet/packages/prod:tracing",
+    "//garnet/packages/testing:all",
+    "//garnet/packages/testing:run_test_component",
+    "//garnet/packages/tools:all",
+    "//src/connectivity:tools",
+    "//src/dart",
+    "//src/developer/memory/mem",
+    "//src/graphics/lib/magma:magma-tools",
+    "//src/recovery/factory_reset:tools",
+    "//src/sys/locate",
+    "//src/sys/pkg/bin/pm:host",
+    "//src/sys/tools/cs",
+    "//src/sys/tools/runmany",
+    "//src/ui/tools/tiles_ctl",
+    "//third_party/curl",
+    "//third_party/iperf",
+    "//third_party/openssh-portable:openssh-tools",
+    "//tools/check-licenses:host($host_toolchain)",
+    "//tools/fidl/fidlmerge:host",
+    "//tools/fidl/gidl:host",
+    "//tools/whereiscl:host($host_toolchain)",
+
+    # We don't include the AOT flutter tools due to ABI stability.
+    # SDK customers should download the AOT tools directly from
+    # the flutter respository or use JIT instead.
+    "//src/flutter:flutter_jit",
+    "//src/flutter:flutter_jit_product",
+    "//src/fonts",
+    "//src/media/audio/bundles:services",
+    "//src/media/bundles:tools",
+    "//src/media/codec/bundles:services",
+    "//src/media/playback/bundles:config",
+    "//src/media/playback/bundles:services",
+    "//src/media/sessions/bundles:services",
+    "//src/modular/bin/sessionctl",
+    "//src/modular/bundles:framework",
+    "//src/modular/bundles:tools",
+  ]
+}

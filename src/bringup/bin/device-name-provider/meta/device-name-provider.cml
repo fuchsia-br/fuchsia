@@ -1,0 +1,33 @@
+{
+    include: [ "syslog/elf_stdio.shard.cml" ],
+    program: {
+        binary: "bin/device-name-provider",
+    },
+    capabilities: [
+        { protocol: "fuchsia.device.NameProvider" },
+    ],
+    use: [
+        // For ethernet device access.
+        {
+            directory: "dev-class-ethernet",
+            rights: [ "rw*" ],
+            path: "/dev/class/ethernet",
+        },
+
+        // For network device access.
+        {
+            directory: "dev-class-network",
+            rights: [ "rw*" ],
+            path: "/dev/class/network",
+        },
+        {
+            protocol: [ "fuchsia.boot.Arguments" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.device.NameProvider",
+            from: "self",
+        },
+    ],
+}

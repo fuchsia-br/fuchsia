@@ -1,0 +1,101 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+test("test") {
+  output_name = "string-bind-test"
+
+  sources = [ "string-bind-test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.device.test:fuchsia.device.test_llcpp",
+    "//sdk/fidl/fuchsia.driver.development",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/driver_test_realm/simple",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/ddk",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+  ]
+}
+
+fuchsia_unittest_package("string-bind-test") {
+  deps = [
+    ":child-driver",
+    ":parent-driver",
+    ":test",
+    "//src/devices/misc/drivers/test-parent",
+  ]
+}
+
+bind_library("stringbind.lib") {
+  source = "stringbindlib.bind"
+}
+
+driver_bind_rules("parent-driver-bind") {
+  rules = "parent-driver.bind"
+  header_output = "parent-driver-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+}
+
+fuchsia_driver("parent-driver-driver") {
+  output_name = "string-bind-parent"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "parent-driver.cc" ]
+  deps = [
+    ":parent-driver-bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("parent-driver") {
+  component_name = "string-bind-parent"
+  deps = [ ":parent-driver-driver" ]
+  info = "parent-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("child-driver-bind") {
+  rules = "child-driver.bind"
+  header_output = "child-driver-bind.h"
+  deps = [
+    ":stringbind.lib",
+    "//src/devices/bind/fuchsia.test",
+  ]
+}
+
+fuchsia_driver("child-driver-driver") {
+  output_name = "string-bind-child"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "child-driver.cc" ]
+  deps = [
+    ":child-driver-bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("child-driver") {
+  component_name = "string-bind-child"
+  deps = [ ":child-driver-driver" ]
+  info = "child-driver-info.json"
+  colocate = true
+}

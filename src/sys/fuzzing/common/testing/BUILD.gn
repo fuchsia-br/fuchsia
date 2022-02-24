@@ -1,0 +1,30 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("testing") {
+  visibility = [ "//src/sys/*" ]
+  testonly = true
+  sources = [
+    "corpus-reader.cc",
+    "corpus-reader.h",
+    "module.cc",
+    "module.h",
+    "monitor.cc",
+    "monitor.h",
+    "registrar.cc",
+    "registrar.h",
+    "runner.cc",
+    "runner.h",
+    "signal-coordinator.cc",
+    "signal-coordinator.h",
+    "transceiver.cc",
+    "transceiver.h",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+  public_deps = [
+    "..:common",
+    "//zircon/system/ulib/sync",
+  ]
+}

@@ -1,0 +1,19 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.archivist.tests;
+
+@discoverable
+protocol SocketPuppetController {
+    /// Send a puppet client to the controller. This channel is closed after this call.
+    ControlPuppet(resource struct {
+        to_control client_end:SocketPuppet;
+    });
+};
+
+protocol SocketPuppet {
+    ConnectToLogSink() -> ();
+    EmitPacket(struct {
+        packet bytes:32768;
+    }) -> ();
+};

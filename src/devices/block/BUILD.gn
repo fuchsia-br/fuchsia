@@ -1,0 +1,36 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("drivers") {
+  deps = [
+    "drivers/ahci",
+    "drivers/aml-sdmmc",
+    "drivers/block-verity",
+    "drivers/bootpart",
+    "drivers/core",
+    "drivers/ftl",
+    "drivers/gpt",
+    "drivers/mbr",
+    "drivers/nvme",
+    "drivers/pci-sdhci",
+    "drivers/ramdisk",
+    "drivers/sdhci",
+    "drivers/sdmmc",
+    "drivers/ums-function",
+    "drivers/usb-mass-storage",
+    "drivers/virtio:virtio_block",
+    "drivers/virtio:virtio_scsi",
+    "drivers/zxcrypt",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "bin:tests",
+    "drivers:tests",
+    "lib:tests",
+  ]
+}

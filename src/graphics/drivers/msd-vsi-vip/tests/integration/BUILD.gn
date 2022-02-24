@@ -1,0 +1,83 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+test("test_magma_vsi_exec_bin") {
+  sources = [
+    "//third_party/etnaviv_gpu_tests/src/etnaviv_cl_test_gc7000.c",
+    "test_magma_vsi.h",
+    "test_magma_vsi_execute_command.cc",
+  ]
+
+  include_dirs = [ "//third_party/etnaviv_gpu_tests/src/" ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/graphics/lib/magma/src/libmagma",
+    "//src/graphics/lib/magma/tests/helper:magma_map_cpu",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_unittest_package("test-magma-vsi-exec") {
+  manifest = "meta/test_magma_vsi_exec.cmx"
+  deps = [ ":test_magma_vsi_exec_bin" ]
+  test_specs = {
+    environments = [
+      sherlock_env,
+      vim3_env,
+    ]
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+test("msd_vsi_vip_integration_tests") {
+  sources = [
+    "run_unit_tests.cc",
+    "test_vsi_icd.cc",
+    "test_vsi_query.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//src/graphics/drivers/msd-vsi-vip/include",
+    "//src/graphics/lib/magma/src/libmagma",
+    "//src/graphics/lib/magma/src/magma_util/platform:buffer",
+    "//src/graphics/lib/magma/tests/helper:test_device_helper",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("msd-vsi-vip-integration-tests") {
+  manifest = "meta/msd_vsi_vip_integration_tests.cmx"
+  deps = [ ":msd_vsi_vip_integration_tests" ]
+  test_specs = {
+    environments = [
+      sherlock_env,
+      vim3_env,
+    ]
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("integration") {
+  testonly = true
+  deps = [
+    ":msd-vsi-vip-integration-tests",
+    ":test-magma-vsi-exec",
+  ]
+}

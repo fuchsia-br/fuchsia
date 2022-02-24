@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/getaddrinfo_test_client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.name.Lookup"
+        ]
+    }
+}

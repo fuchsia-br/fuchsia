@@ -1,0 +1,38 @@
+{
+    include: [
+        // Enable system logging
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/battery_manager",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.power.BatteryManager",
+                "fuchsia.power.test.BatterySimulator",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "dev-power",
+            rights: [ "r*" ],
+            path: "/dev/class/power",
+        },
+        {
+            protocol: [ "fuchsia.hardware.power.Source" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.power.BatteryManager",
+            from: "self",
+        },
+        {
+            protocol: "fuchsia.power.test.BatterySimulator",
+            from: "self",
+        },
+    ],
+}

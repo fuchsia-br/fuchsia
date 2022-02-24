@@ -1,0 +1,22 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/audio_core",
+        "args": ["--disable-cobalt"]
+    },
+    "sandbox": {
+        "features": [
+            "isolated-persistent-storage",
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.media.audio.EffectsController",
+            "fuchsia.audio.effects.ProcessorCreator",
+            "fuchsia.scheduler.ProfileProvider",
+            "fuchsia.thermal.Controller",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

@@ -1,0 +1,42 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":unittests" ]
+  deps = [ "fuzzers" ]
+}
+
+executable("unittests") {
+  output_name = "scheduling_unittests"
+
+  testonly = true
+  sources = [
+    "default_frame_scheduler_unittest.cc",
+    "duration_predictor_unittest.cc",
+    "frame_predictor_unittest.cc",
+    "frame_scheduler_test.cc",
+    "frame_scheduler_test.h",
+    "frame_stats_unittest.cc",
+    "present1_helper_unittest.cc",
+    "present2_helper_unittest.cc",
+  ]
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/inspect/service/cpp",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/lib/cobalt/cpp/testing:mock_cobalt_logger",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/ui/scenic/lib/gfx/tests/mocks:util",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler",
+    "//src/ui/scenic/lib/scheduling:id",
+    "//src/ui/scenic/lib/scheduling/tests/mocks:frame_scheduler_mocks",
+    "//src/ui/scenic/lib/utils",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

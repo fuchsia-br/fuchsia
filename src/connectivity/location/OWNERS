@@ -1,0 +1,6 @@
+include /src/connectivity/wlan/wlancfg/OWNERS
+
+quiche@google.com
+silberst@google.com
+
+# COMPONENT: Location

@@ -1,0 +1,76 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("system-image") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-url",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/lib/syslog/rust:syslog",
+    "//src/sys/pkg/lib/blobfs",
+    "//src/sys/pkg/lib/fuchsia-hash",
+    "//src/sys/pkg/lib/fuchsia-pkg",
+    "//src/sys/pkg/lib/package-directory",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:proptest",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  test_deps = [
+    "//garnet/lib/rust/files_async",
+    "//src/lib/fuchsia-async",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/mock-boot-arguments:lib",
+    "//third_party/rust_crates:assert_matches",
+  ]
+
+  sources = [
+    "src/cache_packages.rs",
+    "src/errors.rs",
+    "src/lib.rs",
+    "src/non_static_allowlist.rs",
+    "src/path_hash_mapping.rs",
+    "src/system_image.rs",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":system-image-tests" ]
+}
+
+fuchsia_component("system-image-test-component") {
+  testonly = true
+  component_name = "system-image-tests"
+  manifest = "meta/system-image-lib-test.cml"
+  deps = [
+    ":system-image_test",
+    "//sdk/lib/driver_test_realm/platform",
+    "//src/storage/bin/blobfs",
+    "//src/storage/testing:storage_drivers",
+    "//src/sys/pkg/bin/pm:pm_bin",
+  ]
+}
+
+fuchsia_test_package("system-image-tests") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [ ":system-image-test-component" ]
+}

@@ -1,0 +1,52 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+executable("vk_timer_query_bin") {
+  testonly = true
+  output_name = "vk_timer_query"
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    "$magma_build_root/include:magma",
+    "$magma_build_root/src/magma_util/platform:semaphore",
+    "../vkreadback:src",
+    "//sdk/lib/fdio",
+    "//src/graphics/drivers/msd-arm-mali/include",
+    "//src/graphics/lib/magma/src/libmagma",
+    "//src/graphics/lib/magma/tests/helper:test_device_helper",
+    "//src/lib/fxl/test:test_settings",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps += [ "//src/lib/vulkan" ]
+}
+
+fuchsia_component("vk_timer_query_cmp") {
+  testonly = true
+  component_name = "vk_timer_query"
+  deps = [
+    ":vk_timer_query_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+
+  manifest = "meta/vk_timer_query.cmx"
+}
+
+fuchsia_test_package("vk-timer-query-pkg") {
+  package_name = "vk_timer_query"
+  test_components = [ ":vk_timer_query_cmp" ]
+  test_specs = {
+    environments = magma_libvulkan_arm_hardware_envs
+  }
+}
+
+group("vk_timer_query") {
+  testonly = true
+  deps = [ ":vk-timer-query-pkg" ]
+}

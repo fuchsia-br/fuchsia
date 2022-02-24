@@ -1,0 +1,87 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+
+fidl("fuchsia.device.inspect.test") {
+  testonly = true
+  sources = [ "inspect.test.fidl" ]
+  visibility = [ ":*" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+driver_bind_rules("inspect-test-bind") {
+  rules = "inspect-test.bind"
+  header_output = "inspect-test-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("fuchsia_driver") {
+  output_name = "inspect-test"
+  testonly = true
+
+  sources = [ "test-driver.cc" ]
+  deps = [
+    ":fuchsia.device.inspect.test_llcpp",
+    ":inspect-test-bind",
+    "//sdk/lib/fdio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspect",
+  ]
+  visibility = [
+    ":*",
+    "//src/devices/bundles:drivers",
+  ]
+}
+
+fuchsia_driver_component("driver") {
+  testonly = true
+  component_name = "inspect-test"
+  deps = [ ":fuchsia_driver" ]
+  info = "driver-info.json"
+  colocate = true
+}
+
+test("tests") {
+  output_name = "driver-inspect-test"
+
+  testonly = true
+  sources = [ "test.cc" ]
+  deps = [
+    ":fuchsia.device.inspect.test_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_c",
+    "//sdk/lib/fdio",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//src/devices/testing/driver-integration-test-shim",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+  visibility = [ ":*" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("driver-inspect-test") {
+  deps = [
+    ":driver",
+    ":tests",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+  ]
+}

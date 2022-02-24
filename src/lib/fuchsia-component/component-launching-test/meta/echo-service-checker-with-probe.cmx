@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/echo_service_checker_with_probe"
+    },
+    "sandbox": {
+        "services": [
+            "test.placeholders.Echo"
+        ]
+    }
+}

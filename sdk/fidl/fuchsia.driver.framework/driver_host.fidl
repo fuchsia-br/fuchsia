@@ -1,0 +1,77 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.driver.framework;
+
+using fuchsia.component.runner;
+using fuchsia.data;
+using fuchsia.io;
+using fuchsia.url;
+
+const MAX_NAMESPACE_COUNT uint32 = fuchsia.component.runner.MAX_NAMESPACE_COUNT;
+const MAX_CAPABILITY_COUNT uint8 = 64;
+
+/// Arguments for starting a driver.
+type DriverStartArgs = resource table {
+    /// Node that the driver is bound to.
+    1: node client_end:Node;
+
+    /// Symbols provided to the driver, for |node|. These come from the driver
+    /// that added |node|, and are filtered to the symbols requested in the bind
+    /// program.
+    2: symbols vector<NodeSymbol>:MAX_SYMBOL_COUNT;
+
+    /// URL of the package containing the driver. This is purely informational,
+    /// used only to provide data for inspect.
+    3: url fuchsia.url.Url;
+
+    /// Information about the driver to start. Currently, we support the
+    /// following entries:
+    ///   1. "binary": a string containing the package-relative path to the
+    ///      driver binary.
+    ///   2. "colocate" (optional): a string containing "true" or "false"
+    ///      specifying whether the driver should be colocated in the same
+    ///      driver host as the driver that added |node|. If not specified, the
+    ///      driver will be launched in a new driver host.
+    4: program fuchsia.data.Dictionary;
+
+    /// Incoming namespace provided to the driver.
+    5: ns vector<fuchsia.component.runner.ComponentNamespaceEntry>:MAX_NAMESPACE_COUNT;
+
+    /// Outgoing directory served by the driver.
+    6: outgoing_dir server_end:fuchsia.io.Directory;
+};
+
+/// Protocol through which a driver's lifecycle can be managed.
+///
+/// The Driver Runner will call Stop() on this protocol to indicate that the
+/// Driver Host should stop the Driver. The Driver Host should close the
+/// server end of the channel with an epitath to signal that the driver has
+/// been stopped.
+///
+/// EPITAPH
+///
+/// This protocol sends a FIDL epitaph to indicate that the driver instance
+/// has been terminated correctly. The Driver Host must send an epitaph of
+/// ZX_OK in order to indicate the Driver was Stopped correctly.
+/// Not sending an epitaph, or sending an error, will cause Driver Runner
+/// to log an error.
+protocol Driver {
+
+    /// Request that the Driver is Stopped.
+    ///
+    /// After stopping the driver instance, the server should close this
+    /// connection with an epitath. This signals that the Driver has been
+    /// stopped.
+    Stop();
+};
+
+/// Protocol through which a driver host can be managed.
+@discoverable
+protocol DriverHost {
+    /// Start a driver within a driver host.
+    Start(resource struct {
+        start_args DriverStartArgs;
+        driver server_end:Driver;
+    });
+};

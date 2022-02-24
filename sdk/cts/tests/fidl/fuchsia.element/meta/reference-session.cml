@@ -1,0 +1,65 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/reference-session",
+    },
+    children: [
+        {
+            name: "element_manager",
+            url: "#meta/element_manager.cm",
+            startup: "eager",
+        },
+        {
+            name: "reference-graphical-presenter",
+            url: "#meta/reference-graphical-presenter.cm",
+            startup: "eager",
+        },
+        {
+            name: "reference-scenic",
+            url: "#meta/reference-scenic.cm",
+            startup: "eager",
+        },
+    ],
+    capabilities: [
+        { protocol: "fuchsia.element.Manager" },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.sys.Launcher",
+            ],
+            from: "parent",
+            to: "#element_manager",
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: "#reference-graphical-presenter",
+        },
+        {
+            protocol: [ "fuchsia.element.GraphicalPresenter" ],
+            from: "#reference-graphical-presenter",
+            to: "#element_manager",
+        },
+        {
+            protocol: [ "fuchsia.ui.scenic.Scenic" ],
+            from: "#reference-scenic",
+            to: "#element_manager",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.element.Manager",
+            from: "#element_manager",
+        },
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+}

@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/echo_server_bin",
+    },
+    capabilities: [
+        { protocol: "test.placeholders.Echo" },
+    ],
+    expose: [
+        {
+            protocol: "test.placeholders.Echo",
+            from: "self",
+        },
+    ],
+}

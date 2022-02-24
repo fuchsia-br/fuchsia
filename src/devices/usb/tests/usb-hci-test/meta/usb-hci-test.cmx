@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/usb-hci-test"
+    },
+    "sandbox": {
+        "dev": [
+            "class/usb-hci-test"
+        ]
+    }
+}

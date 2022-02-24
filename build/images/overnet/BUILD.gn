@@ -1,0 +1,87 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/images/assemble_system.gni")
+import("//build/testing/host_test_data.gni")
+import("//src/sys/core/build/core.gni")
+import("//src/sys/root/build/root.gni")
+
+core_name = "core-overnet"
+
+core_realm("core") {
+  package_name = core_name
+  testonly = true
+  restrict_persistent_storage = false
+  deps = [
+    "//src/sys/pkg/bin/system-update-checker:system-update-checker-core-shard",
+    "//src/sys/pkg/bin/system-updater:system-updater-core-shard",
+  ]
+}
+
+root_realm("root") {
+  core_package_name = core_name
+  testonly = true
+}
+
+assemble_system("overnet") {
+  testonly = true
+
+  base_packages = [
+    ":core",
+    "//src/sys/tools/run",
+    "//garnet/bin/trace",
+    "//garnet/bin/vsock_service:vsock_service",
+    "//src/sys/appmgr",
+    "//src/sys/appmgr:appmgr_scheme_config",
+    "//src/sys/appmgr:component_id_index_no_restrict_storage",
+    "//src/sys/appmgr:core_component_id_index",
+    "//src/sys/sysmgr",
+    "//src/sys/sysmgr:services_config",
+    "//src/connectivity/overnet/overnetstack",
+    "//src/connectivity/overnet/overnetstack:overnetstack_config",
+    "//src/connectivity/overnet/tools/debug-serial",
+    "//src/sys/pkg/bin/system-updater",
+    "//src/sys/pkg/bin/system-update-checker",
+    "//src/sys/pkg/bin/system-update-committer",
+  ]
+  bootfs_labels = [
+    ":root",
+    "//build/info:bootfs",
+    "//bundles:bootstrap",
+    "//bundles:debugging",
+    "//bundles/bringup:manual_testing",
+    "//bundles/drivers:bootstrap",
+    "//bundles/drivers:usb-host-stack",
+    "//bundles/drivers:usb-peripheral-stack",
+    "//bundles/drivers:utils",
+  ]
+  bootfs_labels += [
+    "//src/sys/component_manager:component_manager_bootfs_config",
+    "//src/power/power-manager:base_config",
+  ]
+
+  ramdisk_fvm_in_zbi = true
+  include_component_id_index = true
+
+  # TODO(fxbug.dev/81569): Move this metadata to assemble_system.gni.
+  metadata = {
+    images = [
+      {
+        label = get_label_info(":$target_name", "label_with_toolchain")
+        name = "overnet"
+        path =
+            rebase_path("$target_out_dir/overnet/overnet.zbi", root_build_dir)
+        type = "zbi"
+      },
+    ]
+  }
+}
+
+if (is_host) {
+  host_test_data("test_data") {
+    out_dir = get_label_info(":anything($target_toolchain)", "target_out_dir")
+    sources = [ "${out_dir}/overnet.zbi" ]
+    deps = [ "//build/images/overnet($target_toolchain)" ]
+  }
+}

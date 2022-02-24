@@ -1,0 +1,97 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.sysmem;
+
+@for_deprecated_c_bindings
+type FormatModifier = struct {
+    /// The upper 8 bits are a vendor code as allocated in FormatModifierVendor
+    /// enum.  The lower 56 bits are vendor-defined.
+    ///
+    /// This field and the values that go in this field are defined this way for
+    /// compatibility reasons.
+    value uint64;
+};
+
+const FORMAT_MODIFIER_NONE uint64 = 0x0000000000000000;
+
+const FORMAT_MODIFIER_VENDOR_NONE uint64 = 0x0000000000000000;
+const FORMAT_MODIFIER_VENDOR_INTEL uint64 = 0x0100000000000000;
+const FORMAT_MODIFIER_VENDOR_AMD uint64 = 0x0200000000000000;
+const FORMAT_MODIFIER_VENDOR_NVIDIA uint64 = 0x0300000000000000;
+const FORMAT_MODIFIER_VENDOR_SAMSUNG uint64 = 0x0400000000000000;
+const FORMAT_MODIFIER_VENDOR_QCOM uint64 = 0x0500000000000000;
+const FORMAT_MODIFIER_VENDOR_VIVANTE uint64 = 0x0600000000000000;
+const FORMAT_MODIFIER_VENDOR_BROADCOM uint64 = 0x0700000000000000;
+const FORMAT_MODIFIER_VENDOR_ARM uint64 = 0x0800000000000000;
+const FORMAT_MODIFIER_VENDOR_GOOGLE uint64 = 0x0900000000000000;
+
+const FORMAT_MODIFIER_VALUE_RESERVED uint64 = 0x00FFFFFFFFFFFFFF;
+
+const FORMAT_MODIFIER_INVALID uint64 = FORMAT_MODIFIER_VALUE_RESERVED;
+
+const FORMAT_MODIFIER_LINEAR uint64 = 0x0000000000000000;
+
+//
+// Fill in (compatible) values below as needed.
+//
+
+// Intel format modifier values
+
+// Format has a color control surface after the tile data
+const FORMAT_MODIFIER_INTEL_CCS_BIT uint64 = 0x1000000;
+const FORMAT_MODIFIER_INTEL_I915_X_TILED uint64 = 0x0100000000000001;
+const FORMAT_MODIFIER_INTEL_I915_Y_TILED uint64 = 0x0100000000000002;
+const FORMAT_MODIFIER_INTEL_I915_YF_TILED uint64 = 0x0100000000000003;
+
+const FORMAT_MODIFIER_INTEL_I915_Y_TILED_CCS uint64 = 0x0100000001000002;
+const FORMAT_MODIFIER_INTEL_I915_YF_TILED_CCS uint64 = 0x0100000001000003;
+
+// AMD format modifier values
+
+// NVIDIA format modifier values
+
+// SAMSUNG format modifier values
+
+// QCOM format modifier values
+
+// VIVANTE format modifier values
+
+// BROADCOM format modifier values
+
+// ARM format modifier values
+
+// bit 0x10 is for using the YUV transform.
+const FORMAT_MODIFIER_ARM_YUV_BIT uint64 = 0x10;
+// bit 0x20 is for split-block formats.
+const FORMAT_MODIFIER_ARM_SPLIT_BLOCK_BIT uint64 = 0x20;
+// bit 0x40 is for sparse formats.
+const FORMAT_MODIFIER_ARM_SPARSE_BIT uint64 = 0x40;
+// bit 0x800 is for variants with buffer content hints.
+const FORMAT_MODIFIER_ARM_BCH_BIT uint64 = 0x800;
+// bit 0x1000 is for variants with a transaction elimination buffer allocated.
+const FORMAT_MODIFIER_ARM_TE_BIT uint64 = 0x1000;
+// bit 0x2000 is for variants with tiled headers.
+const FORMAT_MODIFIER_ARM_TILED_HEADER_BIT uint64 = 0x2000;
+// Not all values are equally useful, so we only have format modifiers for some particularly interesting ones.
+
+// To make the variants with bits set more consistent 0x0800000000000000 is reserved for linear.
+const FORMAT_MODIFIER_ARM_AFBC_16X16 uint64 = 0x0800000000000001;
+const FORMAT_MODIFIER_ARM_AFBC_32X8 uint64 = 0x0800000000000002;
+// Variations with transaction elimination support 0x1000 should be set for these formats.
+const FORMAT_MODIFIER_ARM_LINEAR_TE uint64 = 0x0800000000001000;
+const FORMAT_MODIFIER_ARM_AFBC_16X16_TE uint64 = 0x0800000000001001;
+const FORMAT_MODIFIER_ARM_AFBC_32X8_TE uint64 = 0x0800000000001002;
+
+const FORMAT_MODIFIER_ARM_AFBC_16X16_YUV_TILED_HEADER uint64 = 0x0800000000002011;
+
+const FORMAT_MODIFIER_ARM_AFBC_16X16_SPLIT_BLOCK_SPARSE_YUV uint64 = 0x0800000000000071;
+const FORMAT_MODIFIER_ARM_AFBC_16X16_SPLIT_BLOCK_SPARSE_YUV_TE uint64 = 0x0800000000001071;
+
+const FORMAT_MODIFIER_ARM_AFBC_16X16_SPLIT_BLOCK_SPARSE_YUV_TILED_HEADER uint64
+        = 0x0800000000002071;
+const FORMAT_MODIFIER_ARM_AFBC_16X16_SPLIT_BLOCK_SPARSE_YUV_TE_TILED_HEADER uint64
+        = 0x0800000000003071;
+
+// GOOGLE format modifier values
+const FORMAT_MODIFIER_GOOGLE_GOLDFISH_OPTIMAL uint64 = 0x0900000000000001;

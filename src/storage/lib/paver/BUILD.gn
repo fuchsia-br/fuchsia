@@ -1,0 +1,251 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ "test:paver-fuzzers" ]
+
+  # TODO(fxbug.dev/84624): Flaky test disabled on coverage.
+  # Please fix the flake and remove the condition below.
+  if (!is_coverage) {
+    deps += [ "test:paver-test" ]
+  }
+}
+
+# Core paver implementation shared between all implementations.
+source_set("paver-core") {
+  sources = [
+    "abr-client-vboot.cc",
+    "abr-client.cc",
+    "abr.cc",
+    "device-partitioner.cc",
+    "fvm.cc",
+    "partition-client.cc",
+    "paver.cc",
+    "stream-reader.cc",
+    "sysconfig-fidl.cc",
+    "utils.cc",
+    "validation.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.encrypted:fuchsia.hardware.block.encrypted_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//sdk/fidl/fuchsia.hardware.skipblock:fuchsia.hardware.skipblock_llcpp",
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp:ramdevice-client-static",
+    "//src/security/zxcrypt:zxcrypt-client",
+    "//src/storage/fshost:headers",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/third_party/ulib/cksum",
+    "//zircon/third_party/ulib/safemath",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.skipblock:fuchsia.hardware.skipblock_llcpp",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_llcpp",
+    "//src/firmware/lib/abr",
+    "//src/lib/storage/block_client/cpp",
+    "//src/lib/uuid",
+    "//src/storage/fvm",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+# Helper libraries to aid board specific implementations.
+source_set("gpt") {
+  sources = [ "gpt.cc" ]
+  deps = [ "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp" ]
+  public_deps = [
+    ":paver-core",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("skip-block") {
+  sources = [ "skip-block.cc" ]
+  deps = [ "//src/lib/uuid" ]
+  public_deps = [
+    ":paver-core",
+    "//sdk/fidl/fuchsia.hardware.skipblock:fuchsia.hardware.skipblock_llcpp",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("sysconfig") {
+  sources = [ "sysconfig.cc" ]
+  public_deps = [
+    ":paver-core",
+    "//zircon/system/ulib/sysconfig-client:sysconfig-sync-client",
+  ]
+}
+
+# Board specific paver implementations.
+source_set("as370") {
+  sources = [ "as370.cc" ]
+  deps = [
+    ":paver-core",
+    ":skip-block",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+  ]
+}
+
+source_set("astro") {
+  sources = [ "astro.cc" ]
+  deps = [
+    ":paver-core",
+    ":sysconfig",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//src/devices/lib/amlogic",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+  public_deps = [
+    ":skip-block",
+    "//zircon/system/ulib/sysconfig-client:sysconfig-sync-client",
+  ]
+}
+
+source_set("chromebook-x64") {
+  sources = [
+    "chromebook-x64.cc",
+    "flashmap-client.cc",
+  ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    "//sdk/fidl/fuchsia.acpi.chromeos:fuchsia.acpi.chromeos_llcpp",
+    "//sdk/fidl/fuchsia.nand.flashmap:fuchsia.nand.flashmap_llcpp",
+    "//sdk/fidl/fuchsia.tpm.cr50:fuchsia.tpm.cr50_llcpp",
+    "//sdk/fidl/fuchsia.vboot:fuchsia.vboot_llcpp",
+    "//src/lib/uuid",
+  ]
+}
+
+source_set("sherlock") {
+  sources = [ "sherlock.cc" ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    ":sysconfig",
+    "//src/devices/lib/amlogic",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+  ]
+}
+
+source_set("nelson") {
+  sources = [ "nelson.cc" ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    ":sysconfig",
+    "//src/devices/lib/amlogic",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("luis") {
+  sources = [ "luis.cc" ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    ":sysconfig",
+    "//src/devices/lib/amlogic",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+  ]
+}
+
+source_set("vim3") {
+  sources = [ "vim3.cc" ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    ":sysconfig",
+    "//src/devices/lib/amlogic",
+    "//src/lib/uuid",
+    "//src/storage/gpt",
+  ]
+}
+
+source_set("x64") {
+  sources = [ "x64.cc" ]
+  deps = [
+    ":gpt",
+    ":paver-core",
+    "//src/lib/uuid",
+  ]
+}
+
+# Glob together all paver implementations into a single library until we can compose ZBI via
+# packages.
+zx_library("paver") {
+  sdk = "source"
+  sdk_headers = [ "lib/paver/provider.h" ]
+  sources = [ "provider.cc" ]
+  deps = [
+    ":as370",
+    ":astro",
+    ":chromebook-x64",
+    ":luis",
+    ":nelson",
+    ":paver-core",
+    ":sherlock",
+    ":vim3",
+    ":x64",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_llcpp",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+  ]
+  public_deps = [ "//zircon/system/ulib/svc" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

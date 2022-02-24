@@ -1,0 +1,24 @@
+{
+    debug: true,
+    security_policy: {
+        job_policy: {
+            ambient_mark_vmo_exec: [
+                "/policy_allowed",
+            ],
+        }
+    },
+    builtin_pkg_resolver: "appmgr_bridge",
+    out_dir_contents: "hub",
+    builtin_capabilities: [
+        {
+            protocol: [
+                "fuchsia.sys2.EventSource",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.sys2.WorkSchedulerControl",
+            ],
+        },
+        {
+            runner: "elf",
+        },
+    ],
+}

@@ -1,0 +1,50 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+
+  public_deps = [ ":unittests" ]
+}
+
+executable("unittests") {
+  output_name = "screenshot_unittests"
+
+  testonly = true
+
+  sources = [
+    "screenshot_buffer_collection_unittests.cc",
+    "screenshot_unittest.cc",
+
+    # Registers a global Escher environment for trsting.
+    "run_all_unittests.cc",
+  ]
+
+  deps = [
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/testing/loop_fixture:gtest",
+    "//src/lib/testing/loop_fixture:gtest",
+    "//src/ui/lib/display:hdcp_client",
+    "//src/ui/scenic/lib/allocation",
+    "//src/ui/scenic/lib/gfx/tests:testing_deps",
+    "//src/ui/scenic/lib/screenshot",
+    "//src/ui/scenic/lib/utils",
+    "//third_party/googletest:gmock",
+  ]
+
+  public_deps = [
+    "//src/lib/fostr/fidl/fuchsia.ui.scenic",
+    "//src/lib/fsl",
+    "//src/ui/examples/bouncing_ball",
+    "//src/ui/lib/escher",
+    "//src/ui/lib/escher/test/common:gtest_escher",
+    "//src/ui/scenic/lib/gfx/tests/mocks:util",
+    "//src/ui/scenic/lib/scenic/tests:testing_deps",
+    "//src/ui/scenic/lib/scenic/util",
+    "//src/ui/scenic/lib/utils",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/zx",
+  ]
+}

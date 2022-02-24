@@ -1,0 +1,141 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":component_cpp_tests" ]
+}
+
+source_set("test_utils") {
+  testonly = true
+
+  sources = [
+    "utils.cc",
+    "utils.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl",
+    "//sdk/fidl/fuchsia.component.test",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+  ]
+}
+
+executable("echo_server_bin") {
+  testonly = true
+
+  sources = [ "echo_server.cc" ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("echo_service_server_bin") {
+  testonly = true
+
+  sources = [ "echo_service_server.cc" ]
+
+  deps = [
+    "//examples/fidl/fuchsia.examples",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/service/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("realm_builder_test_bin") {
+  testonly = true
+
+  sources = [ "realm_builder_test.cc" ]
+
+  deps = [
+    "//examples/fidl/fuchsia.examples:fuchsia.examples",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/testing/fidl:placeholders",
+  ]
+}
+
+executable("internal_test_bin") {
+  testonly = true
+
+  sources = [ "internal_test.cc" ]
+
+  deps = [
+    ":test_utils",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.component.decl",
+    "//sdk/fidl/fuchsia.component.test",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/testing/fidl:placeholders",
+  ]
+}
+
+fuchsia_component("echo_server") {
+  deps = [ ":echo_server_bin" ]
+  manifest = "meta/echo_server.cml"
+  testonly = true
+}
+
+fuchsia_component("echo_service_server") {
+  testonly = true
+  deps = [ ":echo_service_server_bin" ]
+  manifest = "meta/echo_service_server.cml"
+  restricted_features = [ "services" ]
+}
+
+fuchsia_component("echo_server_legacy") {
+  component_name = "echo_server"
+  deps = [ ":echo_server_bin" ]
+  manifest = "meta/echo_server.cmx"
+  testonly = true
+}
+
+fuchsia_component("realm_builder_test") {
+  testonly = true
+  deps = [ ":realm_builder_test_bin" ]
+  manifest = "meta/realm_builder_test.cml"
+}
+
+fuchsia_unittest_component("internal_test") {
+  deps = [ ":internal_test_bin" ]
+}
+
+fuchsia_test_package("component_cpp_tests") {
+  test_components = [
+    ":realm_builder_test",
+    ":internal_test",
+  ]
+  deps = [
+    ":echo_server",
+    ":echo_server_legacy",
+    ":echo_service_server",
+  ]
+}

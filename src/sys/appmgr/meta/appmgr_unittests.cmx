@@ -1,0 +1,19 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/appmgr_unittests"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-temp",
+            "shell-commands"
+        ],
+        "services": [
+            "fuchsia.process.Launcher",
+            "fuchsia.process.Resolver",
+            "fuchsia.sys.Loader"
+        ]
+    }
+}

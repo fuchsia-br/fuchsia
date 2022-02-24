@@ -1,0 +1,28 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/rust_test_runner",
+    },
+    capabilities: [
+        {
+            runner: "rust_test_runner",
+            path: "/svc/fuchsia.component.runner.ComponentRunner",
+        },
+    ],
+    use: [
+        {
+            storage: "data",
+            path: "/data",
+        },
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+        },
+    ],
+    expose: [
+        {
+            runner: "rust_test_runner",
+            from: "self",
+        },
+    ],
+}

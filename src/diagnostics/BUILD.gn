@@ -1,0 +1,47 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("diagnostics") {
+  testonly = true
+  deps = [
+    ":tests",
+    "archivist",
+    "config",
+    "kcounter",
+    "log-stats",
+    "sampler",
+    "wasm",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "archivist:tests",
+    "config:tests",
+    "detect:tests",
+    "iquery:tests",
+    "kcounter:tests",
+    "lib:tests",
+    "log-stats:tests",
+    "log_listener:tests",
+    "persistence:tests",
+    "sampler:tests",
+    "tool:host_tests",
+    "triage:tests",
+    "validator:tests",
+    "wasm:tests",
+
+    # This is included to make sure changes to fuchsia_async (or elsewhere)
+    # don't break the WASM build.
+    "//src/diagnostics/lib/triage/wasm:wasm",
+
+    # "transit_bench",
+  ]
+}
+
+group("benchmarks") {
+  testonly = true
+  deps = [ "archivist:benchmarks" ]
+}

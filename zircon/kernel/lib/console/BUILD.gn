@@ -1,0 +1,19 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("console") {
+  sources = [ "console.cc" ]
+  deps = [
+    "//zircon/kernel/lib/boot-options:headers",
+    "//zircon/kernel/lib/init",
+  ]
+  public_deps = [
+    # <lib/console.h> has #include <lib/special-sections/special-sections.h>.
+    "//zircon/kernel/lib/special-sections:headers",
+  ]
+}

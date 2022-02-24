@@ -1,0 +1,294 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+import("//build/testing/environments.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":driver-host-tests" ]
+}
+
+executable("driver_host") {
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":common",
+    ":driver",
+    "//sdk/lib/syslog/cpp:backend_fuchsia_compat",
+  ]
+}
+
+source_set("common") {
+  sources = [
+    "api.cc",
+    "composite_device.cc",
+    "core.cc",
+    "devfs_vnode.cc",
+    "device_controller_connection.cc",
+    "driver_host.cc",
+    "driver_host_context.cc",
+    "env.cc",
+    "inspect.cc",
+    "proxy_device.cc",
+    "proxy_iostate.cc",
+    "scheduler_profile.cc",
+    "tracing.cc",
+    "zx_device.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/devices/lib/driver:driver_runtime",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_llcpp",
+    "//sdk/fidl/fuchsia.scheduler:fuchsia.scheduler_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit-promise",
+    "//src/devices/lib/log",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fidl:fidl-llcpp",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/ddktl",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  configs += [ "//build/config:all_source" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(fxbug.dev/85473): This target uses |fidl::WireTryDispatch| which is deprecated.
+  # Please remove ad-hoc composition of FIDL protocols and migrate to |fidl::WireDispatch|.
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-wire-try-dispatch" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+shared_library("driver") {
+  sources = []
+
+  deps = [ ":common" ]
+}
+
+driver_bind_rules("test-devhost-parent-bind") {
+  rules = "test-devhost-parent.bind"
+  header_output = "test-devhost-parent-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("driver-host-test-driver-driver") {
+  output_name = "driver-host-test-driver"
+  sources = [ "test-driver.cc" ]
+  deps = [
+    ":fuchsia.device.restarttest_llcpp",
+    ":test-devhost-parent-bind",
+    "//sdk/lib/fdio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("driver-host-test-driver") {
+  component_name = "driver-host-test-driver"
+  deps = [ ":driver-host-test-driver-driver" ]
+  info = "driver-host-test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-devhost-child-bind") {
+  rules = "test-devhost-child.bind"
+  header_output = "test-devhost-child-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+}
+
+fuchsia_driver("driver-host-test-child-driver-driver") {
+  output_name = "driver-host-test-child-driver"
+  sources = [ "test-driver-child.cc" ]
+  deps = [
+    ":test-devhost-child-bind",
+    "//sdk/lib/fdio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_driver_component("driver-host-test-child-driver") {
+  component_name = "driver-host-test-child-driver"
+  deps = [ ":driver-host-test-child-driver-driver" ]
+  info = "driver-host-test-child-driver-info.json"
+  colocate = true
+}
+
+fidl("fuchsia.device.restarttest") {
+  sources = [ "driver.host.restart.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+driver_bind_rules("driver-host-restart-bind") {
+  rules = "driver-host-restart.bind"
+  header_output = "driver-host-restart-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("driver-host-restart-driver-driver") {
+  output_name = "driver-host-restart-driver"
+  sources = [ "host-restart-test-driver.cc" ]
+  deps = [
+    ":driver-host-restart-bind",
+    ":fuchsia.device.restarttest_llcpp",
+    "//sdk/lib/fdio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("driver-host-restart-driver") {
+  component_name = "driver-host-restart-driver"
+  deps = [ ":driver-host-restart-driver-driver" ]
+  info = "driver-host-restart-driver-info.json"
+  colocate = true
+}
+
+test("driver_host_test") {
+  sources = [
+    "core_test.cc",
+    "device_api_test.cc",
+    "device_controller_connection_test.cc",
+    "device_controller_integration_test.cc",
+    "driver_host_test.cc",
+    "hot_reload_integration_test.cc",
+    "inspect_test.cc",
+    "proxy_iostate_test.cc",
+  ]
+
+  deps = [
+    ":common",
+    ":fuchsia.device.restarttest_llcpp",
+    "//sdk/fidl/fuchsia.device.test:fuchsia.device.test_llcpp",
+    "//sdk/fidl/fuchsia.driver.development",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//sdk/lib/sys/cpp",
+    "//src/devices/testing/devmgr-integration-test-shim",
+    "//src/devices/testing/driver-integration-test-shim",
+    "//src/lib/fxl",
+    "//src/lib/storage/vfs/cpp:test_support",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+driver_bind_rules("unit-test-fail-bind") {
+  rules = "unit-test-fail.bind"
+  header_output = "unit-test-fail-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+  disable_autobind = true
+}
+
+fuchsia_driver("unit-test-fail-driver") {
+  output_name = "unit-test-fail"
+  sources = [ "unit-test-fail.cc" ]
+  deps = [
+    ":unit-test-fail-bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("unit-test-fail") {
+  component_name = "unit-test-fail"
+  deps = [ ":unit-test-fail-driver" ]
+  info = "unit-test-fail-info.json"
+  colocate = true
+}
+
+driver_bind_rules("unit-test-pass-bind") {
+  rules = "unit-test-pass.bind"
+  header_output = "unit-test-pass-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+  disable_autobind = true
+}
+
+fuchsia_driver("unit-test-pass-driver") {
+  output_name = "unit-test-pass"
+  sources = [ "unit-test-pass.cc" ]
+  deps = [
+    ":unit-test-pass-bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("unit-test-pass") {
+  component_name = "unit-test-pass"
+  deps = [ ":unit-test-pass-driver" ]
+  info = "unit-test-pass-info.json"
+  colocate = true
+}
+
+fuchsia_unittest_package("driver-host-tests") {
+  deps = [
+    ":driver-host-restart-driver",
+    ":driver-host-test-child-driver",
+    ":driver-host-test-driver",
+    ":driver_host_test",
+    ":unit-test-fail",
+    ":unit-test-pass",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/misc/drivers/test",
+    "//src/devices/misc/drivers/test-parent",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

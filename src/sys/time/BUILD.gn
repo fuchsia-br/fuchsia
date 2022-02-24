@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Packages needed for time synchronization in recovery images
+group("recovery") {
+  deps = [
+    "httpsdate_time_source:httpsdate-time-source",
+    "timekeeper",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "httpsdate_time_source:tests",
+    "lib/httpdate-hyper:tests",
+    "lib/inspect-writable:tests",
+    "lib/push-source:tests",
+    "lib/time-util:tests",
+    "timekeeper:tests",
+    "timekeeper_integration",
+  ]
+}

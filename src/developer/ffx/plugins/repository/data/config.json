@@ -1,0 +1,8 @@
+{
+    "repository": {
+        "server": {
+            "listen": "[::]:8083",
+            "mode": "pm"
+        }
+    }
+}

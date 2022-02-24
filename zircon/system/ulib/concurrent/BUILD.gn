@@ -1,0 +1,27 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/library_headers.gni")
+
+library_headers("headers") {
+  headers = [
+    "lib/concurrent/common.h",
+    "lib/concurrent/copy.h",
+    "lib/concurrent/seqlock.h",
+    "lib/concurrent/seqlock.inc",
+  ]
+}
+
+source_set("concurrent") {
+  sources = [ "copy.cc" ]
+
+  if (is_fuchsia && !is_kernel) {
+    sources += [ "seqlock_usermode_fuchsia.cc" ]
+  } else if (is_host) {
+    sources += [ "seqlock_usermode_posix.cc" ]
+  }
+
+  public_deps = [ ":headers" ]
+  deps = [ "//sdk/lib/stdcompat" ]
+}

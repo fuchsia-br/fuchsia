@@ -1,0 +1,53 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dev.gni")
+import("//src/developer/ffx/build/ffx_action.gni")
+
+# Validates that privileged component resolvers only resolve allowed static components,
+# determined by the provided allowlist.
+#
+# Parameters
+#   deps, public_deps, data_deps (optional)
+#       Usual GN meaning.
+#
+#   allowlist
+#       Path to the allowlist defining which component resolvers are privileged and
+#       which components are allowed to be resolved by them.
+#
+template("verify_component_resolvers") {
+  ffx_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "deps",
+                             "public_deps",
+                             "data_deps",
+                             "visibility",
+                           ])
+    depfile = "$target_out_dir/$target_name.d"
+    stamp_file = "$target_gen_dir/$target_name.verified"
+    published_packages = "//build/images:publish"
+
+    inputs = [ invoker.allowlist ]
+    outputs = [ stamp_file ]
+
+    args = [
+      "scrutiny",
+      "verify",
+      "component-resolvers",
+      "--allowlist",
+      rebase_path(invoker.allowlist, root_build_dir),
+      "--stamp",
+      rebase_path(stamp_file, root_build_dir),
+      "--depfile",
+      rebase_path(depfile, root_build_dir),
+    ]
+
+    if (!defined(invoker.deps)) {
+      deps = []
+    }
+    deps += [ published_packages ]
+  }
+}

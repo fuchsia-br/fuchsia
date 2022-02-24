@@ -1,0 +1,115 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":fake-display-bind_test" ]
+}
+
+driver_bind_rules("fake-display-bind") {
+  rules = "fake-display.bind"
+  header_output = "fake-display-bind.h"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.platform" ]
+}
+
+fuchsia_driver("fake-display-driver") {
+  output_name = "fake-display"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "bind.cc" ]
+  deps = [
+    ":fake-display-bind",
+    ":fake-lib",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("fake-display") {
+  info = "fake-display-info.json"
+  component_name = "fake-display"
+  deps = [ ":fake-display-driver" ]
+  colocate = true
+}
+
+source_set("fake-lib") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "fake-display.cc",
+    "fake-display.h",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.display.capture:fuchsia.hardware.display.capture_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.display.clamprgb:fuchsia.hardware.display.clamprgb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.display.controller:fuchsia.hardware.display.controller_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_c",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+  deps =
+      [ "//src/graphics/display/drivers/display:preferred-scanout-image-type" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+static_library("sysmem-proxy-device") {
+  testonly = true
+
+  sources = [
+    "sysmem-proxy-device.cc",
+    "sysmem-proxy-device.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//src/devices/sysmem/drivers/sysmem:sysmem_common_srcs",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+  ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/sysmem-version",
+  ]
+}
+
+static_library("fake-display-device-tree") {
+  testonly = true
+
+  configs += [ "//build/config:all_source" ]
+
+  sources = [
+    "fake-display-device-tree.cc",
+    "fake-display-device-tree.h",
+  ]
+  public_deps = [
+    ":fake-lib",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.sysmem:fuchsia.sysmem_banjo_c",
+    "//sdk/fidl/fuchsia.hardware.display:fuchsia.hardware.display_llcpp",
+    "//src/devices/bus/testing/fake-pdev",
+    "//src/devices/testing/fake_ddk",
+    "//src/graphics/display/drivers/display:shared",
+    "//src/lib/ddktl",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

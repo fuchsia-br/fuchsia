@@ -1,0 +1,140 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/host.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/sdk/sdk_host_tool.gni")
+
+rustc_binary("cmc") {
+  name = "cmc"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.data:fuchsia.data-rustc",
+    "//src/lib/directed_graph",
+    "//src/lib/fidl/rust/fidl",
+    "//src/sys/lib/cm_json",
+    "//src/sys/lib/cm_rust",
+    "//src/sys/lib/cm_types",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:clap",
+    "//third_party/rust_crates:json5format",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:serde_json5",
+    "//third_party/rust_crates:strsim",
+    "//third_party/rust_crates:structopt",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:valico",
+    "//tools/lib/cml",
+  ]
+
+  non_rust_deps = [ ":cmc_test_schemas" ]
+
+  test_deps = [ "//third_party/rust_crates:assert_matches" ]
+
+  sources = [
+    "src/compile.rs",
+    "src/features.rs",
+    "src/format.rs",
+    "src/include.rs",
+    "src/main.rs",
+    "src/merge.rs",
+    "src/opts.rs",
+    "src/reference.rs",
+    "src/util.rs",
+    "src/validate.rs",
+  ]
+
+  inputs = [
+    "test_block_dev.json",
+    "test_block_shell_feature.json",
+  ]
+}
+
+sdk_host_tool("cmc_sdk") {
+  category = "partner"
+  output_name = "cmc"
+  deps = [ ":cmc" ]
+}
+
+source_set("cmc_test_schemas") {
+  inputs = [
+    "test_block_dev.json",
+    "test_block_shell_feature.json",
+  ]
+}
+
+rustc_binary("cmc_integration_test_bin") {
+  name = "cmc_integration_test"
+  edition = "2018"
+  source_root = "tests/integration_test.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.data:fuchsia.data-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "tests/integration_test.rs" ]
+}
+
+fuchsia_component_manifest("example_component_manifest") {
+  testonly = true
+  restricted_features = [
+    "services",
+    "dynamic_offers",
+    "structured_config",
+  ]
+  component_name = "example"
+  manifest = "meta/example.cml"
+}
+
+fuchsia_component("example_component") {
+  cm_target = ":example_component_manifest"
+  deps = [ ":example_component_config_values" ]
+  testonly = true
+  check_references = false
+}
+
+fuchsia_component("cmc_integration_test_component") {
+  testonly = true
+  component_name = "cmc_integration_test"
+  manifest = "meta/cmc_integration_test.cmx"
+  deps = [ ":cmc_integration_test_bin" ]
+}
+
+fuchsia_test_package("cmc_integration_test") {
+  test_components = [ ":cmc_integration_test_component" ]
+  deps = [ ":example_component" ]
+}
+
+install_host_tools("install") {
+  deps = [ ":cmc" ]
+
+  outputs = [ "cmc" ]
+}
+
+fuchsia_structured_config_values("example_component_config_values") {
+  testonly = true
+  cm_target = ":example_component_manifest"
+  values = "config/example_config_values.json5"
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":cmc_integration_test",
+    ":cmc_test($host_toolchain)",
+  ]
+}

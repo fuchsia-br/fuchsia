@@ -1,0 +1,339 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/cpp/cpp_fuzzer.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":driver-manager-fuzzers" ]
+
+  # TODO(fxbug.dev/86747): Failed test disabled on coverage.
+  # Please fix the failure and remove the condition below.
+  if (!is_coverage) {
+    deps += [ ":driver-manager-tests" ]
+  }
+}
+
+source_set("manifest_parser") {
+  sources = [
+    "manifest_parser.cc",
+    "manifest_parser.h",
+  ]
+  public_deps = [
+    "//sdk/lib/fdio",
+    "//src/devices/lib/log",
+    "//src/lib/json_parser",
+    "//src/lib/pkg_url",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+# Common source files and dependencies between :coordinator and :test
+source_set("lib") {
+  visibility = [ ":*" ]
+
+  sources = [
+    "base_package_resolver.cc",
+    "base_package_resolver.h",
+    "bind_driver_manager.cc",
+    "bind_driver_manager.h",
+    "binding.cc",
+    "binding_internal.h",
+    "component_lifecycle.cc",
+    "component_lifecycle.h",
+    "composite_device.cc",
+    "coordinator.cc",
+    "coordinator.h",
+    "debug_dump.cc",
+    "debug_dump.h",
+    "devfs.cc",
+    "devfs.h",
+    "devfs_exporter.cc",
+    "devfs_exporter.h",
+    "device.cc",
+    "device.h",
+    "driver.cc",
+    "driver.h",
+    "driver_development_service.cc",
+    "driver_development_service.h",
+    "driver_host.cc",
+    "driver_host.h",
+    "driver_host_loader_service.cc",
+    "driver_host_loader_service.h",
+    "driver_loader.cc",
+    "driver_loader.h",
+    "driver_test_reporter.cc",
+    "driver_test_reporter.h",
+    "inspect.cc",
+    "package_resolver.cc",
+    "system_instance.cc",
+    "system_instance.h",
+    "system_state_manager.cc",
+    "system_state_manager.h",
+    "v1/device_manager.cc",
+    "v1/device_manager.h",
+    "v1/firmware_loader.cc",
+    "v1/firmware_loader.h",
+    "v1/init_task.cc",
+    "v1/resume_context.h",
+    "v1/resume_task.cc",
+    "v1/suspend_handler.cc",
+    "v1/suspend_handler.h",
+    "v1/suspend_matching_task.cc",
+    "v1/suspend_resume_manager.cc",
+    "v1/suspend_resume_manager.h",
+    "v1/suspend_task.cc",
+    "v1/task.cc",
+    "v1/unbind_task.cc",
+    "vmo_writer.cc",
+  ]
+
+  public_deps = [
+    ":driver_runner",
+    ":manifest_parser",
+    "//sdk/fidl/fuchsia.boot",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.device.fs:fuchsia.device.fs_llcpp",
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_llcpp",
+    "//sdk/fidl/fuchsia.driver.development:fuchsia.driver.development_llcpp",
+    "//sdk/fidl/fuchsia.driver.registrar:fuchsia.driver.registrar_llcpp",
+    "//sdk/fidl/fuchsia.driver.test.logger:fuchsia.driver.test.logger_llcpp",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_llcpp",
+    "//sdk/fidl/fuchsia.hardware.virtioconsole:fuchsia.hardware.virtioconsole_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_llcpp",
+    "//sdk/fidl/fuchsia.ldsvc:fuchsia.ldsvc_llcpp",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg_llcpp",
+    "//sdk/fidl/fuchsia.power.manager:fuchsia.power.manager_llcpp",
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fdio:fdio-spawn-actions",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/fit",
+    "//sdk/lib/inspect/service/cpp",
+    "//sdk/lib/stdcompat",
+    "//sdk/lib/sys/cpp",
+    "//src/bringup/lib/mexec",
+    "//src/devices/lib/bind:bind-lib",
+    "//src/devices/lib/driver-info",
+    "//src/devices/lib/log",
+    "//src/lib/ddk",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/loader_service",
+    "//src/lib/pkg_url",
+    "//src/lib/storage/vfs/cpp",
+    "//src/storage/memfs",
+    "//src/storage/memfs:lib",
+    "//src/zircon/lib/zircon",
+    "//zircon/system/public",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/inspector",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/svc",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+  ]
+
+  deps = [
+    "//src/lib/fsl",
+    "//zircon/system/ulib/zbitl",
+  ]
+
+  configs += [ "//build/config:all_source" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("driver_manager") {
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":lib",
+    "//src/sys/lib/stdout-to-debuglog/cpp",
+  ]
+
+  configs += [ "//build/config:all_source" ]
+}
+
+test("driver_manager_test") {
+  sources = [
+    "autobind_tests.cc",
+    "binding_v2_test.cc",
+    "composite_device_tests.cc",
+    "coordinator_test_utils.cc",
+    "devfs_test.cc",
+    "device_tests.cc",
+    "driver_loader_test.cc",
+    "init_tests.cc",
+    "inspect_test.cc",
+    "load_driver_package_test.cc",
+    "misc_tests.cc",
+    "multiple_device_test.cc",
+    "multiple_device_test_utils.cc",
+    "resume_tests.cc",
+    "suspend_tests.cc",
+    "system_instance_test.cc",
+    "unbind_tests.cc",
+    "v1/task_test.cc",
+  ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/fdio",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//src/devices/lib/bind:bind-lib",
+    "//src/lib/storage/vfs/cpp:test_support",
+    "//zircon/system/ulib/mock-boot-arguments",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_component("driver-manager-test") {
+  manifest = "meta/driver-manager-test.cmx"
+  deps = [
+    ":driver_manager_test",
+    "testing:ambient_vmex_test_util",
+    "testing:new_process_test_util",
+    "//src/devices/bin/driver_host",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/internal/drivers/fragment",
+    "//src/devices/tests/mock-device",
+  ]
+}
+
+# This is a separate test binary because this test fixture uses gtest, not zxtest
+test("driver_host_loader_service_test") {
+  sources = [ "driver_host_loader_service_test.cc" ]
+  deps = [
+    ":lib",
+    "//src/lib/loader_service:loader_service_test_fixture",
+  ]
+}
+
+fuchsia_unittest_component("driver-host-loader-service-test") {
+  manifest = "meta/driver-host-loader-service-test.cmx"
+  deps = [ ":driver_host_loader_service_test" ]
+}
+
+source_set("driver_runner") {
+  sources = [
+    "driver_runner.cc",
+    "driver_runner.h",
+  ]
+
+  deps = [
+    "//src/devices/lib/driver2:llcpp",
+    "//src/devices/lib/log",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component_llcpp",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_llcpp",
+    "//sdk/fidl/fuchsia.component.runner:fuchsia.component.runner_llcpp",
+    "//sdk/fidl/fuchsia.driver.development:fuchsia.driver.development_llcpp",
+    "//sdk/fidl/fuchsia.driver.framework:fuchsia.driver.framework_llcpp",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/inspect",
+  ]
+}
+
+executable("manifest_parser_test") {
+  testonly = true
+  sources = [ "manifest_parser_test.cc" ]
+
+  deps = [
+    ":manifest_parser",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_component("manifest_parser_test_component") {
+  deps = [ ":manifest_parser_test" ]
+}
+
+executable("driver_runner_test") {
+  testonly = true
+  sources = [ "driver_runner_test.cc" ]
+
+  deps = [
+    ":driver_runner",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.component.decl",
+    "//sdk/fidl/fuchsia.driver.framework",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_unittest_component("driver-runner-test") {
+  manifest = "meta/driver_runner_test.cml"
+
+  deps = [ ":driver_runner_test" ]
+}
+
+cpp_fuzzer("manifest-parser-fuzzer") {
+  sources = [ "manifest_parser_fuzzer.cc" ]
+  deps = [ ":manifest_parser" ]
+}
+
+fuzzers_package("driver-manager-fuzzers") {
+  cpp_fuzzers = [ ":manifest-parser-fuzzer" ]
+}
+
+fuchsia_test_package("driver-manager-tests") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+
+  test_components = [
+    ":driver-host-loader-service-test",
+    ":driver-manager-test",
+    ":driver-runner-test",
+    ":manifest_parser_test_component",
+  ]
+}
+
+fuchsia_component("driver_manager_component") {
+  component_name = "driver_manager"
+  manifest = "meta/driver_manager.cml"
+  deps = [ ":driver_manager" ]
+}
+
+group("bootfs") {
+  deps = [ ":driver_manager_component" ]
+}

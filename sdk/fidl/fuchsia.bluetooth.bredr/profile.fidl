@@ -1,0 +1,243 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.bluetooth.bredr;
+
+using fuchsia.bluetooth;
+using zx;
+
+/// The RFCOMM channel ID used when requesting to open a channel.
+/// This is known as a ServerChannel in RFCOMM. It must be within the
+/// range [1,30] (inclusive). See RFCOMM 5.4.
+alias RfcommChannel = uint8;
+
+/// The parameters associated with a connection over the RFCOMM protocol.
+type RfcommParameters = table {
+    /// Required. RFCOMM channel for the connection.
+    1: channel RfcommChannel;
+};
+
+/// The parameters associated with a connection over the L2CAP protocol.
+type L2capParameters = table {
+    /// Required. Dynamic PSM for the connection. See the defined PSMs in `service.fidl`.
+    1: psm uint16;
+
+    /// Optional. L2CAP channel parameters.
+    2: parameters ChannelParameters;
+};
+
+/// The channel and relevant parameters for a connection.
+type ConnectParameters = strict union {
+    /// An L2CAP connection.
+    1: l2cap L2capParameters;
+
+    /// An RFCOMM connection.
+    2: rfcomm RfcommParameters;
+};
+
+/// Authentication and permission requirements to access an advertised service.
+type SecurityRequirements = table {
+    /// If present and true, the physical link must be authenticated with man-in-the-middle attack
+    /// protection to access this service.  If missing, authentication is not required.
+    1: authentication_required bool;
+
+    /// If present and true, the physical link must be encrypted with a Secure Connections key to
+    /// access this service if the host is capable.  Advertisement will fail if the host does not
+    /// support Secure Connections.  See Bluetooth Spec v5.2, Vol 3, Part C, Sec 5.2.2.8.
+    2: secure_connections_required bool;
+};
+
+/// Used to specify preferred and accepted L2CAP channel modes.  If the peer rejects a non-BASIC
+/// mode, the Bluetooth system will attempt to open the channel in BASIC mode instead.  For a
+/// description of each mode, see Bluetooth Spec v5.2, Vol 3, Part A, Sec 2.4.
+type ChannelMode = strict enum {
+    BASIC = 1;
+    ENHANCED_RETRANSMISSION = 2;
+};
+
+/// Used to specify preferred L2CAP channel parameters.
+type ChannelParameters = table {
+    /// Optional. If not provided, BASIC will be used.
+    1: channel_mode ChannelMode;
+    /// Maximum SDU size this profile is capable of accepting. Must be >= 48.  Optional. If not
+    /// provided, the size will be determined by the Bluetooth system.  No guarantees are given
+    /// regarding the size selected.
+    2: max_rx_sdu_size uint16;
+    /// Minimum security requirements a link must have before this channel can be created.
+    /// The requirements provided here will be attempted with the peer before the channel is
+    /// established. If a peer cannot provide the requirements, the channel is closed.
+    /// Optional. If not provided, then the only security property guaranteed is encryption.
+    3: security_requirements SecurityRequirements;
+    /// The flush timeout indicates the maximum amount of time a data packet should be buffered
+    /// in the controller before it is dropped. A flush timeout of infinity can be used to mark
+    /// packets as flushable without any particular flush timeout.
+    /// Range: 1ms - 1,279ms (or ∞). Rounded down.
+    /// Optional. If not provided, no flush timeout and packets are not flushable.
+    4: flush_timeout zx.duration;
+};
+
+/// A channel opened to a peer.
+type Channel = resource table {
+    /// Socket interface for sending/receiving SDUs on the channel.
+    /// Always present.
+    1: socket zx.handle:SOCKET;
+    /// Channel mode accepted by the peer.
+    /// Always present.
+    2: channel_mode ChannelMode;
+    /// Maximum SDU size the peer is capable of accepting.
+    /// Always present.
+    3: max_tx_sdu_size uint16;
+    /// Audio Direction priority extension. See `AudioDirectionExt`.
+    /// Present only if supported by the host.
+    4: ext_direction client_end:AudioDirectionExt;
+    // Duration after which packets are dropped from the controller.
+    // Present only if a flush timeout was successfully configured.
+    5: flush_timeout zx.duration;
+    /// L2CAP parameter extension. See `L2capParametersExt`.
+    /// Always present for L2CAP Channels, never present for other Channels.
+    6: ext_l2cap client_end:L2capParametersExt;
+};
+
+/// A2DP packet priority used in `AudioDirectionExt`. `NORMAL` should be used whenever audio is not
+/// streaming, and `SOURCE`/`SINK` should match the direction audio is being streamed.
+type A2dpDirectionPriority = strict enum {
+    NORMAL = 1;
+    SOURCE = 2;
+    SINK = 3;
+};
+
+/// Audio Priority Direction extension.
+/// Used to put the channel in a mode where A2DP packets are prioritized over other packets in the
+/// source or sink direction.
+protocol AudioDirectionExt {
+    SetPriority(struct {
+        priority A2dpDirectionPriority;
+    }) -> (struct {}) error fuchsia.bluetooth.ErrorCode;
+};
+
+/// L2CAP Parameters Extension. Used to configure L2CAP channel parameters on an open channel.
+protocol L2capParametersExt {
+    /// Request a L2CAP channel parameter update. `request` indicates the
+    /// desired parameters, and `new` indicates the new parameters
+    /// (which may differ from the requested parameters if they are
+    /// rejected/modified).
+    /// Currently only the following parameters can be changed:
+    /// - flush_timeout
+    RequestParameters(struct {
+        request ChannelParameters;
+    }) -> (struct {
+        new ChannelParameters;
+    });
+};
+
+/// Represents a service which is registered by this profile.  Closing this protocol will remove the
+/// service registration.
+protocol ConnectionReceiver {
+    /// Called when a peer connects to this service.  The channel connected is delivered
+    /// with parameters in `channel`.
+    /// `protocol` will contain a protocol list up to the point connected (for example, if
+    /// L2CAP is connected, it will contain the L2CAP protocol and specify the PSM connected)
+    Connected(resource struct {
+        peer_id fuchsia.bluetooth.PeerId;
+        channel Channel;
+        protocol ProtocolDescriptorList;
+    });
+};
+
+/// Maximum number of attributes returned or allowed in a search request.
+const MAX_ATTRIBUTES uint16 = 512;
+
+/// Represents an active search which can produce results when peers are connected.  Closing this
+/// protocol will result in the associated search not being performed on new connected peers.
+protocol SearchResults {
+    /// Called when a search this client added finds a matching service on a peer.
+    /// `peer_id` is the peer the service was found on.
+    /// `protocol` includes the ProtocolDescriptorList in the service record if it exists
+    /// (it is also included in `attributes`.)
+    /// `attributes` contains all attributes requested from the search that are present on the
+    /// peer record.  It may also include additional attributes.
+    /// Each ServiceFound call should be acknowledged by replying.
+    /// A limited amount of unacknowledged results will be sent on the channel. Results may be
+    /// dropped if results are received while too many results are unacknowledged.
+    ServiceFound(struct {
+        peer_id fuchsia.bluetooth.PeerId;
+        protocol ProtocolDescriptorList:optional;
+        attributes vector<Attribute>:MAX_ATTRIBUTES;
+    }) -> ();
+};
+
+/// Maximum service records that can be advertised at once.
+const MAX_SERVICES_PER_ADVERTISEMENT uint8 = 32;
+
+/// Service provides Bluetooth BR/EDR profiles a way to register a service definition, making a
+/// profile discoverable by peers. Registered services can receive L2CAP connections made to the
+/// advertised records, and can open new connections on peers.
+@discoverable
+protocol Profile {
+    /// Register a set of services.
+    ///
+    /// The call will resolve when the service advertisement terminates or if there was an error
+    /// when advertising.
+    ///
+    /// These services will be discoverable via Service Discovery Protocol server.
+    /// All services advertising the same channel must be added at once - if services are already
+    /// registered on any channel advertised, registration will fail, the receiver will be closed
+    /// with ZX_ERR_ALREADY_BOUND and an error will be returned.
+    /// The ConnectionReceiver will get calls for connections to the channels included in the
+    /// `protocol_descriptor` or `alternative_protocol_descriptors` in the services advertised.
+    /// The receiver will be closed if there are any errors advertising.
+    ///
+    /// If the advertisement cannot be made for any reason, an error of `INVALID_ARGUMENTS`
+    /// will be returned and the receiver will be closed with a suitable epitaph.
+    Advertise(resource struct {
+        services vector<ServiceDefinition>:MAX_SERVICES_PER_ADVERTISEMENT;
+        parameters ChannelParameters;
+        receiver client_end:ConnectionReceiver;
+    }) -> (struct {}) error fuchsia.bluetooth.ErrorCode;
+
+    /// Register a search for services on newly connected peers.  The SearchResults protocol will be
+    /// used to report results for this search.  Any service result with a service matching
+    /// `service_uuid` will be returned with the additional attributes in `attr_ids`.  If `attr_ids`
+    /// is empty, all attributes will be requested.  The additional attribute
+    /// BLUETOOTH_PROTOCOL_DESCRIPTOR_LIST is always requested.  See the Bluetooth Spec v5.2, Vol 3,
+    /// Part B, Section 5) and relevant profile specification documents.
+    Search(resource struct {
+        service_uuid ServiceClassProfileIdentifier;
+        attr_ids vector<uint16>:MAX_ATTRIBUTES;
+        results client_end:SearchResults;
+    });
+
+    /// Connect an L2CAP or RFCOMM channel to the connected peer identified by `peer_id` using the
+    /// desired `connection` parameters listed.  Dynamic PSMs can be specified in `connection`.
+    ///
+    /// Returns the channel connected once established, or an error code if the channel could not
+    /// be connected.
+    Connect(struct {
+        peer_id fuchsia.bluetooth.PeerId;
+        connection ConnectParameters;
+    }) -> (resource struct {
+        channel Channel;
+    }) error fuchsia.bluetooth.ErrorCode;
+
+    /// Attempt to establish a synchronous connection to `peer_id` configured
+    /// using `params`.
+    ///
+    /// If `initiator` is true, a connection request will be sent. Only 1
+    /// parameter may be specified.
+    ///
+    /// If `initiator` is false, the host will attempt to accept the next
+    /// connection request using the parameters given in order. The parameters
+    /// will be tried in order until either a connection is successful, all
+    /// parameters have been rejected (`ScoErrorCode.PARAMETERS_REJECTED`), or
+    /// the procedure is canceled.
+    ///
+    /// The result of the connection attempt and the parameters used for the
+    /// connection will be returned with `receiver`.  Dropping `receiver` will
+    /// cancel the request.
+    ConnectSco(resource struct {
+        peer_id fuchsia.bluetooth.PeerId;
+        initiator bool;
+        params vector<ScoConnectionParameters>:MAX;
+        receiver client_end:ScoConnectionReceiver;
+    });
+};

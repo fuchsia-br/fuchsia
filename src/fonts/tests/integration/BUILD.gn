@@ -1,0 +1,196 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+import("//tools/cmc/build/cmc.gni")
+
+group("integration") {
+  testonly = true
+  deps = [ ":font_provider_integration_tests" ]
+}
+
+# Integration tests without a `main()` function.
+rustc_test("font_provider_integration_tests_bin") {
+  name = "font_provider_integration_tests"
+  edition = "2018"
+  deps = [
+    "//garnet/lib/rust/fidl_fuchsia_fonts_ext",
+    "//sdk/fidl/fuchsia.fonts:fuchsia.fonts-rustc",
+    "//sdk/fidl/fuchsia.fonts.experimental:fuchsia.fonts.experimental-rustc",
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//src/fonts/char_set",
+    "//src/fonts/manifest",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/fuchsia-url",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:thiserror",
+  ]
+  visibility = [ ":*" ]
+
+  sources = [
+    "src/experimental_api/get_typeface_by_id.rs",
+    "src/experimental_api/get_typefaces_by_family.rs",
+    "src/experimental_api/list_typefaces.rs",
+    "src/experimental_api/mod.rs",
+    "src/experimental_api/util/mod.rs",
+    "src/lib.rs",
+    "src/old_api/mod.rs",
+    "src/reviewed_api/ephemeral.rs",
+    "src/reviewed_api/get_font_family_info.rs",
+    "src/reviewed_api/get_typeface.rs",
+    "src/reviewed_api/mod.rs",
+    "src/reviewed_api/util/mod.rs",
+    "src/util.rs",
+  ]
+}
+
+# Generate arg-specialized manifests for font_provider_integration_test
+
+cmc_merge("fonts_with_ephemeral_fonts_cml") {
+  sources = [
+    rebase_path("../../meta/fonts.cml"),
+    rebase_path("meta/ephemeral_fonts_shard.cml"),
+  ]
+  output_name = "fonts_with_ephemeral_fonts.cml"
+}
+
+cmc_merge("fonts_with_aliases_fonts_cml") {
+  sources = [
+    rebase_path("../../meta/fonts.cml"),
+    rebase_path("meta/aliases_fonts_shard.cml"),
+  ]
+  output_name = "fonts_with_aliases_fonts.cml"
+}
+
+cmc_merge("fonts_with_small_fonts_cml") {
+  sources = [
+    rebase_path("../../meta/fonts.cml"),
+    rebase_path("meta/small_fonts_shard.cml"),
+  ]
+  output_name = "fonts_with_small_fonts.cml"
+}
+
+cmc_merge("fonts_with_medium_fonts_cml") {
+  sources = [
+    rebase_path("../../meta/fonts.cml"),
+    rebase_path("meta/medium_fonts_shard.cml"),
+  ]
+  output_name = "fonts_with_medium_fonts.cml"
+}
+
+cmc_merge("fonts_with_large_fonts_cml") {
+  sources = [
+    rebase_path("../../meta/fonts.cml"),
+    rebase_path("meta/large_fonts_shard.cml"),
+  ]
+  output_name = "fonts_with_large_fonts.cml"
+}
+
+# Integration test font collections
+resource("testdata") {
+  sources = [
+    "aliases.font_manifest.json",
+    "ephemeral.font_manifest.json",
+  ]
+  outputs = [ "data/testdata/{{source_file_part}}" ]
+}
+
+fuchsia_component("fonts_with_aliases_fonts") {
+  testonly = true
+  manifest = "${target_out_dir}/fonts_with_aliases_fonts.cml"
+  deps = [
+    ":testdata",
+    "//src/fonts:font_provider",
+  ]
+  manifest_deps = [ ":fonts_with_aliases_fonts_cml" ]
+}
+
+fuchsia_component("fonts_with_ephemeral_fonts") {
+  testonly = true
+  manifest = "${target_out_dir}/fonts_with_ephemeral_fonts.cml"
+  deps = [
+    ":testdata",
+    "//src/fonts:font_provider",
+  ]
+  manifest_deps = [ ":fonts_with_ephemeral_fonts_cml" ]
+}
+
+fuchsia_component("fonts_with_large_fonts") {
+  testonly = true
+  manifest = "${target_out_dir}/fonts_with_large_fonts.cml"
+  deps = [
+    "//src/fonts:font_provider",
+    "//src/fonts/collections:test-fonts-large-collection",
+  ]
+  manifest_deps = [ ":fonts_with_large_fonts_cml" ]
+}
+
+fuchsia_component("fonts_with_medium_fonts") {
+  testonly = true
+  manifest = "${target_out_dir}/fonts_with_medium_fonts.cml"
+  deps = [
+    "//src/fonts:font_provider",
+    "//src/fonts/collections:test-fonts-medium-collection",
+  ]
+  manifest_deps = [ ":fonts_with_medium_fonts_cml" ]
+}
+
+fuchsia_component("fonts_with_small_fonts") {
+  testonly = true
+  manifest = "${target_out_dir}/fonts_with_small_fonts.cml"
+  deps = [
+    "//src/fonts:font_provider",
+    "//src/fonts/collections:test-fonts-small-collection",
+  ]
+  manifest_deps = [ ":fonts_with_small_fonts_cml" ]
+}
+
+# Main integration test driver and capability providers
+fuchsia_component("font_provider_integration_tests_driver") {
+  testonly = true
+  component_name = "test_driver"
+  manifest = "meta/font_provider_integration_tests_driver.cml"
+  deps = [ ":font_provider_integration_tests_bin" ]
+}
+
+fuchsia_component("mock_font_resolver_cm") {
+  testonly = true
+  component_name = "mock_font_resolver"
+  manifest =
+      "//src/fonts/testing/mock_font_resolver/meta/mock_font_resolver.cml"
+  deps = [ "//src/fonts/testing/mock_font_resolver:mock_font_resolver_bin" ]
+}
+
+fuchsia_component("font_provider_integration_tests_cmp") {
+  testonly = true
+  component_name = "font_provider_integration_tests"
+  manifest = "meta/font_provider_integration_tests.cml"
+}
+
+# Integration test package
+fuchsia_test_package("font_provider_integration_tests") {
+  test_components = [ ":font_provider_integration_tests_cmp" ]
+  deps = [
+    ":font_provider_integration_tests_driver",
+    ":fonts_with_aliases_fonts",
+    ":fonts_with_ephemeral_fonts",
+    ":fonts_with_large_fonts",
+    ":fonts_with_medium_fonts",
+    ":fonts_with_small_fonts",
+    ":mock_font_resolver_cm",
+  ]
+  test_specs = {
+    environments = basic_envs
+  }
+}

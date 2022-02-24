@@ -1,0 +1,26 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("netboot") {
+  sources = [
+    "common.go",
+    "common_test.go",
+    "loglistener.go",
+    "netboot.go",
+    "netboot_test.go",
+  ]
+  deps = [
+    "//third_party/golibs:golang.org/x/net",
+    "//third_party/golibs:golang.org/x/sys",
+    "//tools/lib/logger",
+  ]
+}
+
+go_test("netboot_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/net/netboot" ]
+  deps = [ ":netboot" ]
+}

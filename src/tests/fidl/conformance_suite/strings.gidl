@@ -1,0 +1,151 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+success("Length2String") {
+    value = Length2StringWrapper{
+        length_2_string: "ab",
+    },
+    bytes = {
+        v1, v2 = [
+            num(2):8, // count
+            repeat(0xFF):8, // presence
+            0x61, 0x62, // length_2_string
+            padding:6,
+        ],
+    },
+}
+
+encode_failure("StringExceedsLimit") {
+    // TODO(fxbug.dev/37304) Enforce size bounds in rust
+    bindings_denylist = [rust],
+    value = Length2StringWrapper{
+        length_2_string: "abc", // exceeds the string length
+    },
+    err = STRING_TOO_LONG,
+}
+
+decode_failure("EmptyStringWithNullPtrBody") {
+    // TODO(fxbug.dev/88792) Rust does not produce the correct error.
+    bindings_denylist = [rust],
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // invalid null pointer to content
+        ],
+    },
+    err = NON_NULLABLE_TYPE_WITH_NULL_VALUE,
+}
+
+success("EmptyOptionalStringWithNullPtrBody") {
+    value = OptionalStringWrapper{
+        str: null,
+    },
+    bytes = {
+        v1, v2 = [
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // invalid null pointer to content
+        ],
+    },
+}
+
+decode_failure("NonEmptyStringWithNullPtrBody") {
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // invalid null pointer to content
+        ],
+    },
+    err = NON_EMPTY_STRING_WITH_NULL_BODY,
+}
+
+decode_failure("NonEmptyOptionalStringWithNullPtrBody") {
+    type = OptionalStringWrapper,
+    bytes = {
+        v1, v2 = [
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // invalid null pointer to content
+        ],
+    },
+    err = NON_EMPTY_STRING_WITH_NULL_BODY,
+}
+
+decode_failure("StringWrongPointerValue") {
+    // TODO(fxbug.dev/88793) Fix this on dart.
+    bindings_denylist = [dart],
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // invalid pointer to content
+        ],
+    },
+    err = INVALID_PRESENCE_INDICATOR,
+}
+
+decode_failure("OptionalStringWrongPointerValue") {
+    // TODO(fxbug.dev/88793) Fix this on dart.
+    bindings_denylist = [dart],
+    type = OptionalStringWrapper,
+    bytes = {
+        v1, v2 = [
+            0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // length of string data
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // invalid pointer to content
+        ],
+    },
+    err = INVALID_PRESENCE_INDICATOR,
+}
+
+// Test string with a 2^64-1 count, exceeding the 32-bit limit from RFC-0059.
+decode_failure("StringCountExceedsLimitByALot") {
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(0xffffffffffffffff):8, // length of string data
+            repeat(0xff):8, // presence marker
+        ],
+    },
+    err = STRING_TOO_LONG,
+}
+
+// Test string with a 2^32 count, exceeding the 32-bit limit from RFC-0059.
+decode_failure("StringCountExceedsLimitByOne") {
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(0x100000000):8, // length of string data
+            repeat(0xff):8, // presence marker
+        ],
+    },
+    err = STRING_TOO_LONG,
+}
+
+// Test string with count that exceeds the total message size. Bindings should
+// explicitly check for this to avoid allocating huge strings before failing.
+decode_failure("StringCountExceedsTotalMessageSize") {
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(25):8, // length of string data (invalid, should be 8)
+            repeat(0xff):8, // presence marker
+            repeat(0xab):8, // string data
+        ],
+    },
+    err = TOO_FEW_BYTES,
+}
+
+// Test string with count that exceeds the remainder of the message size.
+// Bindings should not explicitly check for this, but it should still fail.
+decode_failure("StringCountExceedsRemainingMessageSize") {
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(9):8, // length of string data (invalid, should be 8)
+            repeat(0xff):8, // presence marker
+            repeat(0xab):8, // string data
+        ],
+    },
+    err = TOO_FEW_BYTES,
+}

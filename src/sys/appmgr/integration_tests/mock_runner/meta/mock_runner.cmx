@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/appmgr_mock_runner"
+    },
+    "sandbox": {
+        "services": [
+            "test.component.mockrunner.MockRunnerRegistry"
+        ]
+    }
+}

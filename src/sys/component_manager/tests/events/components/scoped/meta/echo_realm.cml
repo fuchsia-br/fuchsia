@@ -1,0 +1,35 @@
+{
+    // Two children: a server and client. "hub_client" has "eager" startup so it
+    // will be started along with the realm.
+    children: [
+        {
+            name: "echo_reporter",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/echo_reporter.cm",
+            startup: "eager",
+        },
+        {
+            name: "echo_client",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/echo_client.cm",
+            startup: "eager",
+        },
+    ],
+
+    // Route Echo service from server to client.
+    offer: [
+        {
+            protocol: "fuchsia.sys2.EventSource",
+            from: "parent",
+            to: "#echo_reporter",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#echo_client",
+        },
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "#echo_reporter",
+            to: "#echo_client",
+        },
+    ],
+}

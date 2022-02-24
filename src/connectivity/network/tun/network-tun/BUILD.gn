@@ -1,0 +1,98 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/test.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+source_set("src") {
+  sources = [
+    "buffer.cc",
+    "buffer.h",
+    "config.cc",
+    "config.h",
+    "device_adapter.cc",
+    "device_adapter.h",
+    "mac_adapter.cc",
+    "mac_adapter.h",
+    "port_adapter.cc",
+    "port_adapter.h",
+    "state.cc",
+    "state.h",
+    "tun_ctl.cc",
+    "tun_ctl.h",
+    "tun_device.cc",
+    "tun_device.h",
+    "tun_pair.cc",
+    "tun_pair.h",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.network.device:fuchsia.hardware.network.device_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.network:fuchsia.hardware.network_llcpp",
+    "//sdk/fidl/fuchsia.net.tun:fuchsia.net.tun_llcpp",
+    "//sdk/lib/fit",
+    "//src/connectivity/network/drivers/network-device/device",
+    "//src/connectivity/network/drivers/network-device/mac",
+    "//src/lib/vmo_store",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/svc",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/syslog",
+  ]
+}
+
+executable("bin") {
+  output_name = "network_tun"
+  sources = [ "main.cc" ]
+  deps = [ ":src" ]
+}
+
+fuchsia_component("component") {
+  component_name = "network-tun"
+  manifest = "meta/network-tun.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("component-v2") {
+  component_name = "network-tun"
+  manifest = "meta/network-tun.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("network-tun") {
+  deps = [ ":component-v2" ]
+}
+
+test("network_tun_unittest") {
+  sources = [
+    "buffer_unittest.cc",
+    "network_tun_unittest.cc",
+  ]
+
+  deps = [
+    ":src",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/lib/testing/predicates",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/fzl",
+  ]
+}
+
+fuchsia_unittest_package("network-tun-test") {
+  deps = [ ":network_tun_unittest" ]
+}
+
+core_shard("network-tun-core-shard") {
+  shard_file = "meta/network-tun.core_shard.cml"
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":network-tun-test" ]
+}

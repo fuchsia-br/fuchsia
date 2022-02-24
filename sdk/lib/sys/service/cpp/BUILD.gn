@@ -1,0 +1,64 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/cpp/sdk_source_set.gni")
+
+sdk_source_set("cpp") {
+  category = "partner"
+
+  sdk_name = "sys_service_cpp"
+
+  include_base = "//sdk"
+  sources = [
+    "service.cc",
+    "service.h",
+    "service_aggregate.cc",
+    "service_aggregate.h",
+    "service_handler.h",
+    "service_watcher.cc",
+    "service_watcher.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/vfs/cpp",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  public_configs = [ "//sdk/config" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("sys_service_unittests") {
+  testonly = true
+
+  sources = [
+    "service_aggregate_test.cc",
+    "service_handler_test.cc",
+    "service_test.cc",
+    "service_watcher_test.cc",
+    "test_base.h",
+  ]
+
+  deps = [
+    ":cpp",
+    "//examples/fidl/fuchsia.examples",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/async-testing",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_unittest_package("sys_service_tests") {
+  deps = [ ":sys_service_unittests" ]
+  manifest = "../meta/sys_service_unittests.cmx"
+}

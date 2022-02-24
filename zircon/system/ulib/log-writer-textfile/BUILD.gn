@@ -1,0 +1,18 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+zx_library("log-writer-textfile") {
+  sdk = "shared"
+  sdk_headers = [ "lib/log-writer-textfile/log-writer-textfile.h" ]
+
+  sources = [ "log-writer-textfile.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/log",
+  ]
+  configs += [ "//build/config/fuchsia:static_cpp_standard_library" ]
+}

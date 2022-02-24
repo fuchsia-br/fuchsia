@@ -1,0 +1,206 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//build/testing/test_spec.gni")
+import("fuchsia_package.gni")
+import("fuchsia_test_component.gni")
+import("fuchsia_test_component_manifest.gni")
+
+# Defines a Fuchsia package that contains one or more components, some of which
+# implement one or more tests, and specifies how to run tests.
+# See: https://fuchsia.dev/fuchsia-src/development/components/build
+#
+# Example:
+# ```
+# fuchsia_component("fonts-service") { ... }
+# fuchsia_component("fonts-service-test") {
+#   testonly = true
+#   ...
+# }
+#
+# fuchsia_test_package("fonts-service-test-package") {
+#   test_components = [ ":fonts-service-test" ]
+#   deps = [ ":fonts-service" ],
+# }
+#
+# fuchsia_component("fonts-ui") { ... }
+# fuchsia_component("fonts-ui-test") {
+#   testonly = true
+#   ...
+# }
+#
+# fuchsia_test_package("fonts-ui-test-package") {
+#   test_components = [ ":fonts-ui-test" ]
+#   deps = [ ":fonts-ui" ],
+#   test_specs = {
+#     environments = [
+#       astro_env,
+#       sherlock_env,
+#     ]
+#   }
+# }
+# ```
+#
+# Parameters
+#
+#   test_components (required)
+#     `fuchsia_component()` targets to include in the package and also register
+#     as entry points for tests.
+#     Additional non-test components can be included via `deps`.
+#     Type: list(labels)
+#
+#   test_specs (optional)
+#     Additional test specifications to apply to tests defined above.
+#     See `test_spec.gni`.
+#     Type: scope
+#
+#   package_name (optional)
+#     The name of the package.
+#     Type: string
+#     Default: target_name
+#
+#   package_deps_for_infra_only (optional)
+#     Additional package targets this test package relies on.
+#     Test packages that depend on the contents of other packages are not
+#     hermetic, so populating this parameter is discouraged. Additionally,
+#     this parameter is only used in infrastructure, and therefore will not
+#     affect fx test invocations.
+#     Type: list(labels)
+#
+#   wrap_cmx_test_with_cml_test (optional)
+#     If enabled, test_components that are legacy (v1) tests with cmx manifests
+#     will be wrapped with a modern (v2) test with a cml manifest. The launch
+#     URL of the wrapper will be derived from the wrapped test's launch URL.
+#     For instance:
+#       fuchsia-pkg://fuchsia.com/package#meta/test_component.cmx
+#     will become:
+#       fuchsia-pkg://fuchsia.com/package#meta/test_component.cm
+#     Type: bool
+#     Default: true
+#
+#   deps
+#   visibility
+template("fuchsia_test_package") {
+  if (current_toolchain == default_toolchain) {
+    assert(
+        defined(invoker.test_components) && invoker.test_components != [],
+        "`test_components` must be specified when calling fuchsia_test_package($target_name)")
+
+    package_name = target_name
+    package_label = get_label_info(":$target_name", "label_with_toolchain")
+    package_manifest =
+        rebase_path("$target_out_dir/$target_name/package_manifest.json",
+                    root_build_dir)
+    if (defined(invoker.package_name)) {
+      package_name = invoker.package_name
+    }
+    test_specs = {
+    }
+    if (defined(invoker.test_specs)) {
+      test_specs = invoker.test_specs
+    }
+
+    wrap_cmx_test_with_cml_test = true
+    if (defined(invoker.wrap_cmx_test_with_cml_test)) {
+      wrap_cmx_test_with_cml_test = invoker.wrap_cmx_test_with_cml_test
+    }
+
+    test_deps = []
+    foreach(test, invoker.test_components) {
+      test_target_name = get_label_info(test, "name")
+      test_target = "${target_name}_test_" + test_target_name
+      manifest_name = get_target_outputs(test)
+      manifest_name = get_path_info(manifest_name[0], "file")
+
+      if (wrap_cmx_test_with_cml_test &&
+          get_path_info(manifest_name, "extension") == "cmx") {
+        modern_generated_name =
+            "${target_name}_${test_target_name}_modern_generated"
+        generated_manifest_target = "${modern_generated_name}_manifest"
+        fuchsia_test_component_manifest(generated_manifest_target) {
+          metadata = {
+            test_component_manifest_program = [
+              {
+                program = {
+                  legacy_manifest = "meta/$manifest_name"
+                }
+              },
+            ]
+            test_component_manifest_cml = [
+              {
+                include =
+                    [ "//src/sys/test_runners/legacy_test/default.shard.cml" ]
+              },
+            ]
+          }
+          visibility = [ ":*" ]
+        }
+
+        manifest = get_target_outputs(":$generated_manifest_target")
+        manifest = manifest[0]
+
+        name = get_path_info(manifest_name, "name")
+
+        fuchsia_test_component("$modern_generated_name") {
+          component_name = name
+          manifest = manifest
+          visibility = [ ":*" ]
+          manifest_deps = [ ":$generated_manifest_target" ]
+        }
+
+        manifest_name = get_target_outputs(":$modern_generated_name")
+        manifest_name = get_path_info(manifest_name[0], "file")
+
+        test_deps += [ ":$modern_generated_name" ]
+      }
+
+      test_spec(test_target) {
+        forward_variables_from(test_specs, "*")
+        target = get_label_info(":$target_name", "label_with_toolchain")
+        package_label = package_label
+        package_manifests = [ package_manifest ]
+
+        # Add the package manifest of any package that this test depends on to
+        # run.
+        if (defined(invoker.package_deps_for_infra_only)) {
+          foreach(dep, invoker.package_deps_for_infra_only) {
+            dep_out_dir = get_label_info(dep, "target_out_dir")
+            dep_name = get_label_info(dep, "name")
+            package_manifests += [ rebase_path(
+                    "${dep_out_dir}/${dep_name}/package_manifest.json",
+                    root_build_dir) ]
+          }
+        }
+        package_url =
+            "fuchsia-pkg://fuchsia.com/$package_name#meta/$manifest_name"
+      }
+      test_deps += [ ":$test_target" ]
+    }
+
+    fuchsia_package(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "disable_elf_binaries_checks",
+                               "metadata",
+                               "visibility",
+                             ])
+      package_name = package_name
+      if (!defined(deps)) {
+        deps = []
+      }
+      deps += invoker.test_components
+      deps += test_deps
+      if (defined(invoker.package_deps_for_infra_only)) {
+        deps += invoker.package_deps_for_infra_only
+      }
+      testonly = true
+    }
+  } else {
+    group(target_name) {
+      testonly = true
+      deps = [ "$target_name($default_toolchain)" ]
+    }
+    not_needed(invoker, "*")
+  }
+}

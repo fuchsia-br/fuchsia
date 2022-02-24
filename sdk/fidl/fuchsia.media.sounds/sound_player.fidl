@@ -1,0 +1,83 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.media.sounds;
+
+using fuchsia.io;
+using fuchsia.media;
+using fuchsia.mem;
+using zx;
+
+/// Allows clients to play fire-and-forget sounds.
+@discoverable
+protocol Player {
+    /// Adds a sound to the collection maintained for the client, reading the sound from a file.
+    /// If `id` identifies an existing sound in the collection, the service will close the
+    /// connection. Returns the duration of the sound or an error status returned from an I/O
+    /// operation.
+    ///
+    /// Currently, only PCM WAV files and Ogg/Opus files are supported.
+    AddSoundFromFile(resource struct {
+        id uint32;
+        file client_end:fuchsia.io.File;
+    }) -> (struct {
+        duration zx.duration;
+    }) error zx.status;
+
+    /// Adds a sound, in the form of a buffer containing raw PCM samples, to the collection
+    /// maintained for the client. The service will retain a handle to the buffer's VMO until the
+    /// sound is removed and is no longer playing or until the connection is closed.
+    ///
+    /// If `id` identifies an existing sound in the collection, the service will close the
+    /// connection.
+    AddSoundBuffer(resource struct {
+        id uint32;
+        buffer fuchsia.mem.Buffer;
+        stream_type fuchsia.media.AudioStreamType;
+    });
+
+    /// Removes a sound from the collection maintained for the client. A sound can be removed even
+    /// if a `PlaySound` method is pending for that sound.
+    ///
+    /// If `id` doesn't identify an existing sound in the collection, the service will do nothing.
+    /// This is tolerated so that clients don't have to wait for the response from
+    /// `AddSoundFromFile` before playing and removing the sound.
+    ///
+    /// Removing an unneeded sound frees the resources associated with that sound, principally
+    /// the VMO required to store the uncompressed sound.
+    RemoveSound(struct {
+        id uint32;
+    });
+
+    /// Plays the existing sound identified by `id` using a renderer with usage `usage`. The
+    /// sound is played as soon as possible. The reply is sent when the sound is finished playing.
+    /// If `id` doesn't identify an existing sound in the collection, the method returns
+    /// `PlaySoundError.NO_SUCH_SOUND`. The most recent `PlaySound` call for a given valid id can
+    /// be stopped using `StopPlayingSound`, in which case, this method returns
+    /// `PlaySoundError.STOPPED`.
+    PlaySound(struct {
+        id uint32;
+        usage fuchsia.media.AudioRenderUsage;
+    }) -> (struct {}) error PlaySoundError;
+
+    /// Stops playback of the sound identified by `id` invoked by the the most recent call to
+    /// `PlaySound` for that sound. If `id` doesn't identify an existing sound in the collection
+    /// or if the sound is not currently playing, this method does nothing. If more than one
+    /// `PlaySound` method is currently pending for that sound, only the most recent is stopped.
+    @transitional
+    StopPlayingSound(struct {
+        id uint32;
+    });
+};
+
+/// Error type for `Player.PlaySound`.
+type PlaySoundError = strict enum {
+    /// The `id` passed to `PlaySound` is not recognized.
+    NO_SUCH_SOUND = 1;
+
+    /// Underlying audio renderer failed.
+    RENDERER_FAILED = 2;
+
+    /// Playback of the sound was interrupted by a |StopPlayingSound| method call.
+    STOPPED = 3;
+};

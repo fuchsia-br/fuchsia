@@ -1,0 +1,31 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("test") {
+  testonly = true
+  deps = [ ":minfs-allocator-unit" ]
+}
+
+test("minfs-allocator-unit") {
+  sources = [ "allocator_test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.minfs:fuchsia.minfs_c",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/block_client/cpp",
+    "//src/storage/minfs",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/bitmap",
+  ]
+}
+
+fuchsia_unittest_component("minfs-allocator-test") {
+  deps = [ ":minfs-allocator-unit" ]
+}
+
+fuchsia_test_package("minfs-allocator-tests") {
+  test_components = [ ":minfs-allocator-test" ]
+}

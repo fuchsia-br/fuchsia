@@ -1,0 +1,73 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.D
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":unittests" ]
+  deps = [ "fuzzers" ]
+}
+
+executable("unittests") {
+  testonly = true
+  output_name = "input_unittests"
+  sources = [
+    "a11y_legacy_contender_test.cc",
+    "accessibility_pointer_events_test.cc",
+    "delivery_interruption_test.cc",
+    "dispatch_policy_test.cc",
+    "focus_avoidance_test.cc",
+    "focus_transfer_test.cc",
+    "gesture_arena_test.cc",
+    "gesture_contender_inspector_unittest.cc",
+    "gesture_disambiguation_test.cc",
+    "gfx_legacy_contender_test.cc",
+    "injector_unittest.cc",
+    "mouse_delivery_test.cc",
+    "mouse_source_test.cc",
+    "mouse_test.cc",
+    "pointer_capture_test.cc",
+    "pointerinjector_registry_unittest.cc",
+    "touch_source_test.cc",
+    "view_tree_input_integration_test.cc",
+  ]
+  deps = [
+    ":util",
+    "//sdk/fidl/fuchsia.ui.input.accessibility",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/ui/scenic/lib/input",
+    "//src/ui/scenic/lib/utils",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("util") {
+  testonly = true
+  sources = [
+    "util.cc",
+    "util.h",
+  ]
+  deps = [
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/ui/scenic/lib/focus",
+    "//src/ui/scenic/lib/gfx",
+    "//src/ui/scenic/lib/view_tree:view_tree_snapshot",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/hid",
+  ]
+  public_deps = [
+    "//src/ui/scenic/lib/gfx/tests:testing_deps",
+    "//src/ui/scenic/lib/input",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

@@ -1,0 +1,19 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/pkgctl"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.http.Loader",
+            "fuchsia.pkg.PackageCache",
+            "fuchsia.pkg.PackageResolver",
+            "fuchsia.pkg.PackageResolverAdmin",
+            "fuchsia.pkg.RepositoryManager",
+            "fuchsia.pkg.rewrite.Engine",
+            "fuchsia.space.Manager"
+        ]
+    }
+}

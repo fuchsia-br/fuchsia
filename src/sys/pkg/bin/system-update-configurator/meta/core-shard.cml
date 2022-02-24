@@ -1,0 +1,35 @@
+{
+    children: [
+        {
+            name: "system-update-configurator",
+            url: "fuchsia-pkg://fuchsia.com/system-update-configurator#meta/system-update-configurator.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.update.config.OptOut",
+                "fuchsia.update.config.OptOutAdmin",
+            ],
+            from: "#system-update-configurator",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [ "#system-update-configurator" ],
+        },
+        {
+            protocol: [
+                "fuchsia.tee.Application.99dc95b2-938e-47eb-80e8-9404ae8a1385",
+                "fuchsia.tee.DeviceInfo",
+            ],
+
+            // TODO(fxbug.dev/93338): use #tee_manager instead of "self" when tee_manager migrated to CFv2
+            from: "self",
+            to: [ "#system-update-configurator" ],
+            dependency: "weak_for_migration",
+        },
+    ],
+}

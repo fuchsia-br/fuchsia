@@ -1,0 +1,501 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/environments.gni")
+
+group("test") {
+  testonly = true
+  deps = [
+    ":audio_decoder_test",
+    ":audio_decoder_test_v2",
+    ":audio_encoder_test",
+    ":audio_encoder_test_v2",
+    ":h264-stream-test",
+    ":h264_decoder_test",
+    ":h264_decoder_test_v2",
+    ":h264_encoder_test",
+    ":h264_encoder_test_v2",
+    ":stream_processor_lib_test",
+    ":video-frame-stream-test",
+    ":video_frame_hasher_test",
+  ]
+}
+
+rustc_library("stream_processor_test_lib") {
+  name = "stream_processor_test"
+  edition = "2018"
+  testonly = true
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fidl_table_validation",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/mundane",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/media/stream_processors/fuchsia-stream-processors",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/buffer_collection_constraints.rs",
+    "src/buffer_set.rs",
+    "src/elementary_stream.rs",
+    "src/input_packet_stream.rs",
+    "src/lib.rs",
+    "src/log_macros.rs",
+    "src/output_validator.rs",
+    "src/stream.rs",
+    "src/stream_runner.rs",
+    "src/test_spec.rs",
+  ]
+}
+
+fuchsia_unittest_package("stream_processor_lib_test") {
+  deps = [ ":stream_processor_test_lib_test" ]
+}
+
+rustc_library("stream_processor_decoder_factory_lib") {
+  name = "stream_processor_decoder_factory"
+  edition = "2018"
+  source_root = "stream_processor_factories/decoders.rs"
+  testonly = true
+
+  deps = [
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "stream_processor_factories/decoders.rs" ]
+}
+
+rustc_library("stream_processor_encoder_factory_lib") {
+  name = "stream_processor_encoder_factory"
+  edition = "2018"
+  source_root = "stream_processor_factories/encoders.rs"
+  testonly = true
+
+  deps = [
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "stream_processor_factories/encoders.rs" ]
+}
+
+rustc_test("audio_decoder_test_bin") {
+  name = "audio_decoder_test"
+  edition = "2018"
+  source_root = "audio_decoder_test/lib.rs"
+
+  deps = [
+    ":stream_processor_decoder_factory_lib",
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/mundane",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "audio_decoder_test/lib.rs",
+    "audio_decoder_test/sbc.rs",
+    "audio_decoder_test/test_suite.rs",
+  ]
+}
+
+resource("sbc_file") {
+  sources = [ "audio_decoder_test/test_data/s16le44100mono.sbc" ]
+  outputs = [ "data/s16le44100mono.sbc" ]
+}
+
+fuchsia_test_component("audio_decoder_test_v2_comp") {
+  component_name = "audio_decoder_test_v2"
+  manifest = "meta/audio_decoder_test_v2.cml"
+  deps = [
+    ":audio_decoder_test_bin",
+    ":sbc_file",
+  ]
+}
+
+fuchsia_test_package("audio_decoder_test_v2") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_sbc",
+  ]
+  test_components = [ ":audio_decoder_test_v2_comp" ]
+  deps = [
+    ":sbc_file",
+    "//src/media/codec:codec_factory",
+  ]
+}
+
+fuchsia_unittest_package("audio_decoder_test") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_sbc",
+  ]
+  manifest = "meta/audio_decoder_test.cmx"
+  deps = [
+    ":audio_decoder_test_bin",
+    ":sbc_file",
+  ]
+}
+
+rustc_test("audio_encoder_test_bin") {
+  name = "audio_encoder_test"
+  edition = "2018"
+  source_root = "audio_encoder_test/lib.rs"
+
+  deps = [
+    ":stream_processor_encoder_factory_lib",
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/mundane",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "audio_encoder_test/lib.rs",
+    "audio_encoder_test/pcm_audio.rs",
+    "audio_encoder_test/test_suite.rs",
+    "audio_encoder_test/timestamp_validator.rs",
+  ]
+}
+
+fuchsia_test_component("audio_encoder_test_v2_comp") {
+  component_name = "audio_encoder_test_v2"
+  manifest = "meta/audio_encoder_test_v2.cml"
+  deps = [
+    ":audio_encoder_test_bin",
+    ":sbc_file",
+  ]
+}
+
+fuchsia_test_package("audio_encoder_test_v2") {
+  test_components = [ ":audio_encoder_test_v2_comp" ]
+  deps = [ "//src/media/codec:codec_factory" ]
+  package_deps_for_infra_only = [ "//src/media/codec:codec_factory" ]
+}
+
+fuchsia_unittest_package("audio_encoder_test") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_aac",
+    "//src/media/codec:codec_runner_sw_sbc",
+  ]
+  manifest = "meta/audio_encoder_test.cmx"
+  deps = [ ":audio_encoder_test_bin" ]
+}
+
+rustc_library("video_frame_hasher_lib") {
+  name = "video_frame_hasher"
+  edition = "2018"
+  with_unit_tests = true
+  testonly = true
+  source_root = "video_frame_hasher/lib.rs"
+
+  deps = [
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/mundane",
+    "//src/media/stream_processors/fuchsia-stream-processors",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "video_frame_hasher/lib.rs" ]
+}
+
+fuchsia_unittest_package("video_frame_hasher_test") {
+  deps = [ ":video_frame_hasher_lib_test" ]
+}
+
+rustc_library("video_frame_stream_lib") {
+  name = "video_frame_stream"
+  edition = "2018"
+  with_unit_tests = true
+  testonly = true
+  source_root = "video_frame_stream/lib.rs"
+
+  deps = [
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "video_frame_stream/lib.rs" ]
+}
+
+fuchsia_unittest_package("video-frame-stream-test") {
+  deps = [ ":video_frame_stream_lib_test" ]
+}
+
+rustc_library("h264_stream_lib") {
+  name = "h264_stream"
+  edition = "2018"
+  with_unit_tests = true
+  testonly = true
+  source_root = "h264_stream/lib.rs"
+
+  deps = [
+    ":stream_processor_test_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:byteorder",
+  ]
+
+  sources = [ "h264_stream/lib.rs" ]
+}
+
+fuchsia_unittest_package("h264-stream-test") {
+  deps = [ ":h264_stream_lib_test" ]
+}
+
+rustc_test("h264_decoder_test_bin") {
+  name = "h264_decoder_test"
+  edition = "2018"
+  source_root = "h264_decoder_test/lib.rs"
+
+  deps = [
+    ":h264_stream_lib",
+    ":stream_processor_decoder_factory_lib",
+    ":stream_processor_test_lib",
+    ":video_frame_hasher_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/syslog/rust:syslog",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "h264_decoder_test/lib.rs" ]
+}
+
+resource("bear_video") {
+  sources = [
+    "//garnet/test_data/media/third_party/chromium_media_test_data/bear.h264",
+  ]
+  outputs = [ "data/bear.h264" ]
+}
+
+fuchsia_test_component("h264_decoder_test_v2_comp") {
+  component_name = "h264_decoder_test_v2"
+  manifest = "meta/h264_decoder_test_v2.cml"
+  deps = [ ":h264_decoder_test_bin" ]
+}
+
+fuchsia_test_package("h264_decoder_test_v2") {
+  package_deps_for_infra_only = [ "//src/media/codec:codec_factory" ]
+  test_components = [ ":h264_decoder_test_v2_comp" ]
+  deps = [
+    ":bear_video",
+    "//src/media/codec:codec_factory",
+  ]
+  test_specs = {
+    environments = basic_envs + [
+                     astro_env,
+                     sherlock_env,
+                     vim3_env,
+                   ]
+  }
+}
+
+fuchsia_unittest_package("h264_decoder_test") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_ffmpeg",
+  ]
+  manifest = "meta/h264_decoder_test.cmx"
+  deps = [
+    ":bear_video",
+    ":h264_decoder_test_bin",
+  ]
+
+  test_specs = {
+    environments = basic_envs + [
+                     astro_env,
+                     sherlock_env,
+                     vim3_env,
+                   ]
+  }
+}
+
+rustc_test("h264_encoder_test_bin") {
+  name = "h264_encoder_test"
+  edition = "2018"
+  source_root = "h264_encoder_test/lib.rs"
+
+  deps = [
+    ":h264_stream_lib",
+    ":stream_processor_decoder_factory_lib",
+    ":stream_processor_encoder_factory_lib",
+    ":stream_processor_test_lib",
+    ":video_frame_stream_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [
+    "h264_encoder_test/lib.rs",
+    "h264_encoder_test/test_suite.rs",
+  ]
+}
+
+fuchsia_test_component("h264_encoder_test_v2_comp") {
+  component_name = "h264_encoder_test_v2"
+  manifest = "meta/h264_encoder_test_v2.cml"
+  deps = [ ":h264_encoder_test_bin" ]
+}
+
+fuchsia_test_package("h264_encoder_test_v2") {
+  test_components = [ ":h264_encoder_test_v2_comp" ]
+  deps = [ "//src/media/codec:codec_factory" ]
+  test_specs = {
+    environments = [ sherlock_env ]
+  }
+}
+
+fuchsia_unittest_package("h264_encoder_test") {
+  manifest = "meta/h264_encoder_test.cmx"
+  deps = [ ":h264_encoder_test_bin" ]
+
+  test_specs = {
+    environments = [ sherlock_env ]
+  }
+}
+
+rustc_test("h265_encoder_test_bin") {
+  name = "h265_encoder_test"
+  edition = "2018"
+  source_root = "h265_encoder_test/lib.rs"
+
+  deps = [
+    ":stream_processor_decoder_factory_lib",
+    ":stream_processor_encoder_factory_lib",
+    ":stream_processor_test_lib",
+    ":video_frame_stream_lib",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:log",
+  ]
+
+  sources = [
+    "h265_encoder_test/h265.rs",
+    "h265_encoder_test/lib.rs",
+    "h265_encoder_test/test_suite.rs",
+  ]
+}
+
+fuchsia_unittest_package("h265-encoder-test") {
+  manifest = "meta/h265_encoder_test.cmx"
+  deps = [ ":h265_encoder_test_bin" ]
+
+  test_specs = {
+    environments = [ sherlock_env ]
+  }
+}
+
+fuchsia_unittest_component("h265-encoder-test-legacy") {
+  manifest = "meta/h265_encoder_test.cmx"
+  deps = [ ":h265_encoder_test_bin" ]
+}
+
+fuchsia_test_component("h265-encoder-test-v2") {
+  manifest = "meta/h265_encoder_test_v2.cml"
+  deps = [ ":h265_encoder_test_bin" ]
+}
+
+fuchsia_test_package("h265-encoder-tests") {
+  test_components = [
+    ":h265-encoder-test-legacy",
+    ":h265-encoder-test-v2",
+  ]
+  test_specs = {
+    environments = [ sherlock_env ]
+  }
+}

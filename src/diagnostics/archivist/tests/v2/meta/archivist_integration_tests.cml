@@ -1,0 +1,67 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "inspect/client.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/archivist_integration_tests",
+    },
+    use: [
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+        },
+        {
+            protocol: [
+                "fuchsia.logger.Log",
+                "fuchsia.sys2.EventSource",
+            ],
+        },
+        {
+            event: [
+                "started",
+                "stopped",
+            ],
+            from: "framework",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.boot.ReadOnlyLog" ],
+            from: "parent",
+            to: "#realm_builder",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: [ "#realm_builder" ],
+            rights: [ "r*" ],
+            subdir: "archivist",
+        },
+        {
+            event: "capability_requested",
+            from: "framework",
+            to: "#realm_builder",
+            filter: { name: "fuchsia.logger.LogSink" },
+        },
+        {
+            event: "stopped",
+            from: "framework",
+            to: "#realm_builder",
+        },
+        {
+            event: "started",
+            from: "framework",
+            to: "#realm_builder",
+        },
+        {
+            event: "running",
+            from: "framework",
+            to: "#realm_builder",
+        },
+    ],
+}

@@ -1,0 +1,465 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+source_set("buffer") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_buffer.cc",
+    "zircon_platform_buffer.h",
+  ]
+
+  public_deps = [
+    "..:buffer_header",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "$magma_build_root/src/magma_util/platform:trace",
+    "..:object",
+  ]
+}
+
+source_set("bus_mapper") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_bus_mapper.cc",
+    "zircon_platform_bus_mapper.h",
+  ]
+
+  public_deps = [
+    ":buffer",
+    ":handle",
+    "//src/graphics/lib/magma/src/magma_util/platform:bus_mapper_header",
+  ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "$magma_build_root/src/magma_util/platform:trace",
+    "..:logger",
+    "..:object",
+    "//src/lib/ddk",
+  ]
+}
+
+source_set("performance_counter_device") {
+  sources = [
+    "magma_performance_counter_device.cc",
+    "magma_performance_counter_device.h",
+  ]
+  deps = [ "//src/graphics/lib/magma/src/magma_util:macros" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("dependency_injection_device") {
+  sources = [
+    "magma_dependency_injection_device.cc",
+    "magma_dependency_injection_device.h",
+  ]
+  public_deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//src/devices/lib/driver",
+    "//src/graphics/lib/magma/include:msd",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+entry_deps = [
+  ":dependency_injection_device",
+  ":performance_counter_device",
+  ":status",
+  "..:logger",
+  "..:trace",
+  "..:trace_provider",
+  "..:trace_provider_with_fdio",
+  "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+  "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+  "//src/devices/lib/driver",
+  "//src/graphics/lib/magma/src/magma_util:macros",
+  "//src/graphics/lib/magma/src/sys_driver",
+  "//src/lib/ddk",
+  "//src/lib/ddktl",
+  "//zircon/system/ulib/zx",
+]
+
+source_set("entry") {
+  sources = [ "zircon_entry.cc" ]
+  deps = entry_deps
+}
+
+source_set("entry_test") {
+  sources = [ "zircon_entry.cc" ]
+  defines = [ "MAGMA_TEST_DRIVER=1" ]
+  deps = entry_deps
+}
+
+source_set("interrupt") {
+  sources = [ "zircon_platform_interrupt.h" ]
+
+  public_deps = [ "//zircon/system/ulib/zx" ]
+}
+
+source_set("device") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_device.cc",
+    "zircon_platform_device.h",
+    "zircon_platform_interrupt.h",
+    "zircon_platform_mmio.cc",
+    "zircon_platform_mmio.h",
+    "zircon_platform_pci_device.cc",
+    "zircon_platform_pci_device.h",
+  ]
+
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/lib/ddk",
+  ]
+
+  deps = [
+    ":bus_mapper",
+    ":handle",
+    ":interrupt",
+    "$magma_build_root/src/magma_util:macros",
+    "..:device_header",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/driver",
+    "//src/devices/pci/lib/device-protocol-pci",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("connection_client") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_connection_client.cc",
+    "zircon_platform_connection_client.h",
+  ]
+
+  public_deps = [
+    ":handle",
+    ":status",
+    "$magma_build_root/include:msd",
+    "$magma_build_root/src/magma_util:macros",
+    "..:connection_client_header",
+    "..:trace",
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # Fidl bindings should not introduce a dep on libasync-default.so
+  assert_no_deps = [ "//zircon/system/ulib/async-default" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("connection") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_connection.cc",
+    "zircon_platform_connection.h",
+  ]
+
+  public_deps = [
+    ":status",
+    "$magma_build_root/include:msd",
+    "$magma_build_root/src/magma_util:macros",
+    "..:connection_header",
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//sdk/lib/stdcompat",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # Fidl bindings should not introduce a dep on libasync-default.so
+  assert_no_deps = [ "//zircon/system/ulib/async-default" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("device_client") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_device_client.cc" ]
+
+  deps = [
+    "..:device_client_header",
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//src/graphics/lib/magma/include:msd",
+    "//src/graphics/lib/magma/src/magma_util:macros",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("sysmem_connection") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_sysmem_connection.cc" ]
+
+  deps = [
+    ":buffer",
+    "..:sysmem_connection_header",
+    "..:thread",
+    "..:trace",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/image-format:image-format-llcpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # Fidl bindings should not introduce a dep on libasync-default.so
+  assert_no_deps = [ "//zircon/system/ulib/async-default" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("thread") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_thread.cc" ]
+
+  deps = [
+    ":handle",
+    "..:object",
+    "..:thread_header",
+  ]
+}
+
+source_set("event") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_event.cc" ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:event_header",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("handle") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_handle.cc",
+    "zircon_platform_handle.h",
+  ]
+
+  public_deps = [
+    ":port",
+    "$magma_build_root/src/magma_util:macros",
+    "..:handle_header",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:object",
+  ]
+}
+
+source_set("iommu") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_iommu.cc" ]
+
+  deps = [ "..:iommu_header" ]
+}
+
+source_set("logger") {
+  public_deps = [ "..:logger_header" ]
+
+  sources = [ "zircon_platform_logger_syslog.cc" ]
+
+  deps = [
+    ":handle",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_llcpp",
+    "//zircon/system/ulib/syslog:syslog-static",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("logger_for_system_drivers") {
+  public_deps = [ "..:logger_header" ]
+
+  sources = [ "zircon_platform_logger_ddk.cc" ]
+
+  deps = [ "//src/lib/ddk" ]
+}
+
+source_set("object") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [ "zircon_platform_object.cc" ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:object_header",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("semaphore") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_semaphore.cc",
+    "zircon_platform_semaphore.h",
+  ]
+
+  public_deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:semaphore_header",
+    "..:trace",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":port",
+    "..:object",
+  ]
+}
+
+source_set("port") {
+  configs += [ "..:platform_include_config" ]
+
+  sources = [
+    "zircon_platform_port.cc",
+    "zircon_platform_port.h",
+  ]
+
+  public_deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:port_header",
+  ]
+
+  deps = [ "//zircon/system/ulib/zx" ]
+}
+
+source_set("trace") {
+  configs += [
+    "..:platform_include_config",
+    "..:tracing",
+  ]
+
+  sources = [ "zircon_platform_trace.cc" ]
+
+  deps = [ "..:trace_header" ]
+}
+
+source_set("trace_provider") {
+  configs += [
+    "..:platform_include_config",
+    "..:tracing",
+  ]
+
+  sources = [
+    "zircon_platform_trace_provider.cc",
+    "zircon_platform_trace_provider.h",
+  ]
+
+  deps = [
+    "$magma_build_root/src/magma_util:macros",
+    "..:trace_provider_header",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-static-engine",
+  ]
+
+  assert_no_deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/async-default",
+  ]
+}
+
+source_set("trace_provider_with_fdio") {
+  configs += [
+    "..:platform_include_config",
+    "..:tracing",
+  ]
+
+  sources = [ "zircon_platform_trace_provider_with_fdio.cc" ]
+
+  deps = [
+    ":trace_provider",
+    "$magma_build_root/src/magma_util:macros",
+    "..:trace_provider_with_fdio_header",
+    "//sdk/lib/fdio",
+  ]
+
+  public_deps = [ "//sdk/lib/fit" ]
+}
+
+source_set("pci_driver_gtest") {
+  testonly = true
+
+  sources = [ "pci_driver_test_gtest.cc" ]
+
+  deps = [
+    "$magma_build_root/src/magma_util/platform:device",
+    "$magma_build_root/tests/helper:platform_device_helper",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("pdev_driver_gtest") {
+  testonly = true
+
+  sources = [ "pdev_driver_test_gtest.cc" ]
+
+  deps = [
+    "$magma_build_root/tests/helper:platform_device_helper",
+    "//src/lib/ddk",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("status") {
+  sources = [ "zircon_platform_status.h" ]
+
+  public_deps = [ "$magma_build_root/src/magma_util:macros" ]
+}

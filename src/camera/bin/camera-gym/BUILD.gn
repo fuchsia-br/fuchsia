@@ -1,0 +1,204 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cipd.gni")
+import("//build/components.gni")
+import("//src/camera/bin/camera-gym/assets/convert_image.gni")
+import("//src/camera/debug.gni")
+
+declare_args() {
+  camera_gym_configuration_cycle_time_ms = 10000
+  camera_gym_enable_root_presenter = false
+}
+
+group("camera-gym") {
+  public_deps = [
+    ":camera_gym_pkg",
+    "controller_client:camera-gym-ctl",
+    "fidl:controller",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":camera_gym_test",
+    ":stream_cycler_test",
+    "controller_error:tests",
+    "controller_parser:tests",
+  ]
+}
+
+source_set("lib") {
+  sources = [
+    "buffer_collage.cc",
+    "buffer_collage.h",
+    "controller_receiver.cc",
+    "controller_receiver.h",
+    "frame_capture.cc",
+    "frame_capture.h",
+    "lifecycle_impl.cc",
+    "lifecycle_impl.h",
+    "moving_window.cc",
+    "moving_window.h",
+    "stream_cycler.cc",
+    "stream_cycler.h",
+  ]
+
+  public_deps = [
+    "fidl:controller",
+    "//sdk/fidl/fuchsia.camera3",
+    "//sdk/fidl/fuchsia.math",
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//third_party/googletest:gtest_prod",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace",
+  ]
+
+  defines = [
+    camera_debug_define,
+    "CONFIGURATION_CYCLE_TIME_MS=($camera_gym_configuration_cycle_time_ms)",
+  ]
+
+  if (camera_gym_enable_root_presenter) {
+    defines += [ "CAMERA_GYM_ENABLE_ROOT_PRESENTER=(true)" ]
+  } else {
+    defines += [ "CAMERA_GYM_ENABLE_ROOT_PRESENTER=(false)" ]
+  }
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("camera_gym_bin") {
+  sources = [ "main.cc" ]
+  deps = [
+    ":lib",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+  defines = [ camera_debug_define ]
+}
+
+convert_image("mute_icon") {
+  input = "assets/mute.bin"
+  output = "$target_out_dir/mute.bin"
+}
+
+resource("mute_resource") {
+  sources = get_target_outputs(":mute_icon")
+  outputs = [ "data/mute.bin" ]
+  deps = [ ":mute_icon" ]
+}
+
+converted_resources = []
+
+if (internal_access) {
+  stream_title_files = [
+    "c0s0.data",
+    "c0s1.data",
+    "c0s2.data",
+    "c1s0.data",
+    "c1s1.data",
+    "c2s0.data",
+    "c2s1.data",
+  ]
+  foreach(file, stream_title_files) {
+    convert_image(file) {
+      input = "//prebuilt/camera/camera_gym_assets/$file"
+      output = "$target_out_dir/${file}"
+    }
+    resource("${file}_resource") {
+      sources = get_target_outputs(":$file")
+      outputs = [ "data/$file" ]
+      deps = [ ":$file" ]
+    }
+    converted_resources += [ ":${file}_resource" ]
+  }
+}
+
+group("converted_stream_title_files") {
+  deps = converted_resources
+}
+
+template("camera_gym_component") {
+  fuchsia_component("camera_gym_$target_name") {
+    forward_variables_from(invoker,
+                           [
+                             "component_name",
+                             "manifest",
+                           ])
+    deps = [
+      ":camera_gym_bin",
+      ":converted_stream_title_files",
+      ":mute_resource",
+    ]
+  }
+}
+
+camera_gym_component("auto") {
+  component_name = "camera-gym"
+  manifest = "meta/camera-gym.cmx"
+}
+
+camera_gym_component("manual") {
+  component_name = "camera-gym-manual"
+  manifest = "meta/camera-gym-manual.cmx"
+}
+
+fuchsia_package("camera_gym_pkg") {
+  package_name = "camera-gym"
+  deps = [
+    ":camera_gym_auto",
+    ":camera_gym_manual",
+  ]
+}
+
+executable("camera_gym_test_bin") {
+  testonly = true
+  sources = [ "camera_gym_test.cc" ]
+  deps = [
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/camera/bin/camera-gym:lib",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture:gtest",
+  ]
+}
+
+fuchsia_unittest_package("camera_gym_test") {
+  manifest = "meta/camera_gym_test.cmx"
+  deps = [ ":camera_gym_test_bin" ]
+}
+
+executable("stream_cycler_test_bin") {
+  testonly = true
+  sources = [ "stream_cycler_test.cc" ]
+  deps = [
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/camera/bin/camera-gym:lib",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("stream_cycler_test") {
+  manifest = "meta/stream_cycler_test.cmx"
+  deps = [ ":stream_cycler_test_bin" ]
+}

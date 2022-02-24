@@ -1,0 +1,49 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    children: [
+        {
+            name: "bt-hfp-audio-gateway",
+            url: "fuchsia-pkg://fuchsia.com/bt-hfp-audio-gateway-default#meta/bt-hfp-audio-gateway.cm",
+            environment: "#full-resolver-env",
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.bluetooth.hfp.Hfp",
+
+                // TODO(fxbug.dev/86390): `HfpTest` is a testonly capability. It should not be
+                // exposed to the system. Remove this once it is only exposed in testing scenarios.
+                "fuchsia.bluetooth.hfp.test.HfpTest",
+            ],
+            from: "#bt-hfp-audio-gateway",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [ "#bt-hfp-audio-gateway" ],
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-dai",
+            to: [ "#bt-hfp-audio-gateway" ],
+            subdir: "class/dai",
+        },
+        {
+            protocol: [ "fuchsia.media.AudioDeviceEnumerator" ],
+            from: "self",
+            to: [ "#bt-hfp-audio-gateway" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.bluetooth.bredr.Profile" ],
+            from: "#bluetooth-core",
+            to: [ "#bt-hfp-audio-gateway" ],
+        },
+    ],
+}

@@ -1,0 +1,34 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/elf_runner_stdout",
+    },
+    collections: [
+        {
+            name: "puppets",
+            durability: "transient",
+        },
+    ],
+    use: [
+        { protocol: "fuchsia.diagnostics.ArchiveAccessor" },
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+        { protocol: "fuchsia.sys2.EventSource" },
+        {
+            event: "stopped",
+            from: "framework",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#puppets",
+        },
+    ],
+}

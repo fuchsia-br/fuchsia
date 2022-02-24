@@ -1,0 +1,1586 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// In this file "0xee" is a bad padding byte. The rest of the object is correct.
+
+success("CorrectPaddingBetweenFieldsInt8Int16") {
+    value = PaddingBetweenFieldsInt8Int16{
+        a: 0x01,
+        b: 0x0203,
+    },
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:1,
+            0x03, 0x02,
+            padding:4,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int16") {
+    type = PaddingBetweenFieldsInt8Int16,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            0xee, // should be padding:1
+            0x03, 0x02,
+            padding:4,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingBetweenFieldsInt8Int32") {
+    value = PaddingBetweenFieldsInt8Int32{
+        a: 0x01,
+        b: 0x02030405,
+    },
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:3,
+            0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int32LowerByte") {
+    type = PaddingBetweenFieldsInt8Int32,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            0xee, padding:2, // should be padding:3
+            0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int32MiddleByte") {
+    type = PaddingBetweenFieldsInt8Int32,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:1, 0xee, padding:1, // should be padding:3
+            0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int32UpperByte") {
+    type = PaddingBetweenFieldsInt8Int32,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:2, 0xee, // should be padding:3
+            0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingBetweenFieldsInt8Int64") {
+    value = PaddingBetweenFieldsInt8Int64{
+        a: 0x01,
+        b: 0x0203040506070809,
+    },
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:7,
+            0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int64LowerByte") {
+    type = PaddingBetweenFieldsInt8Int64,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            0xee, padding:6, // should be padding:7
+            0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int64MiddleByte") {
+    type = PaddingBetweenFieldsInt8Int64,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:3, 0xee, padding:3, // should be padding:7
+            0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt8Int64UpperByte") {
+    type = PaddingBetweenFieldsInt8Int64,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:6, 0xee, // should be padding:7
+            0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingBetweenFieldsInt16Int32") {
+    value = PaddingBetweenFieldsInt16Int32{
+        a: 0x0102,
+        b: 0x03040506,
+    },
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:2,
+            0x06, 0x05, 0x04, 0x03,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt16Int32LowerByte") {
+    type = PaddingBetweenFieldsInt16Int32,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0xee, padding:1, // should be padding:2
+            0x06, 0x05, 0x04, 0x04,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt16Int32UpperByte") {
+    type = PaddingBetweenFieldsInt16Int32,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:1, 0xee, // should be padding:2
+            0x06, 0x05, 0x04, 0x04,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingBetweenFieldsInt16Int64") {
+    value = PaddingBetweenFieldsInt16Int64{
+        a: 0x0102,
+        b: 0x030405060708090a,
+    },
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:6,
+            0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt16Int64LowerByte") {
+    type = PaddingBetweenFieldsInt16Int64,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0xee, padding:5, // should be padding:6
+            0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt16Int64MiddleByte") {
+    type = PaddingBetweenFieldsInt16Int64,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:2, 0xee, padding:3, // should be padding:6
+            0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt16Int64UpperByte") {
+    type = PaddingBetweenFieldsInt16Int64,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:5, 0xee, // should be padding:6
+            0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingBetweenFieldsInt32Int64") {
+    value = PaddingBetweenFieldsInt32Int64{
+        a: 0x01020304,
+        b: 0x05060708090a0b0c,
+    },
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            padding:4,
+            0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05,
+        ],
+    },
+}
+
+decode_failure("BadPaddingBetweenFieldsInt32Int64LowerByte") {
+    type = PaddingBetweenFieldsInt32Int64,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0xee, padding:3, // should be padding:4
+            0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt32Int64MiddleByte") {
+    type = PaddingBetweenFieldsInt32Int64,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            padding:1, 0xee, padding:2, // should be padding:4
+            0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingBetweenFieldsInt32Int64UpperByte") {
+    type = PaddingBetweenFieldsInt32Int64,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            padding:3, 0xee, // should be padding:4
+            0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObject1Byte") {
+    value = PaddingEndOfInlineObject1Byte{
+        a: Struct1Byte{
+            a: 0x01,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:7,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject1ByteLowerByte") {
+    type = PaddingEndOfInlineObject1Byte,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            0xee, padding:6, // should be padding:7
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject1ByteUpperByte") {
+    type = PaddingEndOfInlineObject1Byte,
+    bytes = {
+        v1, v2 = [
+            0x01,
+            padding:6, 0xee, // should be padding:7
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObject2Byte") {
+    value = PaddingEndOfInlineObject2Byte{
+        a: Struct2Byte{
+            a: 0x0102,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:6,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject2ByteLowerByte") {
+    type = PaddingEndOfInlineObject2Byte,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0xee, padding:5, // should be padding:6
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject2ByteUpperByte") {
+    type = PaddingEndOfInlineObject2Byte,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            padding:5, 0xee, // should be padding:6
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("Struct3Byte_randomly_generated") {
+    value = Struct3Byte{
+        a: 25110,
+        b: 93,
+    },
+    bytes = {
+        v1, v2 = [
+            num(25110):2, // a
+            93, // b
+            padding:5,
+        ],
+    },
+}
+
+success("CorrectPaddingEndOfInlineObject3Byte") {
+    bindings_denylist = [c, llcpp],
+    value = PaddingEndOfInlineObject3Byte{
+        a: Struct3Byte{
+            a: 0x0102,
+            b: 0x03,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0x03,
+            padding:5,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject3ByteLowerByte") {
+    type = PaddingEndOfInlineObject3Byte,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0x03,
+            0xee, padding:4, // should be padding:5
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject3ByteUpperByte") {
+    type = PaddingEndOfInlineObject3Byte,
+    bytes = {
+        v1, v2 = [
+            0x02, 0x01,
+            0x03,
+            padding:4, 0xee, // should be padding:5
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObject4Byte") {
+    value = PaddingEndOfInlineObject4Byte{
+        a: Struct4Byte{
+            a: 0x01020304,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            padding:4,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject4ByteLowerByte") {
+    type = PaddingEndOfInlineObject4Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0xee, padding:3, // should be padding:4
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject4ByteUpperByte") {
+    type = PaddingEndOfInlineObject4Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            padding:3, 0xee, // should be padding:4
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("Struct5Byte_randomly_generated") {
+    value = Struct5Byte{
+        a: -686561937,
+        b: -21,
+    },
+    bytes = {
+        v1, v2 = [
+            num(-686561937):4, // a
+            num(-21):1, // b
+            padding:3,
+        ],
+    },
+}
+
+success("CorrectPaddingEndOfInlineObject5Byte") {
+    value = PaddingEndOfInlineObject5Byte{
+        a: Struct5Byte{
+            a: 0x01020304,
+            b: 0x05,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            padding:3,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject5ByteLowerByte") {
+    type = PaddingEndOfInlineObject5Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            0xee, padding:2, // should be padding:3
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject5ByteUpperByte") {
+    type = PaddingEndOfInlineObject5Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            padding:2, 0xee, // should be padding:3
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("Struct6Byte_randomly_generated") {
+    value = Struct6Byte{
+        a: 990827621,
+        b: 977,
+    },
+    bytes = {
+        v1, v2 = [
+            num(990827621):4, // a
+            num(977):2, // b
+            padding:2,
+        ],
+    },
+}
+
+success("CorrectPaddingEndOfInlineObject6Byte") {
+    value = PaddingEndOfInlineObject6Byte{
+        a: Struct6Byte{
+            a: 0x01020304,
+            b: 0x0506,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            padding:2,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject6ByteLowerByte") {
+    type = PaddingEndOfInlineObject6Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0xee, padding:1, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObject6ByteUpperByte") {
+    type = PaddingEndOfInlineObject6Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            padding:1, 0xee, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObject7Byte") {
+    value = PaddingEndOfInlineObject7Byte{
+        a: Struct7Byte{
+            a: 0x01020304,
+            b: 0x0506,
+            c: 0x07,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0x07,
+            padding:1,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObject7Byte") {
+    type = PaddingEndOfInlineObject7Byte,
+    bytes = {
+        v1, v2 = [
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0x07,
+            0xee, // should be padding:1
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("Struct8Byte_randomly_generated") {
+    value = Struct8Byte{
+        a: 5134020299206246228,
+    },
+    bytes = {
+        v1, v2 = [num(5134020299206246228):8],
+    },
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject1Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject1Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct1Byte{
+            a: 0x09,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x09,
+            padding:7,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject1ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject1Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x09,
+            0xee, padding:6, // should be padding:7
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject1ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject1Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x09,
+            padding:6, 0xee, // should be padding:7
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject2Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject2Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct2Byte{
+            a: 0x090a,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            padding:6,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject2ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject2Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            0xee, padding:5, // should be padding:6
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject2ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject2Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            padding:5, 0xee, // should be padding:6
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject3Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject3Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct3Byte{
+            a: 0x090a,
+            b: 0x0b,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            0x0b,
+            padding:5,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject3ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject3Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            0x0b,
+            0xee, padding:4, // should be padding:5
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject3ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject3Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0a, 0x09,
+            0x0b,
+            padding:4, 0xee, // should be padding:5
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject4Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject4Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct4Byte{
+            a: 0x090a0b0c,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            padding:4,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject4ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject4Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0xee, padding:3, // should be padding:4
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject4ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject4Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            padding:3, 0xee, // should be padding:4
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject5Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject5Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct5Byte{
+            a: 0x090a0b0c,
+            b: 0x0d,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0d,
+            padding:3,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject5ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject5Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0d,
+            0xee, padding:2, // should be padding:3
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject5ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject5Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0d,
+            padding:2, 0xee, // should be padding:3
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject6Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject6Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct6Byte{
+            a: 0x090a0b0c,
+            b: 0x0d0e,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0e, 0x0d,
+            padding:2,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject6ByteLowerByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject6Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0e, 0x0d,
+            0xee, padding:1, // shoule be padding:2
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject6ByteUpperByte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject6Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0e, 0x0d,
+            padding:1, 0xee, // shoule be padding:2
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingEndOfInlineObjectBeforeNextObject7Byte") {
+    value = PaddingEndOfInlineObjectBeforeNextObject7Byte{
+        out_of_line: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+        in_line: Struct7Byte{
+            a: 0x090a0b0c,
+            b: 0x0d0e,
+            c: 0x0f,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0e, 0x0d,
+            0x0f,
+            padding:1,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingEndOfInlineObjectBeforeNextObject7Byte") {
+    type = PaddingEndOfInlineObjectBeforeNextObject7Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x0c, 0x0b, 0x0a, 0x09,
+            0x0e, 0x0d,
+            0x0f,
+            0xee, // should be padding:1
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects1Byte") {
+    value = PaddingInBetweenOutOfLineObjects1Byte{
+        first: Struct1Byte{
+            a: 0x01,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            padding:7,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects1ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects1Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            0xee, padding:6, // should be padding:7
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects1ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects1Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            padding:6, 0xee, // should be padding:7
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects2Byte") {
+    value = PaddingInBetweenOutOfLineObjects2Byte{
+        first: Struct2Byte{
+            a: 0x0102,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            padding:6,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects2ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects2Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            0xee, padding:5, // should be padding:6
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects2ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects2Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            padding:5, 0xee, // should be padding:6
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects3Byte") {
+    value = PaddingInBetweenOutOfLineObjects3Byte{
+        first: Struct3Byte{
+            a: 0x0102,
+            b: 0x03,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            0x03,
+            padding:5,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects3ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects3Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            0x03,
+            0xee, padding:4, // should be padding:5
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects3ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects3Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x02, 0x01,
+            0x03,
+            padding:4, 0xee, // should be padding:5
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects4Byte") {
+    value = PaddingInBetweenOutOfLineObjects4Byte{
+        first: Struct4Byte{
+            a: 0x01020304,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            padding:4,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects4ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects4Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0xee, padding:3, // should be padding:4
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects4ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects4Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            padding:3, 0xee, // should be padding:4
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects5Byte") {
+    value = PaddingInBetweenOutOfLineObjects5Byte{
+        first: Struct5Byte{
+            a: 0x01020304,
+            b: 0x05,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            padding:3,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects5ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects5Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            0xee, padding:2, // should be padding:3
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects5ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects5Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x05,
+            padding:2, 0xee, // should be padding:3
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects6Byte") {
+    value = PaddingInBetweenOutOfLineObjects6Byte{
+        first: Struct6Byte{
+            a: 0x01020304,
+            b: 0x0506,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            padding:2,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects6ByteLower") {
+    type = PaddingInBetweenOutOfLineObjects6Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0xee, padding:1, // should be padding:2
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects6ByteUpper") {
+    type = PaddingInBetweenOutOfLineObjects6Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            padding:1, 0xee, // should be padding:2
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddingInBetweenOutOfLineObjects7Byte") {
+    value = PaddingInBetweenOutOfLineObjects7Byte{
+        first: Struct7Byte{
+            a: 0x01020304,
+            b: 0x0506,
+            c: 0x07,
+        },
+        second: Struct8Byte{
+            a: 0x0102030405060708,
+        },
+    },
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0x07,
+            padding:1,
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+}
+
+decode_failure("BadPaddingInBetweenOutOfLineObjects7Byte") {
+    type = PaddingInBetweenOutOfLineObjects7Byte,
+    bytes = {
+        v1, v2 = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x04, 0x03, 0x02, 0x01,
+            0x06, 0x05,
+            0x07,
+            0xee, // should be padding:1
+
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddedUnionStruct") {
+    value = PaddedUnionStruct{
+        u: PaddedUnion{
+            field: 0x01,
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(8):4, num(0):4,
+            repeat(0xff):8,
+
+            0x01,
+            padding:7,
+        ],
+        v2 = [
+            num(1):8,
+            num(1):4, num(0):2, num(1):2,
+        ],
+    },
+}
+
+decode_failure("BadPaddedUnionStructLowerByte") {
+    type = PaddedUnionStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(8):4, num(0):4,
+            repeat(0xff):8,
+
+            0x01,
+            0xee, padding:6, // should be padding:7
+        ],
+        v2 = [
+            num(1):8,
+            // 0xee below should be 0x00.
+            0x01, 0xee, padding:2, num(0):2, num(1):2,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedUnionStructUpperByte") {
+    type = PaddedUnionStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(8):4, num(0):4,
+            repeat(0xff):8,
+
+            0x01,
+            padding:6, 0xee, // should be padding:7
+        ],
+        v2 = [
+            num(1):8,
+            // 0xee below should be 0x00.
+            0x01, padding:2, 0xee, num(0):2, num(1):2,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+success("CorrectPaddedTableStruct") {
+    value = PaddedTableStruct{
+        t: PaddedTable{
+            field: 0x01,
+        },
+    },
+    bytes = {
+        v1 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            padding:7,
+        ],
+        v2 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+        ],
+    },
+}
+
+decode_failure("BadPaddedTableStructLowerByte") {
+    type = PaddedTableStruct,
+    bytes = {
+        v1 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            0xee, padding:6, // should be padding:7
+        ],
+        v2 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            // 0xee below should be 0x00.
+            0x01, 0xee, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedTableStructUpperByte") {
+    type = PaddedTableStruct,
+    bytes = {
+        v1 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            0x01,
+            padding:6, 0xee, // should be padding:7
+        ],
+        v2 = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+
+            // 0xee below should be 0x00.
+            0x01, 0x00, 0x00, 0xee, 0x00, 0x00, 0x01, 0x00,
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_OnePaddingByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(3):8, // ordinal
+            0x01, 0x02, 0x03, 0xee, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_TwoPaddingByte_LowerByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(2):8, // ordinal
+            0x01, 0x02, 0xee, 0x00, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_TwoPaddingByte_UpperByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(2):8, // ordinal
+            0x01, 0x02, 0x00, 0xee, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_ThreePaddingByte_LowerByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(1):8, // ordinal
+            0x01, 0xee, 0x00, 0x00, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_ThreePaddingByte_MiddleByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(1):8, // ordinal
+            0x01, 0x00, 0xee, 0x00, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("UnionInlinePadding_ThreePaddingByte_UpperByte_InvalidPadding") {
+    type = UnionInlinePaddingStruct,
+    bytes = {
+        v2 = [
+            // primary object
+            num(1):8, // ordinal
+            0x01, 0x00, 0x00, 0xee, num(0):2, num(1):2, // inlined envelope
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedString_LowerByte") {
+    bindings_denylist = [dart],
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(6):8,
+            repeat(0xff):8,
+            0x41, 0x42, 0x43, 0x44, 0x45, 0x46,
+            0xee, padding:1, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedString_UpperByte") {
+    bindings_denylist = [dart],
+    type = StringWrapper,
+    bytes = {
+        v1, v2 = [
+            num(6):8,
+            repeat(0xff):8,
+            0x41, 0x42, 0x43, 0x44, 0x45, 0x46,
+            padding:1, 0xee, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedVector_LowerByte") {
+    bindings_denylist = [dart],
+    type = VectorWrapper,
+    bytes = {
+        v1, v2 = [
+            num(6):8,
+            repeat(0xff):8,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+            0xee, padding:1, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}
+
+decode_failure("BadPaddedVector_UpperByte") {
+    bindings_denylist = [dart],
+    type = VectorWrapper,
+    bytes = {
+        v1, v2 = [
+            num(6):8,
+            repeat(0xff):8,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+            padding:1, 0xee, // should be padding:2
+        ],
+    },
+    err = INVALID_PADDING_BYTE,
+}

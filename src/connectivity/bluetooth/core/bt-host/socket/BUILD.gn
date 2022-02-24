@@ -1,0 +1,47 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+source_set("socket") {
+  sources = [
+    "socket_channel_relay.h",
+    "socket_factory.h",
+  ]
+
+  deps = [
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//zircon/system/ulib/trace:trace-driver",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "socket_channel_relay_unittest.cc",
+    "socket_factory_unittest.cc",
+  ]
+
+  deps = [
+    ":socket",
+    "//src/connectivity/bluetooth/core/bt-host/gap",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap:testing",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+bt_gtest_package("bt-host-socket-tests") {
+  deps = [ ":tests" ]
+}

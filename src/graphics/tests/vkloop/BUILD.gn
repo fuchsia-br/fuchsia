@@ -1,0 +1,69 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+executable("vkloop_bin") {
+  testonly = true
+  output_name = "vkloop"
+
+  sources = [
+    "main.cc",
+    "vkloop.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+    "//sdk/lib/fdio",
+    "//src/graphics/lib/magma/include:magma",
+    "//src/graphics/lib/magma/src/libmagma",
+    "//src/graphics/lib/magma/tests/helper:test_device_helper",
+    "//src/graphics/tests/common",
+  ]
+  public_deps = [
+    "//src/lib/fxl/test:test_settings",
+    "//third_party/googletest:gtest",
+  ]
+
+  public_deps += [ "//src/lib/vulkan" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+resource("shaders") {
+  sources = [ "./vkloop.spv" ]
+  outputs = [ "data/{{source_file_part}}" ]
+}
+
+fuchsia_component("vkloop_cmp") {
+  testonly = true
+  component_name = "vkloop"
+  deps = [
+    ":shaders",
+    ":vkloop_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+
+  manifest = "meta/vkloop.cmx"
+}
+
+fuchsia_test_package("vkloop-pkg") {
+  package_name = "vkloop"
+  test_components = [ ":vkloop_cmp" ]
+  test_specs = {
+    environments = magma_libvulkan_hardware_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("vkloop") {
+  testonly = true
+  deps = [ ":vkloop-pkg" ]
+}

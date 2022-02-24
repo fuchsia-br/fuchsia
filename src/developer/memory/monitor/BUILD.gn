@@ -1,0 +1,109 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//src/sys/core/build/core_shard.gni")
+import("//third_party/cobalt/metrics_registry.gni")
+
+source_set("lib") {
+  sources = [
+    "debugger.cc",
+    "debugger.h",
+    "high_water.cc",
+    "high_water.h",
+    "logger.cc",
+    "logger.h",
+    "metrics.cc",
+    "metrics.h",
+    "monitor.cc",
+    "monitor.h",
+    "pressure_notifier.cc",
+    "pressure_notifier.h",
+    "pressure_observer.cc",
+    "pressure_observer.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.hardware.ram.metrics",
+    "//sdk/fidl/fuchsia.memory",
+    "//sdk/fidl/fuchsia.memorypressure",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/memory/metrics",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/trace",
+  ]
+  deps = [
+    ":memory_metrics_registry",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_c",
+    "//src/devices/lib/amlogic",
+    "//src/lib/cobalt/cpp:cobalt_event_builder",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+    "//zircon/system/ulib/trace-vthread",
+  ]
+}
+
+metrics_registry("memory_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 3509424520
+  namespace = "cobalt_registry"
+  generate_cc = true
+  generate_binarypb = false
+}
+
+executable("bin") {
+  output_name = "memory_monitor"
+  sources = [ "main.cc" ]
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+fuchsia_component("component") {
+  component_name = "memory_monitor"
+  manifest = "meta/memory_monitor.cml"
+  deps = [ ":bin" ]
+}
+
+# Allow launching legacy v1 component to support existing use cases in tests.
+# TODO(fxbug.dev/77702): delete this.
+fuchsia_component("legacy_component") {
+  component_name = "memory_monitor"
+  manifest = "meta/memory_monitor.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("monitor") {
+  package_name = "memory_monitor"
+  deps = [
+    ":component",
+    ":legacy_component",
+  ]
+}
+
+core_shard("memory_monitor_core_shard") {
+  shard_file = "meta/memory_monitor.core_shard.cml"
+}
+
+config_data("userdebug_config") {
+  for_pkg = "memory_monitor"
+  sources = [ "config/send_critical_pressure_crash_reports" ]
+  outputs = [ "send_critical_pressure_crash_reports" ]
+}

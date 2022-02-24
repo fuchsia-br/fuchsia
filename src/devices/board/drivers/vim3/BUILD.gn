@@ -1,0 +1,175 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("vim3-video-bind") {
+  rules = "vim3-video.bind"
+  header_output = "vim3-video-bind.h"
+  bind_output = "vim3-video-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.amlogic.platform.meson",
+    "//src/devices/bind/fuchsia.clock",
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.sysmem",
+  ]
+}
+
+driver_bind_rules("vim3-sdio-bind") {
+  rules = "vim3-sdio.bind"
+  header_output = "vim3-sdio-bind.h"
+  bind_output = "vim3-sdio-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.amlogic.platform.a311d",
+    "//src/devices/bind/fuchsia.gpio",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+driver_bind_rules("vim3-nna-bind") {
+  rules = "vim3-nna.bind"
+  header_output = "vim3-nna-bind.h"
+  bind_output = "vim3-nna-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.registers",
+  ]
+}
+
+driver_bind_rules("vim3-mali-bind") {
+  rules = "vim3-mali.bind"
+  header_output = "vim3-mali-bind.h"
+  bind_output = "vim3-mali-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.registers",
+  ]
+}
+
+driver_bind_rules("vim3-emmc-bind") {
+  rules = "vim3-emmc.bind"
+  header_output = "vim3-emmc-bind.h"
+  bind_output = "vim3-emmc-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.amlogic.platform.a311d",
+    "//src/devices/bind/fuchsia.gpio",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+driver_bind_rules("vim3-cpu-bind") {
+  rules = "vim3-cpu.bind"
+  header_output = "vim3-cpu-bind.h"
+  bind_output = "vim3-cpu-bind.bc"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.amlogic.platform.a311d",
+    "//src/devices/bind/fuchsia.amlogic.platform.meson",
+    "//src/devices/bind/fuchsia.clock",
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.power",
+  ]
+}
+
+driver_bind_rules("vim3-bind") {
+  rules = "vim3.bind"
+  header_output = "vim3-bind.h"
+  tests = "bind-tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.khadas.platform",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+fuchsia_driver("vim3-driver") {
+  output_name = "vim3"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "vim3-canvas.cc",
+    "vim3-clk.cc",
+    "vim3-cpu.cc",
+    "vim3-display.cc",
+    "vim3-emmc.cc",
+    "vim3-eth.cc",
+    "vim3-gpio.cc",
+    "vim3-hdmi.cc",
+    "vim3-i2c.cc",
+    "vim3-mali.cc",
+    "vim3-nna.cc",
+    "vim3-power.cc",
+    "vim3-pwm.cc",
+    "vim3-registers.cc",
+    "vim3-sd.cc",
+    "vim3-sdio.cc",
+    "vim3-sysmem.cc",
+    "vim3-thermal.cc",
+    "vim3-usb.cc",
+    "vim3-video.cc",
+    "vim3.cc",
+  ]
+  deps = [
+    ":vim3-bind",
+    ":vim3-cpu-bind_header",
+    ":vim3-emmc-bind_header",
+    ":vim3-mali-bind_header",
+    ":vim3-nna-bind_header",
+    ":vim3-sdio-bind_header",
+    ":vim3-video-bind_header",
+    "//sdk/banjo/fuchsia.hardware.clock:fuchsia.hardware.clock_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.clockimpl:fuchsia.hardware.clockimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpioimpl:fuchsia.hardware.gpioimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.iommu:fuchsia.hardware.iommu_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sdmmc:fuchsia.hardware.sdmmc_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serial:fuchsia.hardware.serial_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.modeswitch:fuchsia.hardware.usb.modeswitch_banjo_cpp",
+    "//sdk/banjo/fuchsia.sysmem:fuchsia.sysmem_banjo_c",
+    "//sdk/fidl/fuchsia.hardware.i2c:fuchsia.hardware.i2c_llcpp",
+    "//sdk/fidl/fuchsia.hardware.serial:fuchsia.hardware.serial_c",
+    "//sdk/fidl/fuchsia.hardware.thermal:fuchsia.hardware.thermal_c",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_llcpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_c",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/broadcom",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/fidl-metadata",
+    "//src/devices/lib/metadata:llcpp",
+    "//src/devices/lib/mmio",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/hwreg",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("vim3") {
+  component_name = "vim3"
+  deps = [ ":vim3-driver" ]
+  info = "vim3-info.json"
+  colocate = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":vim3-bind_test" ]
+}

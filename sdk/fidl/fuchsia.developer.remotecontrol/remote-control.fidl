@@ -1,0 +1,100 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.remotecontrol;
+
+using fuchsia.diagnostics as diagnostics;
+using fuchsia.io as io;
+using fuchsia.net as net;
+using zx;
+
+const MAX_NUM_MATCHES uint16 = 250;
+const MAX_CONNECT_MATCHES uint16 = 5;
+
+type RebootType = strict enum {
+    // Standard reboot.
+    REBOOT = 1;
+    // Reboots into recovery mode.
+    RECOVERY = 2;
+    // Reboots into the bootloader.
+    BOOTLOADER = 3;
+};
+
+type TunnelError = strict enum {
+    // Couldn't connect to the address to forward.
+    CONNECT_FAILED = 1;
+    // Something was wrong with the socket which was being tunneled to.
+    SOCKET_FAILED = 2;
+    // Something was wrong with the ForwardCallback which was passed.
+    CALLBACK_ERROR = 3;
+};
+
+@discoverable
+protocol RemoteControl {
+    /// Returns the input.
+    EchoString(struct {
+        value string:255;
+    }) -> (struct {
+        response string:255;
+    });
+
+    // Connects to the Hub root directory. The server side will be connected to
+    // a fuchsia.io.Directory handle, which can then be connected to on the
+    // client side via a Directory proxy.
+    //
+    // This is, currently, a read-only view into the hub.
+    OpenHub(resource struct {
+        server server_end:io.Directory;
+    }) -> (struct {}) error zx.status;
+
+    IdentifyHost() -> (struct {
+        response IdentifyHostResponse;
+    }) error IdentifyHostError;
+
+    // Connects a channel to a service, given a selector and a channel iff the selector
+    // matches exactly one service on the system.
+    // If successful, returns information about the service connected to.
+    Connect(resource struct {
+        selector diagnostics.Selector;
+        service_chan zx.handle:CHANNEL;
+    }) -> (struct {
+        match ServiceMatch;
+    }) error ConnectError;
+
+    Select(struct {
+        selector diagnostics.Selector;
+    }) -> (struct {
+        matches vector<ServiceMatch>:MAX_NUM_MATCHES;
+    }) error SelectError;
+
+    // AddId adds an identifier that can be recovered from IdentifyHost in order
+    // to match this peer against a list of possible source peers. Callers are
+    // expected to pick IDs randomly across the ID space, and only to add new
+    // IDs to help identify transport or physical layer topologies. ffx uses
+    // this API to pair an RCS instance discovered on Overnet to a device that
+    // was discovered over mdns, for example.
+    AddId(struct {
+        id uint64;
+    }) -> ();
+
+    // Establishes a TCP connection to the given address and forwards traffic through the given
+    // socket.
+    ForwardTcp(resource struct {
+        addr net.SocketAddress;
+        socket zx.handle:SOCKET;
+    }) -> (struct {}) error TunnelError;
+
+    // Listens on a TCP port and forwards any incoming connections to newly-created sockets which
+    // are passed back via the callback.
+    ReverseTcp(resource struct {
+        addr net.SocketAddress;
+        client client_end:ForwardCallback;
+    }) -> (struct {}) error TunnelError;
+};
+
+protocol ForwardCallback {
+    Forward(resource struct {
+        socket zx.handle:SOCKET;
+        addr net.SocketAddress;
+    });
+};

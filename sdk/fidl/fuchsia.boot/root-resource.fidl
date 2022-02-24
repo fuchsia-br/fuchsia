@@ -1,0 +1,16 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.boot;
+
+using zx;
+
+/// Protocol for providing the root resource.
+@discoverable
+@for_deprecated_c_bindings
+protocol RootResource {
+    /// Get the root `resource`.
+    Get() -> (resource struct {
+        resource zx.handle:RESOURCE;
+    });
+};

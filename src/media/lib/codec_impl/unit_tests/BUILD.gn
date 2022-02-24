@@ -1,0 +1,89 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("unit_tests") {
+  testonly = true
+  deps = [
+    ":codec_impl_unit_tests",
+    ":decryptor_adapter_tests",
+  ]
+}
+
+executable("codec_impl_unit_tests_bin") {
+  testonly = true
+  output_name = "codec_impl_unit_tests"
+
+  sources = []
+
+  deps = [
+    ":codec_impl_tests",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_package("codec_impl_unit_tests") {
+  manifest = "meta/codec_impl_unit_tests.cmx"
+  deps = [ ":codec_impl_unit_tests_bin" ]
+
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+source_set("codec_impl_tests") {
+  testonly = true
+
+  sources = [
+    "test_admission_control.cc",
+    "test_failures.cc",
+    "test_fake_map_range.cc",
+    "test_lifetime.cc",
+  ]
+
+  deps = [
+    "//sdk/lib/stdcompat",
+    "//src/lib/testing/loop_fixture",
+    "//src/media/lib/codec_impl",
+    "//src/media/lib/codec_impl/test_utils",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("decryptor_adapter_tests_bin") {
+  testonly = true
+  output_name = "decryptor_adapter_tests"
+
+  sources = [ "test_decryptor_adapter.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/lib/fit",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/media/lib/codec_impl",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("decryptor_adapter_tests") {
+  manifest = "meta/decryptor_adapter_tests.cmx"
+  deps = [ ":decryptor_adapter_tests_bin" ]
+
+  test_specs = {
+    environments = basic_envs
+  }
+}

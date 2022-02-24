@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/usb_system_update_checker"
+    },
+    "sandbox": {
+        "features": [
+            "build-info"
+        ],
+        "services": [
+            "fuchsia.pkg.PackageResolver",
+            "fuchsia.update.installer.Installer"
+        ]
+    }
+}

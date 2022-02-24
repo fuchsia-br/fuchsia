@@ -1,0 +1,103 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// NOTE: This file contains the source for FIDL examples used in documentation.
+// Check that associated docs are kept in sync when modifying this file. You
+// can find usages by grepping for
+// `gerrit_path="examples/fidl/fuchsia.examples/types.fidl"`
+
+// [START lib]
+library fuchsia.examples;
+// [END lib]
+
+// [START consts]
+const BOARD_SIZE uint8 = 9;
+const NAME string = "Tic-Tac-Toe";
+// [END consts]
+
+// [START bits]
+type FileMode = strict bits : uint16 {
+    READ = 0b001;
+    WRITE = 0b010;
+    EXECUTE = 0b100;
+};
+// [END bits]
+
+// [START flexible_bits]
+type FlexibleFileMode = flexible bits : uint16 {
+    READ = 0b001;
+    WRITE = 0b010;
+    EXECUTE = 0b100;
+};
+// [END flexible_bits]
+
+// [START enums]
+type LocationType = strict enum {
+    MUSEUM = 1;
+    AIRPORT = 2;
+    RESTAURANT = 3;
+};
+// [END enums]
+
+// [START flexible_enums]
+type FlexibleLocationType = flexible enum {
+    MUSEUM = 1;
+    AIRPORT = 2;
+    RESTAURANT = 3;
+};
+// [END flexible_enums]
+
+// [START structs]
+type Color = struct {
+    id uint32;
+    name string:MAX_STRING_LENGTH = "red";
+};
+// [END structs]
+
+// [START unions]
+type JsonValue = strict union {
+    1: reserved;
+    2: int_value int32;
+    3: string_value string:MAX_STRING_LENGTH;
+};
+// [END unions]
+
+// [START flexible_unions]
+type FlexibleJsonValue = flexible union {
+    1: reserved;
+    2: int_value int32;
+    3: string_value string:MAX_STRING_LENGTH;
+};
+// [END flexible_unions]
+
+// [START tables]
+type User = table {
+    1: reserved;
+    2: age uint8;
+    3: name string:MAX_STRING_LENGTH;
+};
+// [END tables]
+
+// [START protocols-preface]
+type GameState = struct {};
+// [END protocols-preface]
+
+// NOTE: a version of this protocol using error types is also used in the
+// bindings reference docs, but is not tested
+// [START protocols]
+protocol TicTacToe {
+    StartGame(struct {
+        start_first bool;
+    });
+    MakeMove(struct {
+        row uint8;
+        col uint8;
+    }) -> (struct {
+        success bool;
+        new_state box<GameState>;
+    });
+    -> OnOpponentMove(struct {
+        new_state GameState;
+    });
+};
+// [END protocols]

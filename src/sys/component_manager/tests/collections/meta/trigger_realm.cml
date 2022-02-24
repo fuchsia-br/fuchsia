@@ -1,0 +1,29 @@
+// Integration test realm that hosts a trigger component.
+{
+    children: [
+        {
+            name: "trigger",
+            url: "fuchsia-pkg://fuchsia.com/collections_integration_test#meta/trigger_a.cm",
+        },
+    ],
+
+    // Route Echo service to child.
+    offer: [
+        {
+            protocol: [
+                "fidl.examples.routing.echo.Echo",
+                "fuchsia.logger.LogSink",
+            ],
+            from: "parent",
+            to: "#trigger",
+        },
+    ],
+
+    // Expose Trigger service from child.
+    expose: [
+        {
+            protocol: "fidl.test.components.Trigger",
+            from: "#trigger",
+        },
+    ],
+}

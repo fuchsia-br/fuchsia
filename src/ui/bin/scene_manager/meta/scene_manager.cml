@@ -1,0 +1,79 @@
+{
+    include: [
+        "//sdk/lib/inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/scene_manager",
+    },
+    children: [
+        {
+            name: "cursor",
+            url: "fuchsia-pkg://fuchsia.com/cursor#meta/cursor.cm",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.input.injection.InputDeviceRegistry",
+                "fuchsia.session.scene.Manager",
+                "fuchsia.ui.accessibility.view.Registry",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "dev-input-report",
+            from: "parent",
+            rights: [ "r*" ],
+            path: "/dev/class/input-report",
+        },
+        {
+            protocol: [
+                // Used by the input pipeline library which is linked into the
+                // scene manager.
+                "fuchsia.settings.Keyboard",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.composition.FlatlandDisplay",
+                "fuchsia.ui.focus.FocusChainListenerRegistry",
+                "fuchsia.ui.input.ImeService",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.input3.KeyEventInjector",
+                "fuchsia.ui.pointerinjector.Registry",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.ui.shortcut.Manager",
+                "fuchsia.ui.views.ViewRefInstalled",
+            ],
+        },
+        {
+            protocol: "fuchsia.ui.app.ViewProvider",
+            from: "#cursor",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.vulkan.loader.Loader",
+            ],
+            from: "parent",
+            to: [ "#cursor" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.input.injection.InputDeviceRegistry",
+                "fuchsia.session.scene.Manager",
+                "fuchsia.ui.accessibility.view.Registry",
+            ],
+            from: "self",
+        },
+    ],
+}

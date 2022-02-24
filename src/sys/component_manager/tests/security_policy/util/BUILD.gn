@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_library.gni")
+
+rustc_library("security_policy_test_util") {
+  name = "security_policy_test_util"
+  edition = "2018"
+  source_root = "lib.rs"
+  testonly = true
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-component",
+    "//src/sys/component_manager/testing:test_utils_lib",
+    "//src/sys/lib/component-events",
+    "//third_party/rust_crates:anyhow",
+  ]
+
+  sources = [ "lib.rs" ]
+}

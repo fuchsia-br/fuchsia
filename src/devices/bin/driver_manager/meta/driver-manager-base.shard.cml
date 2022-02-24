@@ -1,0 +1,95 @@
+{
+    capabilities: [
+        // Device tree
+        {
+            directory: "dev",
+            rights: [ "rw*" ],
+            path: "/dev",
+        },
+        {
+            protocol: [
+                "fuchsia.device.fs.Exporter",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.manager.SystemStateTransition",
+                "fuchsia.driver.development.DriverDevelopment",
+                "fuchsia.driver.registrar.DriverRegistrar",
+                "fuchsia.hardware.pci.DeviceWatcher",
+                "fuchsia.hardware.usb.DeviceWatcher",
+            ],
+        },
+
+        // Component runner for drivers
+        {
+            runner: "driver",
+            path: "/svc/fuchsia.component.runner.ComponentRunner",
+        },
+    ],
+    use: [
+        {
+            directory: "boot",
+            rights: [ "rx*" ],
+            path: "/boot",
+        },
+        {
+            directory: "system-delayed",
+            rights: [ "rx*" ],
+            path: "/system",
+        },
+        {
+            directory: "pkgfs-delayed",
+            rights: [ "rx*" ],
+            path: "/pkgfs",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.driver.development.DriverIndex",
+                "fuchsia.driver.framework.DriverIndex",
+                "fuchsia.fshost.Admin",
+                "fuchsia.fshost.Loader",
+                "fuchsia.kernel.RootJob",
+
+                // This is only used when the kernel commandline flag devmgr.enable-ephemeral
+                // is set, which enables loading drivers ephemerally. This is intended for
+                // eng builds only.
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.power.manager.DriverManagerRegistration",
+                "fuchsia.process.Launcher",
+                "fuchsia.process.Resolver",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.tracing.provider.Registry",
+            ],
+        },
+        {
+            // The Realm protocol is required to start components.
+            protocol: "fuchsia.component.Realm",
+        },
+    ],
+    expose: [
+        {
+            directory: "dev",
+            from: "self",
+        },
+        {
+            protocol: [
+                "fuchsia.device.fs.Exporter",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.manager.SystemStateTransition",
+                "fuchsia.driver.development.DriverDevelopment",
+                "fuchsia.driver.registrar.DriverRegistrar",
+                "fuchsia.hardware.pci.DeviceWatcher",
+                "fuchsia.hardware.usb.DeviceWatcher",
+            ],
+            from: "self",
+        },
+        {
+            runner: "driver",
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,117 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/python/python_binary.gni")
+import("//build/testing/host_test.gni")
+import("//build/testing/host_test_data.gni")
+
+# Declares a host-side python test.
+#
+# Example
+#
+# ```
+# python_host_test("my_host_test") {
+#   main_source = "my_host_test.py"
+#   sources = [
+#     "test_helpers_foo.py",
+#     "test_helpers_bar.py",
+#   ]
+#   libraries = [
+#     "//path/to/foo:lib",
+#     "//path/to/bar:lib",
+#   ]
+#   extra_args = [ "--a_very_useful_flag" ]
+# }
+# ```
+#
+# Parameters
+#
+#  main_source (required)
+#    The .py file that will be interpreted.
+#    Type: path
+#
+#  sources (optional)
+#    Other files that are used in the test.
+#    Type: list(path)
+#    Default: empty list
+#
+#  libraries (optional)
+#    Paths to python_libraries this test imports.
+#    Type: list(string)
+#    Default: empty list
+#
+#  test_dir (optional)
+#    Path to where the test executes.
+#    Type: string
+#    Default: "${root_out_dir}/test_data/${target_dir}"
+#
+#  extra_args (optional)
+#    Additional arguments to pass to the test.
+#    Type: list(string)
+#
+#   deps
+#   environments
+#   visibility
+template("python_host_test") {
+  assert(defined(invoker.main_source), "main_source is required")
+
+  _python_binary_name = "${target_name}.pyz"
+  _python_binary_target = "${target_name}_python_binary"
+  python_binary(_python_binary_target) {
+    forward_variables_from(invoker,
+                           [
+                             "main_source",
+                             "sources",
+                           ])
+
+    testonly = true
+    visibility = [ ":*" ]
+
+    output_name = _python_binary_name
+    main_callable = "unittest.main"
+
+    if (defined(invoker.libraries)) {
+      deps = invoker.libraries
+    }
+  }
+
+  _target_dir = get_label_info(target_name, "dir")
+  _test_dir = "${root_out_dir}/test_data/${_target_dir}"
+  if (defined(invoker.test_dir)) {
+    _test_dir = invoker.test_dir
+  }
+
+  _host_test_data_target = "${target_name}_test_data"
+  host_test_data(_host_test_data_target) {
+    testonly = true
+    visibility = [ ":*" ]
+
+    sources = [ get_label_info(":${_python_binary_target}", "target_out_dir") +
+                "/${_python_binary_name}" ]
+    outputs = [ "${_test_dir}/${_python_binary_name}" ]
+    deps = [ ":${_python_binary_target}" ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+  }
+
+  host_test(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "environments",
+                             "visibility",
+                           ])
+
+    binary_path = python_exe_src
+    args =
+        [ rebase_path("${_test_dir}/${_python_binary_name}", root_build_dir) ]
+    if (defined(invoker.extra_args)) {
+      args += invoker.extra_args
+    }
+    deps = [
+      ":${_host_test_data_target}",
+      "//build/python:interpreter",
+    ]
+  }
+}

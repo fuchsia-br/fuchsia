@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/process_unittests"
+    },
+    "sandbox": {
+        "boot": [
+            "bin"
+        ],
+        "services": [
+            "fuchsia.process.Launcher"
+        ]
+    }
+}

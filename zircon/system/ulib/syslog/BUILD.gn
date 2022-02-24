@@ -1,0 +1,124 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+syslog_headers = [
+  "lib/syslog/global.h",
+  "lib/syslog/logger.h",
+  "lib/syslog/wire_format.h",
+]
+
+zx_library("syslog") {
+  sdk = "shared"
+  sdk_publishable = true
+  sdk_headers = syslog_headers
+
+  sources = [
+    "fdio_connect.cc",
+    "fx_logger.cc",
+    "global.cc",
+    "legacy.cc",
+    "logger.cc",
+  ]
+  deps = [
+    ":helpers",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog:client_includes",
+    "//sdk/lib/syslog/cpp:cpp-macros",
+    "//sdk/lib/syslog/structured_backend",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zx",
+  ]
+  runtime_deps = [ "//sdk/lib/fdio:fdio_sdk" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+zx_library("syslog-compat") {
+  sdk = "shared"
+  sdk_publishable = true
+  sdk_headers = syslog_headers
+
+  sources = [
+    "compat.cc",
+    "fdio_connect.cc",
+    "fx_logger.cc",
+    "global.cc",
+    "logger.cc",
+  ]
+  deps = [
+    ":helpers",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog:client_includes",
+    "//sdk/lib/syslog/cpp:backend_fuchsia_compat",
+    "//sdk/lib/syslog/cpp:cpp-macros",
+    "//sdk/lib/syslog/structured_backend",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zx",
+  ]
+  runtime_deps = [ "//sdk/lib/fdio:fdio_sdk" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+# This static library should have no shared library dependencies,
+# except libzircon, so it may be used from magma client driver libraries
+# such as the Vulkan ICD.
+# This library cannot connect to the logging service, so a console_fd
+# or log_service_channel must be provided at initialization.
+zx_library("syslog-static") {
+  sdk = "static"
+  sdk_headers = syslog_headers
+  sources = [
+    "fx_logger.cc",
+    "global.cc",
+    "logger.cc",
+  ]
+  deps = [
+    ":helpers",
+    "//sdk/lib/syslog:client_includes",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+  defines = [ "SYSLOG_STATIC" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+zx_library("syslog-headers") {
+  sdk = "static"
+  sdk_publishable = true
+  sdk_headers = syslog_headers
+}
+
+source_set("helpers") {
+  sources = [
+    "helpers.cc",
+    "helpers.h",
+  ]
+  deps = [ ":syslog-headers" ]
+}

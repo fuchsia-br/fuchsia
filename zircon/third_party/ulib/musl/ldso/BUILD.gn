@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang_cpu.gni")
+
+source_set("ldso") {
+  deps = [
+    ":dlstart",
+    "//zircon/system/ulib/ldmsg",
+    "//zircon/third_party/ulib/musl:musl_internal",
+  ]
+  sources = [
+    "//zircon/third_party/ulib/musl/arch/${clang_cpu}/dl-entry.S",
+    "dynlink-sancov.S",
+    "dynlink.c",
+  ]
+
+  # This is needed by dynlink-sancov.S and dynlink.c for "sancov-stubs.h".
+  include_dirs = [ "//zircon/system/ulib/c/sanitizers" ]
+
+  if (toolchain_variant.libprefix != "") {
+    # The libprefix always ends with a / but that's not part of the
+    # "config" string in the loader-service protocol.
+    ldsvc_config =
+        get_path_info("${toolchain_variant.libprefix}libfoo.so", "dir")
+    assert(ldsvc_config != "" && ldsvc_config != ".")
+    defines = [ "DYNLINK_LDSVC_CONFIG=\"$ldsvc_config\"" ]
+  }
+
+  configs -= [ "//build/config:symbol_visibility_hidden" ]
+
+  # TODO(https://fxbug.dev/58161): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-unused-function" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("dlstart") {
+  visibility = [ ":*" ]
+  deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
+  sources = [ "dlstart.c" ]
+  configs += [ "//build/config/sanitizers:no_sanitizers" ]
+}

@@ -1,0 +1,39 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":hello-world-cpp-unittests" ]
+}
+
+executable("bin") {
+  output_name = "hello_world_cpp"
+  sources = [ "hello_world.cc" ]
+}
+
+# [START fuchsia_component]
+fuchsia_component("hello-world-cpp-component") {
+  component_name = "hello-world-cpp"
+  manifest = "meta/hello_world_cpp.cml"
+  deps = [ ":bin" ]
+}
+
+# [END fuchsia_component]
+
+executable("unittests") {
+  testonly = true
+  output_name = "hello_world_cpp_test_bin"
+  sources = [ "hello_world_unittest.cc" ]
+  deps = [ "//src/lib/fxl/test:gtest_main" ]
+}
+
+# [START fuchsia_test]
+fuchsia_unittest_package("hello-world-cpp-unittests") {
+  deps = [ ":unittests" ]
+}
+# [END fuchsia_test]

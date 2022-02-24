@@ -1,0 +1,95 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/resource.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("fuchsia-pkg") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-url",
+    "//src/sys/pkg/lib/far/rust:fuchsia-archive",
+    "//src/sys/pkg/lib/fuchsia-hash",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/version-history/rust:version-history",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:proptest",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:walkdir",
+  ]
+
+  test_deps = [
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:maplit",
+    "//third_party/rust_crates:proptest-derive",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:tempfile",
+  ]
+
+  sources = [
+    "src/build.rs",
+    "src/creation_manifest.rs",
+    "src/errors.rs",
+    "src/lib.rs",
+    "src/meta_contents.rs",
+    "src/meta_package.rs",
+    "src/package.rs",
+    "src/package_builder.rs",
+    "src/package_directory.rs",
+    "src/package_manifest.rs",
+    "src/package_manifest_list.rs",
+    "src/path.rs",
+    "src/path_to_string.rs",
+    "src/test.rs",
+  ]
+}
+
+resource("dup1") {
+  testonly = true
+  sources = [ "duplicate-blob.txt" ]
+  outputs = [ "data/dup1" ]
+}
+
+resource("dup2") {
+  testonly = true
+  sources = [ "duplicate-blob.txt" ]
+  outputs = [ "data/dup2" ]
+}
+
+fuchsia_component("test-component") {
+  component_name = "fuchsia-pkg-lib-test"
+  visibility = [ ":*" ]
+  testonly = true
+  deps = [
+    ":dup1",
+    ":dup2",
+    ":fuchsia-pkg_test",
+  ]
+  manifest = "meta/fuchsia-pkg-tests.cml"
+}
+
+fuchsia_test_package("fuchsia-pkg-tests") {
+  test_components = [ ":test-component" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":fuchsia-pkg-tests",
+    ":fuchsia-pkg_test($host_toolchain)",
+  ]
+}

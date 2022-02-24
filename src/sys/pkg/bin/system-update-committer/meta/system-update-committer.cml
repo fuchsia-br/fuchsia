@@ -1,0 +1,33 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/system_update_committer",
+    },
+    capabilities: [
+        { protocol: "fuchsia.update.CommitStatusProvider" },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.paver.Paver",
+                "fuchsia.update.verify.BlobfsVerifier",
+            ],
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.update.CommitStatusProvider",
+            from: "self",
+        },
+    ],
+}

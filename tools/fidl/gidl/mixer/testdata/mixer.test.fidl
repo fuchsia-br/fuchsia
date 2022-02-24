@@ -1,0 +1,40 @@
+library test.mixer;
+
+using zx;
+
+type ExampleFlexibleBits = flexible bits : uint8 {
+    B = 1;
+};
+
+type ExampleStrictBits = strict bits : uint8 {
+    B = 1;
+};
+
+type ExampleFlexibleEnum = flexible enum : uint8 {
+    E = 1;
+};
+
+type ExampleStrictEnum = strict enum : uint8 {
+    E = 1;
+};
+
+type ExampleStruct = struct {
+    s string;
+};
+
+type ExampleTable = table {
+    1: s string;
+    2: reserved;
+};
+
+type ExampleStrictUnion = strict union {
+    1: s string;
+};
+
+type ExampleFlexibleUnion = flexible union {
+    1: s string;
+};
+
+type ExampleHandleStruct = resource struct {
+    channel zx.handle:<CHANNEL, zx.rights.DUPLICATE>;
+};

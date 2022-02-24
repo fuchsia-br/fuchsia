@@ -1,0 +1,55 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+resource("demo_bin") {
+  sources = [
+    "//prebuilt/starnix/tests/syscalls/linux-amd64/wayland_demo/wayland_demo",
+  ]
+  outputs = [ "data/bin/wayland_demo" ]
+}
+
+fuchsia_package("starnix_wayland") {
+  package_name = "starnix_wayland"
+  deps = [ ":component" ]
+
+  disable_elf_binaries_checks = true
+}
+
+fuchsia_component("component") {
+  component_name = "wayland_demo"
+  manifest = "meta/wayland_demo.cml"
+
+  deps = [
+    ":demo_bin",
+    "//src/proc/tests/android:android_system_image",
+    "//src/proc/tests/android:starnix_data_tmp_placeholder",
+  ]
+}
+
+resource("test_bin") {
+  sources = [
+    "//prebuilt/starnix/tests/syscalls/linux-amd64/wayland_demo/wayland_test",
+  ]
+  outputs = [ "data/tests/wayland_test" ]
+}
+
+fuchsia_test_component("test_component") {
+  component_name = "wayland_test"
+  manifest = "meta/wayland_test.cml"
+
+  deps = [
+    ":test_bin",
+    "//src/proc/tests/android:android_system_image",
+    "//src/proc/tests/android:starnix_data_tmp_placeholder",
+  ]
+}
+
+fuchsia_test_package("starnix_wayland_test") {
+  package_name = "starnix_wayland_test"
+  test_components = [ ":test_component" ]
+
+  disable_elf_binaries_checks = true
+}

@@ -1,0 +1,82 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ftl_bind_test",
+    "tests",
+  ]
+}
+
+driver_bind_rules("ftl_bind") {
+  rules = "ftl.bind"
+  header_output = "ftl_bind.h"
+  bind_output = "ftl.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.nand" ]
+}
+
+fuchsia_driver("ftl-driver") {
+  output_name = "ftl"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "bind.cc" ]
+  deps = [
+    ":common",
+    ":ftl_bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_driver_component("ftl") {
+  component_name = "ftl"
+  deps = [ ":ftl-driver" ]
+  info = "ftl-info.json"
+  colocate = true
+}
+
+# Also used by ftl-test.
+source_set("common") {
+  visibility = [ "./*" ]
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "block_device.cc",
+    "metrics.cc",
+    "nand_driver.cc",
+    "nand_operation.cc",
+    "oob_doubler.cc",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.badblock:fuchsia.hardware.badblock_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.nand:fuchsia.hardware.nand_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit-promise",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/ftl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/trace:trace-driver",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

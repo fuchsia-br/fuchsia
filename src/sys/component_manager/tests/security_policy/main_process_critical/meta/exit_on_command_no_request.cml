@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/exit_on_command",
+    },
+    capabilities: [
+        { protocol: "test.policy.ExitController" },
+    ],
+    expose: [
+        {
+            protocol: "test.policy.ExitController",
+            from: "self",
+        },
+    ],
+}

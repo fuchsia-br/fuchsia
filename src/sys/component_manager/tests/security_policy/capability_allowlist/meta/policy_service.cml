@@ -1,0 +1,33 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/policy_service_bin",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "test.policy.Restricted",
+                "test.policy.Unrestricted",
+            ],
+        },
+        {
+            directory: "test",
+            rights: [ "r*" ],
+            path: "/test",
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "test.policy.Restricted",
+                "test.policy.Unrestricted",
+            ],
+            from: "self",
+        },
+        {
+            directory: "test",
+            from: "self",
+        },
+    ],
+}

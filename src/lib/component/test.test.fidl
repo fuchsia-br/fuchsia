@@ -1,0 +1,30 @@
+// Copyright 2020 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+library bindingstest;
+
+using zx;
+
+protocol Test1 {
+    Echo(struct {
+        in string:optional;
+    }) -> (struct {
+        out string:optional;
+    });
+    NoResponse();
+    EmptyResponse() -> ();
+    TooManyBytesInResponse() -> (struct {
+        out vector<uint8>:MAX;
+    });
+    TooManyHandlesInResponse() -> (resource struct {
+        out vector<zx.handle>:MAX;
+    });
+    -> Surprise(struct {
+        foo string;
+    });
+    EchoHandleRights(resource struct {
+        h zx.handle:<PORT, zx.rights.READ | zx.rights.TRANSFER | zx.rights.DUPLICATE>;
+    }) -> (struct {
+        rights uint32;
+    });
+};

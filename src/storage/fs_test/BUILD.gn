@@ -1,0 +1,438 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+import("//src/storage/fs_test/suite.gni")
+import("//src/storage/testing/driver_test_realm.gni")
+
+static_library("fs_test") {
+  testonly = true
+  sources = [
+    "fs_test.cc",
+    "fs_test_fixture.cc",
+    "json_filesystem.cc",
+    "json_filesystem.h",
+    "misc.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.fs",
+    "//sdk/fidl/fuchsia.hardware.ramdisk:fuchsia.hardware.ramdisk_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/json_parser",
+    "//src/lib/storage/block_client/cpp",
+    "//src/storage/fvm",
+    "//src/storage/testing:storage_driver_test_support",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+  public_deps = [
+    # fs_test.h:
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/storage/fs_management",
+    "//src/storage/blobfs",
+    "//src/storage/testing:storage_driver_test_support",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("access_tests") {
+  sources = [ "access.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fdio-caller",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("append_tests") {
+  sources = [ "append.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("attr_tests") {
+  sources = [ "attr.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("basic_tests") {
+  sources = [ "basic.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/storage/minfs",
+  ]
+}
+
+test("case_sensitivity_tests") {
+  sources = [ "case_sensitivity.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+test("clone_tests") {
+  sources = [ "clone.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("corrupt_tests") {
+  sources = [ "corrupt.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/lib/syslog/cpp:cpp-macros",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("directory_tests") {
+  sources = [ "directory.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("dot_dot_tests") {
+  sources = [ "dot_dot.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("fcntl_tests") {
+  sources = [ "fcntl.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("filename_tests") {
+  sources = [ "filename.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("full_tests") {
+  sources = [ "full.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("inspect_tests") {
+  sources = [ "inspect.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/lib/fdio",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/vfs/cpp/inspect",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fdio-caller",
+  ]
+}
+
+test("link_tests") {
+  sources = [ "link.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("lseek_tests") {
+  sources = [ "lseek.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("mmap_tests") {
+  sources = [ "mmap.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("open_tests") {
+  sources = [ "open.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+test("overflow_tests") {
+  sources = [ "overflow.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+test("persist_tests") {
+  sources = [ "persist.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+test("query_filesystem_tests") {
+  sources = [ "query_filesystem.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+}
+
+test("random_op_tests") {
+  sources = [ "random_op.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("realpath_tests") {
+  sources = [ "realpath.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("rename_tests") {
+  sources = [ "rename.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("resize_tests") {
+  sources = [ "resize.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/storage/fvm",
+    "//src/storage/minfs",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("rw_tests") {
+  sources = [ "rw.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("rw_workers_tests") {
+  sources = [ "rw_workers.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("sparse_tests") {
+  sources = [ "sparse.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("sync_tests") {
+  sources = [ "sync.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("threading_tests") {
+  sources = [ "threading.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("truncate_tests") {
+  sources = [
+    "truncate.cc",
+    "truncate_fixture.cc",
+  ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("unicode_tests") {
+  sources = [ "unicode.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("unlink_tests") {
+  sources = [ "unlink.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("watcher_tests") {
+  sources = [ "watcher.cc" ]
+  deps = [
+    ":fs_test",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("directory_large_tests") {
+  sources = [ "directory_large.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("max_file_tests") {
+  sources = [ "max_file.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("sparse_large_tests") {
+  sources = [ "sparse_large.cc" ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/storage/minfs",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+test("truncate_large_tests") {
+  sources = [
+    "truncate_fixture.cc",
+    "truncate_large.cc",
+  ]
+  deps = [
+    ":fs_test",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/fbl",
+  ]
+}

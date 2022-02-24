@@ -1,0 +1,71 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file defines base configs used on multiple x64-based targets.
+
+import("//build/board.gni")
+
+target_cpu = "x64"
+
+# Drivers and tools to include on bootfs.
+_bootfs_deps = [
+  # Drivers
+  "//src/devices/block/drivers/ahci",
+  "//src/devices/block/drivers/mbr",
+  "//src/devices/block/drivers/nvme",
+  "//src/devices/block/drivers/pci-sdhci",
+  "//src/devices/block/drivers/sdhci",
+  "//src/devices/board/drivers/x86:platform-bus-x86",
+  "//src/devices/bus/drivers/pci:bus-pci",
+  "//src/devices/i2c/drivers/intel-i2c",
+  "//src/devices/rtc/drivers/intel-rtc",
+  "//src/devices/spi/drivers/intel-gspi",
+  "//src/devices/tpm/drivers/tpm",
+  "//src/devices/usb/drivers/xhci",
+  "//src/graphics/display/drivers/intel-i915",
+  "//src/media/audio/drivers/codecs/alc5514",
+  "//src/media/audio/drivers/codecs/alc5663",
+  "//src/media/audio/drivers/codecs/max98373",
+  "//src/media/audio/drivers/codecs/max98927",
+  "//src/media/audio/drivers/intel-hda/codecs/hdmi:hdmi-audio-codec",
+  "//src/media/audio/drivers/intel-hda/codecs/realtek:realtek-audio-codec",
+  "//src/media/audio/drivers/intel-hda/controller:intel-hda",
+  "//src/ui/input/drivers/i2c-hid",
+  "//src/ui/input/drivers/pc-ps2",
+
+  # Tools
+  "//src/devices/bin/acpidump",
+  "//src/devices/pci/bin:bootfs",
+  "//src/media/audio/bin/ihda",
+
+  # Configs
+  "//src/power/power-manager:base_config",
+  "//src/security/policy/zxcrypt:null",
+]
+board_bootfs_labels += _bootfs_deps
+board_recovery_bootfs_labels += _bootfs_deps
+board_zedboot_bootfs_labels += _bootfs_deps
+
+board_system_image_deps += [
+  "//garnet/packages/prod:drivers-system",
+  "//src/devices/acpi:drivers",
+  "//src/graphics/drivers/msd-intel-gen",
+  "//src/media/audio/bundles:virtual_audio_driver",
+]
+
+board_package_labels += [
+  "//src/power/thermd",
+  "//src/power/thermd:config",
+  "//src/devices/sysmem/bin/sysmem_connector",
+  "//src/graphics/bin/vulkan_loader",
+  "//src/hwinfo:default_board_config",
+  "//src/graphics/drivers/intel-gen/icd:libvulkan_intel_gen",
+  "//src/graphics/lib/goldfish-vulkan/gnbuild:goldfish-vulkan",
+  "//src/graphics/lib/goldfish-vulkan/gnbuild:goldfish-vulkan-config",
+]
+
+# userspace PCI migration flags
+# fxbug.dev/32978
+platform_enable_user_pci = true
+userspace_pci_enable_msi_x = true

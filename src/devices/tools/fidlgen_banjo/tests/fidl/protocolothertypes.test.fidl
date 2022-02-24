@@ -1,0 +1,186 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library banjo.examples.protocolothertypes;
+
+type ThisIsAStruct = struct {
+    s string;
+};
+
+type ThisIsAUnion = strict union {
+    1: s string;
+};
+
+type ThisIsAnEnum = strict enum {
+    x = 23;
+};
+
+const strings_size uint32 = 32;
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol OtherTypes {
+    Struct(struct {
+        s ThisIsAStruct;
+    }) -> (struct {
+        s ThisIsAStruct;
+    });
+    Union(struct {
+        u ThisIsAUnion;
+    }) -> (struct {
+        u ThisIsAUnion;
+    });
+    Enum(struct {
+        e ThisIsAnEnum;
+    }) -> (struct {
+        e ThisIsAnEnum;
+    });
+    String(struct {
+        s string;
+    }) -> (struct {
+        s string;
+    });
+    StringSized(struct {
+        s string:4;
+    }) -> (struct {
+        s string:4;
+    });
+    StringSized2(struct {
+        s string:strings_size;
+    }) -> (struct {
+        s string:strings_size;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol OtherTypesAsync {
+    @async
+    Struct(struct {
+        s ThisIsAStruct;
+    }) -> (struct {
+        s ThisIsAStruct;
+    });
+    @async
+    Union(struct {
+        u ThisIsAUnion;
+    }) -> (struct {
+        u ThisIsAUnion;
+    });
+    @async
+    Enum(struct {
+        e ThisIsAnEnum;
+    }) -> (struct {
+        e ThisIsAnEnum;
+    });
+    @async
+    String(struct {
+        s string;
+    }) -> (struct {
+        s string;
+    });
+    @async
+    StringSized(struct {
+        s string:4;
+    }) -> (struct {
+        s string:4;
+    });
+    @async
+    StringSized2(struct {
+        s string:strings_size;
+    }) -> (struct {
+        s string:strings_size;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol OtherTypesReference {
+    Struct(struct {
+        s box<ThisIsAStruct>;
+    }) -> (struct {
+        s box<ThisIsAStruct>;
+    });
+    Union(struct {
+        u ThisIsAUnion:optional;
+    }) -> (struct {
+        u ThisIsAUnion:optional;
+    });
+    String(struct {
+        s string:optional;
+    }) -> (struct {
+        s string:optional;
+    });
+    StringSized(struct {
+        s string:<4, optional>;
+    }) -> (struct {
+        s string:<4, optional>;
+    });
+    StringSized2(struct {
+        s string:<strings_size, optional>;
+    }) -> (struct {
+        s string:<strings_size, optional>;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol OtherTypesAsyncReference {
+    @async
+    Struct(struct {
+        s box<ThisIsAStruct>;
+    }) -> (struct {
+        s box<ThisIsAStruct>;
+    });
+    @async
+    Union(struct {
+        u ThisIsAUnion:optional;
+    }) -> (struct {
+        u ThisIsAUnion:optional;
+    });
+    @async
+    String(struct {
+        s string:optional;
+    }) -> (struct {
+        s string:optional;
+    });
+    @async
+    StringSized(struct {
+        s string:<4, optional>;
+    }) -> (struct {
+        s string:<4, optional>;
+    });
+    @async
+    StringSized2(struct {
+        s string:<strings_size, optional>;
+    }) -> (struct {
+        s string:<strings_size, optional>;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Interface {
+    Value(resource struct {
+        intf client_end:OtherTypes;
+    }) -> (resource struct {
+        intf client_end:OtherTypes;
+    });
+    Reference(resource struct {
+        intf client_end:<OtherTypes, optional>;
+    }) -> (resource struct {
+        intf client_end:<OtherTypes, optional>;
+    });
+    @async
+    Async(resource struct {
+        intf client_end:OtherTypes;
+    }) -> (resource struct {
+        intf client_end:OtherTypes;
+    });
+    @async
+    AsyncRefernce(resource struct {
+        intf client_end:<OtherTypes, optional>;
+    }) -> (resource struct {
+        intf client_end:<OtherTypes, optional>;
+    });
+};

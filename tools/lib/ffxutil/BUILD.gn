@@ -1,0 +1,36 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("ffxutil") {
+  sources = [
+    "config.go",
+    "config_test.go",
+    "ffx.go",
+    "ffx_test.go",
+    "mock.go",
+    "test.go",
+  ]
+  deps = [
+    ":constants",
+    "//tools/lib/jsonutil",
+    "//tools/lib/subprocess",
+  ]
+}
+
+go_library("constants") {
+  source_dir = "constants"
+  sources = [ "constants.go" ]
+}
+
+go_test("tests") {
+  output_name = "ffxutil_tests"
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/lib/ffxutil" ]
+  deps = [
+    ":ffxutil",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}

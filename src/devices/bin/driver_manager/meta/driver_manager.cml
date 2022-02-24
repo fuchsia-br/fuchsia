@@ -1,0 +1,19 @@
+{
+    include: [
+        // driver-manager-base.shard is where most of the capabilities and routing lives.
+        "//src/devices/bin/driver_manager/meta/driver-manager-base.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/driver_manager",
+        args: [
+            "--use-driver-index",
+            "--sys-device-driver",
+            "fuchsia-boot:///#driver/platform-bus.so",
+        ],
+        lifecycle: { stop_event: "notify" },
+        main_process_critical: "true",
+    },
+}

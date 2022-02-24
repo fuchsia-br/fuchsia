@@ -1,0 +1,109 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//src/sys/core/build/core_shard.gni")
+import("//third_party/cobalt/metrics_registry.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":emergency-tests" ]
+}
+
+rustc_binary("bin") {
+  name = "emergency"
+
+  # Generates a GN target for unit-tests with the label `bin_test`, and
+  # a binary named `emergency_bin_test`.
+  with_unit_tests = true
+
+  deps = [
+    ":emergency_metrics_registry_rustlib",
+    ":lib",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.location:fuchsia.location-rustc",
+    "//sdk/fidl/fuchsia.location.position:fuchsia.location.position-rustc",
+    "//sdk/fidl/fuchsia.location.sensor:fuchsia.location.sensor-rustc",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http-rustc",
+    "//sdk/fidl/fuchsia.wlan.policy:fuchsia.wlan.policy-rustc",
+    "//src/lib/cobalt/rust:fuchsia-cobalt",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//third_party/cobalt/src/lib/client/rust:cobalt-client",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:test-case",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+rustc_library("lib") {
+  name = "emergency_lib"
+
+  # Generates a GN target for unit-tests with the label `lib_test`, and
+  # a binary named `emergency_lib_lib_test`.
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.location:fuchsia.location-rustc",
+    "//sdk/fidl/fuchsia.location.position:fuchsia.location.position-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http-rustc",
+    "//sdk/fidl/fuchsia.wlan.policy:fuchsia.wlan.policy-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:static_assertions",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/bss_cache.rs",
+    "src/bss_resolver.rs",
+    "src/lib.rs",
+  ]
+}
+
+core_shard("emergency-core-shard") {
+  shard_file = "meta/emergency.core_shard.cml"
+}
+
+fuchsia_package_with_single_component("emergency") {
+  deps = [ ":bin" ]
+  manifest = "meta/emergency.cml"
+}
+
+fuchsia_unittest_component("emergency-test") {
+  deps = [ ":bin_test" ]
+}
+
+fuchsia_unittest_component("emergency-lib-test") {
+  deps = [ ":lib_test" ]
+}
+
+fuchsia_test_package("emergency-tests") {
+  test_components = [
+    ":emergency-test",
+    ":emergency-lib-test",
+  ]
+}
+
+metrics_registry("emergency_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # //third_party/cobalt_config/projects.yaml
+  project_id = 4
+  generate_rust = true
+}

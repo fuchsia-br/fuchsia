@@ -1,0 +1,30 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_flutter_tunnel") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = false
+  deps = [
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//src/developer/ffx:ffx_lib_args",
+    "//src/developer/ffx/lib/errors:lib",
+    "//src/developer/ffx/lib/netext:lib",
+    "//src/developer/ffx/lib/port_picker:lib",
+    "//src/developer/ffx/lib/timeout:lib",
+    "//src/developer/ffx/plugins/flutter/tunnel/ctrl-c:ffx_flutter_tunnel_ctrlc",
+    "//src/developer/ffx/plugins/inspect/common:ffx_inspect_common",
+    "//src/diagnostics/iquery:lib",
+    "//src/lib/diagnostics/hierarchy/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+
+  sources = [ "src/lib.rs" ]
+}

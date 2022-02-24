@@ -1,0 +1,50 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+
+# Declares an action() that uses a python_binary for the script
+#
+# This sets up the python module search path using the GN paths specified, and
+# otherwise is the same as an action(), forwarding all invoker vars to the
+# action()
+#
+# Parameters:
+#
+#   binary_label
+#    [label] Label (without host toolchain), to python binary that is to be
+#    executed by the action.
+#
+#   all others are passed to action() as expected,
+#
+template("python_action") {
+  assert(
+      defined(invoker.binary_label),
+      "The label of the python_binary() to use to perform the action must be specified.")
+
+  # force the binary_label into the host toolchain
+  binary_label_no_toolchain =
+      get_label_info(invoker.binary_label, "label_no_toolchain")
+  binary_label = "${binary_label_no_toolchain}(${host_toolchain})"
+
+  binary_label_name = get_label_info(binary_label, "name")
+  binary_tool_output_dir = get_label_info(binary_label, "target_out_dir")
+  binary_tool_output_name = "${binary_tool_output_dir}/${binary_label_name}.pyz"
+
+  action(target_name) {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "binary_label",
+                             "script",
+                           ])
+
+    script = binary_tool_output_name
+    deps = [ binary_label ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+  }
+}

@@ -1,0 +1,212 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tools") {
+  testonly = true
+
+  public_deps = [
+    ":build_infra",
+    ":test_infra",
+    "//tools/auto_owners($host_toolchain)",
+    "//tools/bindc:host($host_toolchain)",
+    "//tools/blackout",
+    "//tools/bootserver_old:host($host_toolchain)",
+    "//tools/build",
+    "//tools/bundle_fetcher($host_toolchain)",
+    "//tools/clidoc:clidoc",
+    "//tools/cmc:install($host_toolchain)",
+    "//tools/component_id_index($host_toolchain)",
+    "//tools/component_manager_config($host_toolchain)",
+    "//tools/configc:install($host_toolchain)",
+    "//tools/create:install($host_toolchain)",
+    "//tools/dart-strict-deps:strict_deps($host_toolchain)",
+    "//tools/debroot($host_toolchain)",
+    "//tools/doc_checker($host_toolchain)",
+    "//tools/femu-control:host($host_toolchain)",
+    "//tools/fidl",
+    "//tools/fidlcat:fidlcat_host",
+    "//tools/fvdl:host($host_toolchain)",
+    "//tools/jq5:install($host_toolchain)",
+    "//tools/loglistener:host($host_toolchain)",
+    "//tools/make-efi:host",
+    "//tools/make-fuchsia-vol:host",
+    "//tools/mdlint:host",
+    "//tools/net/device-finder:host",
+    "//tools/netprotocol($host_toolchain)",
+    "//tools/pretty_serial:install($host_toolchain)",
+    "//tools/sdk-tools:tools($host_toolchain)",
+    "//tools/staticanalysis:tools($host_toolchain)",
+    "//tools/symbol-index($host_toolchain)",
+    "//tools/symbolizer($host_toolchain)",
+    "//tools/test_list_tool:install($host_toolchain)",
+    "//tools/testgen:host($host_toolchain)",
+    "//tools/update_crates($host_toolchain)",
+    "//tools/virtual_device:fvd($host_toolchain)",
+    "//tools/zedmon/client:zedmon_client",
+  ]
+}
+
+# Tools that are used by the infrastructure for building.
+group("build_infra") {
+  public_deps = [
+    "//tools/artifactory($host_toolchain)",
+    "//tools/blobstats($host_toolchain)",
+    "//tools/build/ninjago/buildstats($host_toolchain)",
+    "//tools/build/ninjago/ninjatrace($host_toolchain)",
+    "//tools/codesize($host_toolchain)",
+
+    # The infrastructure uses a version of fint built using the Go toolchain,
+    # rather than Ninja, so we technically don't need to include fint here. But
+    # we still want the build graph to be considered to be affected by fint
+    # changes, because fint is always used by the infrastructure to build
+    # fuchsia and it may affect later infrastructure steps that might be skipped
+    # if the build graph was considered unaffected.
+    "//tools/integration/fint($host_toolchain)",
+    "//tools/size_checker/cmd:host($host_toolchain)",
+  ]
+}
+
+# Tools that are used by the infrastructure for running tests.
+group("test_infra") {
+  testonly = true
+
+  # Tools that are only needed on the type of host that does the build.
+  public_deps = [
+    "//tools/integration/testsharder($host_toolchain)",
+
+    # The symbolizer should only be needed on Linux x64, but cross-compilation
+    # doesn't work for this tool and the Mac builders don't use it, so just
+    # build it for the host toolchain.
+    "//tools/symbolizer($host_toolchain)",
+  ]
+
+  # Tools that are only needed on Linux x64, regardless of the current host.
+  linux_x64_only_tools = [
+    "//src/diagnostics/triage:triage_bin",
+    "//tools/debug/covargs",
+    "//tools/testing/resultdb",
+    "//tools/testing/tefmocheck",
+  ]
+
+  # Tools needed on all possible hosts.
+  # Anything that runs on ARM64 hosts during testing should be here,
+  # since in that case the build happens on an X64 host.
+  all_host_tools = [
+    "//src/developer/ffx:ffx_bin",
+    "//src/storage/bin/fvm",
+    "//tools/bootserver",
+    "//tools/botanist",
+    "//tools/testing:tools",
+  ]
+
+  foreach(tool, linux_x64_only_tools) {
+    if (host_os == "linux") {
+      public_deps += [ "$tool($host_x64_toolchain)" ]
+    } else {
+      public_deps += [ "$tool($linux_x64_toolchain)" ]
+    }
+  }
+
+  all_host_toolchains = []
+  if (host_os == "linux") {
+    all_host_toolchains += [
+      host_arm64_toolchain,
+      host_x64_toolchain,
+    ]
+  } else if (host_os == "mac") {
+    all_host_toolchains += [ host_toolchain ]
+  }
+
+  foreach(tool, all_host_tools) {
+    foreach(toolchain, all_host_toolchains) {
+      public_deps += [ "$tool($toolchain)" ]
+    }
+  }
+}
+
+group("e2e_tests") {
+  testonly = true
+
+  deps = []
+
+  # TODO(fxbug.dev/63992): Temporarily disable bootserver_old tests on coverage builders.
+  if (!is_coverage) {
+    deps += [ "//tools/bootserver_old/tests($host_toolchain)" ]
+  }
+}
+
+group("tests_no_e2e") {
+  testonly = true
+  assert_no_deps = e2e_test_libs
+
+  deps = [
+    "//tools/artifactory:tests",
+    "//tools/auto_owners:tests($host_toolchain)",
+    "//tools/bindc:tests",
+    "//tools/blackout:tests",
+    "//tools/blobstats:tests",
+    "//tools/bootserver:tests($host_toolchain)",
+    "//tools/botanist:tests($host_toolchain)",
+    "//tools/build:tests($host_toolchain)",
+    "//tools/bundle_fetcher:tests",
+    "//tools/cargo-gnaw:tests",
+    "//tools/check-licenses:tests",
+    "//tools/clidoc:tests",
+    "//tools/cmc:tests",
+    "//tools/codesize:tests",
+    "//tools/component_id_index:tests($host_toolchain)",
+    "//tools/component_manager_config:tests($host_toolchain)",
+    "//tools/configc:tests",
+    "//tools/create:tests",
+    "//tools/dart-strict-deps:tests($host_toolchain)",
+    "//tools/debug:tests($host_toolchain)",
+    "//tools/devshell:tests($host_toolchain)",
+    "//tools/doc_checker:tests",
+    "//tools/femu-control:tests",
+    "//tools/fidl:tests",
+    "//tools/fidlcat:fidlcat_host_tests($host_toolchain)",
+    "//tools/fidlcat/tests",
+    "//tools/fvdl:tests",
+    "//tools/golden-util:tests",
+    "//tools/integration:tests($host_toolchain)",
+    "//tools/jq5:tests($host_toolchain)",
+    "//tools/lib:tests($host_toolchain)",
+    "//tools/lib/serial:tests($host_toolchain)",
+    "//tools/make-fuchsia-vol:tests",
+    "//tools/mdlint:tests",
+    "//tools/net:tests($host_toolchain)",
+    "//tools/pretty_serial:tests",
+    "//tools/qemu:tests($host_toolchain)",
+    "//tools/sdk-tools:tests($host_toolchain)",
+    "//tools/size_checker:tests($host_toolchain)",
+    "//tools/staticanalysis:tests",
+    "//tools/symbol-index:tests",
+    "//tools/symbolizer:tests",
+    "//tools/sys-realm-analyzer:tests($host_toolchain)",
+    "//tools/test_list_tool:test_list_tool_test($host_toolchain)",
+    "//tools/testgen:tests",
+    "//tools/testing:tests($host_toolchain)",
+    "//tools/update_crates:tests($host_toolchain)",
+    "//tools/virtual_device:tests($host_toolchain)",
+    "//tools/zedmon:tests",
+  ]
+
+  # Tests that shouldn't be built on macOS (fxbug.dev/79219)
+  if (is_linux) {
+    deps += [ "//tools/fuzz:tests" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":e2e_tests",
+    ":tests_no_e2e",
+
+    # `emulator:tests` contains unit tests for emulator, which depend on
+    # emulator so we can't put it in `tests_no_e2e`, but it's not an e2e tests
+    # neither.
+    "//tools/emulator:tests",
+  ]
+}

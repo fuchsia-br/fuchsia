@@ -1,0 +1,109 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+static_library("perfmon") {
+  sources = [
+    "buffer_reader.cc",
+    "buffer_reader.h",
+    "event-registry.cc",
+    "event-registry.h",
+    "events.cc",
+    "events.h",
+    "file_reader.cc",
+    "file_reader.h",
+    "reader.cc",
+    "reader.h",
+    "records.cc",
+    "records.h",
+    "types.cc",
+    "types.h",
+    "writer.h",
+  ]
+
+  deps = []
+
+  public_deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+
+  if (is_fuchsia) {
+    sources += [
+      "config.cc",
+      "config.h",
+      "config_impl.h",
+      "controller.cc",
+      "controller.h",
+      "controller_impl.cc",
+      "controller_impl.h",
+      "device_reader.cc",
+      "device_reader.h",
+      "properties.cc",
+      "properties.h",
+      "properties_impl.h",
+    ]
+
+    if (current_cpu == "arm64") {
+      sources += [ "arm64-events.cc" ]
+    }
+    if (current_cpu == "x64") {
+      sources += [ "intel-events.cc" ]
+    }
+
+    deps += [
+      "//sdk/lib/fdio",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/fzl",
+    ]
+
+    public_deps += [
+      "//sdk/fidl/fuchsia.perfmon.cpu",
+      "//zircon/system/ulib/zx",
+    ]
+  } else {
+    sources += [
+      "arm64-events.cc",
+      "intel-events.cc",
+    ]
+  }
+
+  if (!is_fuchsia) {
+    public_deps += [ "//zircon/system/public" ]
+  }
+
+  public_configs = [
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    "//build/config:Wno-conversion",
+  ]
+}
+
+executable("perfmon_tests_app") {
+  testonly = true
+  output_name = "perfmon_tests"
+
+  sources = [ "config_unittest.cc" ]
+
+  deps = [
+    ":perfmon",
+    "//sdk/lib/fdio",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps += [ "//src/zircon/lib/zircon" ]
+}
+
+fuchsia_unittest_package("perfmon_tests") {
+  manifest = "meta/perfmon_tests.cmx"
+  deps = [ ":perfmon_tests_app" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":perfmon_tests" ]
+}

@@ -1,0 +1,95 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("aml_spi_bind") {
+  rules = "aml_spi.bind"
+  header_output = "aml_spi_bind.h"
+  bind_output = "aml-spi.bindbc"
+  tests = "bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.amlogic.platform",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+group("common") {
+  public_deps = [
+    ":aml_spi_bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.registers:fuchsia.hardware.registers_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.spiimpl:fuchsia.hardware.spiimpl_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.registers:fuchsia.hardware.registers_llcpp",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/mmio",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/lib/vmo_store",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/hwreg",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+test("aml-spi-test-bin") {
+  output_name = "aml-spi-test"
+  sources = [
+    "aml-spi-test.cc",
+    "aml-spi.cc",
+  ]
+  deps = [
+    ":common",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp_mock",
+    "//src/devices/bus/testing/fake-pdev",
+    "//src/devices/registers/testing/mock-registers",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("aml-spi-test") {
+  deps = [ ":aml-spi-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":aml-spi-test",
+    ":aml_spi_bind_test",
+  ]
+}
+
+fuchsia_driver("aml-spi-driver") {
+  output_name = "aml-spi"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "aml-spi.cc" ]
+  deps = [ ":common" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("aml-spi") {
+  info = "aml-spi-info.json"
+  component_name = "aml-spi"
+  deps = [ ":aml-spi-driver" ]
+  colocate = true
+}

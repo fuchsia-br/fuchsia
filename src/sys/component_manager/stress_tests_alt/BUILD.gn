@@ -1,0 +1,126 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_binary("unreliable_echo_server_bin") {
+  testonly = true
+  name = "unreliable_echo_server"
+  edition = "2018"
+  source_root = "unreliable_echo_server.rs"
+  deps = [
+    "//examples/components/routing/fidl:echo-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [ "unreliable_echo_server.rs" ]
+}
+
+rustc_binary("unreliable_echo_client_bin") {
+  testonly = true
+  name = "unreliable_echo_client"
+  edition = "2018"
+  source_root = "unreliable_echo_client.rs"
+  deps = [
+    "//examples/components/routing/fidl:echo-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:rand",
+  ]
+
+  sources = [ "unreliable_echo_client.rs" ]
+}
+
+rustc_binary("actor-bin") {
+  testonly = true
+  name = "cm_actor"
+  edition = "2018"
+  source_root = "actor/main.rs"
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/test_runners/stress_test/actor",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "actor/hub.rs",
+    "actor/main.rs",
+  ]
+}
+
+fuchsia_component("no_binary") {
+  testonly = true
+  manifest = "meta/no_binary.cml"
+}
+
+fuchsia_component("unreliable_echo_client") {
+  testonly = true
+  deps = [ ":unreliable_echo_client_bin" ]
+  manifest = "meta/unreliable_echo_client.cml"
+}
+
+fuchsia_component("unreliable_echo_server") {
+  testonly = true
+  deps = [ ":unreliable_echo_server_bin" ]
+  manifest = "meta/unreliable_echo_server.cml"
+}
+
+fuchsia_component("actor") {
+  testonly = true
+  manifest = "meta/actor.cml"
+  deps = [ ":actor-bin" ]
+}
+
+fuchsia_component("test") {
+  testonly = true
+  manifest = "meta/test.cml"
+}
+
+fuchsia_test_package("component-manager-stress-tests-alt") {
+  deps = [
+    ":actor",
+    ":no_binary",
+    ":unreliable_echo_client",
+    ":unreliable_echo_server",
+  ]
+  test_components = [ ":test" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "QEMU"
+        }
+        tags = [ "stress-tests" ]
+      },
+    ]
+  }
+}
+
+group("stress_tests_alt") {
+  testonly = true
+  deps = [ ":component-manager-stress-tests-alt" ]
+}

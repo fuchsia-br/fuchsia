@@ -1,0 +1,77 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.shareddma;
+using zx;
+
+type DmaType = strict enum : uint32 {
+    REGULAR = 0x1;
+    CYCLIC = 0x2;
+};
+
+type DmaState = strict enum : uint32 {
+    COMPLETED = 0x1;
+    FAILED = 0x2;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-callback")
+protocol DmaNotifyCallback {
+    Callback(struct {
+        state DmaState;
+    }) -> ();
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol SharedDma {
+
+    /// Initializes and provides a VMO for memory source or destination.
+    /// Only supports device to memory and memory to device DMAs.
+    /// The provided id is opaque and HW specific.  The id implicitly defines the direction of the
+    /// DMA (biderectional DMAs are not supported yet).  Transfer sizes and alignment are
+    /// managed within the shared DMA driver.
+    InitializeAndGetBuffer(struct {
+        channel_id uint32;
+        type DmaType;
+        size uint32;
+    }) -> (resource struct {
+        s zx.status;
+        vmo zx.handle:VMO;
+    });
+
+    /// Start DMA
+    Start(struct {
+        channel_id uint32;
+    });
+
+    /// Stop DMA
+    Stop(struct {
+        channel_id uint32;
+    });
+
+    /// Returns the current position within memory where is the DMA has written to or read from.
+    GetBufferPosition(struct {
+        channel_id uint32;
+    }) -> (struct {
+        position uint32;
+    });
+
+    /// It must always be assumed that the DMA is in the process of transfering this amount
+    /// of data (accounting for warp around) into or from memory, hence for:
+    /// Device to memory DMAs, it is not safe to read this amount past the buffer position.
+    /// Memory to device DMAs, it is not safe to write this amount before the buffer position.
+    GetTransferSize(struct {
+        channel_id uint32;
+    }) -> (struct {
+        available_size uint32;
+    });
+
+    /// Specifies a callback for notifications of state change.
+    SetNotifyCallback(resource struct {
+        channel_id uint32;
+        cb client_end:DmaNotifyCallback;
+    }) -> (struct {
+        s zx.status;
+    });
+};

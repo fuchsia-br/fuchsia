@@ -1,0 +1,168 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("optee-bind") {
+  rules = "optee.bind"
+  header_output = "optee-bind.h"
+  bind_output = "optee.bindbc"
+  tests = "optee-bind-test.json"
+  deps = [ "//src/devices/bind/fuchsia.platform" ]
+}
+
+source_set("optee_lib") {
+  sources = [
+    "optee-client.cc",
+    "optee-controller.cc",
+    "optee-message.cc",
+    "optee-util.cc",
+    "shared-memory.cc",
+  ]
+
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.tee:fuchsia.hardware.tee_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.rpmb:fuchsia.hardware.rpmb_llcpp",
+    "//sdk/fidl/fuchsia.hardware.tee:fuchsia.hardware.tee_llcpp",
+    "//sdk/lib/fit-promise",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/mmio",
+    "//src/lib/ddktl",
+    "//src/security/tee/tee-client-api:tee-client-api-headers",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/region-alloc",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    ":optee-bind",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.tee:fuchsia.tee_llcpp",
+    "//sdk/fidl/fuchsia.tee.manager:fuchsia.tee.manager_llcpp",
+    "//src/devices/lib/driver",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-utils",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver("optee-driver") {
+  output_name = "optee"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  deps = [ ":optee_lib" ]
+}
+
+fuchsia_driver_component("optee") {
+  info = "optee-info.json"
+  component_name = "optee"
+  deps = [ ":optee-driver" ]
+  colocate = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":optee-bind_test",
+    ":optee-unittest",
+  ]
+}
+
+test("optee-message-test-bin") {
+  output_name = "optee-message-test"
+  include_dirs = [ "." ]
+  sources = [ "test/optee-message-test.cc" ]
+  deps = [
+    ":optee_lib",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("optee-controller-test-bin") {
+  sources = [ "test/optee-controller-test.cc" ]
+  include_dirs = [ "." ]
+  output_name = "optee-controller-test"
+  deps = [
+    ":optee_lib",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake-resource",
+    "//src/devices/testing/mock-ddk",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("optee-client-test-bin") {
+  sources = [ "test/optee-client-test.cc" ]
+  include_dirs = [ "." ]
+  output_name = "optee-client-test"
+  deps = [
+    ":optee_lib",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/lib/fidl/cpp",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake-resource",
+    "//src/devices/testing/mock-ddk",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("optee-uuid-test-bin") {
+  sources = [ "test/optee-uuid-test.cc" ]
+  include_dirs = [ "." ]
+  output_name = "optee-uuid-test"
+  deps = [
+    ":optee_lib",
+    "//sdk/banjo/fuchsia.hardware.tee:fuchsia.hardware.tee_banjo_cpp",
+    "//sdk/fidl/fuchsia.tee:fuchsia.tee_llcpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_component("optee-client-test") {
+  deps = [ ":optee-client-test-bin" ]
+}
+
+fuchsia_unittest_component("optee-controller-test") {
+  deps = [ ":optee-controller-test-bin" ]
+}
+
+fuchsia_unittest_component("optee-message-test") {
+  deps = [ ":optee-message-test-bin" ]
+}
+
+fuchsia_unittest_component("optee-uuid-test") {
+  deps = [ ":optee-uuid-test-bin" ]
+}
+
+fuchsia_test_package("optee-unittest") {
+  test_components = [
+    ":optee-client-test",
+    ":optee-controller-test",
+    ":optee-message-test",
+    ":optee-uuid-test",
+  ]
+}

@@ -1,0 +1,150 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("stdio") {
+  deps = [ "//zircon/third_party/ulib/musl:musl_internal" ]
+  sources = [
+    "__fclose_ca.c",
+    "__fdopen.c",
+    "__fmodeflags.c",
+    "__fopen_rb_ca.c",
+    "__lockfile.c",
+    "__overflow.c",
+    "__stdio_close.c",
+    "__stdio_exit.c",
+    "__stdio_read.c",
+    "__stdio_seek.c",
+    "__stdio_write.c",
+    "__stdout_write.c",
+    "__string_read.c",
+    "__toread.c",
+    "__towrite.c",
+    "__uflow.c",
+    "asprintf.c",
+    "clearerr.c",
+    "dprintf.c",
+    "fclose.c",
+    "feof.c",
+    "ferror.c",
+    "fflush.c",
+    "fgetc.c",
+    "fgetln.c",
+    "fgetpos.c",
+    "fgets.c",
+    "fgetwc.c",
+    "fgetws.c",
+    "fileno.c",
+    "flockfile.c",
+    "fmemopen.c",
+    "fopen.c",
+    "fprintf.c",
+    "fputc.c",
+    "fputs.c",
+    "fputwc.c",
+    "fputws.c",
+    "fread.c",
+    "freopen.c",
+    "fscanf.c",
+    "fseek.c",
+    "fsetpos.c",
+    "ftell.c",
+    "ftrylockfile.c",
+    "funlockfile.c",
+    "fwide.c",
+    "fwprintf.c",
+    "fwrite.c",
+    "fwscanf.c",
+    "getc.c",
+    "getc_unlocked.c",
+    "getchar.c",
+    "getchar_unlocked.c",
+    "getdelim.c",
+    "getline.c",
+    "gets.c",
+    "getw.c",
+    "getwc.c",
+    "getwchar.c",
+    "ofl.c",
+    "ofl_add.c",
+    "open_memstream.c",
+    "open_wmemstream.c",
+    "pclose.c",
+    "perror.c",
+    "popen.c",
+    "printf.c",
+    "putc.c",
+    "putc_unlocked.c",
+    "putchar.c",
+    "putchar_unlocked.c",
+    "puts.c",
+    "putw.c",
+    "putwc.c",
+    "putwchar.c",
+    "remove.c",
+    "rewind.c",
+    "scanf.c",
+    "setbuf.c",
+    "setbuffer.c",
+    "setlinebuf.c",
+    "setvbuf.c",
+    "snprintf.c",
+    "sprintf.c",
+    "sscanf.c",
+    "stderr.c",
+    "stdin.c",
+    "stdout.c",
+    "swprintf.c",
+    "swscanf.c",
+    "tempnam.c",
+    "tmpfile.c",
+    "tmpnam.c",
+    "ungetc.c",
+    "ungetwc.c",
+    "vasprintf.c",
+    "vdprintf.c",
+    "vfprintf.c",
+    "vfscanf.c",
+    "vfwprintf.c",
+    "vfwscanf.c",
+    "vprintf.c",
+    "vscanf.c",
+    "vsnprintf.c",
+    "vsprintf.c",
+    "vsscanf.c",
+    "vswprintf.c",
+    "vswscanf.c",
+    "vwprintf.c",
+    "vwscanf.c",
+    "wprintf.c",
+    "wscanf.c",
+  ]
+
+  configs -= [ "//build/config:symbol_visibility_hidden" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  # TODO(https://fxbug.dev/42500): Update this after the UB is fixed in musl;
+  # see https://www.openwall.com/lists/musl/2021/08/30/1.
+  #
+  # ../../zircon/third_party/ulib/musl/src/stdio/getdelim.c:61:13: runtime error: applying zero offset to null pointer
+  #    #0    0x000042a879acb17f in getdelim(char** restrict, size_t* restrict, int, FILE* restrict) ../../zircon/third_party/ulib/musl/src/stdio/getdelim.c:61 <libc.so>+0x15617f
+  #    #1.2  0x000020d4abc46e37 in ubsan_GetStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:55 <libclang_rt.asan.so>+0x3be37
+  #    #1.1  0x000020d4abc46e37 in MaybePrintStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:53 <libclang_rt.asan.so>+0x3be37
+  #    #1    0x000020d4abc46e37 in ~ScopedReport() compiler-rt/lib/ubsan/ubsan_diag.cpp:389 <libclang_rt.asan.so>+0x3be37
+  #    #2    0x000020d4abc4b1fb in handlePointerOverflowImpl() compiler-rt/lib/ubsan/ubsan_handlers.cpp:809 <libclang_rt.asan.so>+0x401fb
+  #    #3    0x000020d4abc4ad6d in compiler-rt/lib/ubsan/ubsan_handlers.cpp:815 <libclang_rt.asan.so>+0x3fd6d
+  #    #4    0x000042a879acb17f in getdelim(char** restrict, size_t* restrict, int, FILE* restrict) ../../zircon/third_party/ulib/musl/src/stdio/getdelim.c:61 <libc.so>+0x15617f
+  #    #5    0x000042a879acbcc0 in getline(char** restrict, size_t* restrict, FILE* restrict) ../../zircon/third_party/ulib/musl/src/stdio/getline.c:4 <libc.so>+0x156cc0
+  #    #6    0x0000226df262caee in load_server_config(const char*, sshbuf*) ../../third_party/openssh-portable/servconf.c:2397 <<application>>+0xeeaee
+  #    #7    0x0000226df265a9d7 in main(int, char**) ../../third_party/openssh-portable/sshd.c:1714 <<application>>+0x11c9d7
+  #    #8    0x000042a879a371d9 in start_main(const start_params*) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:139 <libc.so>+0xc21d9
+  #    #9    0x000042a879a37be1 in __libc_start_main(zx_handle_t, int (*)(int, char**, char**)) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:214 <libc.so>+0xc2be1
+  #    #10   0x0000226df2738500 in _start(zx_handle_t) ../../zircon/system/ulib/c/Scrt1.cc:7 <<application>>+0x1fa500
+  configs += [ ":undefined_behavior_null_pointer_arithmetic" ]
+}
+
+config("undefined_behavior_null_pointer_arithmetic") {
+  cflags = [ "-fno-sanitize=pointer-overflow" ]
+}

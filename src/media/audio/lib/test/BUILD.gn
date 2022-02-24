@@ -1,0 +1,154 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This source set contains a broad variety of test-related classes.
+#
+# It intentionally includes every source_set defined in this file, to include
+# them in whole-tree compiles even if they have are no in-tree consumers.
+source_set("test") {
+  testonly = true
+
+  public_deps = [
+    ":constants",
+    ":hermetic_audio_test",
+    ":hermetic_pipeline_test_main",
+    ":message_transceiver",
+    ":null_renderer_capturer",
+    ":test_fixture",
+  ]
+}
+
+# Constants used by both non-hermetic and hermetic base classes
+source_set("constants") {
+  testonly = true
+
+  sources = [ "constants.h" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.media" ]
+}
+
+# Base class for hermetic test cases
+source_set("hermetic_audio_test") {
+  testonly = true
+
+  sources = [
+    "capturer_shim.h",
+    "comparators.cc",
+    "comparators.h",
+    "hermetic_audio_environment.cc",
+    "hermetic_audio_environment.h",
+    "hermetic_audio_test.cc",
+    "hermetic_audio_test.h",
+    "renderer_shim.cc",
+    "renderer_shim.h",
+    "virtual_device.cc",
+    "virtual_device.h",
+  ]
+
+  public_deps = [
+    ":constants",
+    ":test_fixture",
+    "//sdk/fidl/fuchsia.audio.effects",
+    "//sdk/fidl/fuchsia.media",
+    "//sdk/fidl/fuchsia.media.audio",
+    "//sdk/fidl/fuchsia.ultrasound",
+    "//sdk/fidl/fuchsia.virtualaudio",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/media/audio/audio_core:audio_core_lib",
+    "//src/media/audio/audio_core/mixer:prebuilt_coefficient_tables",
+    "//src/media/audio/effects/test_effects:test_effects_v2",
+    "//src/media/audio/lib/analysis",
+    "//src/media/audio/lib/clock",
+    "//src/media/audio/lib/format",
+    "//src/media/audio/lib/wav",
+    "//src/power/fidl/testing:test.thermal",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.media.tuning",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+source_set("hermetic_pipeline_test") {
+  testonly = true
+
+  sources = [
+    "hermetic_fidelity_frequencies.cc",
+    "hermetic_fidelity_test.cc",
+    "hermetic_fidelity_test.h",
+    "hermetic_impulse_test.cc",
+    "hermetic_impulse_test.h",
+    "hermetic_pipeline_test.cc",
+    "hermetic_pipeline_test.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.media",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:test_settings",
+  ]
+
+  public_deps = [ ":hermetic_audio_test" ]
+}
+
+# Main entry point for tests that use hermetic_pipeline_test.h.
+source_set("hermetic_pipeline_test_main") {
+  testonly = true
+
+  sources = [ "hermetic_pipeline_test_main.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.media",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:test_settings",
+  ]
+
+  public_deps = [ ":hermetic_pipeline_test" ]
+}
+
+# Flexible utility class for channel-based communication (such as to drivers or device services).
+source_set("message_transceiver") {
+  sources = [
+    "message_transceiver.cc",
+    "message_transceiver.h",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+# Empty renderer and capturer implementations suitable for use in unit testing.
+source_set("null_renderer_capturer") {
+  sources = [
+    "null_audio_capturer.h",
+    "null_audio_renderer.h",
+  ]
+
+  deps = [ "//sdk/fidl/fuchsia.media" ]
+}
+
+source_set("test_fixture") {
+  testonly = true
+
+  sources = [
+    "test_fixture.cc",
+    "test_fixture.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/fit",
+    "//src/lib/testing/loop_fixture",
+  ]
+}

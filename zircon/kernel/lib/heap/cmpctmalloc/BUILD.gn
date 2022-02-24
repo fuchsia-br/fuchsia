@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/cpp/library_headers.gni")
+
+library_headers("cmpctmalloc_headers") {
+  headers = [ "lib/cmpctmalloc.h" ]
+}
+
+source_set("cmpctmalloc") {
+  sources = [ "cmpctmalloc.cc" ]
+  deps = [
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/pretty",
+  ]
+  public_deps = [ ":cmpctmalloc_headers" ]
+
+  if (is_host) {
+    public_deps += [ "//zircon/system/ulib/zircon-internal" ]
+    include_dirs = [ "//zircon/kernel/lib/heap/include" ]
+    defines = [ "ZX_ASSERT_LEVEL=2" ]
+  } else if (is_kernel) {
+    deps += [
+      "//zircon/kernel/lib/counters",
+
+      # TODO(fxbug.dev/51163): Remove headers when possible.
+      "//zircon/kernel/lib/instrumentation:headers",
+    ]
+  }
+}

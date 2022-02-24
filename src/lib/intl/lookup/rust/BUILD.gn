@@ -1,0 +1,93 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/intl/intl_strings.gni")
+import("//build/rust/rustc_staticlib.gni")
+import("//build/testing/environments.gni")
+
+group("rust") {
+  testonly = true
+  public_deps = [
+    ":lib",
+    ":tests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":intl-lookup-rust-tests" ]
+}
+
+rustc_staticlib("lib") {
+  with_unit_tests = true
+  name = "intl_lookup"
+  edition = "2018"
+  public = [ "lookup.h" ]
+  deps = [
+    "//src/lib/icu_data/rust/icu_data",
+    "//src/lib/intl/model:lib",
+    "//src/lib/syslog/rust:syslog",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:libc",
+    "//third_party/rust_crates:rust_icu_common",
+    "//third_party/rust_crates:rust_icu_sys",
+    "//third_party/rust_crates:rust_icu_uloc",
+  ]
+  non_rust_deps = [
+    "//third_party/icu",
+    "//zircon/system/ulib/syslog",
+    "//zircon/system/ulib/zx",
+  ]
+  test_deps = [
+    ":fuchsia.intl.test-rustc",
+    ":l10n",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+resource("l10n_en_asset") {
+  deps = [ ":l10n" ]
+  sources = [ "$target_gen_dir/en/l10n.json" ]
+  outputs = [ "data/assets/locales/en/l10n.json" ]
+}
+
+resource("l10n_fr_asset") {
+  deps = [ ":l10n" ]
+  sources = [ "$target_gen_dir/fr/l10n.json" ]
+  outputs = [ "data/assets/locales/fr/l10n.json" ]
+}
+
+resource("l10n_es_asset") {
+  deps = [ ":l10n" ]
+  sources = [ "$target_gen_dir/es/l10n.json" ]
+  outputs = [ "data/assets/locales/es/l10n.json" ]
+}
+
+fuchsia_unittest_package("intl-lookup-rust-tests") {
+  deps = [
+    ":l10n_en_asset",
+    ":l10n_es_asset",
+    ":l10n_fr_asset",
+    ":lib_test",
+    "//src/intl:icudtl",
+  ]
+}
+
+intl_strings("l10n") {
+  source = "strings.xml"
+  source_locale = "en"
+  output_locales = [
+    "en",
+    "fr",
+    "es",
+  ]
+  library = "fuchsia.intl.test"
+
+  # Allow keeping files like strings_fr.xml in the same directory as
+  # strings.xml.  This is for testing only, we recommend not using this
+  # option and using a separate directory per locale instead.
+  same_dir_locales = true
+}

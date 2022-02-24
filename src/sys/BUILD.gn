@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("sys") {
+  testonly = true
+  deps = [
+    "activity",
+    "component_manager:component-manager",
+    "component_test_runner",
+    "pkg",
+    "time/timekeeper",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "activity:tests",
+    "appmgr:tests",
+    "base-resolver:tests",
+    "component_index:tests",
+    "component_manager:tests",
+    "component_test_runner:tests",
+    "core:tests",
+    "device_settings:tests",
+    "early_boot_instrumentation:tests",
+    "fuzzing:tests",
+    "installer:tests",
+    "lib:tests",
+    "live_usb:tests",
+    "locate:tests",
+    "pkg:tests",
+    "run_test_suite:tests",
+    "startup:tests",
+    "stash:tests",
+    "sysmgr:tests",
+    "test_manager:tests",
+    "test_runners:tests",
+    "time:tests",
+    "tools/log:tests",
+    "tools/stash_ctl:tests",
+    "universe-resolver:tests",
+  ]
+}

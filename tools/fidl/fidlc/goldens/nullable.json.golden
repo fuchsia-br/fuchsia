@@ -1,0 +1,1094 @@
+{
+  "version": "0.0.1",
+  "name": "test.nullable",
+  "library_dependencies": [
+    {
+      "name": "zx",
+      "declarations": {
+        "zx/rights": {
+          "kind": "bits"
+        },
+        "zx/RIGHTS_BASIC": {
+          "kind": "const"
+        },
+        "zx/RIGHTS_IO": {
+          "kind": "const"
+        },
+        "zx/RIGHTS_PROPERTY": {
+          "kind": "const"
+        },
+        "zx/RIGHTS_POLICY": {
+          "kind": "const"
+        },
+        "zx/DEFAULT_CHANNEL_RIGHTS": {
+          "kind": "const"
+        },
+        "zx/DEFAULT_EVENT_RIGHTS": {
+          "kind": "const"
+        },
+        "zx/CHANNEL_MAX_MSG_BYTES": {
+          "kind": "const"
+        },
+        "zx/CHANNEL_MAX_MSG_HANDLES": {
+          "kind": "const"
+        },
+        "zx/MAX_NAME_LEN": {
+          "kind": "const"
+        },
+        "zx/MAX_CPUS": {
+          "kind": "const"
+        },
+        "zx/obj_type": {
+          "kind": "enum"
+        },
+        "zx/handle": {
+          "kind": "experimental_resource"
+        },
+        "zx/status": {
+          "kind": "type_alias"
+        },
+        "zx/time": {
+          "kind": "type_alias"
+        },
+        "zx/duration": {
+          "kind": "type_alias"
+        },
+        "zx/ticks": {
+          "kind": "type_alias"
+        },
+        "zx/koid": {
+          "kind": "type_alias"
+        },
+        "zx/vaddr": {
+          "kind": "type_alias"
+        },
+        "zx/paddr": {
+          "kind": "type_alias"
+        },
+        "zx/paddr32": {
+          "kind": "type_alias"
+        },
+        "zx/gpaddr": {
+          "kind": "type_alias"
+        },
+        "zx/off": {
+          "kind": "type_alias"
+        },
+        "zx/procarg": {
+          "kind": "type_alias"
+        },
+        "zx/signals": {
+          "kind": "type_alias"
+        }
+      }
+    }
+  ],
+  "bits_declarations": [],
+  "const_declarations": [],
+  "enum_declarations": [],
+  "experimental_resource_declarations": [],
+  "interface_declarations": [
+    {
+      "name": "test.nullable/SimpleProtocol",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 17,
+        "column": 10,
+        "length": 14
+      },
+      "composed_protocols": [],
+      "methods": [
+        {
+          "ordinal": 9142761280038437494,
+          "name": "Add",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 18,
+            "column": 5,
+            "length": 3
+          },
+          "has_request": true,
+          "maybe_request_payload": {
+            "kind": "identifier",
+            "identifier": "test.nullable/SimpleProtocolAddRequest",
+            "nullable": false,
+            "type_shape_v1": {
+              "inline_size": 8,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 8,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "has_response": true,
+          "maybe_response_payload": {
+            "kind": "identifier",
+            "identifier": "test.nullable/SimpleProtocolAddTopResponse",
+            "nullable": false,
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "is_composed": false,
+          "has_error": false
+        }
+      ]
+    }
+  ],
+  "service_declarations": [],
+  "struct_declarations": [
+    {
+      "name": "test.nullable/SimpleProtocolAddRequest",
+      "naming_context": [
+        "SimpleProtocol",
+        "Add",
+        "Request"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 18,
+        "column": 9,
+        "length": 48
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "primitive",
+            "subtype": "int32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "a",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 19,
+            "column": 9,
+            "length": 1
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        },
+        {
+          "type": {
+            "kind": "primitive",
+            "subtype": "int32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "b",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 20,
+            "column": 9,
+            "length": 1
+          },
+          "field_shape_v1": {
+            "offset": 4,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 4,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 8,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 8,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/SimpleProtocolAddTopResponse",
+      "naming_context": [
+        "SimpleProtocol",
+        "Add",
+        "Response"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 21,
+        "column": 12,
+        "length": 33
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "primitive",
+            "subtype": "int32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "sum",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 22,
+            "column": 9,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableString",
+      "naming_context": [
+        "StructWithNullableString"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 5,
+        "column": 6,
+        "length": 24
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "string",
+            "nullable": true,
+            "type_shape_v1": {
+              "inline_size": 16,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 4294967295,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 16,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 4294967295,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 6,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 4294967295,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 4294967295,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableVector",
+      "naming_context": [
+        "StructWithNullableVector"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 9,
+        "column": 6,
+        "length": 24
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "vector",
+            "element_type": {
+              "kind": "primitive",
+              "subtype": "int32",
+              "type_shape_v1": {
+                "inline_size": 4,
+                "alignment": 4,
+                "depth": 0,
+                "max_handles": 0,
+                "max_out_of_line": 0,
+                "has_padding": false,
+                "has_flexible_envelope": false
+              },
+              "type_shape_v2": {
+                "inline_size": 4,
+                "alignment": 4,
+                "depth": 0,
+                "max_handles": 0,
+                "max_out_of_line": 0,
+                "has_padding": false,
+                "has_flexible_envelope": false
+              }
+            },
+            "nullable": true,
+            "type_shape_v1": {
+              "inline_size": 16,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 4294967295,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 16,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 4294967295,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 10,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 4294967295,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 4294967295,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableHandle",
+      "naming_context": [
+        "StructWithNullableHandle"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 13,
+        "column": 6,
+        "length": 24
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "handle",
+            "obj_type": 3,
+            "subtype": "vmo",
+            "rights": 2147483648,
+            "nullable": true,
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 14,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": true,
+      "type_shape_v1": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableProtocol",
+      "naming_context": [
+        "StructWithNullableProtocol"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 26,
+        "column": 6,
+        "length": 26
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.nullable/SimpleProtocol",
+            "nullable": true,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 27,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": true,
+      "type_shape_v1": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableRequest",
+      "naming_context": [
+        "StructWithNullableRequest"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 30,
+        "column": 6,
+        "length": 25
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "request",
+            "subtype": "test.nullable/SimpleProtocol",
+            "nullable": true,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 31,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": true,
+      "type_shape_v1": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 1,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/Int32Wrapper",
+      "naming_context": [
+        "Int32Wrapper"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 34,
+        "column": 6,
+        "length": 12
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "primitive",
+            "subtype": "int32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 35,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 4,
+        "alignment": 4,
+        "depth": 0,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": false,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableStruct",
+      "naming_context": [
+        "StructWithNullableStruct"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 38,
+        "column": 6,
+        "length": 24
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.nullable/Int32Wrapper",
+            "nullable": true,
+            "type_shape_v1": {
+              "inline_size": 8,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 8,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 8,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 8,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 39,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 8,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 8,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 8,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 8,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      }
+    },
+    {
+      "name": "test.nullable/StructWithNullableUnion",
+      "naming_context": [
+        "StructWithNullableUnion"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 47,
+        "column": 6,
+        "length": 23
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.nullable/SimpleUnion",
+            "nullable": true,
+            "type_shape_v1": {
+              "inline_size": 24,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 8,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 16,
+              "alignment": 8,
+              "depth": 1,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": true,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "val",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 48,
+            "column": 5,
+            "length": 3
+          },
+          "field_shape_v1": {
+            "offset": 0,
+            "padding": 0
+          },
+          "field_shape_v2": {
+            "offset": 0,
+            "padding": 0
+          }
+        }
+      ],
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 24,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 8,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      }
+    }
+  ],
+  "external_struct_declarations": [],
+  "table_declarations": [],
+  "union_declarations": [
+    {
+      "name": "test.nullable/SimpleUnion",
+      "naming_context": [
+        "SimpleUnion"
+      ],
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+        "line": 42,
+        "column": 6,
+        "length": 11
+      },
+      "members": [
+        {
+          "ordinal": 1,
+          "reserved": false,
+          "name": "a",
+          "type": {
+            "kind": "primitive",
+            "subtype": "int32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 43,
+            "column": 8,
+            "length": 1
+          }
+        },
+        {
+          "ordinal": 2,
+          "reserved": false,
+          "name": "b",
+          "type": {
+            "kind": "primitive",
+            "subtype": "float32",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 0,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/nullable.test.fidl",
+            "line": 44,
+            "column": 8,
+            "length": 1
+          }
+        }
+      ],
+      "strict": true,
+      "resource": false,
+      "type_shape_v1": {
+        "inline_size": 24,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 8,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      },
+      "type_shape_v2": {
+        "inline_size": 16,
+        "alignment": 8,
+        "depth": 1,
+        "max_handles": 0,
+        "max_out_of_line": 0,
+        "has_padding": true,
+        "has_flexible_envelope": false
+      }
+    }
+  ],
+  "type_alias_declarations": [],
+  "declaration_order": [
+    "test.nullable/StructWithNullableVector",
+    "test.nullable/StructWithNullableUnion",
+    "test.nullable/StructWithNullableStruct",
+    "test.nullable/StructWithNullableString",
+    "test.nullable/StructWithNullableRequest",
+    "test.nullable/StructWithNullableProtocol",
+    "test.nullable/StructWithNullableHandle",
+    "test.nullable/SimpleUnion",
+    "test.nullable/SimpleProtocolAddTopResponse",
+    "test.nullable/SimpleProtocolAddRequest",
+    "test.nullable/SimpleProtocol",
+    "test.nullable/Int32Wrapper"
+  ],
+  "declarations": {
+    "test.nullable/SimpleProtocol": "interface",
+    "test.nullable/SimpleProtocolAddRequest": "struct",
+    "test.nullable/SimpleProtocolAddTopResponse": "struct",
+    "test.nullable/StructWithNullableString": "struct",
+    "test.nullable/StructWithNullableVector": "struct",
+    "test.nullable/StructWithNullableHandle": "struct",
+    "test.nullable/StructWithNullableProtocol": "struct",
+    "test.nullable/StructWithNullableRequest": "struct",
+    "test.nullable/Int32Wrapper": "struct",
+    "test.nullable/StructWithNullableStruct": "struct",
+    "test.nullable/StructWithNullableUnion": "struct",
+    "test.nullable/SimpleUnion": "union"
+  }
+}

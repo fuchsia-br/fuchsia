@@ -1,0 +1,22 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # The absolute path of the sysroot that is used with the target toolchain.
+  target_sysroot = ""
+}
+
+if (current_os == target_os && target_sysroot != "") {
+  sysroot = target_sysroot
+} else if (is_fuchsia) {
+  import("//zircon/public/sysroot/cpp.gni")
+  sysroot = cpp_sysroot_dir
+} else if (is_linux) {
+  sysroot = "//prebuilt/third_party/sysroot/linux"
+} else if (is_mac) {
+  import("//build/config/mac/mac_sdk.gni")
+  sysroot = mac_sdk_path
+} else {
+  sysroot = ""
+}

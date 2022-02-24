@@ -1,0 +1,384 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/testing/environments.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+import("//src/lib/vulkan/layers.gni")
+import("//src/ui/lib/escher/build_args.gni")
+import("//src/ui/scenic/build_args.gni")
+import("//src/ui/scenic/lib/gfx/build_args.gni")
+
+# Runtime is the set of package dependencies typically desired for the
+# construction of a product that includes scenic, and is included in
+# many such products.
+group("runtime") {
+  deps = [
+    ":scenic",
+    "//src/devices/sysmem/bin/sysmem_connector",
+    "//src/graphics/bin/vulkan_loader",
+    "//src/sys/activity",
+    "//src/ui/bin/root_presenter",
+    "//src/ui/bin/root_presenter:configs",
+
+    # TODO(fxbug.dev/82822): Remove after out-of-tree tests migrate to
+    # text_manager.
+    "//src/ui/bin/text:ime_service",
+    "//src/ui/bin/text:text_manager",
+  ]
+}
+
+group("scenic") {
+  public_deps = [
+    ":configs",
+    ":scenic_pkg",
+  ]
+}
+
+group("configs") {
+  deps = [ ":scenic_config" ]
+}
+
+config_data("scenic_config") {
+  for_pkg = "sysmgr"
+  outputs = [ "scenic.config" ]
+  sources = [ "services.config" ]
+}
+
+config("flatland_config") {
+  defines = []
+  if (use_flatland_by_default) {
+    defines += [ "USE_FLATLAND_BY_DEFAULT" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+
+  public_deps = [
+    ":allocation_unittests",
+    ":display_unittests",
+    ":flatland_buffers_unittests",
+    ":flatland_display_compositor_pixeltests",
+    ":flatland_display_compositor_pixeltests_with_fake_display",
+    ":flatland_display_compositor_smoketests",
+    ":flatland_engine_unittests",
+    ":flatland_renderer_unittests",
+    ":flatland_unittests",
+    ":fuzzers",
+    ":gfx_apptests",
+    ":gfx_pixeltests",
+    ":gfx_swapchain_tests",
+    ":gfx_unittests",
+    ":gfx_util_unittests",
+    ":gfx_viewstate_apptests",
+    ":input_unittests",
+    ":scenic_unittests",
+    ":scheduling_unittests",
+    ":screenshot_unittests",
+    "integration_tests",
+    "lib/focus/tests",
+    "lib/gfx/tests",
+    "lib/gfx/tests:mock_pose_buffer_provider",
+    "lib/gfx/tests/rotated_square_test",
+    "lib/scenic/util/tests",
+    "lib/view_tree:geometry_provider",
+    "lib/view_tree:observer_registry",
+    "lib/view_tree/tests",
+
+    # These are included in //src/ui/bin:tests, but I don't see that included anywhere.
+    # If these tests fail, then other Scenic tests are likely to fail, so we want to guarantee that
+    # they are always run whenever Scenic tests are.
+    "//src/ui/bin/hardware_display_controller_provider:tests",
+  ]
+}
+
+group("fuzzers") {
+  testonly = true
+  public_deps = [
+    "lib/input/tests/fuzzers",
+    "lib/scheduling/tests/fuzzers",
+  ]
+}
+
+scenic_test_deps = [ "//src/lib/vulkan:vulkan_validation_layers" ]
+if (escher_use_runtime_glsl) {
+  scenic_test_deps += [ "//src/ui/lib/escher/shaders:escher_shaders_resources" ]
+} else {
+  scenic_test_deps +=
+      [ "//src/ui/lib/escher/shaders:escher_shaders_spirv_resources" ]
+}
+
+fuchsia_unittest_package("allocation_unittests") {
+  manifest = "meta/allocation_unittests.cmx"
+  deps = [ "lib/allocation/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("display_unittests") {
+  deps = [ "lib/display/tests:unittests" ] + scenic_test_deps
+}
+
+fuchsia_unittest_package("flatland_unittests") {
+  manifest = "meta/flatland_unittests.cmx"
+  deps = [ "lib/flatland/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("flatland_buffers_unittests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/cpuperf_provider:cpuperf_provider",
+    "//garnet/bin/ktrace_provider:ktrace_provider",
+  ]
+  manifest = "meta/flatland_buffers_unittests.cmx"
+  deps = [ "lib/flatland/buffers/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("flatland_display_compositor_pixeltests") {
+  manifest = "meta/flatland_display_compositor_pixeltests.cmx"
+  deps =
+      [ "lib/flatland/engine/tests/pixeltests:pixeltests_with_real_display" ] +
+      scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+
+    # Ensures that only devices that have access
+    # to display controller image capture features
+    # can run this test suite.
+    environments = [
+      astro_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_unittest_package(
+    "flatland_display_compositor_pixeltests_with_fake_display") {
+  package_deps_for_infra_only = [ "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider" ]
+  manifest = "meta/flatland_display_compositor_pixeltests_with_fake_display.cmx"
+  deps =
+      [ "lib/flatland/engine/tests/pixeltests:pixeltests_with_fake_display" ] +
+      scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("flatland_display_compositor_smoketests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/trace_manager:trace_manager",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider",
+  ]
+  manifest = "meta/flatland_display_compositor_smoketests.cmx"
+  deps =
+      [ "lib/flatland/engine/tests/smoketests:smoketests_with_fake_display" ] +
+      scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+
+    # Ensures that only devices that have access
+    # to display controller image capture features
+    # can run this test suite.
+    environments = [ aemu_env ] + basic_envs
+  }
+}
+
+fuchsia_unittest_package("flatland_engine_unittests") {
+  manifest = "meta/flatland_engine_unittests.cmx"
+  deps = [ "lib/flatland/engine/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("flatland_renderer_unittests") {
+  package_deps_for_infra_only = [ "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider" ]
+  manifest = "meta/flatland_renderer_unittests.cmx"
+  deps = [ "lib/flatland/renderer/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = basic_envs + magma_libvulkan_hardware_envs
+  }
+}
+
+fuchsia_unittest_package("gfx_apptests") {
+  manifest = "meta/gfx_apptests.cmx"
+  deps = [ "lib/gfx/tests:apptests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("gfx_pixeltests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/trace_manager:trace_manager",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider",
+    "//src/ui/bin/root_presenter:root_presenter",
+    "//src/ui/scenic:scenic_pkg",
+  ]
+  manifest = "meta/gfx_pixeltests.cmx"
+  deps = [ "lib/gfx/tests:pixeltests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [ aemu_env ] + magma_libvulkan_hardware_envs
+  }
+}
+
+fuchsia_unittest_package("gfx_swapchain_tests") {
+  manifest = "meta/gfx_swapchain_tests.cmx"
+  deps = [ "lib/gfx/tests:swapchain_tests" ] + scenic_test_deps
+  test_specs = {
+    environments = [ aemu_env ] + magma_libvulkan_hardware_envs
+  }
+}
+
+fuchsia_unittest_package("gfx_unittests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/cpuperf_provider:cpuperf_provider",
+    "//garnet/bin/ktrace_provider:ktrace_provider",
+  ]
+  manifest = "meta/gfx_unittests.cmx"
+  deps = [ "lib/gfx/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "FATAL"
+    }
+    environments = basic_envs + magma_libvulkan_hardware_envs
+  }
+}
+
+fuchsia_unittest_package("gfx_util_unittests") {
+  deps = [ "lib/gfx/util/tests:unittests" ] + scenic_test_deps
+}
+
+fuchsia_unittest_package("gfx_viewstate_apptests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/cpuperf_provider:cpuperf_provider",
+    "//garnet/bin/ktrace_provider:ktrace_provider",
+    "//src/ui/bin/root_presenter:root_presenter",
+    "//src/ui/examples/bouncing_ball:bouncing_ball",
+    "//src/ui/scenic:scenic_pkg",
+  ]
+  manifest = "meta/gfx_viewstate_apptests.cmx"
+  deps = [ "lib/gfx/tests:viewstate_apptests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+    environments = [ aemu_env ] + magma_libvulkan_hardware_envs
+  }
+}
+
+fuchsia_unittest_package("input_unittests") {
+  manifest = "meta/input_unittests.cmx"
+  deps = [ "lib/input/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("scenic_unittests") {
+  manifest = "meta/scenic_unittests.cmx"
+  deps = [ "lib/scenic/tests:unittests" ] + scenic_test_deps
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_unittest_package("scheduling_unittests") {
+  manifest = "meta/scheduling_unittests.cmx"
+  deps = [ "lib/scheduling/tests:unittests" ] + scenic_test_deps
+}
+
+fuchsia_unittest_package("screenshot_unittests") {
+  package_deps_for_infra_only = [ "//garnet/bin/trace_manager:trace_manager" ]
+  manifest = "meta/screenshot_unittests.cmx"
+  deps = [ "lib/screenshot/tests:unittests" ] + scenic_test_deps
+}
+
+# For migration purposes only.  To be moved to src/ui/scenic/bin:scenic
+#
+# TODO(fxbug.dev/83213) Retain v1 component while out of tree tests need it.
+fuchsia_component("component") {
+  component_name = "scenic"
+  manifest = "bin/meta/scenic.cmx"
+  deps = [ "bin" ]
+
+  if (escher_use_runtime_glsl) {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_resources" ]
+  } else {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_spirv_resources" ]
+  }
+
+  if (scenic_enable_vulkan_validation) {
+    deps += [ "//src/lib/vulkan:vulkan_validation_layers" ]
+  }
+}
+
+fuchsia_component("component_v2") {
+  component_name = "scenic"
+  manifest = "bin/meta/scenic.cml"
+  deps = [ "bin" ]
+
+  if (escher_use_runtime_glsl) {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_resources" ]
+  } else {
+    deps += [ "//src/ui/lib/escher/shaders:escher_shaders_spirv_resources" ]
+  }
+
+  if (scenic_enable_vulkan_validation) {
+    deps += [ "//src/lib/vulkan:vulkan_validation_layers" ]
+  }
+}
+
+fuchsia_package("scenic_pkg") {
+  package_name = "scenic"
+  deps = [
+    ":component",
+    ":component_v2",
+  ]
+}
+
+group("frame-scheduler-min-predicted-frame-duration-in-us--15000") {
+  public_deps = [ ":frame_scheduler_min_predicted_frame_duration_in_us__15000" ]
+}
+
+config_data("frame_scheduler_min_predicted_frame_duration_in_us__15000") {
+  for_pkg = "scenic"
+  sources = [ rebase_path(
+          "data/frame_scheduler_min_predicted_frame_duration_in_us__15000") ]
+  outputs = [ "scenic_config" ]
+}

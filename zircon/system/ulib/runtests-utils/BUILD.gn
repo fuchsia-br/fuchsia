@@ -1,0 +1,69 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+zx_library("runtests-utils") {
+  testonly = true
+  sdk = "source"
+  sdk_headers = [
+    "runtests-utils/fuchsia-run-test.h",
+    "runtests-utils/log-exporter.h",
+    "runtests-utils/runtests-utils.h",
+    "runtests-utils/service-proxy-dir.h",
+  ]
+  sources = [
+    "discover-and-run-tests.cc",
+    "fuchsia-run-test.cc",
+    "log-exporter.cc",
+    "runtests-utils.cc",
+    "service-proxy-dir.cc",
+  ]
+  public_deps = [
+    # <runtests-utils/log-exporter.h> has #include <lib/fidl/cpp/message_buffer.h>.
+    # <runtests-utils/runtests-utils.h> has #include <lib/zircon-internal/fnv1hash.h>.
+    "//sdk/lib/fidl/cpp:cpp_base",
+    "//zircon/system/ulib/zircon-internal",
+
+    # <runtests-utils/log-exporter.h> has #include <fuchsia/logger/c/fidl.h>.
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_c",
+
+    # <runtests-utils/log-exporter.h> has #include <lib/async-loop/cpp/loop.h>.
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+
+    # <runtests-utils/runtests-utils.h> has #include <lib/debugdata/datasink.h>.
+    "//zircon/system/ulib/debugdata",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_c",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "test:tests" ]
+}

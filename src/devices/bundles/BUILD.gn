@@ -1,0 +1,175 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/drivers/arguments.gni")
+
+# This contains a list of all drivers in the devices area.
+group("drivers") {
+  testonly = true
+  deps = [
+    "//src/devices/acpi:drivers",
+    "//src/devices/bin/driver-index:test-bind-component",
+    "//src/devices/bin/driver-index:test-bind2-component",
+    "//src/devices/bin/driver-index:test-fallback-component",
+    "//src/devices/bin/driver_host:driver-host-restart-driver",
+    "//src/devices/bin/driver_host:driver-host-test-child-driver",
+    "//src/devices/bin/driver_host:driver-host-test-driver",
+    "//src/devices/bin/driver_host:unit-test-fail",
+    "//src/devices/bin/driver_host:unit-test-pass",
+    "//src/devices/bin/driver_host2:test_driver",
+    "//src/devices/bin/driver_host2:test_not_driver",
+    "//src/devices/block:drivers",
+    "//src/devices/board:drivers",
+    "//src/devices/bus:drivers",
+    "//src/devices/clock:drivers",
+    "//src/devices/cpu:drivers",
+    "//src/devices/gpio:drivers",
+    "//src/devices/i2c:drivers",
+    "//src/devices/internal/drivers/fragment:fragment",
+    "//src/devices/internal/drivers/fragment:fragment.proxy",
+    "//src/devices/light-sensor:drivers",
+    "//src/devices/mcu:drivers",
+    "//src/devices/misc:drivers",
+    "//src/devices/ml:drivers",
+    "//src/devices/nand:drivers",
+    "//src/devices/power:drivers",
+    "//src/devices/pwm:drivers",
+    "//src/devices/ram:drivers",
+    "//src/devices/registers:drivers",
+    "//src/devices/rtc:drivers",
+    "//src/devices/securemem:drivers",
+    "//src/devices/serial:drivers",
+    "//src/devices/spi:drivers",
+    "//src/devices/sysmem:drivers",
+    "//src/devices/tee:drivers",
+    "//src/devices/temperature:drivers",
+    "//src/devices/tests:drivers",
+    "//src/devices/thermal:drivers",
+    "//src/devices/tpm:drivers",
+    "//src/devices/usb:drivers",
+  ]
+}
+
+# This target contains drivers that are present on the boot partition of all
+# products.
+group("bootstrap-dev") {
+  deps = [
+    "//src/devices/block/drivers/core",
+    "//src/devices/block/drivers/gpt",
+    "//src/devices/block/drivers/ramdisk",
+    "//src/devices/block/drivers/sdmmc",
+    "//src/devices/block/drivers/zxcrypt",
+    "//src/devices/bus/drivers/platform:platform-bus",
+    "//src/devices/bus/drivers/platform:platform-bus.proxy",
+    "//src/devices/clock/drivers/clock",
+    "//src/devices/gpio/drivers/gpio",
+    "//src/devices/i2c/drivers/i2c",
+    "//src/devices/internal/drivers/fragment",
+    "//src/devices/internal/drivers/fragment:fragment.proxy",
+    "//src/devices/misc/drivers/builtin",
+    "//src/devices/power/drivers/power",
+    "//src/devices/pwm/drivers/pwm",
+    "//src/devices/serial/drivers/serial",
+    "//src/devices/serial/drivers/serial-async",
+    "//src/devices/spi/drivers/spi",
+    "//src/devices/sysmem/drivers/sysmem",
+    "//src/storage/fvm/driver",
+  ]
+}
+
+# This target contains executables that are present on the boot partition of all
+# products.
+group("bootstrap-bin") {
+  deps = [
+    "//src/devices/bin/driver-index:bootfs",
+    "//src/devices/bin/driver_manager:bootfs",
+  ]
+
+  # Avoid including both driver_hosts in the same build.
+  if (enable_dfv2) {
+    deps += [ "//src/devices/bin/driver_host2" ]
+  } else {
+    deps += [ "//src/devices/bin/driver_host" ]
+  }
+}
+
+group("usb-host-stack") {
+  deps = [
+    "//src/devices/block/drivers/usb-mass-storage",
+    "//src/devices/ml/drivers/usb-harriet",
+    "//src/devices/serial/drivers/ftdi",
+    "//src/devices/serial/drivers/usb-cdc-acm",
+    "//src/devices/usb/drivers/usb-bus",
+    "//src/devices/usb/drivers/usb-composite",
+    "//src/devices/usb/drivers/usb-dfu",
+    "//src/devices/usb/drivers/usb-hub",
+  ]
+}
+
+group("usb-peripheral-stack") {
+  deps = [
+    "//src/devices/block/drivers/ums-function",
+    "//src/devices/usb/bin/usbctl",
+    "//src/devices/usb/drivers/usb-peripheral",
+  ]
+}
+
+group("utils") {
+  deps = [
+    # utils should not be included in user build which does not have shell
+    # access.
+    "//build/validate:non_production_tag",
+    "//src/devices/bin/acpidump",
+    "//src/devices/bin/driver-info:driverinfo",
+    "//src/devices/bin/driver-registrar",
+    "//src/devices/bin/driverctl",
+    "//src/devices/bin/lsdev",
+    "//src/devices/bin/register-util",
+    "//src/devices/bin/unbind",
+    "//src/devices/block/bin/gpt",
+    "//src/devices/block/bin/lsblk",
+    "//src/devices/block/bin/sdio",
+    "//src/devices/clock/bin/clock",
+    "//src/devices/clock/bin/clock:clkctl",
+    "//src/devices/cpu/bin/cpuctl",
+    "//src/devices/gpio/bin/gpioutil",
+    "//src/devices/i2c/bin:i2cutil",
+    "//src/devices/power/bin/lspwr",
+    "//src/devices/pwm/bin/pwmctl",
+    "//src/devices/ram/bin/ram-info",
+    "//src/devices/spi/bin/spiutil",
+    "//src/devices/thermal/bin/temperature-cli",
+    "//src/devices/thermal/bin/thermal-cli",
+    "//src/devices/usb/bin/lsusb",
+  ]
+}
+
+group("manual_testing") {
+  testonly = true
+
+  deps = [
+    "//src/devices/bin/tee-test",
+    "//src/devices/block/bin/biotime",
+    "//src/devices/block/bin/blktest",
+    "//src/devices/block/bin/iochk",
+    "//src/devices/block/bin/iotime",
+    "//src/devices/gpio/drivers/gpio-test",
+    "//src/devices/misc/drivers/test",
+    "//src/devices/serial/bin/serial-test",
+    "//src/devices/tests/sysdev",
+    "//src/devices/usb/bin/usb-fwloader",
+    "//src/devices/usb/bin/xdc-test",
+    "//src/devices/usb/drivers/usb-peripheral-test",
+  ]
+}
+
+group("debugging") {
+  deps = [
+    "//src/devices/block/bin/disk-inspect",
+    "//src/devices/block/bin/fvm-check",
+    "//src/devices/nand/bin/nand-loader",
+    "//src/devices/nand/bin/nand-util",
+    "//src/devices/nand/drivers/broker:nand-broker",
+  ]
+}

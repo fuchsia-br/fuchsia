@@ -1,0 +1,29 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "system-services": [
+                "fuchsia.sysinfo.SysInfo",
+                "fuchsia.sysmem.Allocator"
+            ]
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/sysmem"
+    },
+    "sandbox": {
+        "dev": [
+            "class/sysmem"
+        ],
+        "features": [
+            "isolated-cache-storage"
+        ],
+        "services": [
+            "fuchsia.sysinfo.SysInfo",
+            "fuchsia.sysmem.Allocator",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

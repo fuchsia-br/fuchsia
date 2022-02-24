@@ -1,0 +1,110 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+
+{{- define "Method:CompleterBase:driver/MessagingHeader" }}
+{{ EnsureNamespace "" }}
+template<>
+class {{ .WireCompleterImpl }} : public ::fdf::internal::CompleterImplBase<{{ .Marker }}> {
+ public:
+  using CompleterImplBase::CompleterImplBase;
+
+  {{- /* Managed flavors are for now omitted from driver messaging. */}}
+};
+
+template <>
+class {{ .WireBufferCompleterImpl }} : public ::fdf::internal::BufferCompleterImplBase {
+ public:
+  using BufferCompleterImplBase::BufferCompleterImplBase;
+
+  // In the following methods, the return value indicates internal errors during
+  // the reply, such as encoding or writing to the transport.
+  // Note that any error will automatically lead to the destruction of the binding,
+  // after which the |on_unbound| callback will be triggered with a detailed reason.
+  //
+  // See //zircon/system/ulib/fidl/include/lib/fidl/llcpp/server.h.
+  //
+  // Because the reply status is identical to the unbinding status, it can be safely ignored.
+
+  ::fidl::Result Reply({{ RenderParams .ResponseArgs }});
+
+  {{- if .Result }}
+  ::fidl::Result ReplySuccess({{ RenderParams .Result.ValueMembers }});
+  ::fidl::Result ReplyError({{ .Result.ErrorDecl }} error);
+  {{- end }}
+};
+
+template<>
+class {{ .WireCompleterBase }} : public ::fidl::CompleterBase, public {{ .WireCompleterImpl }} {
+ public:
+  {{ .WireCompleterBase.Self }}(::fidl::Transaction* transaction, bool owned, bool expects_reply)
+      : CompleterBase(transaction, owned, expects_reply),
+        {{ .WireCompleterImpl.Self }}(this) {}
+
+  {{- /* Update `this` pointer after moving the completer. */}}
+  {{ .WireCompleterBase.Self }}({{ .WireCompleterBase.Self }}&& other) noexcept
+      : CompleterBase(std::move(other)), {{ .WireCompleterImpl.Self }}(this) {}
+  {{ .WireCompleterBase.Self }}& operator=({{ .WireCompleterBase.Self }}&& other) noexcept {
+    CompleterBase::operator=(std::move(other));
+    {{ .WireCompleterImpl.Self }}::_set_core(this);
+    return *this;
+  }
+};
+
+template<>
+struct {{ .WireMethodTypes }} {
+  using Completer = fidl::Completer<{{ .WireCompleterBase }}>;
+};
+{{- end }}
+
+
+
+{{- define "Method:CompleterBase:driver/MessagingSource" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia -}}
+
+::fidl::Result
+{{ .WireBufferCompleterImpl.NoLeading }}::Reply({{ RenderParams .ResponseArgs }}) {
+  {{ .WireTransactionalResponse }} _response{ {{ RenderForwardParams .ResponseArgs }} };
+  constexpr uint32_t _buffer_size = ::fidl::ServerReplyBufferSizeInChannel<{{ .Marker }}>();
+  uint8_t* _buffer = static_cast<uint8_t*>(_arena().Allocate(_buffer_size));
+  ::fidl::unstable::UnownedEncodedMessage<
+      {{ .WireTransactionalResponse }}, {{ .Transport.Type }}> _response_message(
+      _buffer, _buffer_size, &_response);
+  return _core()->SendReply(
+      &_response_message.GetOutgoingMessage(),
+      ::fidl::internal::OutgoingTransportContext::Create<::fidl::internal::DriverTransport>(
+          _arena().get()));
+}
+
+{{- if .Result }}
+  ::fidl::Result
+  {{ .WireBufferCompleterImpl.NoLeading }}::ReplySuccess({{ RenderParams .Result.ValueMembers }}) {
+    {{ .Result.ValueStructDecl }} response;
+    {{- range .Result.ValueMembers }}
+      response.{{ .Name }} = std::move({{ .Name }});
+    {{- end }}
+    {{- if .Result.Value.InlineInEnvelope }}
+    return Reply({{ .Result.ResultDecl }}::WithResponse(std::move(response)));
+    {{- else }}
+    return Reply({{ .Result.ResultDecl }}::WithResponse(
+        ::fidl::ObjectView<{{ .Result.ValueStructDecl }}>::FromExternal(&response)));
+    {{- end }}
+  }
+
+  ::fidl::Result
+  {{ .WireBufferCompleterImpl.NoLeading }}::ReplyError({{ .Result.ErrorDecl }} error) {
+    {{- if .Result.Error.InlineInEnvelope }}
+    return Reply({{ .Result.ResultDecl }}::WithErr(std::move(error)));
+    {{- else }}
+    return Reply({{ .Result.ResultDecl }}::WithErr(
+        ::fidl::ObjectView<{{ .Result.ErrorDecl }}>::FromExternal(&error)));
+    {{- end }}
+  }
+{{- end }}
+
+{{- EndifFuchsia -}}
+{{- end }}

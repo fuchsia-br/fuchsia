@@ -1,0 +1,210 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.device.mock;
+
+using zx;
+
+/// A record of the invocation of a hook
+type HookInvocation = struct {
+    /// Process that the hook was invoked in
+    process_koid zx.koid;
+    /// Thread that the hook was invoked on
+    thread_koid zx.koid;
+    /// An opaque identifier identifying a specific device
+    device_id uint64;
+};
+
+/// Marker struct for unbind reply action
+type UnbindReplyAction = struct {
+    /// Value that will be echoed back in the completion message
+    action_id uint64;
+};
+
+/// Marker struct for suspend reply action
+type SuspendReplyAction = struct {
+    /// Value that will be echoed back in the completion message
+    action_id uint64;
+};
+
+/// Marker struct for resume reply action
+type ResumeReplyAction = struct {
+    /// Value that will be echoed back in the completion message
+    action_id uint64;
+};
+
+const MAX_PROPERTIES_LEN uint32 = 32;
+const MAX_NAME_LEN uint32 = 32;
+
+/// Request to add a new child device
+type AddDeviceAction = resource struct {
+    /// Value that will be echoed back in the completion message
+    action_id uint64;
+
+    /// If true, will let the device go through the bind protocol.
+    /// Otherwise, will just create another mock device and skip binding.
+    do_bind bool;
+
+    /// If creating a mock device, the service the new device will listen to.
+    controller client_end:<MockDevice, optional>;
+
+    /// The name that should be given to the new device.  Used by devfs and
+    /// debug messages.
+    name string:MAX_NAME_LEN;
+
+    /// The properties to attach the newly created device
+    properties vector<uint64>:MAX_PROPERTIES_LEN;
+
+    /// The expected return status from device_add()
+    expect_status zx.status;
+};
+
+/// What a hook should do.
+type Action = strict resource union {
+    /// Return this status.
+    1: return_status zx.status;
+
+    /// Write these bytes to the buffer associated with the hook.
+    2: write vector<uint8>:MAX_WRITE_BYTES;
+
+    /// Create a new thread with a processing loop.
+    3: create_thread server_end:MockDeviceThread;
+
+    /// Invoke device_async_remove() on our device.
+    4: async_remove_device bool;
+
+    /// Signal that the unbind has completed.
+    5: unbind_reply UnbindReplyAction;
+
+    /// Create a new child device
+    6: add_device AddDeviceAction;
+
+    /// Signal that the suspend has completed.
+    7: suspend_reply SuspendReplyAction;
+
+    // Signal that the suspend has completed.
+    8: resume_reply ResumeReplyAction;
+};
+
+const MAX_ACTIONS uint32 = 10;
+const MAX_WRITE_BYTES uint32 = 16384;
+
+/// Interface for controlling a mock device.  The test suite will implement this interface.
+/// Any method that returns a list of actions is interpreted as requesting the corresponding hook
+/// to perform that list of actions in order.
+protocol MockDevice {
+    /// `record.device_id` corresponds to the parent here.
+    Bind(struct {
+        record HookInvocation;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+
+    Release(struct {
+        record HookInvocation;
+    });
+    GetProtocol(struct {
+        record HookInvocation;
+        protocol_id uint32;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Open(struct {
+        record HookInvocation;
+        flags uint32;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Close(struct {
+        record HookInvocation;
+        flags uint32;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Unbind(struct {
+        record HookInvocation;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Read(struct {
+        record HookInvocation;
+        count uint64;
+        off zx.off;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Write(struct {
+        record HookInvocation;
+        buffer vector<uint8>:MAX_WRITE_BYTES;
+        off zx.off;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    GetSize(struct {
+        record HookInvocation;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Suspend(struct {
+        record HookInvocation;
+        requested_state uint8;
+        enable_wake bool;
+        suspend_reason uint8;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Resume(struct {
+        record HookInvocation;
+        requested_state uint32;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+
+    Message(struct {
+        record HookInvocation;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+    Rxrpc(struct {
+        record HookInvocation;
+    }) -> (resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+
+    /// Notification that the requested action was done
+    AddDeviceDone(struct {
+        action_id uint64;
+    });
+    UnbindReplyDone(struct {
+        action_id uint64;
+    });
+    SuspendReplyDone(struct {
+        action_id uint64;
+    });
+    ResumeReplyDone(struct {
+        action_id uint64;
+    });
+};
+
+/// Interface for requesting a mock device thread do something.  The mock device implements
+/// this interface.  Closing the interface causes the thread to exit.
+protocol MockDeviceThread {
+    /// Perform the actions in the given list.  Threads may not create other threads.
+    PerformActions(resource struct {
+        actions vector<Action>:MAX_ACTIONS;
+    });
+
+    /// Notification that the requested action was done
+    -> AddDeviceDone(struct {
+        action_id uint64;
+    });
+    -> UnbindReplyDone(struct {
+        action_id uint64;
+    });
+    -> SuspendReplyDone(struct {
+        action_id uint64;
+    });
+    -> ResumeReplyDone(struct {
+        action_id uint64;
+    });
+};

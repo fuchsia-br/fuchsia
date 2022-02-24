@@ -1,0 +1,34 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+fuchsia_unittest_package("amlogic_decoder_integration_tests") {
+  deps = [ ":amlogic_decoder_integration_tests_bin" ]
+
+  test_specs = {
+    # Manual only for now; comment out environments to run
+    environments = []
+  }
+}
+
+executable("amlogic_decoder_integration_tests_bin") {
+  output_name = "amlogic_decoder_integration_tests"
+  testonly = true
+
+  sources = [ "test_runner.cc" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.mediacodec:fuchsia.hardware.mediacodec_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

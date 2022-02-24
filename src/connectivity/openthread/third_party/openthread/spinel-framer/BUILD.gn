@@ -1,0 +1,14 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("spinel-framer") {
+  sources = [
+    "spinel_framer.cc",
+    "spinel_inspector.cc",
+  ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.spi:fuchsia.hardware.spi_banjo_cpp",
+    "//zircon/system/ulib/inspect",
+  ]
+}

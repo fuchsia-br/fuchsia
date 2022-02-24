@@ -1,0 +1,24 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+library fuchsia.qualcomm.platform;
+
+extend uint fuchsia.BIND_PLATFORM_DEV_VID {
+  QUALCOMM = 19,
+};
+
+extend uint fuchsia.BIND_PLATFORM_DEV_PID {
+  MSM8X53 = 0x01,
+  MSM8998 = 0x02,
+  MSM8150 = 0x03,
+};
+
+extend uint fuchsia.BIND_PLATFORM_DEV_DID {
+  GPIO = 0x01,
+  PIL = 0x02,
+  SDC1 = 0x03,
+  CLOCK = 0x04,
+  POWER = 0x05,
+  MAGMA_ADRENO = 0x06,
+};

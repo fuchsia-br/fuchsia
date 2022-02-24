@@ -1,0 +1,51 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("ktrace") {
+  sources = [
+    "ktrace.cc",
+    "string_ref.cc",
+  ]
+  deps = [
+    "//zircon/kernel/hypervisor:headers",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/init",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/syscalls:headers",
+    "//zircon/kernel/object:headers",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+
+  public_deps = [ ":suppress-warning" ]
+}
+
+group("suppress-warning") {
+  visibility = [ ":*" ]
+  public_configs = [ ":suppress-warning.config" ]
+}
+
+config("suppress-warning.config") {
+  visibility = [
+    ":*",
+
+    # TODO(fxbug.dev/44971): Referenced in environment configs.
+    "//build/config/*",
+    "//sdk/lib/fit/*",
+    "//sdk/lib/stdcompat/*",
+    "//src/lib/llvm-profdata/*",
+    "//third_party/zstd/*",
+    "//zircon/kernel/*",
+    "//zircon/system/ulib/*",
+    "//zircon/third_party/lib/*",
+    "//zircon/third_party/ulib/*",
+  ]
+  if (!is_gcc) {
+    # Silence warning in Clang about GNU extension used in string_ref.h.
+    cflags_cc = [ "-Wno-gnu-string-literal-operator-template" ]
+  }
+}

@@ -1,0 +1,50 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+##########################################
+# Though under //zircon, this build file #
+# is meant to be used in the Fuchsia GN  #
+# build.                                 #
+# See fxbug.dev/36139.                   #
+##########################################
+
+import("//build/sdk/sdk_host_tool.gni")
+
+executable("blobfs") {
+  sources = [ "main.cc" ]
+  deps = [
+    "//sdk/lib/fit",
+    "//src/lib/digest",
+    "//src/storage/blobfs",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fs-host",
+  ]
+
+  if (!is_fuchsia) {
+    deps += [ "//zircon/system/ulib/zx-panic-libc" ]
+
+    exclude_toolchain_tags = [
+      # TODO(fxbug.dev/53356): blobfs performs poorly when built with asan
+      "asan",
+
+      # TODO(fxbug.dev/59219): blobfs performs poorly when built with profile
+      "profile",
+
+      # TODO(fxbug.dev/59219): blobfs performs poorly when built with coverage
+      "coverage",
+    ]
+  }
+  configs += [
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    "//build/config:Wno-conversion",
+  ]
+}
+
+sdk_host_tool("blobfs_sdk") {
+  category = "partner"
+  output_name = "blobfs"
+  sdk_name = "blobfs_do_not_depend"
+  deps = [ ":blobfs" ]
+}

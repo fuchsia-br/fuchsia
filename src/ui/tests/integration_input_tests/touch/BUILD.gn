@@ -1,0 +1,233 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/fidl/fidl.gni")
+import("//build/flutter/config.gni")
+
+fidl("test.touch") {
+  sdk_category = "internal"
+  sources = [
+    "response_listener.test.fidl",
+    "test_app_launcher.test.fidl",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.sys",
+    "//zircon/vdso/zx",
+  ]
+}
+
+config_data("touch-input-test-display_rotation") {
+  for_pkg = "touch-input-test"
+
+  sources = [ "data/display_rotation" ]
+  outputs = [ "display_rotation" ]
+}
+
+executable("touch-input-test-bin") {
+  testonly = true
+  sources = [ "touch-input-test.cc" ]
+  output_name = "touch-input-test"
+  deps = [
+    ":test.touch",
+    "//sdk/fidl/fuchsia.accessibility.semantics",
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.fonts",
+    "//sdk/fidl/fuchsia.hardware.display",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.memorypressure",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/fidl/fuchsia.posix.socket",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.tracing.provider",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/fidl/fuchsia.ui.pointer",
+    "//sdk/fidl/fuchsia.ui.pointerinjector",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.vulkan.loader",
+    "//sdk/fidl/fuchsia.web",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fostr/fidl/fuchsia.ui.gfx",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_component("touch-input-test-component") {
+  testonly = true
+  manifest = "meta/touch-input-test.cml"
+  deps = [ ":touch-input-test-bin" ]
+}
+
+fuchsia_test_package("touch-input-test") {
+  package_deps_for_infra_only = [
+    "//src/chromium:web_engine",
+    "//src/cobalt/bin/testing/mock_cobalt:mock_cobalt",
+    "//src/ui/a11y/bin/a11y_manager:a11y-manager",
+    "//src/ui/tests/integration_input_tests/touch/embedding-flutter:embedding-flutter",
+    "//src/ui/tests/integration_input_tests/touch/one-chromium:package",
+    "//src/ui/tests/integration_input_tests/touch/one-flutter:one-flutter",
+    "//src/ui/tests/integration_input_tests/touch/touch-gfx-client:touch-gfx-client",
+    flutter_default_build_cfg.runner_dep,
+  ]
+  test_components = [ ":touch-input-test-component" ]
+  deps = [
+    ":touch-input-test-display_rotation",
+    "//src/connectivity/network/netstack:component-legacy",
+    "//src/ui/bin/root_presenter:component_v1_for_test",
+    "//src/ui/tests/integration_input_tests:scenic-test-realm",
+  ]
+  test_specs = {
+    log_settings = {
+      # TODO(fxbug.dev/93081): Investigate flakes and remove allowing ERROR severity.
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "AEMU"
+        }
+      },
+    ]
+  }
+}
+
+config_data("touch-input-test-display_rotation-ip") {
+  for_pkg = "touch-input-test-ip"
+
+  sources = [ "data/display_rotation" ]
+  outputs = [ "display_rotation" ]
+}
+
+executable("touch-input-test-ip-bin") {
+  testonly = true
+  sources = [ "touch-input-test-ip.cc" ]
+  output_name = "touch-input-test-ip"
+  deps = [
+    ":test.touch",
+    "//sdk/fidl/fuchsia.accessibility.semantics",
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.fonts",
+    "//sdk/fidl/fuchsia.hardware.display",
+    "//sdk/fidl/fuchsia.input.injection",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.memorypressure",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/fidl/fuchsia.posix.socket",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.tracing.provider",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/fidl/fuchsia.ui.pointer",
+    "//sdk/fidl/fuchsia.ui.pointerinjector",
+    "//sdk/fidl/fuchsia.ui.pointerinjector.configuration",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.vulkan.loader",
+    "//sdk/fidl/fuchsia.web",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fostr/fidl/fuchsia.ui.gfx",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/ui/input/testing/fake_input_report_device",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_test_component("touch-input-test-ip-component") {
+  testonly = true
+  manifest = "meta/touch-input-test-ip.cml"
+  deps = [ ":touch-input-test-ip-bin" ]
+}
+
+fuchsia_test_package("touch-input-test-ip") {
+  package_deps_for_infra_only = [
+    "//src/chromium:web_engine",
+    "//src/ui/a11y/bin/a11y_manager:a11y-manager",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider",
+    "//src/ui/tests/integration_input_tests/touch/embedding-flutter:embedding-flutter",
+    "//src/ui/tests/integration_input_tests/touch/one-chromium:package",
+    "//src/ui/tests/integration_input_tests/touch/one-flutter:one-flutter",
+    "//src/ui/tests/integration_input_tests/touch/touch-gfx-client:touch-gfx-client",
+    flutter_default_build_cfg.runner_dep,
+  ]
+  test_components = [ ":touch-input-test-ip-component" ]
+  deps = [
+    ":touch-input-test-display_rotation-ip",
+    "//src/connectivity/network/netstack:component-legacy",
+    "//src/ui/bin/input-pipeline:component-for-test",
+    "//src/ui/bin/root_presenter:component_v1_for_test",
+    "//src/ui/scenic:component",
+    "//src/ui/tests/integration_input_tests:input-pipeline-test-realm",
+    "//src/ui/tests/integration_input_tests:scenic-test-realm",
+  ]
+  test_specs = {
+    log_settings = {
+      # TODO(fxbug.dev/93081): Investigate flakes and remove allowing ERROR severity.
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          # Ensure the device has Vulkan.
+          device_type = "AEMU"
+        }
+      },
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":touch-input-test",
+    ":touch-input-test-ip",
+
+    # The deps below are necessary on minimal product configs.
+    "//src/chromium:web_engine",
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/flutter",
+    "//src/graphics/bin/vulkan_loader",
+    "//src/testing/fidl/intl_property_manager",
+    "//src/ui/a11y/bin/a11y_manager:a11y-manager",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider",
+    "//src/ui/bin/text:text_manager",
+    "//src/ui/tests/integration_input_tests/touch/embedding-flutter",
+    "//src/ui/tests/integration_input_tests/touch/one-chromium",
+    "//src/ui/tests/integration_input_tests/touch/one-flutter",
+    "//src/ui/tests/integration_input_tests/touch/touch-gfx-client",
+  ]
+}

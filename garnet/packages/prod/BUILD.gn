@@ -1,0 +1,371 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# WARNING: This file was machine-generated from previous json files and
+# will eventually be deleted.
+
+group("acpidump") {
+  testonly = true
+  if (target_cpu == "x64") {
+    public_deps = [ "//src/devices/bin/acpidump" ]
+  }
+}
+
+group("all") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:acpidump",
+    "//garnet/packages/prod:atheros",
+    "//garnet/packages/prod:bluetooth_a2dp",
+    "//garnet/packages/prod:bluetooth_all",
+    "//garnet/packages/prod:bluetooth_atheros",
+    "//garnet/packages/prod:bluetooth_avrcp",
+    "//garnet/packages/prod:bluetooth_core",
+    "//garnet/packages/prod:bluetooth_hci",
+    "//garnet/packages/prod:bluetooth_intel",
+    "//garnet/packages/prod:bluetooth_profiles",
+    "//garnet/packages/prod:broadcom",
+    "//garnet/packages/prod:chrealm",
+    "//garnet/packages/prod:cmdutils",
+    "//garnet/packages/prod:cobalt_client",
+    "//garnet/packages/prod:cpuperf",
+    "//garnet/packages/prod:debug_agent",
+    "//garnet/packages/prod:drivers-system",
+    "//garnet/packages/prod:far",
+    "//garnet/packages/prod:hwstress",
+    "//garnet/packages/prod:insntrace",
+    "//garnet/packages/prod:network-speed-test",
+    "//garnet/packages/prod:run",
+    "//garnet/packages/prod:sbase",
+    "//garnet/packages/prod:scenic",
+    "//garnet/packages/prod:sched",
+    "//garnet/packages/prod:setui_client",
+    "//garnet/packages/prod:telephony",
+    "//garnet/packages/prod:terminal",
+    "//garnet/packages/prod:tiles",
+    "//garnet/packages/prod:tracing",
+    "//garnet/packages/prod:wlan_drivers",
+    "//src/connectivity/network/dhcp:dhcpd",
+    "//src/connectivity/network/mdns/bundles:services",
+    "//src/connectivity/network/mdns/bundles:utils",
+    "//src/connectivity/telephony/drivers",
+    "//src/connectivity/wlan:packages",
+    "//src/connectivity/wlan:tools",
+    "//src/developer/memory/mem",
+    "//src/fonts",
+    "//src/power:battery",
+    "//src/ui/a11y:a11y",
+  ]
+}
+
+group("atheros") {
+  public_deps = [
+    "//src/connectivity/wlan/drivers/third_party/atheros/ath10k:ath10k",
+    "//src/connectivity/wlan/drivers/wlan",
+    "//src/connectivity/wlan/drivers/wlanphy",
+  ]
+}
+
+group("bluetooth_a2dp") {
+  testonly = true
+  public_deps = [ "//src/connectivity/bluetooth/profiles/bt-a2dp" ]
+}
+
+group("bluetooth_all") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:bluetooth_atheros",
+    "//garnet/packages/prod:bluetooth_core",
+    "//garnet/packages/prod:bluetooth_hci",
+    "//garnet/packages/prod:bluetooth_intel",
+    "//garnet/packages/prod:bluetooth_profiles",
+  ]
+}
+
+group("bluetooth_atheros") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:bluetooth_hci",
+    "//src/connectivity/bluetooth/hci/vendor/atheros",
+  ]
+}
+
+group("bluetooth_avrcp") {
+  testonly = true
+  public_deps = [ "//src/connectivity/bluetooth/profiles/bt-avrcp" ]
+}
+
+group("bluetooth_core") {
+  public_deps = [
+    "//src/connectivity/bluetooth/core/bt-gap",
+    "//src/connectivity/bluetooth/core/bt-init",
+    "//src/connectivity/bluetooth/tools/bt-snoop",
+  ]
+}
+
+group("bluetooth_drivers") {
+  public_deps = [
+    "//src/connectivity/bluetooth/core/bt-host",
+    "//src/connectivity/bluetooth/hci/passthrough",
+    "//src/connectivity/bluetooth/hci/vendor/atheros",
+    "//src/connectivity/bluetooth/hci/vendor/intel",
+  ]
+}
+
+group("bluetooth_hci") {
+  testonly = true
+  public_deps = [ "//src/connectivity/bluetooth/hci/passthrough" ]
+}
+
+group("bluetooth_intel") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:bluetooth_hci",
+    "//src/connectivity/bluetooth/hci/vendor/intel",
+  ]
+}
+
+group("bluetooth_profiles") {
+  testonly = true
+  public_deps = [
+    "//garnet/packages/prod:bluetooth_a2dp",
+    "//garnet/packages/prod:bluetooth_avrcp",
+  ]
+}
+
+group("broadcom") {
+  public_deps = [
+    "//src/connectivity/wlan/drivers/third_party/broadcom/brcmfmac",
+    "//src/connectivity/wlan/drivers/wlanif",
+    "//src/connectivity/wlan/drivers/wlanphy",
+  ]
+}
+
+group("chrealm") {
+  testonly = true
+  public_deps = [ "//src/sys/tools/chrealm" ]
+}
+
+group("cmdutils") {
+  testonly = true
+  public_deps = [
+    "//examples/cowsay",
+    "//garnet/bin/time",
+    "//garnet/bin/uname",
+    "//garnet/packages/prod:hwstress",
+    "//garnet/packages/prod:sbase",
+    "//garnet/packages/prod:sched",
+  ]
+}
+
+group("cobalt_client") {
+  testonly = true
+  public_deps = [
+    "//src/cobalt/bin/app:cobalt",
+    "//src/cobalt/bin/system-metrics:cobalt_system_metrics",
+  ]
+}
+
+group("cpuperf") {
+  testonly = true
+  public_deps = [
+    "//garnet/bin/cpuperf",
+    "//garnet/bin/cpuperf/print:host_cpuperf_print",
+  ]
+}
+
+group("debug_agent") {
+  testonly = true
+  public_deps = [ "//src/developer/debug/debug_agent" ]
+}
+
+# Note: elements of this group are all installed in the system package.
+group("drivers-system") {
+  public_deps = [
+    "//garnet/packages/prod:bluetooth_drivers",
+    "//src/connectivity/ppp/drivers",
+    "//src/connectivity/telephony/drivers:prod-drivers",
+    "//src/media/drivers",
+  ]
+}
+
+group("far") {
+  testonly = true
+  public_deps = [
+    "//src/sys/pkg/bin/far",
+    "//src/sys/pkg/bin/far:host",
+  ]
+}
+
+group("hwstress") {
+  testonly = true
+  public_deps = [ "//garnet/bin/hwstress" ]
+}
+
+group("insntrace") {
+  testonly = true
+  public_deps = [
+    "//garnet/bin/insntrace",
+    "//garnet/bin/insntrace:host_insntrace_print",
+  ]
+}
+
+group("network-speed-test") {
+  testonly = true
+  public_deps = [ "//src/connectivity/network/tools/network-speed-test" ]
+}
+
+group("run") {
+  testonly = true
+  public_deps = [ "//src/sys/tools/run" ]
+}
+
+group("sbase") {
+  public_deps = [
+    "//third_party/sbase:basename",
+    "//third_party/sbase:cal",
+    "//third_party/sbase:cat",
+    "//third_party/sbase:cksum",
+    "//third_party/sbase:cmp",
+    "//third_party/sbase:cols",
+    "//third_party/sbase:comm",
+    "//third_party/sbase:cp",
+    "//third_party/sbase:cut",
+    "//third_party/sbase:date",
+    "//third_party/sbase:dirname",
+    "//third_party/sbase:du",
+    "//third_party/sbase:echo",
+    "//third_party/sbase:ed",
+    "//third_party/sbase:env",
+    "//third_party/sbase:expand",
+    "//third_party/sbase:expr",
+    "//third_party/sbase:false",
+    "//third_party/sbase:find",
+    "//third_party/sbase:fold",
+    "//third_party/sbase:grep",
+    "//third_party/sbase:head",
+    "//third_party/sbase:hostname",
+    "//third_party/sbase:join",
+    "//third_party/sbase:link",
+    "//third_party/sbase:ls",
+    "//third_party/sbase:md5sum",
+    "//third_party/sbase:mkdir",
+    "//third_party/sbase:mktemp",
+    "//third_party/sbase:mv",
+    "//third_party/sbase:nl",
+    "//third_party/sbase:od",
+    "//third_party/sbase:paste",
+    "//third_party/sbase:pathchk",
+    "//third_party/sbase:printenv",
+    "//third_party/sbase:printf",
+    "//third_party/sbase:pwd",
+    "//third_party/sbase:readlink",
+    "//third_party/sbase:rev",
+    "//third_party/sbase:rm",
+    "//third_party/sbase:rmdir",
+    "//third_party/sbase:sed",
+    "//third_party/sbase:seq",
+    "//third_party/sbase:sha1sum",
+    "//third_party/sbase:sha224sum",
+    "//third_party/sbase:sha256sum",
+    "//third_party/sbase:sha384sum",
+    "//third_party/sbase:sha512-224sum",
+    "//third_party/sbase:sha512-256sum",
+    "//third_party/sbase:sha512sum",
+    "//third_party/sbase:sleep",
+    "//third_party/sbase:sort",
+    "//third_party/sbase:split",
+    "//third_party/sbase:sponge",
+    "//third_party/sbase:strings",
+    "//third_party/sbase:sync",
+    "//third_party/sbase:tail",
+    "//third_party/sbase:tar",
+    "//third_party/sbase:tee",
+    "//third_party/sbase:test",
+    "//third_party/sbase:tftp",
+    "//third_party/sbase:touch",
+    "//third_party/sbase:tr",
+    "//third_party/sbase:true",
+    "//third_party/sbase:tsort",
+    "//third_party/sbase:tty",
+    "//third_party/sbase:unexpand",
+    "//third_party/sbase:uniq",
+    "//third_party/sbase:unlink",
+    "//third_party/sbase:uudecode",
+    "//third_party/sbase:uuencode",
+    "//third_party/sbase:wc",
+    "//third_party/sbase:which",
+    "//third_party/sbase:xargs",
+    "//third_party/sbase:xinstall",
+    "//third_party/sbase:yes",
+  ]
+  deps = [ "//build/validate:non_production_tag" ]
+}
+
+# WARNING: Known to vendor.
+group("scenic") {
+  public_deps = [ "//src/ui/scenic:runtime" ]
+}
+
+group("sched") {
+  testonly = true
+  public_deps = [ "//garnet/bin/sched" ]
+}
+
+group("setui_client") {
+  testonly = true
+  public_deps = [ "//garnet/bin/setui_client" ]
+}
+
+group("telephony") {
+  testonly = true
+  public_deps = [
+    "//src/connectivity/telephony/drivers/qmi-fake-transport:fake_qmi_driver",
+    "//src/connectivity/telephony/drivers/qmi-usb-transport",
+    "//src/connectivity/telephony/ril-at",
+    "//src/connectivity/telephony/ril-at:ril-at-tests",
+    "//src/connectivity/telephony/ril-qmi",
+    "//src/connectivity/telephony/ril-qmi:ril-qmi-tests",
+    "//src/connectivity/telephony/telephony",
+    "//src/connectivity/telephony/tools/ril-ctl",
+  ]
+}
+
+group("terminal") {
+  testonly = true
+  public_deps = [ "//src/ui/bin/terminal" ]
+}
+
+group("tiles") {
+  testonly = true
+  public_deps = [ "//src/ui/tools/tiles" ]
+}
+
+group("tracing") {
+  testonly = true
+  public_deps = [
+    "//garnet/bin/cpuperf_provider",
+    "//garnet/bin/cpuperf_provider:report_generators",
+    "//garnet/bin/ktrace_provider",
+    "//garnet/bin/trace",
+    "//garnet/bin/trace2json",
+    "//garnet/bin/trace_manager",
+    "//garnet/bin/traceutil",
+  ]
+}
+
+group("wifi_intel") {
+  public_deps = [
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi:iwlwifi",
+    "//src/connectivity/wlan/drivers/wlan",
+    "//src/connectivity/wlan/drivers/wlanphy",
+  ]
+}
+
+group("wlan_drivers") {
+  public_deps = [
+    "//garnet/packages/prod:atheros",
+    "//garnet/packages/prod:broadcom",
+  ]
+}

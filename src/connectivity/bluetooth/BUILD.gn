@@ -1,0 +1,95 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zbi/kernel_cmdline.gni")
+
+group("bluetooth") {
+  testonly = true
+  deps = [
+    ":tests",
+    "core",
+    "core:legacy-core",
+    "examples",
+    "hci",
+    "lib",
+    "profiles",
+    "testing",
+    "tests",
+    "tools",
+  ]
+}
+
+# This is a list of all drivers.
+group("drivers") {
+  testonly = true
+  deps = [
+    "core/bt-host:driver",
+    "hci/emulator:driver",
+    "hci/passthrough:driver",
+    "hci/transport/uart:bt-transport-uart",
+    "hci/transport/usb:bt-transport-usb",
+    "hci/vendor/atheros:driver",
+    "hci/vendor/broadcom:bt-hci-broadcom",
+    "hci/vendor/intel:driver",
+    "hci/vendor/mediatek:bt-hci-mediatek",
+  ]
+}
+
+# Core is the group that is required for any Bluetooth functionality
+# This group includes all of the non-system components.
+# System package components are defined in "core-system"
+group("core") {
+  deps = [
+    "core/bt-gap",
+    "core/bt-init",
+    "profiles/bt-rfcomm",
+    "tools/bt-snoop",
+  ]
+}
+
+# This is the part of core group which must go into the system package.
+group("core-system") {
+  deps = [ "core/bt-host" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "core:tests",
+    "hci:tests",
+    "lib:tests",
+    "profiles/bt-a2dp:tests",
+    "profiles/bt-avrcp:tests",
+    "profiles/bt-avrcp-target:tests",
+    "profiles/bt-hfp-audio-gateway:tests",
+    "profiles/bt-rfcomm:tests",
+    "profiles/tests:tests",
+    "testing:tests",
+    "tests",
+    "tools:tests",
+  ]
+}
+
+# Kernel cmdline options.
+
+kernel_cmdline("driver-debug-logging") {
+  args = [
+    "driver.bcm_hci.log=debug",
+    "driver.bt_hci_atheros.log=debug",
+    "driver.bt_hci_broadcom.log=debug",
+    "driver.bt_hci_emulator.log=debug",
+    "driver.bt_hci_intel.log=debug",
+    "driver.bt_hci_mediatek.log=debug",
+    "driver.bt_hci_passthrough.log=debug",
+    "driver.bt_host.log=debug",
+    "driver.bt_intel.log=debug",
+    "driver.bt_transport_uart.log=debug",
+    "driver.bt_transport_usb.log=debug",
+    "driver.tracing.enable=1",
+  ]
+}
+
+kernel_cmdline("disable-bt-host") {
+  args = [ "driver.bt_host.disable=true" ]
+}

@@ -1,0 +1,60 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+//! Various constants used for Inspect.
+
+pub use diagnostics_hierarchy::{EXPONENTIAL_HISTOGRAM_EXTRA_SLOTS, LINEAR_HISTOGRAM_EXTRA_SLOTS};
+
+/// Bytes per page
+pub const PAGE_SIZE_BYTES: usize = 4096;
+
+/// Size of the a VMO block header.
+pub const HEADER_SIZE_BYTES: usize = 8;
+
+/// Index of the virtual root NODE block (this block is *not* in the VMO).
+pub const ROOT_INDEX: u32 = 0;
+
+/// Index of the HEADER block.
+pub const HEADER_INDEX: u32 = 0;
+
+/// Index value indicating an empty string in a string array.
+pub const EMPTY_STRING_SLOT_INDEX: u32 = 0;
+
+/// Magic number for the Header block. "INSP" in UTF-8 little-endian.
+pub const HEADER_MAGIC_NUMBER: u32 = 0x50534e49;
+
+/// Version number for the Header block.
+pub const HEADER_VERSION_NUMBER: u32 = 2;
+
+/// Maximum number order of a block.
+pub const NUM_ORDERS: usize = 8;
+
+/// The shift for order 0.
+pub const MIN_ORDER_SHIFT: usize = 4;
+
+/// The size for order 0.
+pub const MIN_ORDER_SIZE: usize = 1 << MIN_ORDER_SHIFT; // 16 bytes
+
+/// The shift for order NUM_ORDERS-1 (the maximum order)
+pub const MAX_ORDER_SHIFT: usize = MIN_ORDER_SHIFT + NUM_ORDERS - 1;
+
+/// The size for order NUM_ORDERS-1 (the maximum order)
+pub const MAX_ORDER_SIZE: usize = 1 << MAX_ORDER_SHIFT;
+
+/// Default number of bytes for the VMO: 256K
+pub const DEFAULT_VMO_SIZE_BYTES: usize = 256 * 1024;
+
+/// Minimum size for the VMO: 4K
+pub const MINIMUM_VMO_SIZE_BYTES: usize = 4 * 1024;
+
+/// Length in bytes of metadata in the payload of an array block.
+pub const ARRAY_PAYLOAD_METADATA_SIZE_BYTES: usize = 8;
+
+/// The number of bytes in the payload of a STRING_REFERENCE allotted to
+/// the total length.
+pub const STRING_REFERENCE_TOTAL_LENGTH_BYTES: usize = 4;
+
+/// This generation count indicates a VMO is frozen.
+/// It is even to allow creating an inspector that can write to the VMO.
+pub const VMO_FROZEN: u64 = u64::max_value() - 1;

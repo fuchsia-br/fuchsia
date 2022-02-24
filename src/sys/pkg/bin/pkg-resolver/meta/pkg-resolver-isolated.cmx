@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/fuchsia-hyper/hyper.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/pkg_resolver"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.boot.Arguments",
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.pkg.LocalMirror",
+            "fuchsia.pkg.PackageCache",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

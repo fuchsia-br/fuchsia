@@ -1,0 +1,163 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+@transport("Syscall")
+protocol syscall {
+    @testonly
+    syscall_test_0() -> (struct {
+        status status;
+    });
+
+    @testonly
+    @test_category1
+    syscall_test_1(struct {
+        a int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    @test_category1
+    syscall_test_2(struct {
+        a int32;
+        b int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    @test_category2
+    syscall_test_3(struct {
+        a int32;
+        b int32;
+        c int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_4(struct {
+        a int32;
+        b int32;
+        c int32;
+        d int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_5(struct {
+        a int32;
+        b int32;
+        c int32;
+        d int32;
+        e int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_6(struct {
+        a int32;
+        b int32;
+        c int32;
+        d int32;
+        e int32;
+        f int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_7(struct {
+        a int32;
+        b int32;
+        c int32;
+        d int32;
+        e int32;
+        f int32;
+        g int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_8(struct {
+        a int32;
+        b int32;
+        c int32;
+        d int32;
+        e int32;
+        f int32;
+        g int32;
+        h int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @next
+    next_1(struct {
+        arg int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_wrapper(struct {
+        a int32;
+        b int32;
+        c int32;
+    }) -> (struct {
+        status status;
+    });
+
+    @testonly
+    syscall_test_handle_create(struct {
+        return_value status;
+    }) -> (resource struct {
+        status status;
+        out handle:EVENT;
+    });
+
+    @testonly
+    syscall_test_widening_unsigned_narrow(struct {
+        a uint64;
+        b uint32;
+        c uint16;
+        d uint8;
+    }) -> (struct {
+        total uint64;
+    });
+
+    @testonly
+    syscall_test_widening_signed_narrow(struct {
+        a int64;
+        b int32;
+        c int16;
+        d int8;
+    }) -> (struct {
+        total int64;
+    });
+
+    @testonly
+    syscall_test_widening_unsigned_wide(struct {
+        a uint64;
+        b uint32;
+        c uint16;
+        d uint8;
+    }) -> (struct {
+        total uint64;
+    });
+
+    @testonly
+    syscall_test_widening_signed_wide(struct {
+        a int64;
+        b int32;
+        c int16;
+        d int8;
+    }) -> (struct {
+        total int64;
+    });
+};

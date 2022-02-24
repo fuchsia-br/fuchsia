@@ -1,0 +1,59 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.scpi;
+
+using zx;
+
+const MAX_DVFS_OPPS uint32 = 16;
+
+type ScpiOppEntry = struct {
+    /// The operating point frequency in Hz.
+    freq_hz uint32;
+    /// The operating point voltage in microvolts.
+    volt_uv uint32;
+};
+
+type ScpiOpp = struct {
+    /// The device's operating points.
+    opp array<ScpiOppEntry, MAX_DVFS_OPPS>;
+    /// In microseconds.
+    latency uint32;
+    /// The number of operating points in opp.
+    count uint32;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Scpi {
+    GetSensor(struct {
+        name string:MAX;
+    }) -> (struct {
+        s zx.status;
+        sensor_id uint32;
+    });
+    GetSensorValue(struct {
+        sensor_id uint32;
+    }) -> (struct {
+        s zx.status;
+        sensor_value uint32;
+    });
+    GetDvfsInfo(struct {
+        power_domain uint8;
+    }) -> (struct {
+        s zx.status;
+        opps ScpiOpp;
+    });
+    GetDvfsIdx(struct {
+        power_domain uint8;
+    }) -> (struct {
+        s zx.status;
+        index uint16;
+    });
+    SetDvfsIdx(struct {
+        power_domain uint8;
+        index uint16;
+    }) -> (struct {
+        s zx.status;
+    });
+};

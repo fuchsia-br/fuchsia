@@ -1,0 +1,30 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+##########################################
+# Though under //zircon, this build file #
+# is meant to be used in the Fuchsia GN  #
+# build.                                 #
+# See fxbug.dev/36139.                   #
+##########################################
+
+import("//build/sdk/sdk_host_tool.gni")
+
+executable("merkleroot") {
+  sources = [ "merkleroot.cc" ]
+  deps = [
+    "//src/lib/digest",
+    "//zircon/system/ulib/fbl",
+  ]
+  configs += [
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    "//build/config:Wno-conversion",
+  ]
+}
+
+sdk_host_tool("merkleroot_sdk") {
+  category = "partner"
+  output_name = "merkleroot"
+  deps = [ ":merkleroot" ]
+}

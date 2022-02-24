@@ -1,0 +1,25 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  deps = [ "tests:unittests" ]
+}
+
+source_set("async-watchdog") {
+  sources = [
+    "watchdog.cc",
+    "watchdog.h",
+  ]
+
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/backtrace-request",
+    "//zircon/system/ulib/zx",
+  ]
+}

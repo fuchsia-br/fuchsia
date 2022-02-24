@@ -1,0 +1,108 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":driver2-tests" ]
+}
+
+source_set("record") {
+  sources = [ "record.h" ]
+
+  public_deps = [ "//zircon/system/ulib/async" ]
+}
+
+source_set("devfs_exporter") {
+  sources = [
+    "devfs_exporter.cc",
+    "devfs_exporter.h",
+  ]
+
+  deps = [ ":llcpp" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.device.fs:fuchsia.device.fs_llcpp",
+    "//src/lib/storage/vfs/cpp",
+  ]
+}
+
+source_set("inspect") {
+  sources = [
+    "inspect.cc",
+    "inspect.h",
+  ]
+
+  public_deps = [
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/inspect",
+  ]
+}
+
+source_set("llcpp") {
+  sources = [
+    "logger.cc",
+    "logger.h",
+    "logger_internal.h",
+    "namespace.cc",
+    "namespace.h",
+    "promise.cc",
+    "promise.h",
+    "record_cpp.h",
+    "start_args.h",
+    "structured_logger.h",
+  ]
+
+  public_deps = [
+    ":record",
+    "//sdk/fidl/fuchsia.component.runner:fuchsia.component.runner_llcpp",
+    "//sdk/fidl/fuchsia.data:fuchsia.data_llcpp",
+    "//sdk/fidl/fuchsia.driver.framework:fuchsia.driver.framework_llcpp",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/structured_backend",
+  ]
+}
+
+executable("llcpp_test") {
+  testonly = true
+  sources = [
+    "devfs_exporter_test.cc",
+    "logger_test.cc",
+    "namespace_test.cc",
+    "start_args_test.cc",
+    "test_base.cc",
+    "test_base.h",
+  ]
+
+  deps = [
+    ":devfs_exporter",
+    ":llcpp",
+    "//sdk/fidl/fuchsia.device.fs",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/lib/fidl/cpp",
+    "//src/diagnostics/lib/cpp-log-decoder:lib",
+    "//src/lib/diagnostics/accessor2logger",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+}
+
+fuchsia_unittest_component("driver2-llcpp-test") {
+  manifest = "meta/llcpp_test.cml"
+
+  deps = [ ":llcpp_test" ]
+}
+
+fuchsia_test_package("driver2-tests") {
+  test_components = [ ":driver2-llcpp-test" ]
+}

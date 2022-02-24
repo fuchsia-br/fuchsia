@@ -1,0 +1,98 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":aml-gpu-test",
+    ":aml_gpu_bind_test",
+  ]
+}
+
+driver_bind_rules("aml_gpu_bind") {
+  rules = "aml_gpu.bind"
+  header_output = "aml_gpu-bind.h"
+  bind_output = "aml-gpu.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.amlogic.platform" ]
+}
+
+source_set("sources") {
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "aml-gpu.cc" ]
+  public_deps = [
+    ":aml_gpu_bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpu.mali:fuchsia.hardware.gpu.mali_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.iommu:fuchsia.hardware.iommu_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.registers:fuchsia.hardware.registers_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.gpu.amlogic:fuchsia.hardware.gpu.amlogic_llcpp",
+    "//sdk/fidl/fuchsia.hardware.gpu.clock:fuchsia.hardware.gpu.clock_llcpp",
+    "//sdk/fidl/fuchsia.hardware.registers:fuchsia.hardware.registers_llcpp",
+    "//sdk/fidl/fuchsia.hardware.thermal:fuchsia.hardware.thermal_c",
+    "//src/devices/bind/fuchsia.arm.platform:bind.fuchsia.arm.platform",
+    "//src/devices/bind/fuchsia.platform:bind.fuchsia.platform",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/mmio",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/trace:trace-driver",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_driver("aml-gpu-driver") {
+  output_name = "aml-gpu"
+  deps = [ ":sources" ]
+}
+
+fuchsia_driver_component("aml-gpu") {
+  component_name = "aml-gpu"
+  deps = [ ":aml-gpu-driver" ]
+  info = "aml-gpu-info.json"
+  colocate = true
+  root_resource = true
+}
+
+executable("aml-gpu-test-bin") {
+  testonly = true
+  output_name = "aml-gpu-test"
+  sources = [ "aml-gpu-test.cc" ]
+  deps = [
+    ":sources",
+    "//src/devices/registers/testing/mock-registers",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("aml-gpu-test") {
+  deps = [ ":aml-gpu-test-bin" ]
+}

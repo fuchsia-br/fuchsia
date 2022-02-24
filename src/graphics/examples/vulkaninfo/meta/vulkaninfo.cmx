@@ -1,0 +1,9 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/vulkan/application.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/vulkaninfo"
+    }
+}

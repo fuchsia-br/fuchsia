@@ -1,0 +1,53 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        // Depends on root ssl certificate which is a system capability.
+        "//src/sys/test_manager/system-test.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/http_client_integration_test",
+    },
+    children: [
+        {
+            name: "netstack-debug",
+            url: "#meta/netstack-debug.cm",
+        },
+    ],
+    collections: [
+        {
+            name: "coll",
+            durability: "transient",
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.posix.socket.Provider",
+            from: "#netstack-debug",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.posix.socket.Provider",
+            from: "#netstack-debug",
+            to: "#coll",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: [
+                "#coll",
+                "#netstack-debug",
+            ],
+        },
+        {
+            directory: "root-ssl-certificates",
+            from: "parent",
+            to: "#coll",
+        },
+    ],
+}

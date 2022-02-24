@@ -1,0 +1,797 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/renamed_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_library("lib") {
+  name = "lib"
+  edition = "2018"
+  testonly = true
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot-rustc",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/hierarchy/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/http-uri-ext",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/mock-boot-arguments:lib",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/cobalt/src/lib/client/rust:cobalt-client",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [
+    "src/lib.rs",
+    "src/mock_filesystem.rs",
+  ]
+}
+
+rustc_test("dynamic_repositories_disabled") {
+  name = "dynamic-repositories-disabled"
+  edition = "2018"
+
+  source_root = "src/dynamic_repositories_disabled.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/dynamic_repositories_disabled.rs" ]
+}
+
+rustc_test("persists_tuf_metadata") {
+  name = "persists-tuf-metadata"
+  edition = "2018"
+
+  source_root = "src/persists_tuf_metadata.rs"
+
+  deps = [
+    ":lib",
+    "//src/lib/fuchsia-async",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+  ]
+
+  sources = [ "src/persists_tuf_metadata.rs" ]
+}
+
+rustc_test("dynamic_rewrite_disabled") {
+  name = "dynamic-rewrite-disabled"
+  edition = "2018"
+
+  source_root = "src/dynamic_rewrite_disabled.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/dynamic_rewrite_disabled.rs" ]
+}
+
+rustc_test("pkg_resolve_inspect") {
+  name = "pkg-resolve-inspect"
+  edition = "2018"
+
+  source_root = "src/pkg_resolve_inspect.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/pkg_resolve_inspect.rs" ]
+}
+
+rustc_test("resolve_fails") {
+  name = "resolve-fails"
+  edition = "2018"
+
+  source_root = "src/resolve_fails.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//third_party/rust_crates:hyper",
+  ]
+
+  sources = [ "src/resolve_fails.rs" ]
+}
+
+rustc_test("resolve_propagates_blobfs_failure") {
+  name = "resolve-propagates-blobfs-failure"
+  edition = "2018"
+
+  source_root = "src/resolve_propagates_blobfs_failure.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/resolve_propagates_blobfs_failure.rs" ]
+}
+
+rustc_test("resolve_recovers_from_http_errors") {
+  name = "resolve-recovers-from-http-errors"
+  edition = "2018"
+
+  source_root = "src/resolve_recovers_from_http_errors.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/resolve_recovers_from_http_errors.rs" ]
+}
+
+rustc_test("resolve_resumes_blob_gets") {
+  name = "resolve-resumes-blob-gets"
+  edition = "2018"
+
+  source_root = "src/resolve_resumes_blob_gets.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:hyper",
+  ]
+
+  sources = [ "src/resolve_resumes_blob_gets.rs" ]
+}
+
+rustc_test("resolve_succeeds_with_broken_minfs") {
+  name = "resolve-succeeds-with-broken-minfs"
+  edition = "2018"
+
+  source_root = "src/resolve_succeeds_with_broken_minfs.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/resolve_succeeds_with_broken_minfs.rs" ]
+}
+
+rustc_test("resolve_succeeds") {
+  name = "resolve-succeeds"
+  edition = "2018"
+
+  source_root = "src/resolve_succeeds.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/http-uri-ext",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:http",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/resolve_succeeds.rs" ]
+}
+
+rustc_test("get_hash") {
+  name = "get-hash"
+  edition = "2018"
+
+  source_root = "src/get_hash.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.posix.socket:fuchsia.posix.socket-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:void",
+  ]
+
+  sources = [ "src/get_hash.rs" ]
+}
+
+rustc_test("system_cache_fallback") {
+  name = "system-cache-fallback"
+  edition = "2018"
+
+  source_root = "src/system_cache_fallback.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-hash",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:rand",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  sources = [ "src/system_cache_fallback.rs" ]
+}
+
+rustc_test("base_pinning") {
+  name = "base-pinning"
+  edition = "2018"
+
+  source_root = "src/base_pinning.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/pkgfs-ramdisk",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  sources = [ "src/base_pinning.rs" ]
+}
+
+rustc_test("metrics") {
+  name = "metrics"
+  edition = "2018"
+
+  source_root = "src/metrics.rs"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//third_party/cobalt/src/lib/client/rust:cobalt-client",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  sources = [ "src/metrics.rs" ]
+}
+
+fuchsia_test_component("dynamic_repositories_disabled-component") {
+  component_name = "dynamic-repositories-disabled"
+  manifest = "meta/dynamic-repositories-disabled.cml"
+  deps = [ ":dynamic_repositories_disabled" ]
+}
+
+fuchsia_test_component("persists_tuf_metadata-component") {
+  component_name = "persists-tuf-metadata"
+  manifest = "meta/persists-tuf-metadata.cml"
+  deps = [ ":persists_tuf_metadata" ]
+}
+
+fuchsia_test_component("dynamic_rewrite_disabled-component") {
+  component_name = "dynamic-rewrite-disabled"
+  manifest = "meta/dynamic-rewrite-disabled.cml"
+  deps = [ ":dynamic_rewrite_disabled" ]
+}
+
+fuchsia_test_component("get_hash-component") {
+  component_name = "get-hash"
+  manifest = "meta/get-hash.cml"
+  deps = [ ":get_hash" ]
+}
+
+fuchsia_test_component("pkg_resolve_inspect-component") {
+  component_name = "pkg-resolve-inspect"
+  manifest = "meta/pkg-resolve-inspect.cml"
+  deps = [ ":pkg_resolve_inspect" ]
+}
+
+fuchsia_test_component("resolve_propagates_blobfs_failure-component") {
+  component_name = "resolve-propagates-blobfs-failure"
+  manifest = "meta/resolve-propagates-blobfs-failure.cml"
+  deps = [ ":resolve_propagates_blobfs_failure" ]
+}
+
+fuchsia_test_component("resolve_recovers_from_http_errors-component") {
+  component_name = "resolve-recovers-from-http-errors"
+  manifest = "meta/resolve-recovers-from-http-errors.cml"
+  deps = [ ":resolve_recovers_from_http_errors" ]
+}
+
+fuchsia_test_component("resolve_resumes_blob_gets-component") {
+  component_name = "resolve-resumes-blob-gets"
+  manifest = "meta/resolve-resumes-blob-gets.cml"
+  deps = [ ":resolve_resumes_blob_gets" ]
+}
+
+fuchsia_test_component("resolve_fails-component") {
+  component_name = "resolve-fails"
+  manifest = "meta/resolve-fails.cml"
+  deps = [ ":resolve_fails" ]
+}
+
+fuchsia_test_component("resolve_succeeds-component") {
+  component_name = "resolve-succeeds"
+  manifest = "meta/resolve-succeeds.cml"
+  deps = [ ":resolve_succeeds" ]
+}
+
+fuchsia_test_component("resolve_succeeds_with_broken_minfs-component") {
+  component_name = "resolve-succeeds-with-broken-minfs"
+  manifest = "meta/resolve-succeeds-with-broken-minfs.cml"
+  deps = [ ":resolve_succeeds_with_broken_minfs" ]
+}
+
+fuchsia_test_component("system_cache_fallback-component") {
+  component_name = "system-cache-fallback"
+  manifest = "meta/system-cache-fallback.cml"
+  deps = [ ":system_cache_fallback" ]
+}
+
+fuchsia_test_component("base_pinning-component") {
+  component_name = "base-pinning"
+  manifest = "meta/base-pinning.cml"
+  deps = [ ":base_pinning" ]
+}
+
+fuchsia_test_component("metrics-component") {
+  component_name = "metrics"
+  manifest = "meta/metrics.cml"
+  deps = [ ":metrics" ]
+}
+
+renamed_binary("pkgsvr-binary") {
+  dest = "bin/pkgsvr"
+  source = "$root_out_dir/grand_unified_binary"
+  source_deps = [ "//src/go/grand_unified_binary" ]
+}
+
+renamed_binary("pkg_resolver-binary") {
+  dest = "bin/pkg_resolver"
+  source = "$root_out_dir/grand_swd_binary"
+  source_deps = [ "//src/sys/pkg/bin/grand-swd-binary" ]
+}
+
+fuchsia_component("pkg_resolver_wrapper-component") {
+  component_name = "pkg-resolver-wrapper"
+  manifest = "meta/pkg-resolver-wrapper.cml"
+}
+
+fuchsia_component("pkg_resolver-component") {
+  component_name = "pkg-resolver"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-test-common.shard.cml"
+}
+
+fuchsia_component("pkg_resolver_allow_local_mirror-component") {
+  component_name = "pkg-resolver-allow-local-mirror"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-allow-local-mirror.cml"
+}
+
+fuchsia_component("pkg_resolver_short_tuf_metadata_timeout-component") {
+  component_name = "pkg-resolver-short-tuf-metadata-timeout"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-short-tuf-metadata-timeout.cml"
+}
+
+fuchsia_component("pkg_resolver_zero_tuf_metadata_timeout-component") {
+  component_name = "pkg-resolver-zero-tuf-metadata-timeout"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-zero-tuf-metadata-timeout.cml"
+}
+
+fuchsia_component(
+    "pkg_resolver_zero_blob_download_resumption_attempts-component") {
+  component_name = "pkg-resolver-zero-blob-download-resumption-attempts"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-zero-blob-download-resumption-attempts.cml"
+}
+
+fuchsia_component("pkg_resolver_zero_blob_network_body_timeout-component") {
+  component_name = "pkg-resolver-zero-blob-network-body-timeout"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-zero-blob-network-body-timeout.cml"
+}
+
+fuchsia_component("pkg_resolver_zero_blob_network_header_timeout-component") {
+  component_name = "pkg-resolver-zero-blob-network-header-timeout"
+  deps = [ ":pkg_resolver-binary" ]
+  manifest = "meta/pkg-resolver-zero-blob-network-header-timeout.cml"
+}
+
+resource("ca.cert-resource") {
+  sources = [ "//src/sys/pkg/lib/fuchsia-pkg-testing/certs/ca.cert" ]
+  outputs = [ "data/ssl/cert.pem" ]
+}
+
+fuchsia_test_package("pkg-resolver-integration-tests") {
+  test_components = [
+    ":base_pinning-component",
+    ":dynamic_repositories_disabled-component",
+    ":dynamic_rewrite_disabled-component",
+    ":get_hash-component",
+    ":metrics-component",
+    ":persists_tuf_metadata-component",
+    ":pkg_resolve_inspect-component",
+    ":resolve_fails-component",
+    ":resolve_propagates_blobfs_failure-component",
+    ":resolve_recovers_from_http_errors-component",
+    ":resolve_resumes_blob_gets-component",
+    ":resolve_succeeds-component",
+    ":resolve_succeeds_with_broken_minfs-component",
+    ":system_cache_fallback-component",
+  ]
+  deps = [
+    ":ca.cert-resource",
+    ":empty-repo",
+
+    # For ramdisk devices, needed to back blobfs (which in turn backs pkgfs and pkg-cache)
+    "//src/storage/testing:storage_driver_test_realm",
+    "//src/sys/pkg/bin/pkg-cache:component",
+    "//src/sys/pkg/bin/pkg-local-mirror",
+
+    # pkg-resolver components that vary by program arguments
+    ":pkg_resolver-component",
+    ":pkg_resolver_allow_local_mirror-component",
+    ":pkg_resolver_short_tuf_metadata_timeout-component",
+    ":pkg_resolver_wrapper-component",
+    ":pkg_resolver_zero_blob_download_resumption_attempts-component",
+    ":pkg_resolver_zero_blob_network_body_timeout-component",
+    ":pkg_resolver_zero_blob_network_header_timeout-component",
+    ":pkg_resolver_zero_tuf_metadata_timeout-component",
+    "//src/connectivity/network/dns:component",
+
+    # Isolated, low-deps netstack
+    "//src/connectivity/network/netstack:component",
+
+    # Embedded archivist, which we need for inspect
+    "//src/diagnostics/archivist:archivist-for-embedding",
+
+    # binaries that are used at runtime.
+    ":pkgsvr-binary",
+    "//src/lib/storage/ramdevice_client:ramdisk-isolated-devmgr-component",
+    "//src/storage/bin/blobfs",
+    "//src/sys/pkg/bin/pm:pm_bin",
+    "//src/sys/pkg/bin/system-update-committer:component",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":pkg-resolver-integration-tests",
+    "//src/sys/pkg/bin/pm:pm",
+  ]
+}
+
+resource_tree("empty-repo") {
+  testonly = true
+  sources_root = "template"
+  sources = [
+    "keys/root.json",
+    "keys/snapshot.json",
+    "keys/targets.json",
+    "keys/timestamp.json",
+    "repository/1.root.json",
+    "repository/1.snapshot.json",
+    "repository/1.targets.json",
+    "repository/root.json",
+    "repository/snapshot.json",
+    "repository/targets.json",
+    "repository/timestamp.json",
+  ]
+  dest_dir = "empty-repo"
+}

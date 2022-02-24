@@ -1,0 +1,76 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":install-disk-image-test-package" ]
+}
+
+group("disk-pave") {
+  deps = [ ":install-disk-image" ]
+}
+
+executable("install-disk-image") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [
+    "disk-pave.cc",
+    "payload-streamer.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_llcpp",
+    "//sdk/lib/fdio",
+    "//src/storage/lib/paver",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("install-disk-image-test") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  output_name = "install-disk-image-test"
+  sources = [
+    "payload-streamer.cc",
+    "test/payload-streamer-test.cc",
+  ]
+  include_dirs = [ "." ]
+  deps = [
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("install-disk-image-test-package") {
+  deps = [ ":install-disk-image-test" ]
+  manifest = "meta/install-disk-image-test.cmx"
+}

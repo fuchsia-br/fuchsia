@@ -1,0 +1,94 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+fuchsia_component("fake-at-driver-test") {
+  testonly = true
+  manifest = "meta/tel_fake_at_driver_test.cmx"
+
+  deps = [
+    "component-integration:fake-at-driver-test",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr-at",
+  ]
+}
+
+fuchsia_component("fake-at-query") {
+  testonly = true
+  manifest = "meta/tel_fake_at_query.cmx"
+
+  deps = [
+    "component-integration:fake-at-query",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr-at",
+  ]
+}
+
+fuchsia_component("fake-qmi-query") {
+  testonly = true
+  manifest = "meta/tel_fake_qmi_query.cmx"
+
+  deps = [
+    "component-integration:fake-qmi-query",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr-qmi",
+  ]
+}
+
+fuchsia_component("snooper") {
+  testonly = true
+  manifest = "meta/tel_snooper_multi_clients.cmx"
+
+  deps = [
+    "component-integration:snooper",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr-qmi",
+  ]
+}
+
+fuchsia_component("telephony-qmi-usb-integration-test") {
+  testonly = true
+  manifest = "meta/telephony-qmi-usb-integration-test.cmx"
+
+  deps = [
+    "driver-integration:telephony-qmi-usb-integration-test",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr",
+  ]
+}
+
+fuchsia_component("tel-driver-unit-test") {
+  testonly = true
+  manifest = "meta/tel-driver-unit-test.cmx"
+
+  deps = [
+    "driver-unit:tel-driver-unit-test",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr",
+  ]
+}
+
+fuchsia_test_package("telephony-tests") {
+  package_deps_for_infra_only = [
+    "//src/connectivity/telephony/ril-qmi:ril-qmi",
+    "//src/connectivity/telephony/telephony-snooper:telephony-snooper",
+  ]
+  test_components = [
+    ":fake-at-driver-test",
+    ":fake-qmi-query",
+    ":snooper",
+    ":tel-driver-unit-test",
+  ]
+}
+
+fuchsia_test_package("telephony-tests-with-error-logs") {
+  package_deps_for_infra_only = [
+    "//src/connectivity/telephony/ril-at:ril-at",
+    "//src/connectivity/telephony/tests:telephony-tests",
+  ]
+  test_components = [
+    ":fake-at-query",
+    ":telephony-qmi-usb-integration-test",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

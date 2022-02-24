@@ -1,0 +1,53 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/element_manager",
+    },
+    collections: [
+        {
+            name: "elements",
+            durability: "transient",
+        },
+    ],
+    capabilities: [
+        {
+            protocol: [ "fuchsia.element.Manager" ],
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+        {
+            protocol: [
+                "fuchsia.element.GraphicalPresenter",
+                "fuchsia.sys.Launcher",
+                "fuchsia.ui.scenic.Scenic",
+            ],
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.media.Audio",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.scenic.Scenic",
+            ],
+            from: "parent",
+            to: "#elements",
+        },
+    ],
+    expose: [
+        {
+            protocol: [ "fuchsia.element.Manager" ],
+            from: "self",
+        },
+    ],
+}

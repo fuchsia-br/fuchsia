@@ -1,0 +1,29 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("fastboot") {
+  public_deps = [ ":lib" ]
+}
+
+config("include") {
+  include_dirs = [ "include" ]
+}
+
+source_set("lib") {
+  sources = [ "fastboot.cc" ]
+  public_configs = [ ":include" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver_llcpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zxc",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/lib/fxl",
+    "//src/storage/lib/paver",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zx",
+  ]
+}

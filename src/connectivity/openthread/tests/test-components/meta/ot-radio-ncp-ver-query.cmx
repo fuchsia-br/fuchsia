@@ -1,0 +1,19 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/ot_radio_ncp_ver_query"
+    },
+    "sandbox": {
+        "dev": [
+            "class/ot-radio"
+        ],
+        "pkgfs": [
+            "packages"
+        ],
+        "services": [
+            "fuchsia.sys.Launcher"
+        ]
+    }
+}

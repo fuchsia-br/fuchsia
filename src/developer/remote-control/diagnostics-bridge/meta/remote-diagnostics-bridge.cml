@@ -1,0 +1,22 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/remote_control_bin",
+        args: [ "diagnostics-bridge" ],
+    },
+    capabilities: [
+        { protocol: "fuchsia.developer.remotecontrol.RemoteDiagnosticsBridge" },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.diagnostics.ArchiveAccessor" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.developer.remotecontrol.RemoteDiagnosticsBridge",
+            from: "self",
+        },
+    ],
+}

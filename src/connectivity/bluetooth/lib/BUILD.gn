@@ -1,0 +1,51 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("lib") {
+  testonly = true
+  deps = [
+    "async-helpers",
+    "battery-client",
+    "bt-a2dp",
+    "bt-avctp",
+    "bt-avdtp",
+    "bt-device-watcher",
+    "bt-fidl-mocks",
+    "bt-rfcomm",
+    "cpp-string",
+    "cpp-type",
+    "fidl",
+    "fuchsia-audio-codec",
+    "fuchsia-audio-dai",
+    "fuchsia-audio-device-output",
+    "fuchsia-bluetooth",
+    "packet-encoding",
+    "profile-client",
+    "vigil",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "async-helpers:tests",
+    "battery-client:tests",
+    "bt-a2dp:tests",
+    "bt-avctp:tests",
+    "bt-avdtp:tests",
+    "bt-device-watcher:tests",
+    "bt-fidl-mocks:tests",
+    "bt-rfcomm:tests",
+    "cpp-string:tests",
+    "cpp-type:tests",
+    "fidl:tests",
+    "fuchsia-audio-codec:tests",
+    "fuchsia-audio-dai:tests",
+    "fuchsia-audio-device-output:tests",
+    "fuchsia-bluetooth:tests",
+    "packet-encoding:tests",
+    "profile-client:tests",
+    "vigil:tests",
+  ]
+}

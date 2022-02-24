@@ -1,0 +1,33 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("test") {
+  testonly = true
+  deps = [ ":abs-clock-test-pkg" ]
+}
+
+test("abs_clock_test") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "clock_test.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/abs_clock",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("abs-clock-test-pkg") {
+  deps = [ ":abs_clock_test" ]
+}

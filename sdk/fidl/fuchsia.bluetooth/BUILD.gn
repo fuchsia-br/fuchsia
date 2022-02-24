@@ -1,0 +1,20 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.bluetooth") {
+  sdk_category = "partner"
+
+  sources = [
+    "address.fidl",
+    "appearance.fidl",
+    "connection_role.fidl",
+    "deprecated.fidl",
+    "device_class.fidl",
+    "device_name.fidl",
+    "id.fidl",
+    "uuid.fidl",
+  ]
+}

@@ -1,0 +1,10 @@
+{
+    "sandbox": {
+        "services": [
+            "fuchsia.net.interfaces.State",
+            "fuchsia.net.name.Lookup",
+            "fuchsia.netstack.Netstack",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

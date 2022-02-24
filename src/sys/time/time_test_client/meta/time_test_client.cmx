@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/time_test_client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.time.Utc"
+        ]
+    }
+}

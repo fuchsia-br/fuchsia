@@ -1,0 +1,324 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/dist/resource.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/testing/environments.gni")
+import("//src/recovery/system/system_recovery_args.gni")
+
+group("system") {
+  testonly = true
+  deps = [
+    # Directory aggregates should not modify the product behavior: ":config",
+    ":system_recovery",
+    ":tests",
+  ]
+}
+
+group("fdr") {
+  testonly = true
+  deps = [
+    ":system_recovery_fdr",
+    ":tests",
+  ]
+}
+
+group("installer") {
+  testonly = true
+  deps = [
+    ":system_recovery_installer",
+    ":tests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":system_installer_tests",
+    ":system_recovery",
+    ":system_recovery_installer",
+    ":system_recovery_tests",
+    "//src/lib/storage/ramdevice_client:ramdisk-isolated-devmgr",
+    "//src/sys/pkg/lib/isolated-swd:isolated-swd-components",
+  ]
+}
+
+resource("recovery_logo") {
+  sources = [ recovery_logo_path ]
+  outputs = [ "data/logo.riv" ]
+}
+
+resource("roboto_regular") {
+  sources = [ "//prebuilt/third_party/fonts/roboto/Roboto-Regular.ttf" ]
+  outputs = [ "data/fonts/Roboto-Regular.ttf" ]
+}
+
+rustc_binary("bin") {
+  name = "system_recovery"
+  edition = "2018"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume-rustc",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.recovery:fuchsia.recovery-rustc",
+    "//sdk/fidl/fuchsia.recovery.policy:fuchsia.recovery.policy-rustc",
+    "//src/graphics/lib/compute/rive-rs",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/mapped-vmo",
+    "//src/lib/storage/fs_management/rust:fs_management",
+    "//src/lib/ui/carnelian",
+    "//src/lib/ui/fuchsia-framebuffer",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/lib/isolated-ota",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-channel",
+    "//third_party/rust_crates:bytes",
+    "//third_party/rust_crates:euclid",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:mockall",
+    "//third_party/rust_crates:png",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+  ]
+  test_deps = [
+    "//src/lib/storage/ramdevice_client",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/mock-paver",
+  ]
+  features = [ "http_setup_server" ]
+  sources = [
+    "src/button.rs",
+    "src/fdr.rs",
+    "src/keyboard.rs",
+    "src/keys.rs",
+    "src/main.rs",
+    "src/ota.rs",
+    "src/proxy_view_assistant.rs",
+    "src/setup.rs",
+    "src/storage.rs",
+  ]
+}
+
+config_data("config") {
+  for_pkg = "sysmgr"
+  sources = [ "config/recovery.config" ]
+  outputs = [ "recovery.config" ]
+}
+
+fuchsia_package_with_single_component("system_recovery") {
+  deps = [
+    ":bin",
+    ":recovery_logo",
+    ":roboto_regular",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/sys/pkg/bin/pkgfs:pkgsvr",
+  ]
+  manifest = "meta/system_recovery.cmx"
+}
+
+rustc_binary("bin_fdr") {
+  name = "system_recovery_fdr"
+  edition = "2018"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume-rustc",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.recovery:fuchsia.recovery-rustc",
+    "//sdk/fidl/fuchsia.recovery.policy:fuchsia.recovery.policy-rustc",
+    "//src/graphics/lib/compute/rive-rs",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/mapped-vmo",
+    "//src/lib/storage/fs_management/rust:fs_management",
+    "//src/lib/ui/carnelian",
+    "//src/lib/ui/fuchsia-framebuffer",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:euclid",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:mockall",
+    "//third_party/rust_crates:png",
+    "//third_party/rust_crates:thiserror",
+  ]
+  sources = [
+    "src/fdr.rs",
+    "src/main.rs",
+    "src/proxy_view_assistant.rs",
+  ]
+}
+
+config_data("config_fdr") {
+  for_pkg = "sysmgr"
+  sources = [ "config/recovery_fdr.config" ]
+  outputs = [ "recovery_fdr.config" ]
+}
+
+fuchsia_package_with_single_component("system_recovery_fdr") {
+  deps = [
+    ":bin_fdr",
+    ":recovery_logo",
+    ":roboto_regular",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/sys/pkg/bin/pkgfs:pkgsvr",
+  ]
+  manifest = "meta/system_recovery_fdr.cmx"
+}
+
+fuchsia_component("system_recovery_bin_test") {
+  testonly = true
+  deps = [ ":bin_test" ]
+  manifest = "meta/system_recovery_bin_test.cmx"
+}
+
+fuchsia_test_package("system_recovery_tests") {
+  test_components = [ ":system_recovery_bin_test" ]
+  deps = [
+    ":recovery_logo",
+    ":roboto_regular",
+    "//src/connectivity/network/dns:component-legacy",
+    "//src/connectivity/network/netstack:component-legacy",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/sys/pkg/bin/pkgfs:pkgsvr",
+    "//src/sys/pkg/bin/pm:pm_bin",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing/certs",
+    "//src/sys/pkg/tests/pkg-resolver:empty-repo",
+  ]
+  test_specs = {
+    environments = [ nuc_env ]
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+rustc_binary("bin_installer") {
+  name = "system_recovery_installer"
+  edition = "2018"
+  source_root = "installer/main.rs"
+  with_unit_tests = true
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device-rustc",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost-rustc",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block-rustc",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition-rustc",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume-rustc",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.recovery:fuchsia.recovery-rustc",
+    "//sdk/fidl/fuchsia.recovery.policy:fuchsia.recovery.policy-rustc",
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo-rustc",
+    "//src/graphics/lib/compute/rive-rs",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-hyper",
+    "//src/lib/mapped-vmo",
+    "//src/lib/storage/fs_management/rust:fs_management",
+    "//src/lib/ui/carnelian",
+    "//src/lib/ui/fuchsia-framebuffer",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/lib/zircon/rust:fuchsia-zircon-status",
+    "//src/sys/lib/payload_streamer",
+    "//src/sys/pkg/lib/isolated-ota",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:async-channel",
+    "//third_party/rust_crates:bytes",
+    "//third_party/rust_crates:euclid",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hyper",
+    "//third_party/rust_crates:mockall",
+    "//third_party/rust_crates:png",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+  ]
+  test_deps = [
+    "//src/lib/storage/ramdevice_client",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/pkg/lib/fuchsia-merkle",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/testing/blobfs-ramdisk",
+    "//src/sys/pkg/testing/mock-paver",
+  ]
+  sources = [
+    "installer/installer.rs",
+    "installer/main.rs",
+    "installer/menu.rs",
+    "installer/partition.rs",
+  ]
+}
+
+config_data("config_installer") {
+  for_pkg = "sysmgr"
+  sources = [ "config/recovery-installer.config" ]
+  outputs = [ "recovery_installer.config" ]
+}
+
+fuchsia_package_with_single_component("system_recovery_installer") {
+  deps = [
+    ":bin_installer",
+    ":recovery_logo",
+    ":roboto_regular",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/sys/pkg/bin/pkgfs:pkgsvr",
+  ]
+  manifest = "meta/system_recovery_installer.cmx"
+}
+
+fuchsia_component("system_installer_bin_test") {
+  testonly = true
+  deps = [ ":bin_installer_test" ]
+  manifest = "meta/system_installer_bin_test.cmx"
+}
+
+fuchsia_test_package("system_installer_tests") {
+  test_components = [ ":system_installer_bin_test" ]
+  deps = [
+    ":recovery_logo",
+    ":roboto_regular",
+    "//src/connectivity/network/dns:component-legacy",
+    "//src/connectivity/network/netstack:component-legacy",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/sys/pkg/bin/pkgfs:pkgsvr",
+    "//src/sys/pkg/bin/pm:pm_bin",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing/certs",
+    "//src/sys/pkg/tests/pkg-resolver:empty-repo",
+  ]
+  test_specs = {
+    environments = [ nuc_env ]
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("nandpart-bind") {
+  rules = "nandpart.bind"
+  header_output = "nandpart-bind.h"
+  bind_output = "nandpart.bindbc"
+  tests = "bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.nand" ]
+}
+
+fuchsia_driver("nandpart-driver") {
+  output_name = "nandpart"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "aml-bad-block.cc",
+    "bad-block.cc",
+    "nandpart-utils.cc",
+    "nandpart.cc",
+    "synaptics-bad-block.cc",
+  ]
+  deps = [
+    ":nandpart-bind",
+    "//sdk/banjo/fuchsia.hardware.badblock:fuchsia.hardware.badblock_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.nand:fuchsia.hardware.nand_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.nand:fuchsia.hardware.nand_c",
+    "//sdk/lib/stdcompat",
+    "//src/devices/lib/dev-operation",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("nandpart") {
+  info = "nandpart-info.json"
+  component_name = "nandpart"
+  deps = [ ":nandpart-driver" ]
+  colocate = true
+}
+
+test("nandpart-test-bin") {
+  output_name = "nandpart-test"
+  sources = [
+    "aml-bad-block.cc",
+    "bad-block.cc",
+    "nandpart-utils.cc",
+    "synaptics-bad-block.cc",
+    "test/aml-bad-block-test.cc",
+    "test/nandpart-utils-test.cc",
+    "test/synaptics-bad-block-test.cc",
+  ]
+  include_dirs = [ "." ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.nand:fuchsia.hardware.nand_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.nand:fuchsia.hardware.nand_c",
+    "//sdk/lib/fdio",
+    "//src/devices/testing/no_ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("nandpart-test") {
+  deps = [ ":nandpart-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":nandpart-bind_test",
+    ":nandpart-test",
+  ]
+}

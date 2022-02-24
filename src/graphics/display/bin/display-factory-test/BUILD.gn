@@ -1,0 +1,65 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+executable("display_detect") {
+  sources = [ "display-detect.cc" ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.display.controller:fuchsia.hardware.display.controller_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.display:fuchsia.hardware.display_llcpp",
+    "//sdk/fidl/fuchsia.hardware.gpio:fuchsia.hardware.gpio_llcpp",
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo_llcpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//sdk/lib/fdio",
+    "//src/graphics/display/testing",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/image-format:image-format-llcpp",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+rustc_binary("display_png") {
+  source_root = "display-png.rs"
+  with_unit_tests = true
+  deps = [
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/ui/carnelian",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:csv",
+    "//third_party/rust_crates:euclid",
+    "//third_party/rust_crates:png",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "display-png.rs" ]
+}
+
+fuchsia_package_with_single_component("display-detect") {
+  manifest = "meta/display-detect.cmx"
+  deps = [ ":display_detect" ]
+}
+
+fuchsia_package_with_single_component("display-png") {
+  manifest = "meta/display-png.cmx"
+  deps = [ ":display_png" ]
+}
+
+group("display-factory-test") {
+  deps = [
+    ":display-detect",
+    ":display-png",
+  ]
+}

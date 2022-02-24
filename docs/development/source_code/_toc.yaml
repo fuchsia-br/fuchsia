@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Please, read https://fuchsia.dev/fuchsia-src/contribute/docs/documentation-navigation-toc
+# before making changes to this file, and add a member of the fuchsia.dev
+# team as reviewer.
+toc:
+- title: "Contribute source changes"
+  path: /docs/development/source_code/contribute_changes.md
+- title: "Workflow tips and FAQ"
+  path: /docs/development/source_code/workflow_tips_and_faq.md
+- title: "Upload changes from multiple repositories"
+  path: /docs/development/source_code/upload_changes_from_multiple_repositories.md
+- title: "Make changes across different petals"
+  path: /docs/development/source_code/working_across_petals.md
+- title: "Source code layout"
+  path: /docs/development/source_code/layout.md
+- title: "Owners"
+  path: /docs/development/source_code/owners.md
+- title: "README.fuchsia file syntax"
+  path: /docs/development/source_code/third-party-metadata.md
+- title: "Fuchsia archive format (FAR)"
+  path: /docs/development/source_code/archive_format.md

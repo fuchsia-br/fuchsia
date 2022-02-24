@@ -1,0 +1,262 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Add test_manager to core
+{
+    children: [
+        {
+            name: "test_manager",
+            url: "fuchsia-pkg://fuchsia.com/test_manager#meta/test_manager.cm",
+            environment: "#full-resolver-env",
+        },
+    ],
+    use: [
+        // Integrate with run_test_suite
+        {
+            protocol: [
+                "fuchsia.test.manager.Query",
+                "fuchsia.test.manager.RunBuilder",
+            ],
+            from: "#test_manager",
+        },
+    ],
+    offer: [
+        // Needed by test_manager and/or some test runners
+        {
+            protocol: [
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.logger.Log",
+                "fuchsia.logger.LogSink",
+                "fuchsia.sys2.EventSource",
+            ],
+            from: "parent",
+            to: "#test_manager",
+        },
+
+        // Needed to collect kernel coverage for tests.
+        {
+            directory: "boot",
+            from: "parent",
+            as: "kernel_data",
+            to: "#test_manager",
+            rights: [ "r*" ],
+            subdir: "kernel/data",
+        },
+        {
+            protocol: [
+                "fuchsia.media.ProfileProvider",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.Loader",
+            ],
+            from: "self",
+            to: "#test_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.sys2.ComponentResolver" ],
+            from: "#full-resolver",
+            to: "#test_manager",
+        },
+        {
+            storage: "tmp",
+            from: "self",
+            to: "#test_manager",
+        },
+
+        // Test realms may offer subdirectories of config-data to test
+        // components. See:
+        // https://fuchsia.dev/fuchsia-src/development/components/data#product-specific_configuration_with_config_data
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#test_manager",
+        },
+
+        // Needed by some non-hermetic tests
+        {
+            protocol: [
+                "fuchsia.boot.RootResource",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.Stats",
+                "fuchsia.process.Launcher",
+                "fuchsia.scheduler.ProfileProvider",
+            ],
+            from: "parent",
+            to: "#test_manager",
+        },
+
+        // Needed by some non-hermetic tests.
+        {
+            protocol: [ "fuchsia.exception.Handler" ],
+            from: "#exceptions",
+            to: "#test_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.virtualization.Manager",
+            ],
+            from: "self",
+            to: "#test_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: "fuchsia.sysmem.Allocator",
+            from: "#sysmem_connector",
+            to: "#test_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.hwinfo.Board",
+                "fuchsia.hwinfo.Device",
+                "fuchsia.hwinfo.Product",
+            ],
+            from: "#hwinfo",
+            to: "#test_manager",
+        },
+        {
+            // TODO(fxbug.dev/86634): Remove once cts has its own realm.
+            protocol: [ "fuchsia.settings.Privacy" ],
+            from: "#setui_service",
+            to: "#test_manager",
+        },
+        {
+            protocol: "fuchsia.vulkan.loader.Loader",
+            from: "#vulkan_loader",
+            to: "#test_manager",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-display-controller",
+            to: "#test_manager",
+            subdir: "class/display-controller",
+        },
+        {
+            directory: "boot",
+            from: "parent",
+            to: "#test_manager",
+        },
+        {
+            // TODO(fxbug.dev/91934) - this is routed to test manager to support chromium tests.
+            // Once we're able, this part of the manifest should be maintained by chromium.
+            directory: "build-info",
+            from: "parent",
+            to: "#test_manager",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-mediacodec",
+            to: "#test_manager",
+            subdir: "class/media-codec",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-address-space",
+            to: "#test_manager",
+            subdir: "class/goldfish-address-space",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-control",
+            to: "#test_manager",
+            subdir: "class/goldfish-control",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-pipe",
+            to: "#test_manager",
+            subdir: "class/goldfish-pipe",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-sync",
+            to: "#test_manager",
+            subdir: "class/goldfish-sync",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-gpu",
+            to: "#test_manager",
+            subdir: "class/gpu",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-input-report",
+            to: "#test_manager",
+            subdir: "class/input-report",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-tee",
+            to: "#test_manager",
+            subdir: "class/tee",
+        },
+
+        // Tests of the media system want to test against the real hardware
+        // TODO(fxbug.dev/83512): Remove when specialized test realms are ready.
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-mediacodec",
+            to: "#test_manager",
+            subdir: "class/media-codec",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-sysmem",
+            to: "#test_manager",
+            subdir: "class/sysmem",
+        },
+        {
+            directory: "root-ssl-certificates",
+            from: "parent",
+            to: "#test_manager",
+        },
+
+        // Tests of the media system change their behavior based on board
+        // TODO(fxbug.dev/83512): Remove when specialized test realms are ready.
+        {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "parent",
+            to: "#test_manager",
+        },
+
+        // Integrate with Remote Control Service
+        {
+            protocol: [
+                "fuchsia.test.manager.Query",
+                "fuchsia.test.manager.RunBuilder",
+            ],
+            from: "#test_manager",
+            to: "#remote-control",
+        },
+
+        // Needed for //src/cobalt/bin/meta/cobalt_testapp_for_prober_do_not_run_manually.cml
+        // TODO(fxbug.dev/83038): Remove once e2e is better supported.
+        {
+            protocol: "fuchsia.net.http.Loader",
+            from: "#network",
+            to: "#test_manager",
+        },
+    ],
+}

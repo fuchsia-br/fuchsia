@@ -1,0 +1,19 @@
+[
+    {
+        "name": "Invalid VID",
+        "expected": "abort",
+        "device": {
+            "fuchsia.BIND_PROTOCOL": "fuchsia.composite.BIND_PROTOCOL.FUNCTION"
+        }
+    },
+    {
+        "name": "usb-peripheral-test",
+        "expected": "match",
+        "device": {
+            "fuchsia.BIND_PROTOCOL": "fuchsia.usb.BIND_PROTOCOL.FUNCTION",
+            "fuchsia.BIND_USB_VID": "fuchsia.google.usb.BIND_USB_VID.GOOGLE",
+            "fuchsia.BIND_USB_PID": "fuchsia.google.usb.BIND_USB_PID.FUNCTION_TEST",
+            "fuchsia.BIND_USB_PID": "fuchsia.google.usb.BIND_USB_PID.CDC_AND_FUNCTION_TEST"
+        }
+    }
+]

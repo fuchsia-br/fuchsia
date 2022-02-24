@@ -1,0 +1,67 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":ddk-fallback-test-v2-package" ]
+}
+
+driver_bind_rules("test-driver-bind") {
+  header_output = "test-driver-bind.h"
+  bind_output = "test-driver-bind.bindbc"
+  rules = "test-driver.bind"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+}
+
+fuchsia_driver("ddk-fallback-test-driver-module") {
+  sources = [ "test-driver.cc" ]
+  deps = [
+    ":test-driver-bind",
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/lib/files",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+fuchsia_driver_component("ddk-fallback-test-driver") {
+  deps = [ ":ddk-fallback-test-driver-module" ]
+  info = "ddk-fallback-test-driver-info.json"
+  colocate = true
+}
+
+test("test") {
+  output_name = "ddk-fallback-test"
+  sources = [ "test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_llcpp",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_unittest_package("ddk-fallback-test-v2-package") {
+  package_name = "ddk-fallback-test-v2"
+  deps = [
+    ":ddk-fallback-test-driver",
+    ":test",
+    "//sdk/lib/driver_test_realm",
+    "//src/devices/misc/drivers/test-parent",
+  ]
+}

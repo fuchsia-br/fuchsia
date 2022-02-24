@@ -1,0 +1,284 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/environments.gni")
+import("//src/hwinfo/hwinfo_config.gni")
+
+rustc_binary("hwinfo_bin") {
+  name = "hwinfo"
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.factory:fuchsia.factory-rustc",
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo-rustc",
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:openat",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:structopt",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/config.rs",
+    "src/hwinfo_server.rs",
+    "src/main.rs",
+  ]
+}
+
+hwinfo_config("default_board_config") {
+  type = "board"
+  config = rebase_path("default_board_config.json")
+}
+
+hwinfo_config("default_product_config") {
+  type = "product"
+  config = rebase_path("default_product_config.json")
+}
+
+fuchsia_component("hwinfo_component") {
+  component_name = "hwinfo"
+  manifest = "meta/hwinfo.cml"
+  deps = [ ":hwinfo_bin" ]
+}
+
+# TODO(fxbug.dev/82330): delete this
+fuchsia_component("legacy_hwinfo_component") {
+  component_name = "hwinfo"
+  manifest = "meta/hwinfo.cmx"
+  deps = [ ":hwinfo_bin" ]
+}
+
+fuchsia_package("fake_legacy_hwinfo") {
+  deps = [
+    ":legacy_hwinfo_component",
+    ":legacy_hwinfo_config",
+    ":legacy_hwinfo_factory_config",
+    "//src/factory/fake_factory_store_providers",
+  ]
+}
+
+fuchsia_package("hwinfo") {
+  deps = [
+    ":hwinfo_component",
+    ":legacy_hwinfo_component",
+  ]
+}
+
+fuchsia_package("fake_hwinfo") {
+  deps = [ ":hwinfo_component" ]
+}
+
+template("hwinfo_integration_test") {
+  assert(defined(invoker.manifest), "A manifest must be specified.")
+  assert(defined(invoker.deps), "Test dependencies must be specified.")
+  test_name = target_name
+
+  fuchsia_component("${test_name}_hwinfo") {
+    testonly = true
+    component_name = "hwinfo"
+    manifest = "meta/hwinfo.cml"
+    deps = [ ":hwinfo_bin" ]
+  }
+
+  fuchsia_component("${test_name}_test_driver") {
+    testonly = true
+    manifest = "meta/${test_name}_test_driver.cml"
+    deps = invoker.deps
+  }
+
+  fuchsia_component("${test_name}_misc_cm") {
+    testonly = true
+    component_name = "fake_factory_store_providers"
+    manifest = "//src/factory/fake_factory_store_providers/meta/misc.cml"
+    if (test_name == "hwinfo_retail_tests") {
+      manifest =
+          "//src/factory/fake_factory_store_providers/meta/misc_retail.cml"
+    }
+    deps = [ "//src/factory/fake_factory_store_providers:bin" ]
+  }
+
+  fuchsia_test_component("${test_name}_component") {
+    component_name = test_name
+    manifest = invoker.manifest
+    deps = invoker.deps
+  }
+
+  fuchsia_test_package("${test_name}_package") {
+    package_name = test_name
+    test_components = [ ":${test_name}_component" ]
+    deps = [
+      ":${test_name}_hwinfo",
+      ":${test_name}_misc_cm",
+      ":${test_name}_test_driver",
+    ]
+    if (defined(invoker.package_deps_for_infra_only)) {
+      deps += invoker.package_deps_for_infra_only
+    }
+    if (defined(invoker.test_specs)) {
+      test_specs = invoker.test_specs
+    }
+  }
+
+  group(target_name) {
+    testonly = true
+    deps = [ ":${test_name}_package" ]
+  }
+}
+
+rustc_test("hwinfo_positive_test") {
+  edition = "2018"
+  source_root = "tests/hwinfo_positive_test.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo-rustc",
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "tests/hwinfo_positive_test.rs" ]
+}
+
+rustc_test("hwinfo_negative_test") {
+  edition = "2018"
+  source_root = "tests/hwinfo_negative_test.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo-rustc",
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "tests/hwinfo_negative_test.rs" ]
+}
+
+rustc_test("hwinfo_retail_test") {
+  edition = "2018"
+  source_root = "tests/hwinfo_retail_test.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo-rustc",
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "tests/hwinfo_retail_test.rs" ]
+}
+
+hwinfo_integration_test("hwinfo_positive_tests") {
+  manifest = "meta/hwinfo_positive_tests.cml"
+  deps = [ ":hwinfo_positive_test" ]
+  package_deps_for_infra_only = [
+    ":hwinfo_tests_config",
+    ":hwinfo_tests_factory_config",
+  ]
+}
+
+hwinfo_integration_test("hwinfo_negative_tests") {
+  manifest = "meta/hwinfo_negative_tests.cml"
+  deps = [ ":hwinfo_negative_test" ]
+  package_deps_for_infra_only = [
+    ":hwinfo_tests_factory_config",
+    "//src/factory/fake_factory_store_providers",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+hwinfo_integration_test("hwinfo_retail_tests") {
+  manifest = "meta/hwinfo_retail_tests.cml"
+  deps = [ ":hwinfo_retail_test" ]
+  package_deps_for_infra_only = [
+    ":hwinfo_retail_tests_config",
+    ":hwinfo_retail_tests_factory_config",
+  ]
+}
+
+config_data("hwinfo_tests_factory_config") {
+  for_pkg = "fake_factory_store_providers"
+
+  sources = [ "testdata/fuchsia.factory.MiscFactoryStoreProvider.config" ]
+}
+
+config_data("hwinfo_tests_config") {
+  for_pkg = "hwinfo_positive_tests"
+
+  sources = [
+    "testdata/board_config.json",
+    "testdata/product_config.json",
+  ]
+}
+
+config_data("hwinfo_retail_tests_factory_config") {
+  for_pkg = "fake_factory_store_providers"
+
+  sources =
+      [ "testdata/fuchsia.factory.MiscFactoryStoreProvider_retail.config" ]
+}
+
+config_data("hwinfo_retail_tests_config") {
+  for_pkg = "hwinfo_retail_tests"
+
+  sources = [
+    "testdata/board_config.json",
+    "testdata/product_config.json",
+  ]
+}
+
+config_data("legacy_hwinfo_factory_config") {
+  for_pkg = "fake_legacy_hwinfo"
+
+  sources = [ "testdata/fuchsia.factory.MiscFactoryStoreProvider.config" ]
+}
+
+config_data("legacy_hwinfo_config") {
+  for_pkg = "fake_legacy_hwinfo"
+
+  sources = [
+    "testdata/board_config.json",
+    "testdata/product_config.json",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":fake_hwinfo",
+    ":hwinfo_negative_tests",
+    ":hwinfo_positive_tests",
+    ":hwinfo_retail_tests",
+  ]
+}

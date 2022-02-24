@@ -1,0 +1,136 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+config("wlan_common_config") {
+  include_dirs = [ "include" ]
+}
+
+source_set("common") {
+  sources = [
+    "band.cc",
+    "channel.cc",
+    "element.cc",
+    "element_splitter.cc",
+    "energy.cc",
+    "ieee80211_codes.cc",
+    "include/wlan/common/action_frame.h",
+    "include/wlan/common/band.h",
+    "include/wlan/common/bitfield.h",
+    "include/wlan/common/buffer_reader.h",
+    "include/wlan/common/buffer_writer.h",
+    "include/wlan/common/channel.h",
+    "include/wlan/common/cipher.h",
+    "include/wlan/common/dispatcher.h",
+    "include/wlan/common/element.h",
+    "include/wlan/common/element_id.h",
+    "include/wlan/common/energy.h",
+    "include/wlan/common/ieee80211.h",
+    "include/wlan/common/ieee80211_codes.h",
+    "include/wlan/common/logging.h",
+    "include/wlan/common/mac_frame.h",
+    "include/wlan/common/macaddr.h",
+    "include/wlan/common/mcs_rate_lookup.h",
+    "include/wlan/common/moving_average.h",
+    "include/wlan/common/parse_element.h",
+    "include/wlan/common/phy.h",
+    "include/wlan/common/stats.h",
+    "include/wlan/common/tx_vector.h",
+    "include/wlan/common/write_element.h",
+    "logging.cc",
+    "mac_frame.cc",
+    "macaddr.cc",
+    "mcs_rate_lookup.cc",
+    "parse_element.cc",
+    "parse_mac_header.cc",
+    "perr_destination_parser.cc",
+    "phy.cc",
+    "tim_element.cc",
+    "tx_vector.cc",
+    "write_element.cc",
+  ]
+
+  public_deps = [
+    "//sdk/banjo/ddk.hw.wlan.ieee80211:ddk.hw.wlan.ieee80211_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.associnfo:fuchsia.hardware.wlan.associnfo_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.softmac:fuchsia.hardware.wlan.softmac_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlanphyimpl:fuchsia.hardware.wlanphyimpl_banjo_cpp",
+    "//sdk/fidl/fuchsia.wlan.common",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//sdk/fidl/fuchsia.wlan.mlme",
+    "//sdk/fidl/fuchsia.wlan.stats",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+
+  public_configs = [ ":wlan_common_config" ]
+  configs += [ "//build/config/fuchsia:enable_zircon_asserts" ]
+
+  # TODO(fxbug.dev/46688): This library contains public interfaces that spread
+  # undefined behavior to its callers. At the time of writing, all are caused
+  # by the use of non-trivial data members in packed structures. This causes at
+  # least the following undefined behaviors:
+  #
+  # - "member call on misaligned address" occurs when a method is called on a
+  # misaligned data member.
+  #
+  # - "upcast of misaligned address" occurs when a base class method is called
+  # on a misaligned data member. This is commonly the case with types that
+  # inherit from `BitField`.
+  #
+  # - "constructor call on misaligned address" occurs when a misaligned data
+  # member of a type with a defined constructor (even an explicitly defined
+  # default constructor) is constructed.
+  #
+  # - "reference binding to misaligned address" occurs when a misaligned data
+  # member is read by reference. This is common in test assertions which take
+  # their operands by const-ref.
+  public_configs += [ ":undefined_behavior_misaligned_memory" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+config("undefined_behavior_misaligned_memory") {
+  cflags = [ "-fno-sanitize=alignment" ]
+}
+
+executable("ieee80211_codes_test") {
+  output_name = "ieee80211_codes_test"
+  testonly = true
+  sources = [ "ieee80211_codes_test.cc" ]
+  deps = [
+    ":common",
+    "//sdk/fidl/fuchsia.wlan.common",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+fuchsia_unittest_package("ieee80211_codes_tests") {
+  package_name = "ieee80211-codes-tests"
+  deps = [ ":ieee80211_codes_test" ]
+}
+
+executable("mcs_rate_lookup_test") {
+  output_name = "mcs_rate_lookup_test"
+  testonly = true
+  sources = [ "mcs_rate_lookup_test.cc" ]
+  deps = [
+    ":common",
+    "//sdk/fidl/fuchsia.wlan.common",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+fuchsia_unittest_package("mcs_rate_lookup_tests") {
+  package_name = "mcs-rate-lookup-tests"
+  deps = [ ":mcs_rate_lookup_test" ]
+}

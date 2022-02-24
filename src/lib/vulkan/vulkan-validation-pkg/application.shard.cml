@@ -1,0 +1,28 @@
+{
+    children: [
+        {
+            name: "validation-client",
+
+            // A relative path is used here because validation-client is
+            // expected to be in the same package as the application component.
+            url: "#meta/validation-client.cm",
+        },
+    ],
+    use: [
+        {
+            // validation-client exposes "validation_server_pkg"
+            // from its child, validation-server.
+            directory: "validation_server_pkg",
+            from: "#validation-client",
+            rights: [ "rx*" ],
+            path: "/vulkan_validation_pkg",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: "#validation-client",
+        },
+    ],
+}

@@ -1,0 +1,20 @@
+{
+    include: [
+        "//src/storage/testing/driver_test_realm/meta/client.shard.cml",
+        "//src/sys/test_runners/gtest/default.shard.cml",
+        "//src/sys/test_runners/tmp_storage.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "test/disk_extractor_unit_test",
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.process.Launcher",
+                "fuchsia.sys.Launcher",
+            ],
+        },
+    ],
+}

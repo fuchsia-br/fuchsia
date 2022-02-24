@@ -1,0 +1,21 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Please, read https://fuchsia.dev/fuchsia-src/contribute/docs/documentation-navigation-toc
+# before making changes to this file, and add a member of the fuchsia.dev
+# team as reviewer.
+toc:
+- title: "Build components"
+  path: /docs/development/components/build.md
+- title: "Run components"
+  path: /docs/development/components/run.md
+- title: "Troubleshooting components"
+  path: /docs/development/components/troubleshooting.md
+- title: "Provide data files to components"
+  path: /docs/development/components/data.md
+- title: "Component storage index"
+  path: /docs/development/components/component_id_index.md
+- title: "Migrating legacy components"
+  section:
+  - include: /docs/development/components/v2/migration/_toc.yaml

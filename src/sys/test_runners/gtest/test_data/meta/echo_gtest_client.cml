@@ -1,0 +1,14 @@
+// Component manifest for the `echo_gtest_client`.
+// It connects to echo server and passes back test results.
+{
+    include: [
+        "syslog/client.shard.cml",
+        "//src/sys/test_runners/gtest/default.shard.cml",
+    ],
+    program: {
+        binary: "bin/echo_gtest_client",
+    },
+    use: [
+        { protocol: "fidl.examples.routing.echo.Echo" },
+    ],
+}

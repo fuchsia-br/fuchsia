@@ -1,0 +1,12 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/vulkan/test-application.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "-offscreen"
+        ],
+        "binary": "bin/vkproto-test"
+    }
+}

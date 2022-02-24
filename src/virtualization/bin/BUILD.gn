@@ -1,0 +1,29 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("bin") {
+  # Remove this once linux_runner no longer sets "linux_runner_extras_tests" to
+  # "true" by default.
+  testonly = true
+
+  deps = [
+    "guest",
+    "guest-rs",
+    "guest_manager",
+    "guest_runner",
+    "linux_runner",
+    "vmm",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "guest-rs:tests",
+    "guest_manager:tests",
+    "linux_runner:tests",
+    "vmm:tests",
+  ]
+}

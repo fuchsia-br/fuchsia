@@ -1,0 +1,22 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/chrealm_integration_test"
+    },
+    "sandbox": {
+        "features": [
+            "hub",
+            "isolated-temp",
+            "shell-commands"
+        ],
+        "services": [
+            "fuchsia.process.Launcher",
+            "fuchsia.process.Resolver",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Launcher",
+            "fuchsia.sys.Loader"
+        ]
+    }
+}

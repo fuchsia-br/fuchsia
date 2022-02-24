@@ -1,0 +1,25 @@
+{
+    include: [ "syslog/elf_stdio.shard.cml" ],
+    program: {
+        binary: "bin/intl_property_manager",
+        args: [
+            "--set_initial_profile",
+            "--locale_ids=en-US,nl-NL",
+            "--timezone_ids=und-u-tz-uslax",
+        ],
+    },
+    capabilities: [
+        { protocol: "fuchsia.intl.PropertyProvider" },
+        { protocol: "fuchsia.test.intl.manager.PropertyManager" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.intl.PropertyProvider",
+            from: "self",
+        },
+        {
+            protocol: "fuchsia.test.intl.manager.PropertyManager",
+            from: "self",
+        },
+    ],
+}

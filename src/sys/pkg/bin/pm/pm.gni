@@ -1,0 +1,462 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/config/fuchsia/platform_version.gni")
+import("//build/packages/package_metadata.gni")
+
+amber_repository_dir = "$root_out_dir/amber-files"
+
+# Directory containing developer signing keys.
+amber_keys_dir = "//src/sys/pkg/repositories/devhost/keys"
+
+# Directory containing developer root metadata.
+amber_metadata_dir = "//src/sys/pkg/repositories/devhost/metadata"
+
+# Directory containing files named by their merkleroot content IDs in
+# ASCII hex.  The //build/image:pm_publish_blobs target populates
+# this with copies of build products, but never removes old files.
+amber_repository_blobs_dir = "$amber_repository_dir/repository/blobs"
+
+template("_pm") {
+  compiled_action(target_name) {
+    tool = "//src/sys/pkg/bin/pm:pm_bin"
+    tool_output_name = "pm"
+    forward_variables_from(invoker,
+                           [
+                             "args",
+                             "data_deps",
+                             "depfile",
+                             "deps",
+                             "inputs",
+                             "metadata",
+                             "outputs",
+                             "public_deps",
+                             "testonly",
+                             "visibility",
+                           ])
+  }
+}
+
+# Generate a package archive in the format produced by `pm archive'.
+#
+# The archive is generated at $target_out_dir/$package_name where package_name
+# is `get_label_info($package, "name")`
+#
+# Parameters
+#
+#   manifest (required)
+#     [label] A generate_manifest() target defined earlier in the same file.
+#     This provides the contents for the package.
+#
+#   package (required)
+#     [label] A pm_build() target defined earlier in the same file.
+template("pm_archive") {
+  assert(defined(invoker.manifest), "manifest is required")
+  assert(defined(invoker.package), "package is required")
+
+  # This must be the same as the output directory used by pm_build.
+  package_name = get_label_info(invoker.package, "name")
+  pkg_out_dir = get_label_info(invoker.package, "target_out_dir")
+  pkg_out_dir = "$pkg_out_dir/$package_name"
+  pkg_manifest_outputs = get_target_outputs(invoker.manifest)
+  pkg_manifest_file = pkg_manifest_outputs[0]
+
+  _pm(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+
+    deps = [
+      invoker.manifest,
+      invoker.package,
+    ]
+    inputs = [
+      pkg_manifest_file,
+
+      # The output package manifest from pm_build(). This is a hack due to
+      # pm archive's lack of support for depfiles, and ensures that this
+      # target is rebuilt if any of the files in the dependent package change
+      # since that would modify package_manifest.json.
+      "$pkg_out_dir/package_manifest.json",
+    ]
+    outputs = [ "$target_out_dir/$package_name.far" ]
+    args = [
+      "-o",
+      rebase_path(pkg_out_dir, root_build_dir),
+      "-m",
+      rebase_path(pkg_manifest_file, root_build_dir),
+      "archive",
+      "-output",
+      rebase_path("$target_out_dir/$package_name", root_build_dir),
+    ]
+  }
+}
+
+# Generate a sealed package file from a manifest.
+#
+# Parameters
+#
+#   manifest (required)
+#     [label] A generate_manifest() target defined earlier in the same file.
+#     This provides the contents for the package.
+#
+#   The following two items are only required in order to produce metadata about
+#   the package sets, and may be removed in the future:
+#
+#   package_name (default: the target name)
+#     [string] Name of the package (should match what is in meta/package)
+#
+#   package_api_level (default: the current fuchsia api level)
+#     [unsigned integer] API level of the package
+#
+#   repository (default: "fuchsia.com")
+#     [string] The repository host name part of the package URL.
+#     See https://fuchsia.dev/fuchsia-src/concepts/packages/package_url#repository
+#     for more details.
+#
+#   deps (optional)
+#   test (optional)
+#   visibility (optional)
+#     Same as for any GN `action()` target.
+template("pm_build") {
+  forward_variables_from(invoker,
+                         [
+                           "package_api_level",
+                           "package_name",
+                           "repository",
+                         ])
+  if (!defined(package_api_level)) {
+    package_api_level = current_fuchsia_api_level
+  }
+
+  if (!defined(package_name)) {
+    package_name = target_name
+  }
+
+  if (!defined(repository)) {
+    repository = "fuchsia.com"
+  }
+
+  pkg_out_dir = "$target_out_dir/$target_name"
+  pkg_output_manifest = "$pkg_out_dir/package_manifest.json"
+
+  metadata_target_name = "${target_name}_metadata"
+  define_package_metadata(metadata_target_name) {
+    package_name = package_name
+    snapshot_entry = "$package_name/0=" +
+                     rebase_path("$pkg_out_dir/blobs.json", root_build_dir)
+    blob_manifest = "$pkg_out_dir/blobs.manifest"
+    meta_far_merkle_index_entry =
+        "$package_name/0=" +
+        rebase_path("$pkg_out_dir/meta.far.merkle", root_build_dir)
+    package_output_manifest = pkg_output_manifest
+  }
+
+  _pm(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "data_deps",
+                             "deps",
+                             "public_deps",
+                             "testonly",
+                             "visibility",
+                           ])
+    if (!defined(deps)) {
+      deps = []
+    }
+    pkg_manifest_outputs = get_target_outputs(invoker.manifest)
+    pkg_manifest_file = pkg_manifest_outputs[0]
+    deps += [ invoker.manifest ]
+    inputs = [ pkg_manifest_file ]
+    depfile = "$pkg_out_dir/meta.far.d"
+
+    metadata = {
+      if (defined(invoker.metadata)) {
+        forward_variables_from(invoker.metadata, "*")
+      }
+      package_barrier = [ ":$metadata_target_name" ]
+    }
+    deps += [ ":$metadata_target_name" ]
+
+    outputs = [
+      # produced by seal, must be listed first because of depfile rules.
+      "$pkg_out_dir/meta.far",
+
+      # update
+      "$pkg_out_dir/meta/contents",
+
+      # seal
+      "$pkg_out_dir/meta.far.merkle",
+
+      # package blob json manifest
+      "$pkg_out_dir/blobs.json",
+
+      # package blob manifest
+      "$pkg_out_dir/blobs.manifest",
+
+      # package output manifest
+      pkg_output_manifest,
+    ]
+
+    args = [
+      "-o",
+      rebase_path(pkg_out_dir, root_build_dir),
+      "-m",
+      rebase_path(pkg_manifest_file, root_build_dir),
+      "-n",
+      package_name,
+      "-r",
+      repository,
+      "-api-level",
+      "$package_api_level",
+      "build",
+      "-output-package-manifest",
+      rebase_path(pkg_output_manifest, root_build_dir),
+      "-depfile",
+      "-blobsfile",
+      "-blobs-manifest",
+    ]
+
+    # Due to the content-based nature of these outputs, timestamps of these
+    # outputs will not be freshened when their contents do not change in
+    # incremental builds, which allows for early termination of downstream
+    # build actions.
+  }
+}
+
+template("pm_prepare_publish") {
+  # These files are copied from amber_keys_dir into $amber_repository_dir/keys.
+  copy("${target_name}__keys") {
+    sources = [
+      "$amber_keys_dir/snapshot.json",
+      "$amber_keys_dir/targets.json",
+      "$amber_keys_dir/timestamp.json",
+    ]
+
+    outputs = [ "$amber_repository_dir/keys/{{source_file_part}}" ]
+  }
+
+  # TODO(fxbug.dev/38262) In order to be TUF-1.0 conformant, we need to have
+  # versioned-prefixed root metadata files. Fow now this just hard-codes
+  # copying the current metadata to the correct place, but long term this
+  # should be computed so we don't forget to copy the file when we rotate the
+  # root metadata.
+  copy("${target_name}__root_manifest") {
+    sources = [ "$amber_metadata_dir/7.root.json" ]
+
+    outputs = [ "$amber_repository_dir/repository/root.json" ]
+  }
+
+  # TODO(fxbug.dev/38262) See the comment on `root_manifest`.
+  copy("${target_name}__versioned_root_manifest") {
+    sources = [
+      "$amber_metadata_dir/1.root.json",
+      "$amber_metadata_dir/2.root.json",
+      "$amber_metadata_dir/3.root.json",
+      "$amber_metadata_dir/4.root.json",
+      "$amber_metadata_dir/5.root.json",
+      "$amber_metadata_dir/6.root.json",
+      "$amber_metadata_dir/7.root.json",
+    ]
+
+    outputs = [ "$amber_repository_dir/repository/{{source_file_part}}" ]
+  }
+  group(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "testonly",
+                             "visibility",
+                           ])
+    if (!defined(deps)) {
+      deps = []
+    }
+    deps += [
+      ":${target_name}__keys",
+      ":${target_name}__root_manifest",
+      ":${target_name}__versioned_root_manifest",
+    ]
+
+    metadata = {
+      package_repository = [
+        {
+          path = rebase_path("$amber_repository_dir/repository", root_build_dir)
+          targets = rebase_path("$amber_repository_dir/repository/targets.json",
+                                root_build_dir)
+          blobs = rebase_path("$amber_repository_dir/repository/blobs",
+                              root_build_dir)
+        },
+      ]
+    }
+  }
+}
+
+template("pm_publish") {
+  _pm(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "data_deps",
+                             "inputs",
+                             "testonly",
+                             "visibility",
+                           ])
+    depfile = "${target_gen_dir}/${target_name}.d"
+
+    assert(inputs == [ inputs[0] ],
+           "pm_publish(\"$target_name\") requires exactly one input")
+
+    outputs = [
+      # Note: the first output is the one that appears in the depfile.
+      "$amber_repository_dir/repository/timestamp.json",
+      "$amber_repository_dir/repository/snapshot.json",
+      "$amber_repository_dir/repository/targets.json",
+    ]
+
+    args = [
+      "publish",
+      "-depfile",
+      rebase_path(depfile, root_build_dir),
+      "-C",
+      "-r",
+      rebase_path(amber_repository_dir, root_build_dir),
+      "-lp",
+      "-f",
+      rebase_path(inputs[0], root_build_dir),
+      "-vt",
+    ]
+  }
+}
+
+# Generate TUF repository metadata and data in a zip fie.
+#
+# Globals
+#
+#   amber_keys_dir
+#     [path] Directory where TUF keys for signing metadata are stored.
+#
+#   amber_metadata_dir
+#     [path] Directory where TUF root metadata is stored.
+#
+# Parameters
+#
+#   inputs (required)
+#     [list of labels] A list of exactly one input: A list of package metadata
+#     from the set of packages to be published in the TUF repository. For
+#     example, the output from a generate_package_metadata() target.
+#
+#   deps (optional)
+#   data_deps (optional)
+#   testonly (optional)
+#   visibility (optional)
+#     Same as for any GN `action()` target.
+template("pm_publish_archive") {
+  action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "data_deps",
+                             "inputs",
+                             "testonly",
+                             "visibility",
+                           ])
+    gendir = "${target_out_dir}/${target_name}/gen"
+    output = "${target_out_dir}/${target_name}.zip"
+
+    # TODO(fxbug.dev/94229): Action tracer does not observe `pm` writes because
+    # golang binaries are statically linked and invoke syscalls directly and
+    # action tracer relies on dynamically linking its own tracing library.
+    hermetic_action_ignored_prefixes = [ gendir ]
+
+    if (!defined(deps)) {
+      deps = []
+    }
+    deps += [ "//src/sys/pkg/bin/pm:pm_bin($host_toolchain)" ]
+
+    sources = [
+      # Injected key files read by `pm publish`.
+      "${amber_keys_dir}/snapshot.json",
+      "${amber_keys_dir}/targets.json",
+      "${amber_keys_dir}/timestamp.json",
+
+      # Injected root metadata for TUF repository.
+      "${amber_metadata_dir}/1.root.json",
+      "${amber_metadata_dir}/2.root.json",
+      "${amber_metadata_dir}/3.root.json",
+      "${amber_metadata_dir}/4.root.json",
+      "${amber_metadata_dir}/5.root.json",
+      "${amber_metadata_dir}/6.root.json",
+      "${amber_metadata_dir}/7.root.json",
+    ]
+
+    assert(inputs == [ inputs[0] ],
+           "pm_publish_archive(\"$target_name\") requires exactly one input")
+
+    # inputs[0] is input to `pm publish`; the action's other input is the `pm`
+    # binary itself.
+    inputs += [ "${host_out_dir}/pm" ]
+
+    script = "//src/sys/pkg/bin/pm/pm_publish_archive.py"
+    args = [
+      "--pm",
+      rebase_path("${host_out_dir}/pm", root_build_dir),
+
+      "--key",
+      rebase_path("${amber_keys_dir}/snapshot.json", root_build_dir),
+      "--key",
+      rebase_path("${amber_keys_dir}/targets.json", root_build_dir),
+      "--key",
+      rebase_path("${amber_keys_dir}/timestamp.json", root_build_dir),
+
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/1.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/2.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/3.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/4.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/5.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/6.root.json", root_build_dir),
+      "--root-metadata",
+      rebase_path("${amber_metadata_dir}/7.root.json", root_build_dir),
+
+      "--default-root-metadata",
+      rebase_path("${amber_metadata_dir}/7.root.json", root_build_dir),
+
+      "--gendir",
+      rebase_path(gendir, root_build_dir),
+      "--input",
+      rebase_path(inputs[0], root_build_dir),
+      "--output",
+      rebase_path(output, root_build_dir),
+    ]
+    outputs = [
+      # `outputs[0]` must be final output described by depfile.
+      output,
+
+      # Intermediate files copied from source locations:
+
+      # Key files read by `pm publish`.
+      "${gendir}/keys/snapshot.json",
+      "${gendir}/keys/targets.json",
+      "${gendir}/keys/timestamp.json",
+
+      # Root metadata for TUF repository.
+      "${gendir}/repository/1.root.json",
+      "${gendir}/repository/2.root.json",
+      "${gendir}/repository/3.root.json",
+      "${gendir}/repository/4.root.json",
+      "${gendir}/repository/5.root.json",
+      "${gendir}/repository/6.root.json",
+      "${gendir}/repository/7.root.json",
+      "${gendir}/repository/root.json",
+    ]
+  }
+}

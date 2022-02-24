@@ -1,0 +1,6 @@
+include /src/sys/fuzzing/OWNERS
+
+mcgrathr@google.com
+phosek@google.com
+
+# COMPONENT: Build

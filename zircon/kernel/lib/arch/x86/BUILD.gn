@@ -1,0 +1,55 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/toolchain/toolchain_environment.gni")
+import("//build/zircon/zx_library.gni")
+import("//zircon/system/ulib/hwreg/hwreg_asm_header.gni")
+
+zx_library("x86") {
+  visibility = [ "../*" ]
+  sources = []
+  public_deps = [
+    # <lib/arch/x86/boot-cpuid.h> has #include <lib/special-sections/special-sections.h>.
+    "//zircon/kernel/lib/special-sections",
+
+    # <lib/arch/x86/cpuid.h> has #include <hwreg/bitfields.h>.
+    "//zircon/system/ulib/hwreg:headers",
+  ]
+  deps = [ "//zircon/system/ulib/hwreg" ]
+
+  include_dirs = [ "../include" ]
+
+  public_deps += [ ":gen-cpuid-asm" ]
+  if (!is_host) {
+    sources += [
+      "boot-cpuid.S",
+      "boot-cpuid.cc",
+      "random.cc",
+      "standard-segments.cc",
+    ]
+    deps += [ "//zircon/kernel/lib/special-sections" ]
+
+    if (toolchain_environment == "kernel.phys32") {
+      sources += [ "zbi-boot.cc" ]
+    } else {
+      sources += [ "descriptor-regs.S" ]
+    }
+
+    if (is_kernel) {
+      deps += [ "//zircon/kernel/lib/ktl" ]
+    }
+  }
+
+  sdk = "source"
+  sdk_headers = [ "lib/arch/intrin.h" ]
+}
+
+hwreg_asm_header("gen-cpuid-asm") {
+  output_name = "lib/arch/x86/cpuid-asm.h"
+  defines = [ "LIB_ARCH_PRINTERS" ]
+  sources = [ "gen-cpuid-asm.cc" ]
+  deps = [ ".." ]
+}

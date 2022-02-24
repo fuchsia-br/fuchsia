@@ -1,0 +1,14 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/iquery_test_component",
+        args: [
+            "--rows=3",
+            "--columns=3",
+        ],
+    },
+}

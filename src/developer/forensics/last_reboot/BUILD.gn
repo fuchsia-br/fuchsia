@@ -1,0 +1,85 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+visibility = [
+  "//src/developer/forensics/feedback/*",
+  "//src/developer/forensics/last_reboot/*",
+]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("last_reboot_info_provider") {
+  sources = [
+    "last_reboot_info_provider.cc",
+    "last_reboot_info_provider.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//src/developer/forensics/feedback/reboot_log",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("main") {
+  sources = [
+    "main.cc",
+    "main.h",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback/fidl:fuchsia.feedback.internal",
+    "//src/developer/forensics/feedback/migration/shell:main",
+  ]
+
+  visibility += [ "//src/developer/forensics:*" ]
+}
+
+source_set("reboot_watcher") {
+  sources = [
+    "reboot_watcher.cc",
+    "reboot_watcher.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/lib/fidl/cpp",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+
+  deps = [
+    "//src/developer/forensics/feedback/reboot_log",
+    "//src/lib/files",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("reporter") {
+  sources = [
+    "reporter.cc",
+    "reporter.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.metrics",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/feedback/reboot_log",
+    "//src/developer/forensics/utils:errors",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}

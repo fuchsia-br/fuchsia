@@ -1,0 +1,20 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/linux_runner"
+    },
+    "sandbox": {
+        "features": [
+            "deprecated-global-dev",
+            "isolated-persistent-storage"
+        ],
+        "services": [
+            "fuchsia.sys.Launcher",
+            "fuchsia.tracing.provider.Registry",
+            "fuchsia.ui.scenic.Scenic",
+            "fuchsia.virtualization.Manager"
+        ]
+    }
+}

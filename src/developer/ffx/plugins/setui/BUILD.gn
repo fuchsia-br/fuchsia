@@ -1,0 +1,26 @@
+# Copyright 2022 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_setui") {
+  version = "0.1.0"
+  edition = "2018"
+
+  plugin_deps = [
+    "audio:ffx_setui_audio",
+    "display:ffx_setui_display",
+    "do_not_disturb:ffx_setui_do_not_disturb",
+    "factory_reset:ffx_setui_factory_reset",
+    "intl:ffx_setui_intl",
+    "keyboard:ffx_setui_keyboard",
+    "light:ffx_setui_light",
+    "night_mode:ffx_setui_night_mode",
+    "privacy:ffx_setui_privacy",
+    "setup:ffx_setui_setup",
+    "volume_policy:ffx_setui_volume_policy",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+}

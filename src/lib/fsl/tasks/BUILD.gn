@@ -1,0 +1,24 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("tasks") {
+  visibility = [ "//src/lib/fsl/*" ]
+
+  sources = [
+    "fd_waiter.cc",
+    "fd_waiter.h",
+  ]
+
+  deps = [ "//src/zircon/lib/zircon" ]
+
+  public_deps = [
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl:common",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+  ]
+
+  public_configs = [ "//garnet/public:config" ]
+}

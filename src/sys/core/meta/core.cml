@@ -1,0 +1,1142 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Realm that acts as a container for general system components.
+{
+    include: [
+        "//src/sys/appmgr/meta/appmgr.core_shard.cml",
+        "//src/sys/core/meta/core_proxy.shard.cml",
+    ],
+    children: [
+        {
+            name: "device_settings",
+            url: "fuchsia-pkg://fuchsia.com/device_settings_manager#meta/device_settings_manager.cm",
+        },
+        {
+            name: "session-manager",
+            url: "fuchsia-pkg://fuchsia.com/session_manager#meta/session_manager.cm",
+            environment: "#session-env",
+        },
+        {
+            name: "system-update-committer",
+            url: "fuchsia-pkg://fuchsia.com/system-update-committer#meta/system-update-committer.cm",
+            startup: "eager",
+            on_terminate: "reboot",
+        },
+        {
+            name: "last_reboot",
+            url: "fuchsia-pkg://fuchsia.com/forensics#meta/last_reboot.cm",
+        },
+        {
+            name: "exceptions",
+            url: "fuchsia-pkg://fuchsia.com/forensics#meta/exceptions.cm",
+        },
+        {
+            name: "feedback",
+            url: "fuchsia-pkg://fuchsia.com/forensics#meta/feedback.cm",
+            startup: "eager",
+        },
+        {
+            name: "mdns",
+            url: "fuchsia-pkg://fuchsia.com/mdns#meta/mdns.cm",
+
+            // TODO(https://fxbug.dev/93539): consider removing eager startup in non-eng builds.
+            startup: "eager",
+        },
+        {
+            name: "setui_service",
+            url: "fuchsia-pkg://fuchsia.com/setui_service#meta/setui_service.cm",
+            on_terminate: "reboot",
+        },
+        {
+            name: "bluetooth-core",
+            url: "fuchsia-pkg://fuchsia.com/bt-init#meta/bt-init.cm",
+        },
+        {
+            name: "sysmem_connector",
+            url: "fuchsia-pkg://fuchsia.com/sysmem_connector#meta/sysmem_connector.cm",
+        },
+
+        // Children below this line may be present on some but not all product configurations.
+        // Children above this line are expected to be present on all configs that include
+        // core.cml.
+        //
+        // TODO(fxbug.dev/81003): If any of the components below are product-specific, move them
+        // to core realm shards.
+        {
+            name: "activity",
+            url: "fuchsia-pkg://fuchsia.com/activity#meta/activity.cm",
+        },
+        {
+            name: "brightness_manager",
+            url: "fuchsia-pkg://fuchsia.com/brightness_manager#meta/brightness_manager.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "cobalt",
+            url: "fuchsia-pkg://fuchsia.com/cobalt#meta/cobalt.cm",
+        },
+        {
+            name: "detect",
+            url: "fuchsia-pkg://fuchsia.com/triage-detect#meta/triage-detect.cm",
+        },
+        {
+            name: "diagnostics-persistence",
+            url: "fuchsia-pkg://fuchsia.com/diagnostics-persistence#meta/diagnostics-persistence.cm",
+        },
+        {
+            name: "diagnostics-kcounter",
+            url: "fuchsia-pkg://fuchsia.com/diagnostics-kcounter#meta/diagnostics-kcounter.cm",
+        },
+        {
+            name: "log-stats",
+            url: "fuchsia-pkg://fuchsia.com/log-stats#meta/log-stats.cm",
+        },
+        {
+            name: "sampler",
+            url: "fuchsia-pkg://fuchsia.com/sampler#meta/sampler.cm",
+        },
+        {
+            name: "starnix_manager",
+            url: "fuchsia-pkg://fuchsia.com/starnix#meta/starnix_manager.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "stash",
+            url: "fuchsia-pkg://fuchsia.com/stash#meta/stash.cm",
+        },
+        {
+            name: "stash2",
+            url: "fuchsia-pkg://fuchsia.com/stash#meta/stash2.cm",
+        },
+        {
+            name: "stash_secure",
+            url: "fuchsia-pkg://fuchsia.com/stash#meta/stash_secure.cm",
+        },
+        {
+            name: "regulatory_region",
+            url: "fuchsia-pkg://fuchsia.com/regulatory_region#meta/regulatory_region.cm",
+        },
+        {
+            name: "font_provider",
+            url: "fuchsia-pkg://fuchsia.com/fonts#meta/fonts.cm",
+        },
+        {
+            name: "remote-control",
+            url: "fuchsia-pkg://fuchsia.com/remote-control#meta/remote-control.cm",
+        },
+        {
+            name: "remote-diagnostics-bridge",
+            url: "fuchsia-pkg://fuchsia.com/remote-diagnostics-bridge#meta/remote-diagnostics-bridge.cm",
+        },
+        {
+            name: "debug_serial",
+            url: "fuchsia-pkg://fuchsia.com/debug-serial#meta/debug-serial.cm",
+        },
+        {
+            name: "system-metrics-logger",
+            url: "fuchsia-pkg://fuchsia.com/system-metrics-logger#meta/system-metrics-logger-component.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "temperature-logger",
+            url: "fuchsia-pkg://fuchsia.com/temperature-logger#meta/temperature-logger.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "pkg-cache",
+            url: "fuchsia-pkg://fuchsia.com/pkg-cache#meta/pkg-cache.cm",
+        },
+        {
+            name: "pkg-resolver",
+            url: "fuchsia-pkg://fuchsia.com/pkg-resolver#meta/pkg-resolver.cm",
+        },
+        {
+            name: "soundplayer",
+            url: "fuchsia-pkg://fuchsia.com/soundplayer#meta/soundplayer.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "vulkan_loader",
+            url: "fuchsia-pkg://fuchsia.com/vulkan_loader#meta/vulkan_loader.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "ssh-key-manager",
+            url: "fuchsia-pkg://fuchsia.com/ssh-key-manager#meta/ssh-key-manager.cm",
+        },
+        {
+            name: "universe-resolver",
+            url: "fuchsia-pkg://fuchsia.com/universe-resolver#meta/universe-resolver.cm",
+        },
+        {
+            name: "bt-avrcp",
+            url: "fuchsia-pkg://fuchsia.com/bt-avrcp#meta/bt-avrcp.cm",
+            environment: "#full-resolver-env",
+        },
+        {
+            name: "network",
+            url: "fuchsia-pkg://fuchsia.com/network#meta/network.cm",
+            startup: "eager",
+        },
+        {
+            name: "hwinfo",
+            url: "fuchsia-pkg://fuchsia.com/hwinfo#meta/hwinfo.cm",
+        },
+        {
+            name: "agis",
+            url: "fuchsia-pkg://fuchsia.com/agis#meta/agis.cm",
+            environment: "#full-resolver-env",
+        },
+    ], // children
+    capabilities: [
+        // Note: `data`, `cache`, and `temp` storage capabilities are defined in a shard and
+        // included as part of the build process. See restricted-storage.core_shard.cml or
+        // unrestricted-storage.core_shard.cml
+    ],
+
+    // Protocols offered from `self` are routed from the v1 sys realm.
+    offer: [
+        {
+            storage: "data",
+            from: "self",
+            to: "#setui_service",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: [ "#setui_service" ],
+            subdir: "setui_service",
+        },
+        {
+            protocol: [
+                "fuchsia.camera3.DeviceWatcher",
+                "fuchsia.media.AudioCore",
+                "fuchsia.media.sessions2.Discovery",
+                "fuchsia.media.UsageReporter",
+                "fuchsia.recovery.policy.Device",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.policy.DeviceListenerRegistry",
+            ],
+            from: "self",
+            to: "#setui_service",
+            dependency: "weak_for_migration",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-light",
+            to: "#setui_service",
+            subdir: "class/light",
+        },
+        {
+            protocol: "fuchsia.sys2.ComponentResolver",
+            from: "parent",
+            to: [ "#universe-resolver" ],
+        },
+        {
+            protocol: "fuchsia.factory.MiscFactoryStoreProvider",
+            from: "self",
+            to: [ "#hwinfo" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: "#device_settings",
+        },
+        {
+            protocol: [ "fuchsia.kernel.DebugResource" ],
+            from: "parent",
+            to: "#debug_serial",
+        },
+        {
+            protocol: [
+                "fuchsia.ui.activity.control.Control",
+                "fuchsia.ui.activity.Provider",
+                "fuchsia.ui.activity.Tracker",
+            ],
+            from: "#activity",
+            to: [ "#cobalt" ],
+        },
+        {
+            protocol: "fuchsia.ui.brightness.Control",
+            from: "#brightness_manager",
+            to: [ "#setui_service" ],
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-sysmem",
+            to: "#sysmem_connector",
+            subdir: "class/sysmem",
+        },
+        {
+            protocol: "fuchsia.tracing.provider.Registry",
+            from: "self",
+            to: "#sysmem_connector",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.pkg.FontResolver" ],
+            from: "#pkg-resolver",
+            to: "#font_provider",
+        },
+        {
+            protocol: "fuchsia.stash.Store",
+            from: "#stash",
+            to: "#setui_service",
+        },
+        {
+            protocol: [ "fuchsia.device.NameProvider" ],
+            from: "parent",
+            to: [
+                "#bluetooth-core",
+                "#mdns",
+                "#network",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+            from: "self",
+            to: [ "#network" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.net.http.Loader" ],
+            from: "#network",
+            to: [
+                "#cobalt",
+                "#feedback",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.net.interfaces.State" ],
+            from: "#network",
+            to: [
+                "#exceptions",
+                "#feedback",
+                "#last_reboot",
+                "#mdns",
+                "#remote-control",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.net.name.Lookup",
+                "fuchsia.posix.socket.Provider",
+            ],
+            from: "#network",
+            to: [
+                "#cobalt",
+                "#feedback",
+                "#mdns",
+                "#pkg-resolver",
+                "#session-manager",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.posix.socket.Provider" ],
+            from: "#network",
+            to: [ "#agis" ],
+        },
+        {
+            protocol: "fuchsia.stash.SecureStore",
+            from: "#stash_secure",
+            to: [
+                "#bluetooth-core",
+                "#network",
+            ],
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: [ "#network" ],
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-class-ethernet",
+            to: [ "#network" ],
+            subdir: "class/ethernet",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-class-network",
+            to: [ "#network" ],
+            subdir: "class/network",
+        },
+        {
+            storage: "cache",
+            from: "self",
+            to: [ "#network" ],
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: [ "#network" ],
+        },
+        {
+            protocol: "fuchsia.pkg.PackageResolver",
+            from: "#pkg-resolver",
+            to: "#universe-resolver",
+        },
+        {
+            directory: [
+                "blob",
+                "pkgfs",
+            ],
+            from: "parent",
+            to: "#pkg-cache",
+        },
+        {
+            protocol: [ "fuchsia.boot.Arguments" ],
+            from: "parent",
+            to: "#pkg-cache",
+        },
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+            from: "self",
+            to: "#pkg-cache",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: "fuchsia.update.CommitStatusProvider",
+            from: "#system-update-committer",
+            to: "#pkg-cache",
+        },
+        {
+            protocol: [ "fuchsia.boot.Arguments" ],
+            from: "parent",
+            to: "#pkg-resolver",
+        },
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+            from: "self",
+            to: "#pkg-resolver",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.pkg.PackageCache" ],
+            from: "#pkg-cache",
+            to: "#pkg-resolver",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: "#pkg-resolver",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#pkg-resolver",
+            subdir: "pkg-resolver",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: [
+                "#exceptions",
+                "#feedback",
+            ],
+            subdir: "forensics",
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+                "fuchsia.logger.Log",
+            ],
+            from: "parent",
+            to: [
+                "#log-stats",
+                "#sampler",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister" ],
+            from: "parent",
+            to: [
+                "#feedback",
+                "#sampler",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.diagnostics.FeedbackArchiveAccessor" ],
+            from: "parent",
+            to: [
+                "#detect",
+                "#diagnostics-persistence",
+                "#feedback",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [
+                "#activity",
+                "#agis",
+                "#bluetooth-core",
+                "#brightness_manager",
+                "#bt-avrcp",
+                "#cobalt",
+                "#debug_serial",
+                "#detect",
+                "#device_settings",
+                "#diagnostics-kcounter",
+                "#diagnostics-persistence",
+                "#exceptions",
+                "#feedback",
+                "#font_provider",
+                "#hwinfo",
+                "#last_reboot",
+                "#log-stats",
+                "#mdns",
+                "#network",
+                "#pkg-cache",
+                "#pkg-resolver",
+                "#regulatory_region",
+                "#remote-control",
+                "#sampler",
+                "#session-manager",
+                "#setui_service",
+                "#soundplayer",
+                "#ssh-key-manager",
+                "#starnix_manager",
+                "#stash",
+                "#stash2",
+                "#stash_secure",
+                "#sysmem_connector",
+                "#system-metrics-logger",
+                "#system-update-committer",
+                "#temperature-logger",
+                "#universe-resolver",
+                "#vulkan_loader",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.kernel.Counter" ],
+            from: "parent",
+            to: "#diagnostics-kcounter",
+        },
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.paver.Paver",
+                "fuchsia.update.verify.BlobfsVerifier",
+            ],
+            from: "parent",
+            to: "#system-update-committer",
+        },
+        {
+            protocol: [ "fuchsia.kernel.VmexResource" ],
+            from: "parent",
+            to: "#starnix_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.scenic.Scenic",
+            ],
+            from: "self",
+            to: "#starnix_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.sysmem.Allocator" ],
+            from: "#sysmem_connector",
+            to: [
+                "#session-manager",
+                "#starnix_manager",
+            ],
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#hwinfo",
+            subdir: "hwinfo",
+        },
+        {
+            protocol: [
+                "fuchsia.hwinfo.Device",
+                "fuchsia.overnet.Overnet",
+                "fuchsia.overnet.ServicePublisher",
+                "fuchsia.sys.Launcher",
+            ],
+            from: "self",
+            to: "#remote-control",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.posix.socket.Provider" ],
+            from: "#network",
+            to: "#remote-control",
+        },
+        {
+            protocol: [ "fuchsia.sys.internal.CrashIntrospect" ],
+            from: "self",
+            to: "#exceptions",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.process.Launcher",
+                "fuchsia.sys2.CrashIntrospect",
+            ],
+            from: "parent",
+            to: "#exceptions",
+        },
+        {
+            protocol: [
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.NameProvider",
+            ],
+            from: "parent",
+            to: "#remote-control",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: [ "#remote-control" ],
+            subdir: "remote-control",
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.logger.LogSink",
+            ],
+            from: "parent",
+            to: "#remote-diagnostics-bridge",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#font_provider",
+            subdir: "fonts",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#sampler",
+            subdir: "sampler",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#diagnostics-persistence",
+            subdir: "diagnostics-persistence",
+        },
+        {
+            protocol: "fuchsia.developer.remotecontrol.RemoteDiagnosticsBridge",
+            from: "#remote-diagnostics-bridge",
+            to: "#remote-control",
+        },
+        {
+            protocol: "fuchsia.feedback.CrashReporter",
+            from: "#feedback",
+            to: [
+                "#detect",
+                "#exceptions",
+            ],
+        },
+        {
+            protocol: "fuchsia.feedback.CrashReportingProductRegister",
+            from: "#feedback",
+            to: "#detect",
+        },
+        {
+            protocol: "fuchsia.fonts.Provider",
+            from: "#font_provider",
+            to: [ "#session-manager" ],
+        },
+        {
+            protocol: "fuchsia.kernel.Stats",
+            from: "parent",
+            to: "#system-metrics-logger",
+        },
+        {
+            protocol: "fuchsia.process.Launcher",
+            from: "parent",
+            to: "#session-manager",
+        },
+        {
+            protocol: "fuchsia.tracing.provider.Registry",
+            from: "self",
+            to: "#system-metrics-logger",
+            dependency: "weak_for_migration",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: "#brightness_manager",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-backlight",
+            to: "#brightness_manager",
+            subdir: "class/backlight",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-input-report",
+            to: [
+                "#brightness_manager",
+                "#session-manager",
+                "#setui_service",
+            ],
+            subdir: "class/input-report",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            to: "#sysmem_connector",
+            subdir: "class/sysmem",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-temperature",
+            to: "#temperature-logger",
+            subdir: "class/temperature",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-thermal",
+            to: "#temperature-logger",
+            subdir: "class/thermal",
+        },
+        {
+            directory: "root-ssl-certificates",
+            from: "parent",
+            to: [
+                "#cobalt",
+                "#network",
+                "#pkg-resolver",
+                "#session-manager",
+            ],
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#temperature-logger",
+            subdir: "temperature-logger",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#detect",
+            subdir: "triage-detect",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#log-stats",
+            subdir: "log-stats",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#system-update-committer",
+            subdir: "system-update-committer",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#cobalt",
+            subdir: "cobalt",
+        },
+        {
+            protocol: [
+                "fuchsia.device.Controller",
+                "fuchsia.hardware.temperature.Device",
+            ],
+            from: "parent",
+            to: "#temperature-logger",
+        },
+        {
+            protocol: "fuchsia.tracing.provider.Registry",
+            from: "self",
+            to: "#temperature-logger",
+            dependency: "weak_for_migration",
+        },
+        {
+            directory: "minfs",
+            from: "parent",
+            as: "ssh",
+            to: "#ssh-key-manager",
+            subdir: "ssh",
+        },
+
+        // Note: this is the v2 root hub. The hub in the `expose` section below
+        // is the v1 root hub.
+        {
+            directory: "hub",
+            from: "parent",
+            to: "#remote-control",
+        },
+        {
+            storage: [
+                "cache",
+                "data",
+                "tmp",
+            ],
+            from: "self",
+            to: "#session-manager",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#session-manager",
+        },
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "parent",
+            to: [
+                "#session-manager",
+                "#setui_service",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.intl.PropertyProvider",
+                "fuchsia.intl.TimeZones",
+                "fuchsia.media.AudioDeviceEnumerator",
+                "fuchsia.media.ProfileProvider",
+                "fuchsia.sys.Launcher",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.composition.FlatlandDisplay",
+                "fuchsia.ui.focus.FocusChainListenerRegistry",
+                "fuchsia.ui.input.ImeService",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.input3.KeyEventInjector",
+                "fuchsia.ui.keyboard.focus.Controller",
+                "fuchsia.ui.lifecycle.LifecycleController",
+                "fuchsia.ui.pointerinjector.Registry",
+                "fuchsia.ui.policy.Presenter",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.ui.shortcut.Manager",
+                "fuchsia.ui.views.ViewRefInstalled",
+            ],
+            from: "self",
+            to: "#session-manager",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: [
+                "#last_reboot",
+                "#stash",
+                "#stash2",
+                "#stash_secure",
+            ],
+        },
+        {
+            storage: [
+                "cache",
+                "tmp",
+            ],
+            from: "self",
+            to: "#last_reboot",
+        },
+        {
+            storage: [ "tmp" ],
+            from: "self",
+            to: "#exceptions",
+        },
+        {
+            storage: [ "cache" ],
+            from: "self",
+            to: "#regulatory_region",
+        },
+        {
+            protocol: "fuchsia.media.sounds.Player",
+            from: "#soundplayer",
+            to: [ "#setui_service" ],
+        },
+        {
+            storage: "cache",
+            from: "self",
+            to: "#diagnostics-persistence",
+        },
+        {
+            protocol: [ "fuchsia.media.Audio" ],
+            from: "self",
+            to: [
+                "#session-manager",
+                "#soundplayer",
+            ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.vulkan.loader.Loader" ],
+            from: "#vulkan_loader",
+            to: [
+                "#session-manager",
+                "#starnix_manager",
+            ],
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-gpu",
+            to: [
+                "#starnix_manager",
+                "#vulkan_loader",
+            ],
+            subdir: "class/gpu",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-gpu-dependency-injection",
+            to: "#vulkan_loader",
+            subdir: "class/gpu-dependency-injection",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-pipe",
+            to: "#vulkan_loader",
+            subdir: "class/goldfish-pipe",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-control",
+            to: "#vulkan_loader",
+            subdir: "class/goldfish-control",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-address-space",
+            to: "#vulkan_loader",
+            subdir: "class/goldfish-address-space",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            as: "dev-goldfish-sync",
+            to: "#vulkan_loader",
+            subdir: "class/goldfish-sync",
+        },
+        {
+            protocol: [ "fuchsia.bluetooth.bredr.Profile" ],
+            from: "#bluetooth-core",
+            to: "#bt-avrcp",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            to: "#bluetooth-core",
+        },
+        {
+            protocol: [ "fuchsia.bluetooth.snoop.Snoop" ],
+            from: "self",
+            to: "#bluetooth-core",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: "fuchsia.cobalt.LoggerFactory",
+            from: "#cobalt",
+            to: [
+                "#pkg-cache",
+                "#pkg-resolver",
+                "#sampler",
+                "#session-manager",
+                "#sysmem_connector",
+            ],
+        },
+        {
+            protocol: "fuchsia.metrics.MetricEventLoggerFactory",
+            from: "#cobalt",
+            to: [
+                "#feedback",
+                "#log-stats",
+                "#sampler",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.settings.Privacy",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "self",
+            to: "#cobalt",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sysinfo.SysInfo",
+            ],
+            from: "parent",
+            to: "#cobalt",
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: "#cobalt",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.process.Launcher",
+                "fuchsia.sysinfo.SysInfo",
+            ],
+            from: "parent",
+            to: [ "#feedback" ],
+        },
+        {
+            protocol: [
+                "fuchsia.hwinfo.Board",
+                "fuchsia.hwinfo.Product",
+            ],
+            from: "#hwinfo",
+            to: "#feedback",
+        },
+        {
+            protocol: [
+                "fuchsia.feedback.DeviceIdProvider",
+                "fuchsia.feedback.internal.CrashReportsDirectoryMigrator",
+                "fuchsia.feedback.internal.FeedbackDataDirectoryMigrator",
+                "fuchsia.intl.PropertyProvider",
+                "fuchsia.settings.Privacy",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.update.channelcontrol.ChannelControl",
+            ],
+            from: "self",
+            to: "#feedback",
+            dependency: "weak_for_migration",
+        },
+        {
+            storage: [
+                "cache",
+                "data",
+                "tmp",
+            ],
+            from: "self",
+            to: "#feedback",
+        },
+        {
+            directory: "build-info",
+            from: "parent",
+            to: "#feedback",
+        },
+        {
+            directory: "boot",
+            from: "parent",
+            to: "#feedback",
+        },
+        {
+            protocol: [ "fuchsia.feedback.internal.LastRebootDirectoryMigrator" ],
+            from: "#last_reboot",
+            to: "#feedback",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#mdns",
+            subdir: "mdns",
+        },
+    ],
+    expose: [
+        {
+            // This is needed for the `ffx component storage` command.
+            protocol: "fuchsia.sys2.StorageAdmin",
+            from: "#data",
+        },
+        {
+            // This is needed for the `ffx component storage --provider cache` command.
+            protocol: "fuchsia.sys2.StorageAdmin",
+            from: "#cache",
+            as: 'fuchsia.sys2.StorageAdmin.cache',
+        },
+        {
+            // This is needed for the `ffx component storage --provider temp` command.
+            protocol: "fuchsia.sys2.StorageAdmin",
+            from: "#tmp",
+            as: 'fuchsia.sys2.StorageAdmin.tmp',
+        },
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+        {
+            protocol: [ "fuchsia.sessionmanager.Startup" ],
+            from: "#session-manager",
+        },
+        {
+            protocol: [ "fuchsia.cobalt.LoggerFactory" ],
+            from: "#cobalt",
+        },
+        {
+            protocol: [ "fuchsia.component.Binder" ],
+            from: "#detect",
+            as: "fuchsia.component.DetectBinder",
+        },
+        {
+            protocol: [ "fuchsia.component.Binder" ],
+            from: "#diagnostics-kcounter",
+            as: "fuchsia.component.KcounterBinder",
+        },
+        {
+            protocol: [ "fuchsia.component.Binder" ],
+            from: "#diagnostics-persistence",
+            as: "fuchsia.component.PersistenceBinder",
+        },
+        {
+            protocol: [ "fuchsia.component.Binder" ],
+            from: "#log-stats",
+            as: "fuchsia.component.LogStatsBinder",
+        },
+        {
+            protocol: [ "fuchsia.component.Binder" ],
+            from: "#sampler",
+            as: "fuchsia.component.SamplerBinder",
+        },
+        {
+            protocol: [
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.pkg.RepositoryManager",
+                "fuchsia.pkg.rewrite.Engine",
+            ],
+            from: "#pkg-resolver",
+        },
+        {
+            protocol: [ "fuchsia.ui.activity.Provider" ],
+            from: "#activity",
+        },
+        {
+            protocol: [ "fuchsia.exception.Handler" ],
+            from: "#exceptions",
+        },
+    ],
+    environments: [
+        {
+            name: "universe-resolver-env",
+            extends: "realm",
+            resolvers: [
+                {
+                    resolver: "full-resolver",
+                    from: "#universe-resolver",
+                    scheme: "fuchsia-pkg",
+                },
+            ],
+        },
+    ],
+}

@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/vulkan/test-application.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/image-pipe-swapchain-tests"
+    },
+    "sandbox": {
+        "dev": [
+            "class/display-controller"
+        ],
+        "services": [
+            "fuchsia.process.Launcher"
+        ]
+    }
+}

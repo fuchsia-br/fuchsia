@@ -1,0 +1,13 @@
+libasync-default.so
+libclang_rt.asan.so
+libcrypto.so
+libc.so
+libdriver.so
+libdriver_runtime.so
+libfdio.so
+libssl.so
+libsyslog.so
+libtrace-engine.so
+libbackend_fuchsia_globals.so
+libzircon.so
+libtee-client-api.so

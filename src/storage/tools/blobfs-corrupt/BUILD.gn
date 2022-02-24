@@ -1,0 +1,60 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("blobfs-corrupt") {
+  sources = [ "main.cc" ]
+  deps = [
+    ":common",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/digest",
+    "//src/lib/storage/block_client/cpp",
+    "//src/storage/blobfs",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+executable("blobfs-corrupt-test") {
+  testonly = true
+  output_name = "blobfs-corrupt-test"
+  sources = [ "test/corrupt_blob_test.cc" ]
+  include_dirs = [ "." ]
+  deps = [
+    ":common",
+    "//src/lib/digest",
+    "//src/lib/storage/block_client/cpp:fake_device",
+    "//src/storage/blobfs",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("common") {
+  sources = [
+    "corrupt_blob.cc",
+    "fs_block_client.cc",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/digest",
+    "//src/lib/storage/block_client/cpp",
+    "//src/storage/blobfs",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_unittest_package("blobfs-corrupt-tests") {
+  deps = [ ":blobfs-corrupt-test" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":blobfs-corrupt-tests" ]
+}

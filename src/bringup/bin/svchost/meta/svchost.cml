@@ -1,0 +1,46 @@
+{
+    program: {
+        runner: "elf",
+        binary: "bin/svchost",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.kernel.Reader",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "sysmem",
+            rights: [ "rw*" ],
+            path: "/dev/class/sysmem",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.exception.Handler",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.logger.LogSink",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.kernel.Reader",
+            ],
+            from: "self",
+        },
+    ],
+}

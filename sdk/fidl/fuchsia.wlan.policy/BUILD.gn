@@ -1,0 +1,31 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+import("//tools/fidl/measure-tape/measure_tape.gni")
+
+fidl("fuchsia.wlan.policy") {
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [ "vector-bounds-not-specified" ]
+
+  sdk_category = "partner"
+
+  sources = [
+    "access_point_provider.fidl",
+    "client_provider.fidl",
+    "types.fidl",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.wlan.common",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//zircon/vdso/zx",
+  ]
+}
+
+measure_tape("measure_tape_for_scan_result") {
+  target_binding = "rust"
+  target_types = [ "fuchsia.wlan.policy/ScanResult" ]
+  fidls = [ "//sdk/fidl/fuchsia.wlan.policy" ]
+}

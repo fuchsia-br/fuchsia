@@ -1,0 +1,40 @@
+{
+    program: {
+        runner: "elf",
+        binary: "bin/virtual_console",
+    },
+    capabilities: [
+        {
+            protocol: [ "fuchsia.virtualconsole.SessionManager" ],
+        },
+    ],
+    use: [
+        {
+            directory: "input-report",
+            rights: [ "rw*" ],
+            path: "/dev/class/input-report",
+        },
+        {
+            directory: "display-controller",
+            rights: [ "rw*" ],
+            path: "/dev/class/display-controller",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.pty.Device",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.provider.Registry",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.virtualconsole.SessionManager",
+            from: "self",
+        },
+    ],
+}

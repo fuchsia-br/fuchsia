@@ -1,0 +1,77 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+group("sanitizer") {
+  testonly = true
+  deps = [ ":sanitizer-utils" ]
+}
+
+test("sanitizer-utils") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "sanitizer-utils.cc" ]
+  deps = [
+    ":memory-snapshot-test",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/ldmsg",
+    "//zircon/system/ulib/zxtest",
+  ]
+  data_deps = [ ":sanitizer-exit-hook-test-helper" ]
+}
+
+executable("sanitizer-exit-hook-test-helper") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  visibility = [ ":*" ]
+  sources = [ "exit-hook-test-helper.cc" ]
+}
+
+source_set("memory-snapshot-test") {
+  visibility = [ ":*" ]
+  sources = [ "memory-snapshot-test.cc" ]
+  deps = [
+    ":sanitizer-memory-snapshot-test-needed-dso",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+  data_deps = [ ":sanitizer-memory-snapshot-test-dlopen-dso" ]
+
+  if (current_cpu == "arm64") {
+    cflags = [ "-ffixed-x28" ]
+  }
+
+  # This test needs to verify how stack allocations come out, which is
+  # incompatible with ASan fake-stack allocations.
+  deps += [ "//build/config/sanitizers:suppress-asan-stack-use-after-return" ]
+}
+
+shared_library("sanitizer-memory-snapshot-test-needed-dso") {
+  visibility = [ ":*" ]
+  sources = [ "sanitizer-memory-snapshot-test-needed-dso.cc" ]
+}
+
+shared_library("sanitizer-memory-snapshot-test-dlopen-dso") {
+  visibility = [ ":*" ]
+  sources = [ "sanitizer-memory-snapshot-test-dlopen-dso.cc" ]
+}
+
+bootfs_test("sanitizer-utils-bootfs-test") {
+  name = "sanitizer-utils"
+  deps = [ ":sanitizer-utils" ]
+}

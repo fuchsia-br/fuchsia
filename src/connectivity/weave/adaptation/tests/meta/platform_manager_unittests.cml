@@ -1,0 +1,23 @@
+{
+    include: [
+        "//src/sys/test_runners/gtest/default.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "test/platform_manager_unittests",
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.hwinfo.Device",
+                "fuchsia.posix.socket.Provider",
+                "fuchsia.weave.FactoryDataManager",
+            ],
+        },
+        {
+            storage: "data",
+            path: "/data",
+        },
+    ],
+}

@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/echo_client_test"
+    },
+    "sandbox": {
+        "services": [
+            "fidl.examples.echo.Echo",
+            "fuchsia.sys.Launcher"
+        ]
+    }
+}

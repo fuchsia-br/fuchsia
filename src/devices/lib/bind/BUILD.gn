@@ -1,0 +1,135 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_fuzzer.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_staticlib.gni")
+
+group("bind") {
+  deps = [ ":lib" ]
+}
+
+rustc_staticlib("bind-lib") {
+  name = "bind_lib_c"
+  version = "0.1.0"
+  with_unit_tests = true
+  edition = "2018"
+
+  public = [ "ffi_bindings.h" ]
+
+  deps = [
+    ":lib",
+    "//third_party/rust_crates:libc",
+  ]
+
+  source_root = "src/ffi.rs"
+
+  sources = [ "src/ffi.rs" ]
+}
+
+rustc_library("lib") {
+  name = "bind"
+  edition = "2018"
+
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager-rustc",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:nom",
+    "//third_party/rust_crates:nom_locate",
+    "//third_party/rust_crates:num-derive",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:valico",
+  ]
+
+  sources = [
+    "src/bytecode_constants.rs",
+    "src/bytecode_encoder/encode_v1.rs",
+    "src/bytecode_encoder/encode_v2.rs",
+    "src/bytecode_encoder/error.rs",
+    "src/bytecode_encoder/instruction_encoder.rs",
+    "src/bytecode_encoder/mod.rs",
+    "src/bytecode_encoder/symbol_table_encoder.rs",
+    "src/compiler/compiler.rs",
+    "src/compiler/dependency_graph.rs",
+    "src/compiler/instruction.rs",
+    "src/compiler/mod.rs",
+    "src/compiler/symbol_table.rs",
+    "src/ddk_bind_constants.rs",
+    "src/debugger/debugger.rs",
+    "src/debugger/device_specification.rs",
+    "src/debugger/mod.rs",
+    "src/debugger/offline_debugger.rs",
+    "src/errors.rs",
+    "src/interpreter/common.rs",
+    "src/interpreter/decode_bind_rules.rs",
+    "src/interpreter/match_bind.rs",
+    "src/interpreter/mod.rs",
+    "src/lib.rs",
+    "src/linter.rs",
+    "src/parser/bind_composite.rs",
+    "src/parser/bind_library.rs",
+    "src/parser/bind_rules.rs",
+    "src/parser/common.rs",
+    "src/parser/mod.rs",
+    "src/test.rs",
+  ]
+  inputs = [
+    "composite_tests_schema.json",
+    "tests_schema.json",
+  ]
+}
+
+rustc_fuzzer("bind_rules_bytecode_fuzzer") {
+  source_root = "src/fuzzer/bytecode_fuzzer.rs"
+  sources = [ "src/fuzzer/bytecode_fuzzer.rs" ]
+  deps = [ ":lib" ]
+}
+
+rustc_fuzzer("instruction_section_fuzzer") {
+  source_root = "src/fuzzer/bytecode_section_fuzzer.rs"
+  sources = [ "src/fuzzer/bytecode_section_fuzzer.rs" ]
+  deps = [ ":lib" ]
+}
+
+rustc_fuzzer("symbol_table_section_fuzzer") {
+  source_root = "src/fuzzer/bytecode_section_fuzzer.rs"
+  sources = [ "src/fuzzer/bytecode_section_fuzzer.rs" ]
+  deps = [ ":lib" ]
+}
+
+fuzzers_package("bind-fuzzers") {
+  rust_fuzzers = [
+    ":bind_rules_bytecode_fuzzer",
+    ":instruction_section_fuzzer",
+    ":symbol_table_section_fuzzer",
+  ]
+}
+
+fuchsia_unittest_package("bind_tests") {
+  manifest = "meta/bind_tests.cmx"
+  deps = [ ":lib_test" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":bind-fuzzers",
+    ":bind_tests",
+  ]
+}

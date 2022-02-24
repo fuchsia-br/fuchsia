@@ -1,0 +1,68 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_binary("publisher_bin") {
+  name = "publisher"
+  source_root = "publisher.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle-rustc",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "publisher.rs" ]
+}
+
+rustc_test("diagnostics_test_bin") {
+  name = "diagnostics_test"
+  source_root = "main.rs"
+  edition = "2018"
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component-test",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "main.rs" ]
+}
+
+fuchsia_component("diagnostics-publisher") {
+  component_name = "diagnostics-publisher"
+  testonly = true
+  manifest = "meta/diagnostics-publisher.cml"
+  deps = [ ":publisher_bin" ]
+}
+
+fuchsia_component("test-root") {
+  component_name = "test-root"
+  testonly = true
+  manifest = "meta/test-root.cml"
+  deps = [ ":diagnostics_test_bin" ]
+}
+
+fuchsia_test_package("test-manager-diagnostics-tests") {
+  test_components = [ ":test-root" ]
+
+  deps = [ ":diagnostics-publisher" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":test-manager-diagnostics-tests" ]
+}

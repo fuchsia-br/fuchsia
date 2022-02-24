@@ -1,0 +1,1 @@
+See //docs/development/languages/fidl/guides/compatibility/bits_flexible_strict.md

@@ -1,0 +1,529 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/rust/rustc_test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":basemgr_v2_test",
+    ":modular_integration_tests",
+    ":module_with_fake_runner",
+    "modular_config",
+
+    # modular_test_harness is a dep for any test that uses test_harness_fixture
+    # (all of the tests below). Add it here so that an fx set --with
+    # //src/modular/tests includes it.
+    "//src/cobalt/bin/testing/mock_cobalt",
+
+    # Used for intl testing.
+    "//src/intl/intl_services:pkg_small",
+    "//src/modular/bin/modular_test_harness",
+  ]
+}
+
+# FIDL services/structs used for testing code only.
+fidl("fuchsia.testing.modular") {
+  sources = [ "test_service.test.fidl" ]
+}
+
+executable("agent_services_test") {
+  testonly = true
+
+  sources = [ "agent_services_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/pseudo_dir:pseudo_dir_server",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("agent-services-test") {
+  manifest = "meta/agent_services_test.cmx"
+  deps = [ ":agent_services_test" ]
+}
+
+executable("agent_restart_test") {
+  testonly = true
+
+  sources = [ "agent_restart_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("agent-restart-test") {
+  manifest = "meta/agent_restart_test.cmx"
+  deps = [ ":agent_restart_test" ]
+}
+
+executable("agent_session_restart_test") {
+  testonly = true
+
+  sources = [ "agent_session_restart_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("agent-session-restart-test") {
+  manifest = "meta/agent_session_restart_test.cmx"
+  deps = [ ":agent_session_restart_test" ]
+}
+
+executable("sessionctl_test") {
+  testonly = true
+  output_name = "sessionctl_test"
+  sources = [ "sessionctl_test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/bin/sessionctl:lib",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+  ]
+}
+
+fuchsia_unittest_component("sessionctl-test") {
+  manifest = "meta/sessionctl_test.cmx"
+  deps = [ ":sessionctl_test" ]
+}
+
+executable("session_shell_test") {
+  testonly = true
+
+  sources = [ "session_shell_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/bin/sessionmgr/testing:annotations_matchers",
+    "//src/modular/lib/modular_config:modular_config_constants",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_component("session-shell-test") {
+  manifest = "meta/session_shell_test.cmx"
+  deps = [ ":session_shell_test" ]
+}
+
+executable("basemgr_test") {
+  testonly = true
+
+  sources = [ "basemgr_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/lib/inspect/contrib/cpp:archive_reader",
+    "//sdk/lib/modular/testing/cpp",
+    "//sdk/lib/stdcompat",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/fidl:clone",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/pseudo_dir:pseudo_dir_server",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("basemgr-test") {
+  manifest = "meta/basemgr_test.cmx"
+  deps = [ ":basemgr_test" ]
+}
+
+executable("inspect_session_test") {
+  testonly = true
+
+  sources = [ "inspect_session_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/inspect/contrib/cpp:archive_reader",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_impl",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("inspect-session-test") {
+  manifest = "meta/inspect_session_test.cmx"
+  deps = [ ":inspect_session_test" ]
+}
+
+executable("inspect_basemgr_test") {
+  testonly = true
+
+  sources = [ "inspect_basemgr_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/inspect/contrib/cpp:archive_reader",
+    "//sdk/lib/inspect/testing/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_impl",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("inspect-basemgr-test") {
+  manifest = "meta/inspect_basemgr_test.cmx"
+  deps = [ ":inspect_basemgr_test" ]
+}
+
+executable("intents_test") {
+  testonly = true
+
+  sources = [ "intents_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+  ]
+}
+
+fuchsia_unittest_component("intents-test") {
+  manifest = "meta/intents_test.cmx"
+  deps = [ ":intents_test" ]
+}
+
+executable("module_context_test") {
+  testonly = true
+
+  output_name = "module_context_test"
+
+  sources = [ "module_context_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("module-context-test") {
+  manifest = "meta/module_context_test.cmx"
+  deps = [ ":module_context_test" ]
+}
+
+executable("sessionmgr_integration_test") {
+  testonly = true
+
+  sources = [ "sessionmgr_integration_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.element",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/bin/sessionmgr:annotations",
+    "//src/modular/bin/sessionmgr/testing",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("sessionmgr-integration-test") {
+  manifest = "meta/sessionmgr_integration_test.cmx"
+  deps = [ ":sessionmgr_integration_test" ]
+}
+
+executable("story_shell_factory_test") {
+  testonly = true
+
+  sources = [ "story_shell_factory_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/testing:session_shell_impl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_unittest_component("story-shell-factory-test") {
+  manifest = "meta/story_shell_factory_test.cmx"
+  deps = [ ":story_shell_factory_test" ]
+}
+
+executable("story_shell_test") {
+  testonly = true
+
+  output_name = "story_shell_test"
+
+  sources = [ "story_shell_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("story-shell-test") {
+  manifest = "meta/story_shell_test.cmx"
+  deps = [ ":story_shell_test" ]
+}
+
+executable("component_context_test") {
+  testonly = true
+
+  sources = [ "component_context_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/vfs/cpp",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+  ]
+}
+
+fuchsia_unittest_component("component-context-test") {
+  manifest = "meta/component_context_test.cmx"
+  deps = [ ":component_context_test" ]
+}
+
+executable("element_manager_test") {
+  testonly = true
+
+  sources = [ "element_manager_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.element",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/bin/sessionmgr:annotations",
+    "//src/modular/bin/sessionmgr/testing:annotations_matchers",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+    "//src/modular/lib/pseudo_dir:pseudo_dir_server",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+fuchsia_unittest_component("element-manager-test") {
+  manifest = "meta/element_manager_test.cmx"
+  deps = [ ":element_manager_test" ]
+}
+
+executable("stories_share_session_runners_test") {
+  testonly = true
+
+  sources = [ "stories_share_session_runners_test.cc" ]
+
+  deps = [
+    ":module_with_fake_runner",
+    "//sdk/fidl/fuchsia.intl",
+    "//sdk/fidl/fuchsia.modular.testing",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+  ]
+}
+
+fuchsia_unittest_component("stories-share-session-runners-test") {
+  manifest = "meta/stories_share_session_runners_test.cmx"
+  deps = [ ":stories_share_session_runners_test" ]
+}
+
+executable("module_with_fake_runner_bin") {
+  testonly = true
+
+  output_name = "module_with_fake_runner"
+
+  sources = [ "module_with_fake_runner.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/lib/sys/cpp",
+    "//src/modular/lib/app_driver/cpp:module_driver",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("annotations_test") {
+  testonly = true
+
+  sources = [ "annotations_test.cc" ]
+
+  deps = [
+    ":fuchsia.testing.modular",
+    "//sdk/fidl/fuchsia.element",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/bin/sessionmgr:annotations",
+    "//src/modular/bin/sessionmgr/testing:annotations_matchers",
+    "//src/modular/lib/modular_test_harness/cpp:test_harness_fixture",
+  ]
+}
+
+fuchsia_unittest_component("annotations-test") {
+  manifest = "meta/annotations_test.cmx"
+  deps = [ ":annotations_test" ]
+}
+
+rustc_test("basemgr_v2_test_bin") {
+  name = "basemgr_v2_test"
+  source_root = "basemgr_v2_test.rs"
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.modular.internal:fuchsia.modular.internal-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+  ]
+  sources = [ "basemgr_v2_test.rs" ]
+}
+
+fuchsia_component("basemgr-v2-test") {
+  testonly = true
+  manifest = "meta/basemgr_v2_test.cml"
+  deps = [ ":basemgr_v2_test_bin" ]
+}
+
+fuchsia_component("basemgr-with-children") {
+  manifest = "meta/basemgr_with_children.cml"
+  deps = [ "//src/modular/bin/basemgr:basemgr_bin" ]
+}
+
+fuchsia_package_with_single_component("module_with_fake_runner") {
+  testonly = true
+  manifest = "meta/module_with_fake_runner.cmx"
+  deps = [ ":module_with_fake_runner_bin" ]
+}
+
+fuchsia_test_package("basemgr_v2_test") {
+  test_components = [ ":basemgr-v2-test" ]
+
+  deps = [
+    ":basemgr-with-children",
+    "//src/cobalt/bin/testing/mock_cobalt:component_v2",
+    "//src/modular/bin/basemgr:component_v2",
+  ]
+
+  test_specs = {
+    log_settings = {
+      # This test exercises child crash recovery which logs errors in basemgr.
+      max_severity = "ERROR"
+    }
+    environments = [
+      {
+        dimensions = {
+          device_type = "AEMU"
+        }
+        tags = [ "flaky" ]  # fxbug.dev/92821
+      },
+    ]
+  }
+}
+
+fuchsia_test_package("modular_integration_tests") {
+  package_deps_for_infra_only = [
+    "//sdk/lib/sys/cpp/testing/environment_delegating_runner:environment_delegating_runner",
+    "//src/diagnostics/archivist:archivist-for-embedding",
+    "//src/modular/bin/basemgr:basemgr",
+    "//src/modular/bin/modular_test_harness:modular_test_harness",
+    "//src/modular/bin/sessionmgr:sessionmgr",
+    "//src/modular/tests:module_with_fake_runner",
+  ]
+  test_components = [
+    ":agent-restart-test",
+    ":agent-services-test",
+    ":agent-session-restart-test",
+    ":annotations-test",
+    ":basemgr-test",
+    ":component-context-test",
+    ":element-manager-test",
+    ":inspect-basemgr-test",
+    ":inspect-session-test",
+    ":intents-test",
+    ":module-context-test",
+    ":session-shell-test",
+    ":sessionctl-test",
+    ":sessionmgr-integration-test",
+    ":stories-share-session-runners-test",
+    ":story-shell-factory-test",
+    ":story-shell-test",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

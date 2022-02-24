@@ -1,0 +1,34 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_library.gni")
+
+rustc_library("lib") {
+  edition = "2018"
+  name = "ot_test_utils"
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//sdk/fidl/fuchsia.device:fuchsia.device-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.lowpan.spinel:fuchsia.lowpan.spinel-rustc",
+    "//src/connectivity/openthread/tests/ot-devmgr/fidl:devmgr-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+  ]
+  non_rust_deps = [ "//zircon/system/ulib/syslog" ]
+
+  sources = [
+    "src/fake_ot_radio_driver_utils.rs",
+    "src/isolated_devmgr_utils.rs",
+    "src/lib.rs",
+    "src/ot_radio_driver_utils.rs",
+    "src/ot_stack_test_utils.rs",
+    "src/spinel_device_utils.rs",
+  ]
+}

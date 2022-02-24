@@ -1,0 +1,4 @@
+include /src/sys/component_manager/OWNERS
+bryanhenry@google.com
+
+per-file meta/bootstrap.cml=surajmalhotra@google.com

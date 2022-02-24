@@ -1,0 +1,29 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if (is_host) {
+  group("host_tests") {
+    testonly = true
+    deps = [
+      "base_package:host_tests",
+      "blobfs:host_tests",
+      "config_data:host_tests",
+      "fvm:host_tests",
+      "images_config:host_tests",
+      "images_manifest:host_tests",
+      "minfs:host_tests",
+      "partitions_config:host_tests",
+      "structured_config:host_tests",
+      "test_util:host_tests",
+      "tool:host_tests",
+      "update_package:host_tests",
+      "update_packages_manifest:host_tests",
+      "util:host_tests",
+      "validate_product:host_tests",
+      "validate_util:host_tests",
+      "vbmeta:host_tests",
+      "zbi:host_tests",
+    ]
+  }
+}

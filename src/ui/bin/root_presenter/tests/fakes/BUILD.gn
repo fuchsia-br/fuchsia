@@ -1,0 +1,34 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("fakes") {
+  testonly = true
+
+  sources = [
+    "fake_focuser.cc",
+    "fake_focuser.h",
+    "fake_keyboard_focus_controller.cc",
+    "fake_keyboard_focus_controller.h",
+    "fake_scenic.cc",
+    "fake_scenic.h",
+    "fake_session.cc",
+    "fake_session.h",
+    "fake_view.cc",
+    "fake_view.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.accessibility",
+    "//sdk/fidl/fuchsia.ui.keyboard.focus",
+    "//sdk/fidl/fuchsia.ui.pointerinjector",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fsl",
+    "//src/lib/testing/loop_fixture",
+    "//src/lib/ui/base_view",
+    "//src/ui/scenic/lib/gfx",
+  ]
+}

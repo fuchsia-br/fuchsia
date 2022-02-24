@@ -1,0 +1,22 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/factory_store_providers"
+    },
+    "sandbox": {
+        "dev": [
+            "nelson-emmc",
+            "sherlock-emmc"
+        ],
+        "features": [
+            "config-data",
+            "factory-data"
+        ],
+        "services": [
+            "fuchsia.boot.FactoryItems",
+            "fuchsia.storage.ext4.Server"
+        ]
+    }
+}

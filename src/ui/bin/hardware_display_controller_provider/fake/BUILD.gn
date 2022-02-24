@@ -1,0 +1,47 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("bin") {
+  testonly = true
+  output_name = "fake_hw_display_controller_provider"
+
+  configs += [ "//build/config:all_source" ]
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":lib",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("lib") {
+  testonly = true
+
+  configs += [ "//build/config:all_source" ]
+
+  sources = [
+    "service.cc",
+    "service.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.display",
+    "//sdk/lib/sys/cpp",
+    "//src/graphics/display/drivers/fake:fake-display-device-tree",
+    "//src/graphics/display/drivers/fake:sysmem-proxy-device",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}

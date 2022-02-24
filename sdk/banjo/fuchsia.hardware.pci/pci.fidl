@@ -1,0 +1,236 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.pci;
+
+using fuchsia.hardware.syscalls.pci;
+using zx;
+
+type PciCfg = strict enum : uint16 {
+    VENDOR_ID = 0x00;
+    DEVICE_ID = 0x02;
+    COMMAND = 0x04;
+    STATUS = 0x06;
+    REVISION_ID = 0x08;
+    CLASS_CODE_INTR = 0x09;
+    CLASS_CODE_SUB = 0x0a;
+    CLASS_CODE_BASE = 0x0b;
+    CACHE_LINE_SIZE = 0x0c;
+    LATENCY_TIMER = 0x0d;
+    HEADER_TYPE = 0x0e;
+    BIST = 0x0f;
+    BASE_ADDRESSES = 0x10;
+    CARDBUS_CIS_PTR = 0x28;
+    SUBSYSTEM_VENDOR_ID = 0x2c;
+    SUBSYSTEM_ID = 0x2e;
+    EXP_ROM_ADDRESS = 0x30;
+    CAPABILITIES_PTR = 0x34;
+    INTERRUPT_LINE = 0x3c;
+    INTERRUPT_PIN = 0x3d;
+    MIN_GRANT = 0x3e;
+    MAX_LATENCY = 0x3f;
+};
+
+type PciCapId = strict enum : uint8 {
+    NULL = 0x00;
+    PCI_PWR_MGMT = 0x01;
+    AGP = 0x02;
+    VITAL_PRODUCT_DATA = 0x03;
+    SLOT_IDENTIFICATION = 0x04;
+    MSI = 0x05;
+    COMPACT_PCI_HOTSWAP = 0x06;
+    PCIX = 0x07;
+    HYPERTRANSPORT = 0x08;
+    VENDOR = 0x09;
+    DEBUG_PORT = 0x0a;
+    COMPACT_PCI_CRC = 0x0b;
+    PCI_HOT_PLUG = 0x0c;
+    PCI_BRIDGE_SUBSYSTEM_VID = 0x0d;
+    AGP8X = 0x0e;
+    SECURE_DEVICE = 0x0f;
+    PCI_EXPRESS = 0x10;
+    MSIX = 0x11;
+    SATA_DATA_NDX_CFG = 0x12;
+    ADVANCED_FEATURES = 0x13;
+    ENHANCED_ALLOCATION = 0x14;
+    FLATTENING_PORTAL_BRIDGE = 0x15;
+};
+
+type PciExtCapId = strict enum : uint16 {
+    NULL = 0x00;
+    ADVANCED_ERROR_REPORTING = 0x01;
+    VIRTUAL_CHANNEL_NO_MFVC = 0x02;
+    DEVICE_SERIAL_NUMBER = 0x03;
+    POWER_BUDGETING = 0x04;
+    ROOT_COMPLEX_LINK_DECLARATION = 0x05;
+    ROOT_COMPLEX_INTERNAL_LINK_CONTROL = 0x06;
+    ROOT_COMPLEX_EVENT_COLLECTOR_ENDPOINT_ASSOCIATION = 0x07;
+    MULTI_FUNCTION_VIRTUAL_CHANNEL = 0x08;
+    VIRTUAL_CHANNEL = 0x09;
+    RCRB = 0x0a;
+    VENDOR = 0x0b;
+    CAC = 0x0c;
+    ACS = 0x0d;
+    ARI = 0x0e;
+    ATS = 0x0f;
+    SR_IOV = 0x10;
+    MR_IOV = 0x11;
+    MULTICAST = 0x12;
+    PRI = 0x13;
+    ENHANCED_ALLOCATION = 0x14;
+    RESIZABLE_BAR = 0x15;
+    DYNAMIC_POWER_ALLOCATION = 0x16;
+    TPH = 0x17;
+    LATENCY_TOLERANCE_REPORTING = 0x18;
+    SECONDARY_PCI_EXPRESS = 0x19;
+    PMUX = 0x1a;
+    PASID = 0x1b;
+    LNR = 0x1c;
+    DPC = 0x1d;
+    L1PM_SUBSTATES = 0x1e;
+    PRECISION_TIME_MEASUREMENT = 0x1f;
+    MPCIE = 0x20;
+    FRS_QUEUEING = 0x21;
+    READINESS_TIME_REPORTING = 0x22;
+    DESIGNATED_VENDOR = 0x23;
+    VF_RESIZABLE_BAR = 0x24;
+    DATA_LINK_FEATURE = 0x25;
+    PHYSICAL_LAYER_16 = 0x26;
+    LANE_MARGINING_AT_RECEIVER = 0x27;
+    HIERARCHY_ID = 0x28;
+    NATIVE_PCIE_ENCLOSURE = 0x29;
+    PHYSICAL_LAYER_32 = 0x2a;
+    ALTERNATE_PROTOCOL = 0x2b;
+    SYSTEM_FIRMWARE_INTERMEDIARY = 0x2c;
+};
+
+type PciIrqMode = strict enum : uint8 {
+    DISABLED = 0;
+    LEGACY = 1;
+    LEGACY_NOACK = 2;
+    MSI = 3;
+    MSI_X = 4;
+    COUNT = 5;
+};
+
+type PciInterruptModes = struct {
+    legacy uint32;
+    msi uint32;
+    msix uint32;
+};
+
+/// fxbug.dev/33713: Remove the zx_pcie types and implement them here
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Pci {
+    GetBar(struct {
+        bar_id uint32;
+    }) -> (resource struct {
+        s zx.status;
+        res fuchsia.hardware.syscalls.pci.PciBar;
+    });
+    EnableBusMaster(struct {
+        enable bool;
+    }) -> (struct {
+        s zx.status;
+    });
+    ResetDevice() -> (struct {
+        s zx.status;
+    });
+    AckInterrupt() -> (struct {
+        s zx.status;
+    });
+    MapInterrupt(struct {
+        which_irq uint32;
+    }) -> (resource struct {
+        s zx.status;
+        handle zx.handle:INTERRUPT;
+    });
+    QueryIrqMode(struct {
+        mode fuchsia.hardware.syscalls.pci.PciIrqMode;
+    }) -> (struct {
+        s zx.status;
+        max_irqs uint32;
+    });
+    GetInterruptModes() -> (struct {
+        modes PciInterruptModes;
+    });
+    SetInterruptMode(struct {
+        mode fuchsia.hardware.syscalls.pci.PciIrqMode;
+        requested_irq_count uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+    GetDeviceInfo() -> (struct {
+        s zx.status;
+        info fuchsia.hardware.syscalls.pci.PcieDeviceInfo;
+    });
+    ConfigRead8(struct {
+        offset uint16;
+    }) -> (struct {
+        s zx.status;
+        value uint8;
+    });
+    ConfigRead16(struct {
+        offset uint16;
+    }) -> (struct {
+        s zx.status;
+        value uint16;
+    });
+    ConfigRead32(struct {
+        offset uint16;
+    }) -> (struct {
+        s zx.status;
+        value uint32;
+    });
+    ConfigWrite8(struct {
+        offset uint16;
+        value uint8;
+    }) -> (struct {
+        s zx.status;
+    });
+    ConfigWrite16(struct {
+        offset uint16;
+        value uint16;
+    }) -> (struct {
+        s zx.status;
+    });
+    ConfigWrite32(struct {
+        offset uint16;
+        value uint32;
+    }) -> (struct {
+        s zx.status;
+    });
+    GetFirstCapability(struct {
+        id uint8;
+    }) -> (struct {
+        s zx.status;
+        offset uint8;
+    });
+    GetNextCapability(struct {
+        id uint8;
+        offset uint8;
+    }) -> (struct {
+        s zx.status;
+        offset uint8;
+    });
+    GetFirstExtendedCapability(struct {
+        id uint16;
+    }) -> (struct {
+        s zx.status;
+        offset uint16;
+    });
+    GetNextExtendedCapability(struct {
+        id uint16;
+        offset uint16;
+    }) -> (struct {
+        s zx.status;
+        offset uint16;
+    });
+    GetBti(struct {
+        index uint32;
+    }) -> (resource struct {
+        s zx.status;
+        bti zx.handle:BTI;
+    });
+};

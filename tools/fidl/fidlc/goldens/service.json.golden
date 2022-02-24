@@ -1,0 +1,294 @@
+{
+  "version": "0.0.1",
+  "name": "test.service",
+  "library_dependencies": [],
+  "bits_declarations": [],
+  "const_declarations": [],
+  "enum_declarations": [],
+  "experimental_resource_declarations": [],
+  "interface_declarations": [
+    {
+      "name": "test.service/FirstProtocol",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 8,
+        "column": 10,
+        "length": 13
+      },
+      "composed_protocols": [],
+      "methods": [
+        {
+          "ordinal": 6352548393671797041,
+          "name": "MethodOnFirst",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 9,
+            "column": 5,
+            "length": 13
+          },
+          "has_request": true,
+          "has_response": false,
+          "is_composed": false,
+          "has_error": false
+        }
+      ]
+    },
+    {
+      "name": "test.service/SecondProtocol",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 16,
+        "column": 10,
+        "length": 14
+      },
+      "composed_protocols": [],
+      "methods": [
+        {
+          "ordinal": 8121179205110225988,
+          "name": "MethodOnSecond",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 17,
+            "column": 5,
+            "length": 14
+          },
+          "has_request": true,
+          "has_response": false,
+          "is_composed": false,
+          "has_error": false
+        }
+      ]
+    }
+  ],
+  "service_declarations": [
+    {
+      "name": "test.service/EmptyService",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 6,
+        "column": 9,
+        "length": 12
+      },
+      "members": []
+    },
+    {
+      "name": "test.service/SingleMemberService",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 12,
+        "column": 9,
+        "length": 19
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.service/FirstProtocol",
+            "nullable": false,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "single_member",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 13,
+            "column": 5,
+            "length": 13
+          }
+        }
+      ]
+    },
+    {
+      "name": "test.service/MultiHeterogeneousMemberService",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 20,
+        "column": 9,
+        "length": 31
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.service/FirstProtocol",
+            "nullable": false,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "first_member",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 21,
+            "column": 5,
+            "length": 12
+          }
+        },
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.service/SecondProtocol",
+            "nullable": false,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "second_member",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 22,
+            "column": 5,
+            "length": 13
+          }
+        }
+      ]
+    },
+    {
+      "name": "test.service/MultiHomogeneousMemberService",
+      "location": {
+        "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+        "line": 25,
+        "column": 9,
+        "length": 29
+      },
+      "members": [
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.service/FirstProtocol",
+            "nullable": false,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "first_member",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 26,
+            "column": 5,
+            "length": 12
+          }
+        },
+        {
+          "type": {
+            "kind": "identifier",
+            "identifier": "test.service/FirstProtocol",
+            "nullable": false,
+            "protocol_transport": "Channel",
+            "type_shape_v1": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            },
+            "type_shape_v2": {
+              "inline_size": 4,
+              "alignment": 4,
+              "depth": 0,
+              "max_handles": 1,
+              "max_out_of_line": 0,
+              "has_padding": false,
+              "has_flexible_envelope": false
+            }
+          },
+          "name": "second_member",
+          "location": {
+            "filename": "../../tools/fidl/fidlc/testdata/service.test.fidl",
+            "line": 27,
+            "column": 5,
+            "length": 13
+          }
+        }
+      ]
+    }
+  ],
+  "struct_declarations": [],
+  "external_struct_declarations": [],
+  "table_declarations": [],
+  "union_declarations": [],
+  "type_alias_declarations": [],
+  "declaration_order": [
+    "test.service/SingleMemberService",
+    "test.service/SecondProtocol",
+    "test.service/MultiHomogeneousMemberService",
+    "test.service/MultiHeterogeneousMemberService",
+    "test.service/FirstProtocol",
+    "test.service/EmptyService"
+  ],
+  "declarations": {
+    "test.service/FirstProtocol": "interface",
+    "test.service/SecondProtocol": "interface",
+    "test.service/EmptyService": "service",
+    "test.service/SingleMemberService": "service",
+    "test.service/MultiHeterogeneousMemberService": "service",
+    "test.service/MultiHomogeneousMemberService": "service"
+  }
+}

@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/gltf_export"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.tracing.provider.Registry",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

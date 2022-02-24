@@ -1,0 +1,50 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+# As of this writing, the best way to get this test on your system is to add //bundles/bringup:tests
+# to the base packages in your build. The binary ends up in /boot/test/sys/debugger-test
+test("debugger") {
+  output_name = "debugger-test"
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "crash-and-recover.cc",
+    "crash-and-recover.h",
+    "debugger.cc",
+    "debugger.h",
+    "dyn_break_on_load.cc",
+    "hw-breakpoint-test.cc",
+    "inferior-control.cc",
+    "inferior-control.h",
+    "inferior.cc",
+    "inferior.h",
+    "main.cc",
+    "reg-get-set-test.cc",
+    "start-thread-reg-access.cc",
+    "suspend-on-start.cc",
+    "suspended-reg-access.cc",
+    "utils.cc",
+    "utils.h",
+    "watchpoint-test.cc",
+  ]
+
+  deps = [
+    "//zircon/system/ulib/backtrace-request",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/runtime",
+    "//zircon/system/ulib/test-utils",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  deps += [ "//zircon/system/utest/dlopen-indirect-deps:dlopen-indirect-deps-test-module" ]
+}
+
+bootfs_test("debugger-bootfs-test") {
+  name = "debugger-test"
+  deps = [ ":debugger" ]
+}

@@ -1,0 +1,279 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.virtualization.hardware;
+
+using fuchsia.hardware.ethernet;
+using fuchsia.sysmem;
+using fuchsia.ui.composition;
+using fuchsia.ui.gfx;
+using fuchsia.ui.input;
+using fuchsia.virtualization;
+using fuchsia.wayland;
+using zx;
+
+// The following EVENT_* constants indicate which user signal is associated with an event.
+// The value 0 is `ZX_USER_SIGNAL_0`, 1 is `ZX_USER_SIGNAL_1` etc.
+
+/// Set a flag to inspect queues on the next interrupt.
+const EVENT_SET_QUEUE uint32 = 0;
+/// Set a flag to inspect configs on the next interrupt.
+const EVENT_SET_CONFIG uint32 = 1;
+/// If a flag is set, send an interrupt to the device.
+const EVENT_SET_INTERRUPT uint32 = 2;
+
+/// Contains the details of a device trap.
+type Trap = struct {
+    /// The address of the device trap. This must be page-aligned.
+    addr zx.gpaddr;
+
+    /// The size of the device trap. This must be a multiple of the page size.
+    size uint64;
+};
+
+/// Contains the basic information required to start execution of a device.
+type StartInfo = resource struct {
+    /// The trap associated with a device. It is up to the device to set this
+    /// trap during device setup.
+    trap Trap;
+
+    /// The guest associated with a device. This handle should be used to setup
+    /// device traps, and then be released before device operation begins.
+    guest zx.handle:<GUEST, optional>;
+
+    /// The event associated with a device interrupt. This is how the device will
+    /// notify the guest of events it should process.
+    ///
+    /// The meaning of the different signals that can be raised on the event are
+    /// documented by the EVENT_* constants above.
+    event zx.handle:EVENT;
+
+    /// The VMO used to represent guest physical memory.
+    vmo zx.handle:VMO;
+};
+
+protocol VirtioDevice {
+    /// Configure a `queue` for the device. This specifies the `size` and the
+    /// guest physical addresses of the queue: `desc`, `avail`, and `used`.
+    ConfigureQueue(struct {
+        queue uint16;
+        size uint16;
+        desc zx.gpaddr;
+        avail zx.gpaddr;
+        used zx.gpaddr;
+    }) -> ();
+
+    /// Notify a `queue` for the device. Primarily used for black-box testing.
+    NotifyQueue(struct {
+        queue uint16;
+    });
+
+    /// Ready a device. This provides the set of `negotiated_features` that the
+    /// driver and device have agreed upon.
+    Ready(struct {
+        negotiated_features uint32;
+    }) -> ();
+};
+
+@discoverable
+protocol VirtioBalloon {
+    compose VirtioDevice;
+
+    /// Start the balloon device.
+    Start(resource struct {
+        start_info StartInfo;
+    }) -> ();
+
+    /// Get memory statistics from the balloon device.
+    GetMemStats() -> (struct {
+        status zx.status;
+        mem_stats vector<fuchsia.virtualization.MemStat>:optional;
+    });
+};
+
+@discoverable
+protocol VirtioBlock {
+    compose VirtioDevice;
+
+    /// Start the block device.
+    Start(resource struct {
+        start_info StartInfo;
+        id string:fuchsia.virtualization.MAX_BLOCK_DEVICE_ID;
+        mode fuchsia.virtualization.BlockMode;
+        format fuchsia.virtualization.BlockFormat;
+        client zx.handle:CHANNEL;
+    }) -> (struct {
+        capacity uint64;
+        block_size uint32;
+    });
+};
+
+@discoverable
+protocol VirtioConsole {
+    compose VirtioDevice;
+
+    /// Start the console device. This uses `socket` to handle input and output.
+    Start(resource struct {
+        start_info StartInfo;
+        socket zx.handle:SOCKET;
+    }) -> ();
+};
+
+/// Provides a way for VirtioInput to listen to keyboard events.
+@discoverable
+protocol KeyboardListener {
+    /// Called when a view receives keyboard events.
+    OnKeyboardEvent(struct {
+        event fuchsia.ui.input.KeyboardEvent;
+    });
+};
+
+/// Provides a way for VirtioInput to listen to pointer events.
+@discoverable
+protocol PointerListener {
+    /// Called when a view's size changes.
+    OnSizeChanged(struct {
+        size fuchsia.ui.gfx.vec3;
+    });
+
+    /// Called when a view receives pointer events.
+    OnPointerEvent(struct {
+        event fuchsia.ui.input.PointerEvent;
+    });
+};
+
+@discoverable
+protocol VirtioGpu {
+    compose VirtioDevice;
+
+    /// Start the GPU device.
+    Start(resource struct {
+        start_info StartInfo;
+        keyboard_listener client_end:<KeyboardListener, optional>;
+        pointer_listener client_end:<PointerListener, optional>;
+    }) -> ();
+
+    /// Called when a device's configuration is changed.
+    -> OnConfigChanged();
+};
+
+@discoverable
+protocol VirtioInput {
+    compose VirtioDevice;
+
+    /// Start the input device.
+    Start(resource struct {
+        start_info StartInfo;
+    }) -> ();
+};
+
+@discoverable
+protocol VirtioMagma {
+    compose VirtioDevice;
+
+    /// Start the magma device.
+    Start(resource struct {
+        start_info StartInfo;
+        vmar zx.handle:VMAR;
+        wayland_importer client_end:<VirtioWaylandImporter, optional>;
+    }) -> (struct {
+        status zx.status;
+    });
+};
+
+@discoverable
+protocol VirtioNet {
+    compose VirtioDevice;
+
+    /// Start the net device.
+    Start(resource struct {
+        start_info StartInfo;
+        mac_address fuchsia.hardware.ethernet.MacAddress;
+        enable_bridge bool;
+    }) -> ();
+};
+
+@discoverable
+protocol VirtioRng {
+    compose VirtioDevice;
+
+    /// Start the RNG device.
+    Start(resource struct {
+        start_info StartInfo;
+    }) -> ();
+};
+
+@discoverable
+protocol VirtioSound {
+    compose VirtioDevice;
+
+    /// Start the sound device.
+    /// The response contains the device's expected static configuration.
+    ///
+    /// + request `start_info` basic info to start the device
+    /// + request `enable_input` whether audio input (capture) should be enabled
+    /// + request `enable_verbose_logging` whether verbose logging should be enabled
+    /// - response `features` supported features
+    /// - response `jacks` the virtio_snd_config.jacks value to advertise
+    /// - response `streams` the virtio_snd_config.streams value to advertise
+    /// - response `chmaps` the virtio_snd_config.chaps value to advertise
+    Start(resource struct {
+        start_info StartInfo;
+        enable_input bool;
+        enable_verbose_logging bool;
+    }) -> (struct {
+        features uint32;
+        jacks uint32;
+        streams uint32;
+        chmaps uint32;
+    });
+};
+
+/// Sufficient to contain the opaque image info.
+const VIRTIO_WAYLAND_MAX_IMAGE_INFO_SIZE uint32 = 128;
+
+/// VirtioImages are shared with VirtioMagma, enabling guest clients to allocate
+/// GBM and Vulkan compatible images and share them with Sommelier as dma-bufs.
+/// An image corresponds to a single buffer collection, and also contains some
+/// opaque image info needed by VirtioMagma.
+type VirtioImage = resource struct {
+    vmo zx.handle:VMO;
+    token zx.handle:<EVENTPAIR, optional>;
+    info bytes:VIRTIO_WAYLAND_MAX_IMAGE_INFO_SIZE;
+};
+
+const VIRTIO_WAYLAND_INVALID_VFD_ID uint32 = 0;
+
+// Provides an interface to import images into the wayland device.
+protocol VirtioWaylandImporter {
+    ImportImage(resource struct {
+        image VirtioImage;
+    }) -> (struct {
+        vfd_id uint32;
+    });
+    ExportImage(struct {
+        vfd_id uint32;
+    }) -> (resource struct {
+        status zx.status;
+        image box<VirtioImage>;
+    });
+};
+
+@discoverable
+protocol VirtioWayland {
+    compose VirtioDevice;
+
+    /// Start the wayland device.
+    Start(resource struct {
+        start_info StartInfo;
+        vmar zx.handle:VMAR;
+        wayland_server client_end:fuchsia.wayland.Server;
+        sysmem_allocator client_end:fuchsia.sysmem.Allocator;
+        scenic_allocator client_end:fuchsia.ui.composition.Allocator;
+    }) -> ();
+
+    // Get the VMO importer for this wayland device.
+    GetImporter(resource struct {
+        importer server_end:VirtioWaylandImporter;
+    });
+};

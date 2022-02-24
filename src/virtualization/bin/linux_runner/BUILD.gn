@@ -1,0 +1,202 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//src/virtualization/buildtools/linux_paths.gni")
+import("//src/virtualization/buildtools/romfs_image.gni")
+
+declare_args() {
+  # If `true`, adds additional testonly content to extras.img, which will be
+  # built and mounted inside the container at /mnt/chromeos.
+  linux_runner_extras_tests = true
+
+  # If `true`, all block devices that would normally load as READ_WRITE will
+  # be loaded as VOLATILE_WRITE. This is useful when working on changes to
+  # the linux kernel as crashes and panics can sometimes corrupt the images.
+  linux_runner_volatile_block = false
+
+  # Point this to the location of external files to be included as extras
+  linux_runner_user_extras = []
+
+  # Point this to the location of a prebuilt stateful image in QCOW2 format
+  linux_runner_stateful_image_path = ""
+}
+
+extras_image = "$target_out_dir/linux/extras.img"
+resource("extras_img") {
+  sources = [ extras_image ]
+  outputs = [ "data/{{source_file_part}}" ]
+  deps = [ ":extras" ]
+  if (linux_runner_extras_tests) {
+    testonly = true
+  }
+}
+
+if (linux_runner_stateful_image_path != "") {
+  resource("stateful_qcow2") {
+    sources = [ linux_runner_stateful_image_path ]
+    outputs = [ "data/stateful.qcow2" ]
+  }
+}
+
+source_set("lib") {
+  sources = [
+    "crash_listener.h",
+    "guest.cc",
+    "guest.h",
+    "linux_component.cc",
+    "linux_component.h",
+    "linux_runner.cc",
+    "linux_runner.h",
+    "log_collector.cc",
+    "log_collector.h",
+    "ports.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.device",
+    "//sdk/fidl/fuchsia.hardware.block.volume",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.virtualization",
+    "//sdk/fidl/fuchsia.wayland",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/virtualization",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/storage/vfs/cpp",
+    "//src/virtualization/lib/grpc",
+    "//src/virtualization/lib/guest_config",
+    "//src/virtualization/third_party/vm_tools:vm_cc_proto",
+    "//third_party/grpc:grpc++",
+    "//third_party/protobuf:protobuf_lite",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+  defines = []
+  if (linux_runner_volatile_block) {
+    defines += [ "USE_VOLATILE_BLOCK" ]
+  }
+  if (linux_runner_stateful_image_path != "") {
+    public_deps += [ ":stateful_qcow2" ]
+    defines += [ "USE_PREBUILT_STATEFUL_IMAGE" ]
+  }
+}
+
+romfs_image("extras") {
+  if (linux_runner_extras_tests) {
+    testonly = true
+
+    deps = [
+      "//src/graphics/examples:vkcube-on-wayland(${linux_exe_toolchain})",
+      "//src/graphics/lib/compute/radix_sort/platforms/vk/tests(${linux_exe_toolchain})",
+      "//src/graphics/lib/compute/spinel2/platforms/vk/tests/spinel_vk_bench:spinel2-vk-bench(${linux_exe_toolchain})",
+      "//src/graphics/lib/compute/tools/bench/platforms/vk:bench-vk(${linux_exe_toolchain})",
+      "//src/graphics/lib/gbm:gbm_test(${linux_exe_toolchain})",
+      "//src/graphics/lib/magma/tests/integration:virtmagma_conformance_tests(${linux_exe_toolchain})",
+      "//src/graphics/lib/magma/tests_linux/unit_tests:virtmagma_image_tests(${linux_exe_toolchain})",
+      "//src/graphics/lib/magma/tests_linux/unit_tests:virtmagma_unit_tests(${linux_exe_toolchain})",
+      "//src/graphics/lib/magma/tests_linux/unit_tests:virtmagma_vulkan_unit_tests(${linux_exe_toolchain})",
+      "//src/lib/vulkan:vulkaninfo(${linux_exe_toolchain})",
+    ]
+
+    inputs = [
+      "${linux_exe_path}/virtmagma_vulkan_unit_tests",
+      "${linux_exe_path}/virtmagma_conformance_tests",
+      "${linux_exe_path}/cube-wayland",
+      "${linux_exe_path}/vulkaninfo",
+      "${linux_exe_path}/virtmagma_image_tests",
+      "${linux_exe_path}/virtmagma_unit_tests",
+      "${linux_exe_path}/radix-sort-vk-bench",
+      "${linux_exe_path}/spinel2-vk-bench",
+      "${linux_exe_path}/bench-vk",
+      "${linux_exe_path}/gbm_test",
+    ]
+
+    if (current_cpu == "x64") {
+      deps += [ "//src/graphics/tests/vkgbm(${linux_exe_toolchain})" ]
+
+      inputs += [ "${linux_exe_path}/vkgbm" ]
+    }
+
+    inputs += linux_runner_user_extras
+  }
+
+  output = extras_image
+}
+
+executable("bin") {
+  output_name = "linux_runner"
+
+  sources = [ "main.cc" ]
+
+  deps = [ ":lib" ]
+}
+
+fuchsia_package_with_single_component("linux_runner_pkg") {
+  package_name = "linux_runner"
+
+  if (linux_runner_extras_tests) {
+    testonly = true
+  }
+
+  deps = [
+    ":bin",
+    ":extras_img",
+  ]
+
+  manifest = "meta/linux_runner.cmx"
+}
+
+group("linux_runner") {
+  if (linux_runner_extras_tests) {
+    testonly = true
+  }
+
+  public_deps = [
+    ":configs",
+    ":linux_runner_pkg",
+  ]
+}
+
+group("configs") {
+  deps = [ ":linux_runner_config" ]
+}
+
+config_data("linux_runner_config") {
+  for_pkg = "sysmgr"
+  outputs = [ "linux_runner.config" ]
+  sources = [ "services.config" ]
+}
+
+executable("linux_runner_unittests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "guest_unittest.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/virtualization/testing",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/storage/memfs:cpp",
+  ]
+}
+
+fuchsia_unittest_package("linux_runner_tests") {
+  deps = [ ":linux_runner_unittests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":linux_runner_tests" ]
+}

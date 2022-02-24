@@ -1,0 +1,181 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//src/ui/bin/terminal/terminal_args.gni")
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":term_model_tests",
+    ":terminal_tests",
+  ]
+}
+
+rustc_library("lib") {
+  name = "terminal_lib"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty-rustc",
+    "//sdk/fidl/fuchsia.images:fuchsia.images-rustc",
+    "//sdk/fidl/fuchsia.math:fuchsia.math-rustc",
+    "//sdk/fidl/fuchsia.ui.app:fuchsia.ui.app-rustc",
+    "//sdk/fidl/fuchsia.ui.gfx:fuchsia.ui.gfx-rustc",
+    "//sdk/fidl/fuchsia.ui.input:fuchsia.ui.input-rustc",
+    "//sdk/fidl/fuchsia.ui.scenic:fuchsia.ui.scenic-rustc",
+    "//sdk/fidl/fuchsia.ui.views:fuchsia.ui.views-rustc",
+    "//src/lib/cstr",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/pty",
+    "//src/lib/shared-buffer",
+    "//src/lib/trace/rust:trace",
+    "//src/lib/trace/rust:trace-provider",
+    "//src/lib/ui/carnelian",
+    "//src/lib/ui/fuchsia-scenic",
+    "//src/lib/ui/terminal",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/alacritty/alacritty_terminal:term_model",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:euclid",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:libc",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/app.rs",
+    "src/key_util.rs",
+    "src/lib.rs",
+    "src/terminal_view.rs",
+    "src/ui/mod.rs",
+    "src/ui/terminal_facet.rs",
+    "src/ui/terminal_scene.rs",
+    "src/ui/terminal_scroll_bar.rs",
+  ]
+}
+
+resource("font") {
+  sources = [ terminal_font_path ]
+  outputs = [ "data/font.ttf" ]
+}
+
+resource("bold_font") {
+  sources = [ terminal_bold_font_path ]
+  outputs = [ "data/bold-font.ttf" ]
+}
+
+resource("italic_font") {
+  sources = [ terminal_italic_font_path ]
+  outputs = [ "data/italic-font.ttf" ]
+}
+
+resource("bold_italic_font") {
+  sources = [ terminal_bold_italic_font_path ]
+  outputs = [ "data/bold-italic-font.ttf" ]
+}
+
+if (terminal_fallback_font_paths != []) {
+  resource_group("fallback_fonts") {
+    files = []
+    suffix = 1
+    foreach(path, terminal_fallback_font_paths) {
+      files += [
+        {
+          source = path
+          dest = "data/fallback-font-$suffix.ttf"
+        },
+      ]
+      suffix += 1
+    }
+  }
+}
+
+rustc_binary("bin") {
+  name = "terminal"
+  edition = "2018"
+  source_root = "src/bin/terminal.rs"
+  with_unit_tests = true
+
+  deps = [
+    ":bold_font",
+    ":bold_italic_font",
+    ":font",
+    ":italic_font",
+    ":lib",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/trace/rust:trace-provider",
+    "//src/lib/ui/carnelian",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  if (terminal_fallback_font_paths != []) {
+    deps += [ ":fallback_fonts" ]
+  }
+
+  sources = [ "src/bin/terminal.rs" ]
+}
+
+fuchsia_component("terminal_component") {
+  component_name = "terminal"
+  manifest = "meta/terminal.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("vsh-terminal") {
+  manifest = "meta/vsh-terminal.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("terminal") {
+  deps = [
+    ":terminal_component",
+    ":vsh-terminal",
+  ]
+}
+
+config_data("tiles_config") {
+  for_pkg = "sysmgr"
+  sources = [ "config/tiles.config" ]
+}
+
+fuchsia_test_component("terminal_tests_component") {
+  component_name = "terminal_tests"
+  manifest = "meta/terminal_tests.cmx"
+  deps = [
+    ":bold_font",
+    ":bold_italic_font",
+    ":font",
+    ":italic_font",
+    ":lib_test",
+    "//src/lib/zircon/rust:exit_with_code_util",
+    "//zircon/third_party/uapp/dash",
+  ]
+}
+
+fuchsia_test_package("terminal_tests") {
+  test_components = [ ":terminal_tests_component" ]
+}
+
+fuchsia_test_component("term_model_tests_component") {
+  component_name = "term_model_tests"
+  manifest = "meta/term_model_lib_test.cmx"
+  deps = [ "//third_party/alacritty/alacritty_terminal:term-model_test" ]
+}
+
+fuchsia_test_package("term_model_tests") {
+  test_components = [ ":term_model_tests_component" ]
+}

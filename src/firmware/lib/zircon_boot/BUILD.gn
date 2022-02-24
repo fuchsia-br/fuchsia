@@ -1,0 +1,41 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+# Common variables for our SDK and in-tree targets.
+common_vars = {
+  sdk = "source"
+  sdk_headers = [
+    "lib/zircon_boot/zbi_utils.h",
+    "lib/zircon_boot/zircon_boot.h",
+  ]
+  sources = [
+    "utils.h",
+    "zbi_utils.c",
+    "zircon_boot.c",
+    "zircon_vboot.c",
+    "zircon_vboot.h",
+  ]
+  deps = [
+    "//src/firmware/lib/abr",
+    "//src/firmware/lib/zbi",
+    "//third_party/android/platform/external/avb",
+  ]
+}
+
+# SDK library.
+zx_library("zircon_boot") {
+  forward_variables_from(common_vars, "*")
+  sdk_publishable = "experimental"
+}
+
+# In-tree library.
+# This is necessary because in-tree targets use //zircon/system/public
+# as the sysroot dependency, which is not available to sdk_publishable
+# targets.
+zx_library("in_tree") {
+  forward_variables_from(common_vars, "*")
+  deps += [ "//zircon/system/public" ]
+}

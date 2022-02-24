@@ -1,0 +1,45 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/launcher",
+        args: [
+            "persistence",
+            "--startup-delay-seconds",
+            "120",
+        ],
+    },
+    capabilities: [
+        {
+            protocol: [ "fuchsia.diagnostics.persist.DataPersistence-wlan" ],
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.diagnostics.FeedbackArchiveAccessor",
+            from: "parent",
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+        {
+            storage: "cache",
+            path: "/cache",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+        {
+            protocol: [ "fuchsia.diagnostics.persist.DataPersistence-wlan" ],
+            from: "self",
+        },
+    ],
+}

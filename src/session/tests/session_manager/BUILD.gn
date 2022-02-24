@@ -1,0 +1,42 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+group("session_manager") {
+  testonly = true
+  deps = [ ":package" ]
+}
+
+rustc_test("test") {
+  output_name = "session_manager_integration_test"
+
+  source_root = "src/main.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/session/bin/session_manager:lib",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_component("component") {
+  testonly = true
+  component_name = "session-manager-integration-test"
+  manifest = "meta/session-manager-integration-test.cml"
+  deps = [ ":test" ]
+}
+
+fuchsia_test_package("package") {
+  package_name = "session-manager-integration-tests"
+  test_components = [ ":component" ]
+  deps = [ "//src/session/examples/graphical-session:component" ]
+}

@@ -1,0 +1,538 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/component_manifest_resources.gni")
+import("//build/test.gni")
+import("//src/storage/fshost/generated_fshost_config.gni")
+import("//src/storage/testing/driver_test_realm.gni")
+import("//tools/cmc/build/cmc.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":fshost-tests" ]
+}
+
+source_set("headers") {
+  sources = [ "constants.h" ]
+}
+
+source_set("launcher") {
+  visibility = [ ":*" ]
+  sources = [ "fdio.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("fshost-registry") {
+  sources = [
+    "admin-server.cc",
+    "deprecated-loader-service.cc",
+    "fs-manager.cc",
+    "fshost-boot-args.cc",
+    "lifecycle.cc",
+  ]
+  public_deps = [
+    ":inspect",
+    ":launcher",
+    ":metrics",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_llcpp",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_llcpp",
+    "//sdk/lib/fit",
+    "//sdk/lib/vfs/cpp",
+    "//src/lib/loader_service",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/vfs/cpp",
+    "//src/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_llcpp",
+    "//src/storage/fxfs:fuchsia.fxfs_llcpp",
+    "//src/storage/memfs:lib",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/lib/files",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("inspect") {
+  sources = [
+    "inspect-manager.cc",
+    "inspect-manager.h",
+  ]
+  public_deps = [
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fsl",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+source_set("metrics") {
+  sources = [ "metrics.h" ]
+}
+
+source_set("metrics_cobalt") {
+  sources = [
+    "metrics_cobalt.cc",
+    "metrics_cobalt.h",
+  ]
+  public_deps = [
+    ":metrics",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/cobalt-client",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-inspect",
+    "//zircon/system/ulib/cobalt-client",
+  ]
+}
+
+source_set("metrics_stub") {
+  sources = [ "metrics_stub.cc" ]
+  deps = [ ":metrics" ]
+}
+
+source_set("block-watcher") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "block-device-manager.cc",
+    "block-device.cc",
+    "block-watcher.cc",
+    "config.cc",
+    "copier.cc",
+    "encrypted-volume.cc",
+    "filesystem-mounter.cc",
+    "fshost-fs-provider.cc",
+    "nand-device.cc",
+    "pkgfs-launcher.cc",
+    "pkgfs-loader-service.cc",
+    "watcher.cc",
+  ]
+  public_deps = [
+    ":fshost-registry",
+    ":launcher",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//src/lib/storage/vfs/cpp",
+    "//src/storage/blobfs",
+    "//src/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_llcpp",
+    "//src/storage/fxfs:fuchsia.fxfs_llcpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [
+    ":headers",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_c",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_c",
+    "//sdk/fidl/fuchsia.hardware.block.encrypted:fuchsia.hardware.block.encrypted_c",
+    "//sdk/fidl/fuchsia.hardware.block.encrypted:fuchsia.hardware.block.encrypted_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_c",
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//src/devices/block/drivers/block-verity:verified-volume-client",
+    "//src/lib/digest",
+    "//src/lib/files",
+    "//src/lib/loader_service",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/lib/storage/vfs/cpp",
+    "//src/lib/uuid:uuid",
+    "//src/security/zxcrypt:zxcrypt-client",
+    "//src/storage/gpt",
+    "//src/storage/minfs",
+    "//src/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify_llcpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-engine",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  if (extract_minfs_metadata_on_corruption) {
+    sources += [ "extract-metadata.cc" ]
+    public_deps += [ "//src/storage/extractor/cpp:disk_extractor" ]
+  } else {
+    sources += [ "extract-metadata-noop.cc" ]
+  }
+
+  if (data_filesystem_format == "fxfs") {
+    deps += [ "//src/storage/fxfs" ]
+  }
+
+  if (data_filesystem_format == "f2fs") {
+    deps += [ "//src/storage/bin/f2fs" ]
+  }
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+executable("fshost") {
+  if (is_fuchsia) {
+    configs += [ "//build/config:all_source" ]
+  }
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "main.cc" ]
+  deps = [
+    ":block-watcher",
+    ":fshost-registry",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_c",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_c",
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/fidl/fuchsia.ldsvc:fuchsia.ldsvc_c",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//third_party/zstd",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+  ]
+
+  if (data_filesystem_format == "fxfs") {
+    deps += [ "//src/storage/fxfs-crypt" ]
+  }
+
+  if (bootfs_only) {
+    deps += [ ":metrics_stub" ]
+  } else {
+    deps += [ ":metrics_cobalt" ]
+  }
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("fshost_test") {
+  sources = [
+    "delayed-outdir-test.cc",
+    "fshost-boot-args-test.cc",
+    "fshost-test.cc",
+  ]
+  deps = [
+    ":block-watcher",
+    ":fshost-registry",
+    ":metrics_cobalt",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fit-promise",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/cobalt-client",
+    "//zircon/system/ulib/cobalt-client:in-memory-logger",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/mock-boot-arguments",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+# Include this target from a product config if you want to allow authoring
+# factory partition contents in mutable mode and prevent opening block-verity
+# volumes in verified read mode.
+generated_resource("allow-authoring-factory") {
+  outputs = [ "config/allow-authoring-factory" ]
+  contents = "yes"
+
+  # We should never allow authoring factory from a production, user-facing build.
+  deps = [ "//build/validate:non_production_tag" ]
+}
+
+fuchsia_unittest_component("fshost-test") {
+  deps = [ ":fshost_test" ]
+}
+
+# This is a separate test executable because loader_service_test_fixture uses gtest, but other
+# tests here use zxtest.
+test("fshost_loader_service_test") {
+  sources = [
+    "deprecated-loader-service-test.cc",
+    "pkgfs-loader-service-test.cc",
+  ]
+  deps = [
+    ":block-watcher",
+    ":fshost-registry",
+    "//src/lib/loader_service:loader_service_test_fixture",
+    "//zircon/system/ulib/mock-boot-arguments",
+  ]
+}
+
+fuchsia_unittest_component("fshost-loader-service-test") {
+  manifest = "meta/fshost_loader_service_test.cml"
+  deps = [ ":fshost_loader_service_test" ]
+}
+
+test("fshost_inspect_test") {
+  sources = [ "inspect-manager-test.cc" ]
+  deps = [
+    ":inspect",
+    "//src/storage/memfs:cpp",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_component("fshost-inspect-test") {
+  deps = [ ":fshost_inspect_test" ]
+}
+
+test("fshost_metrics_test") {
+  sources = [ "metrics-test.cc" ]
+  deps = [
+    ":metrics_cobalt",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-inspect",
+    "//zircon/system/ulib/async-testing",
+    "//zircon/system/ulib/cobalt-client:in-memory-logger",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_component("fshost-metrics-test") {
+  deps = [ ":fshost_metrics_test" ]
+}
+
+test("fshost_integration_test") {
+  sources = [
+    "admin-server-test.cc",
+    "block-device-manager-test.cc",
+    "block-device-test.cc",
+    "block-watcher-test.cc",
+    "filesystem-mounter-test.cc",
+    "fshost_integration_test.cc",
+    "fshost_integration_test.h",
+    "mock-block-device.h",
+    "recovery-test.cc",
+  ]
+  deps = [
+    ":block-watcher",
+    ":headers",
+    ":metrics_cobalt",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+    "//sdk/fidl/fuchsia.component:fuchsia.component_llcpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//src/developer/forensics/testing/fakes:fuchsia.feedback.testing_llcpp",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+    "//src/lib/testing/predicates",
+    "//src/storage/blobfs",
+    "//src/storage/minfs",
+    "//src/storage/testing:storage_driver_test_support",
+    "//src/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify_llcpp",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/cobalt-client:in-memory-logger",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+  data_deps = [
+    "//src/storage/bin/mount",
+    "//src/storage/bin/umount",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+cmc_merge("test-fshost.cml") {
+  sources = [
+    "meta/base_fshost.cml",
+    "meta/core_fshost.cml",
+    "meta/cpp_fshost.cml",
+    "meta/fxfs_fshost.cml",
+  ]
+}
+
+# This is a test version of fshost, not a component with fshost tests.
+fuchsia_component("test-fshost") {
+  testonly = true
+
+  manifest_outputs = get_target_outputs(":test-fshost.cml")
+  manifest = manifest_outputs[0]
+  deps = [
+    ":fshost",
+    "//src/security/policy/zxcrypt:null",
+  ]
+  manifest_deps = [ ":test-fshost.cml" ]
+}
+
+cmc_merge("test-fshost-no-watcher.cml") {
+  sources = [
+    "meta/base_fshost.cml",
+    "meta/core_fshost.cml",
+    "meta/cpp_fshost.cml",
+    "meta/fxfs_fshost.cml",
+    "meta/no_watcher.cml",
+  ]
+}
+
+# This is a test version of fshost with no block watcher.
+fuchsia_component("test-fshost-no-watcher") {
+  testonly = true
+
+  manifest_outputs = get_target_outputs(":test-fshost-no-watcher.cml")
+  manifest = manifest_outputs[0]
+  deps = [
+    ":fshost",
+    "//src/security/policy/zxcrypt:null",
+  ]
+  manifest_deps = [ ":test-fshost-no-watcher.cml" ]
+}
+
+test("copier_test") {
+  sources = [
+    "copier.cc",
+    "copier_test.cc",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp:cpp-macros",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/sys/test_runners:tmp_storage",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+fuchsia_unittest_component("copier-test") {
+  deps = [ ":copier_test" ]
+}
+
+fuchsia_component("fshost-integration-test") {
+  testonly = true
+  manifest = "meta/fshost_integration_test.cml"
+  deps = [
+    ":fshost_integration_test",
+    ":integration_test_config",
+    "//src/storage/testing:storage_driver_test_realm",
+  ]
+}
+
+fuchsia_test_package("fshost-tests") {
+  package_deps_for_infra_only = [ "//src/testing/sl4f:sl4f" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [
+    ":fshost-integration-test",
+    ":fshost-test",
+    ":fshost-inspect-test",
+    ":fshost-metrics-test",
+    ":fshost-loader-service-test",
+    ":copier-test",
+  ]
+  deps = [
+    ":test-fshost",
+    "//src/developer/forensics/testing/fakes:fake_crash_reporter_v2",
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+    "//src/storage/blobfs:decompressor-sandbox",
+  ]
+}
+
+cmc_merge("fshost.cml") {
+  sources = [
+    "meta/base_fshost.cml",
+    "meta/cpp_fshost.cml",
+    "meta/fxfs_fshost.cml",
+    "meta/real_fshost.cml",
+  ]
+  if (!bootfs_only) {
+    sources += [ "meta/core_fshost.cml" ]
+  }
+}
+
+component_manifest_resources("meta") {
+  sources = get_target_outputs(":fshost.cml")
+  deps = [ ":fshost.cml" ]
+}
+
+group("bootfs") {
+  deps = [
+    ":fshost",
+    ":meta",
+  ]
+}
+
+generated_fshost_config("integration_test_config") {
+  # Some of the tests require us to be able to match against multiple GPT devices.
+  gpt_all = true
+
+  use_default_loader = true
+
+  # The test BlockDeviceManagerIntegration.MaxSize verifies that the minfs "max runtime bytes" gets
+  # applied correctly. It checks that the max size in FVM is set to this value. The
+  # "apply_limits_to_ramdisk" flag is required to apply the minfs limit even to a ramdisk which is
+  # used in tests (normally the limits apply only to physical devices).  This number applies to all
+  # tests in the fshost integration test, so all minfs partitions created must be smaller than this
+  # value, but all disks should be larger than this value.
+  minfs_maximum_runtime_bytes_override = 117440512
+
+  apply_limits_to_ramdisk = true
+  check_filesystems = true
+}

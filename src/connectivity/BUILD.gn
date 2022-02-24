@@ -1,0 +1,75 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("connectivity") {
+  testonly = true
+  deps = [
+    ":connectivity_no_e2e",
+    ":e2e_tests",
+  ]
+}
+
+group("connectivity_no_e2e") {
+  testonly = true
+  assert_no_deps = e2e_test_libs
+
+  deps = [
+    ":tests_no_e2e",
+    "bluetooth",
+    "location",
+    "lowpan",
+    "openthread",
+    "overnet",
+    "ppp",
+    "telephony",
+    "weave",
+    "wlan",
+  ]
+}
+
+group("tools") {
+  testonly = true
+  deps = [
+    "lowpan/tools",
+    "network/mdns/bundles:utils",
+    "network/net-cli",
+    "network/tools",
+    "overnet/overnetstack",
+    "overnet/tools",
+    "wlan:tools",
+  ]
+}
+
+group("e2e_tests") {
+  testonly = true
+  deps = [ "overnet:e2e_tests" ]
+}
+
+group("tests_no_e2e") {
+  testonly = true
+  assert_no_deps = e2e_test_libs
+
+  deps = [
+    "bluetooth:tests",
+    "ethernet:tests",
+    "lib:tests",
+    "location:tests",
+    "lowpan:tests",
+    "network:tests",
+    "openthread:tests",
+    "overnet:tests_no_e2e",
+    "ppp:tests",
+    "telephony:tests",
+    "weave:tests",
+    "wlan:tests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":e2e_tests",
+    ":tests_no_e2e",
+  ]
+}

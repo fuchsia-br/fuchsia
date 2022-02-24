@@ -1,0 +1,89 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/testing/host_test_data.gni")
+
+go_library("symbolize_lib") {
+  sources = [
+    "ast.go",
+    "demuxer.go",
+    "demuxer_test.go",
+    "dump.go",
+    "filter.go",
+    "filter_test.go",
+    "index.go",
+    "index_test.go",
+    "json.go",
+    "mapstore.go",
+    "mock_elf_test.go",
+    "parser.go",
+    "parser_test.go",
+    "pipeline.go",
+    "presenter.go",
+    "regextokenizer.go",
+    "regextokenizer_test.go",
+    "repo.go",
+    "repo_test.go",
+    "symbolizer.go",
+    "symbolizer_test.go",
+    "triggers.go",
+  ]
+
+  deps = [
+    "//third_party/golibs:cloud.google.com/go/storage",
+    "//tools/debug/elflib",
+    "//tools/lib/cache",
+    "//tools/lib/logger",
+  ]
+}
+
+go_library("main") {
+  source_dir = "cmd"
+
+  sources = [ "main.go" ]
+
+  deps = [
+    ":symbolize_lib",
+    "//tools/lib/color",
+  ]
+}
+
+go_binary("symbolize") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/debug/symbolize/cmd"
+  deps = [ ":main" ]
+  cgo = false
+}
+
+if (is_host) {
+  _testdata_path = "$target_gen_dir/testdata"
+
+  go_test("symbolize_tests") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/debug/symbolize" ]
+    args = [
+      "--test_data_dir",
+      rebase_path(_testdata_path, root_build_dir),
+    ]
+    deps = [
+      ":symbolize_lib",
+      "//third_party/golibs:github.com/google/go-cmp",
+    ]
+
+    non_go_deps = [ ":testdata" ]
+  }
+
+  host_test_data("testdata") {
+    sources = [
+      "testdata/gobug.elf",
+      "testdata/gobug.yaml",
+      "testdata/libc.elf",
+      "testdata/libc.yaml",
+      "testdata/libcrypto.elf",
+      "testdata/libcrypto.yaml",
+    ]
+    outputs = [ "${_testdata_path}/{{source_file_part}}" ]
+  }
+}

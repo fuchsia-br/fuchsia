@@ -1,0 +1,392 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// GENERATED FILE: Regen with "fx regen_fidl_benchmark_suite"
+
+// Binary tree with depth 8 composed of recursive optional nodes (255 elements)
+benchmark("OptionalStructTree/Depth8") {
+    bindings_denylist = [go, dart],
+    value = OptionalStructTree{
+        left: OptionalStructTree{
+            left: OptionalStructTree{
+                left: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+                right: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+            },
+            right: OptionalStructTree{
+                left: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+                right: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        right: OptionalStructTree{
+            left: OptionalStructTree{
+                left: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+                right: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+            },
+            right: OptionalStructTree{
+                left: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+                right: OptionalStructTree{
+                    left: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                    right: OptionalStructTree{
+                        left: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                        right: OptionalStructTree{
+                            left: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                            right: OptionalStructTree{
+                                left: OptionalStructTree{},
+                                right: OptionalStructTree{},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+}

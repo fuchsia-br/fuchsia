@@ -1,0 +1,247 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Protocol:EventHandler:WireMessagingHeader" }}
+{{- EnsureNamespace "" }}
+{{- IfdefFuchsia }}
+template<>
+class {{ .WireEventHandlerInterface }} {
+public:
+  {{ .WireEventHandlerInterface.Self }}() = default;
+  virtual ~{{ .WireEventHandlerInterface.Self }}() = default;
+  {{- range .Events -}}
+    {{- .Docs }}
+    virtual void {{ .Name }}({{ .WireEvent }}* event) {}
+  {{- end }}
+};
+
+template<>
+class {{ .WireAsyncEventHandler }}
+    : public {{ .WireEventHandlerInterface }}, public ::fidl::internal::AsyncEventHandler {
+ public:
+  {{ .WireAsyncEventHandler.Self }}() = default;
+};
+
+template<>
+class {{ .WireSyncEventHandler }} : public {{ .WireEventHandlerInterface }} {
+public:
+  {{ .WireSyncEventHandler.Self }}() = default;
+
+  // Method called when an unknown event is found. This methods gives the status which, in this
+  // case, is returned by HandleOneEvent.
+  virtual zx_status_t Unknown() = 0;
+
+  // Handle all possible events defined in this protocol.
+  // Blocks to consume exactly one message from the channel, then call the corresponding virtual
+  // method.
+  ::fidl::Result HandleOneEvent(
+      ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}> client_end);
+};
+
+template <>
+class {{ .WireEventDispatcher }} final :
+    public ::fidl::internal::IncomingEventDispatcher<{{ .WireAsyncEventHandler }}> {
+ public:
+  explicit {{ .WireEventDispatcher.Self }}({{ .WireAsyncEventHandler }}* event_handler)
+      : IncomingEventDispatcher(event_handler) {}
+
+ private:
+  std::optional<::fidl::UnbindInfo> DispatchEvent(
+      ::fidl::IncomingMessage& msg,
+      ::fidl::internal::IncomingTransportContext transport_context) override;
+};
+{{- EndifFuchsia }}
+{{- end }}
+
+
+
+{{- define "Protocol:EventHandler:WireMessagingSource" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia }}
+{{ if .Transport.HasEvents }}
+::fidl::Result {{ .WireSyncEventHandler.NoLeading }}::HandleOneEvent(
+    ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}> client_end) {
+  zx_status_t status = client_end.channel()->wait_one(ZX_CHANNEL_READABLE | ZX_CHANNEL_PEER_CLOSED,
+                                                      ::zx::time::infinite(),
+                                                      nullptr);
+  if (status != ZX_OK) {
+    return ::fidl::Result::TransportError(status, ::fidl::internal::kErrorWaitOneFailed);
+  }
+  constexpr uint32_t kHandleAllocSize = ([]() constexpr {
+    uint32_t x = 0;
+    {{- range .Events }}
+    if (::fidl::TypeTraits<{{ .WireTransactionalEvent }}>::kMaxNumHandles >= x) {
+      x = ::fidl::TypeTraits<{{ .WireTransactionalEvent }}>::kMaxNumHandles;
+    }
+    {{- end }}
+    if (x > ZX_CHANNEL_MAX_MSG_HANDLES) {
+      x = ZX_CHANNEL_MAX_MSG_HANDLES;
+    }
+    return x;
+  })();
+  static_assert(kHandleAllocSize <= ZX_CHANNEL_MAX_MSG_HANDLES);
+  {{ .SyncEventAllocationV1.BackingBufferType }} read_storage;
+  std::array<zx_handle_t, kHandleAllocSize> read_handles;
+  // TODO(fxbug.dev/85734) Remove this channel-specific allocation.
+  std::array<fidl_channel_handle_metadata_t, kHandleAllocSize> read_handle_metadata;
+  ::fidl::IncomingMessage msg = ::fidl::MessageRead(
+      zx::unowned_channel(client_end.handle()),
+      read_storage.view(),
+      read_handles.data(),
+      read_handle_metadata.data(),
+      kHandleAllocSize,
+      ReadOptions{.discardable = true}
+  );
+  if (msg.status() == ZX_ERR_BUFFER_TOO_SMALL) {
+    // Message size is unexpectedly larger than calculated.
+    // This can only be due to a newer version of the protocol defining a new event,
+    // whose size exceeds the maximum of known events in the current protocol.
+    return ::fidl::Result::UnexpectedMessage(Unknown());
+  }
+  if (!msg.ok()) {
+    return msg;
+  }
+  fidl_message_header_t* hdr = msg.header();
+  switch (hdr->ordinal) {
+  {{- range .Events }}
+    case {{ .OrdinalName }}: {
+      ::fidl::unstable::DecodedMessage<{{ .WireTransactionalEvent }}> decoded{::std::move(msg)};
+      if (!decoded.ok()) {
+        return ::fidl::Result(decoded);
+      }
+      {{- if .ResponseArgs }}
+      auto* primary = &decoded.PrimaryObject()->body;
+      {{- else }}
+      {{ .WireEvent }} empty_event;
+      auto* primary = &empty_event;
+      {{- end }}
+      {{ .Name }}(primary);
+      return ::fidl::Result::Ok();
+    }
+  {{- end }}
+    default: {
+      return ::fidl::Result::UnexpectedMessage(Unknown());
+    }
+  }
+}
+
+std::optional<::fidl::UnbindInfo>
+{{ .WireEventDispatcher.NoLeading }}::DispatchEvent(
+    ::fidl::IncomingMessage& msg,
+    ::fidl::internal::IncomingTransportContext transport_context) {
+  switch (msg.header()->ordinal) {
+  {{- range .Events }}
+    case {{ .OrdinalName }}:
+    {
+      ::fidl::unstable::DecodedMessage<{{ .WireTransactionalEvent }}> decoded{std::move(msg)};
+      if (!decoded.ok()) {
+        return ::fidl::UnbindInfo{decoded};
+      }
+      if (event_handler()) {
+        {{- if .ResponseArgs }}
+        auto* primary = &decoded.PrimaryObject()->body;
+        {{- else }}
+        {{ .WireEvent }} empty_event;
+        auto* primary = &empty_event;
+        {{- end }}
+        event_handler()->{{ .Name }}(primary);
+      }
+      return std::nullopt;
+    }
+  {{- end }}
+    default:
+      break;
+  }
+  return ::fidl::UnbindInfo::UnknownOrdinal();
+}
+
+{{- else }}{{/* not .Transport.HasEvents */}}
+::fidl::Result {{ .WireSyncEventHandler.NoLeading }}::HandleOneEvent(
+    ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ . }}> client_end) {
+      ZX_PANIC("events not supported for transport '{{ .Transport.Name }}'");
+}
+std::optional<::fidl::UnbindInfo>
+{{ .WireEventDispatcher.NoLeading }}::DispatchEvent(
+    fidl::IncomingMessage& msg,
+    internal::IncomingTransportContext transport_context) {
+      ZX_PANIC("events not supported for transport '{{ .Transport.Name }}'");
+}
+{{- end }}
+{{- EndifFuchsia }}
+{{- end }}
+
+
+
+{{- define "Protocol:EventHandler:NaturalMessagingHeader" }}
+{{- EnsureNamespace "" }}
+{{- IfdefFuchsia }}
+template<>
+class {{ .NaturalEventHandlerInterface }} {
+ public:
+  {{ .NaturalEventHandlerInterface.Self }}() = default;
+  virtual ~{{ .NaturalEventHandlerInterface.Self }}() = default;
+  {{- range .Events -}}
+    {{- .Docs }}
+    virtual void {{ .Name }}({{ .NaturalEvent }}&) {}
+  {{- end }}
+};
+
+template<>
+class {{ .NaturalAsyncEventHandler }}
+    : public {{ .NaturalEventHandlerInterface }}, public ::fidl::internal::AsyncEventHandler {
+ public:
+  {{ .NaturalAsyncEventHandler.Self }}() = default;
+};
+
+template <>
+class {{ .NaturalEventDispatcher }} final :
+    public ::fidl::internal::IncomingEventDispatcher<{{ .NaturalAsyncEventHandler }}> {
+ public:
+  explicit {{ .NaturalEventDispatcher.Self }}({{ .NaturalAsyncEventHandler }}* event_handler)
+      : IncomingEventDispatcher(event_handler) {}
+
+ private:
+  std::optional<::fidl::UnbindInfo> DispatchEvent(
+      ::fidl::IncomingMessage& msg,
+      internal::IncomingTransportContext transport_context) override;
+};
+{{- EndifFuchsia }}
+{{- end }}
+
+
+
+{{- define "Protocol:EventHandler:NaturalMessagingSource" }}
+{{- EnsureNamespace "" }}
+{{- IfdefFuchsia }}
+std::optional<::fidl::UnbindInfo>
+{{ .NaturalEventDispatcher.NoLeading }}::DispatchEvent(
+    ::fidl::IncomingMessage& msg,
+    ::fidl::internal::IncomingTransportContext transport_context) {
+  {{- if .Events }}
+  switch (msg.header()->ordinal) {
+  {{- range .Events }}
+    case {{ .OrdinalName }}:
+    {
+      ::fitx::result<::fidl::Error, {{ .NaturalEvent }}> decoded =
+          {{ .NaturalEvent }}::DecodeTransactional(std::move(msg));
+      if (decoded.is_error()) {
+        return ::fidl::UnbindInfo(decoded.error_value());
+      }
+      if (event_handler()) {
+        event_handler()->{{ .Name }}(decoded.value());
+      }
+      return std::nullopt;
+    }
+  {{- end }}
+    default:
+      break;
+  }
+  {{- end }}
+  return ::fidl::UnbindInfo::UnknownOrdinal();
+}
+
+{{- EndifFuchsia }}
+{{- end }}

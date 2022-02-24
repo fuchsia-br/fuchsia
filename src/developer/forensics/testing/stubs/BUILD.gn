@@ -1,0 +1,284 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+visibility = [ "//src/developer/forensics/*" ]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("board_info_provider") {
+  testonly = true
+
+  sources = [
+    "board_info_provider.cc",
+    "board_info_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.hwinfo",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("channel_control") {
+  testonly = true
+
+  sources = [
+    "channel_control.cc",
+    "channel_control.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.update.channelcontrol",
+  ]
+
+  deps = [ "//zircon/system/ulib/zx" ]
+}
+
+source_set("cobalt") {
+  testonly = true
+
+  sources = [
+    "cobalt_logger.cc",
+    "cobalt_logger.h",
+    "cobalt_logger_factory.cc",
+    "cobalt_logger_factory.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.metrics",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("crash_reporter") {
+  testonly = true
+
+  sources = [
+    "crash_reporter.cc",
+    "crash_reporter.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.feedback",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+  ]
+}
+
+source_set("data_provider") {
+  testonly = true
+
+  sources = [
+    "data_provider.cc",
+    "data_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/lib/fidl/cpp",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+  ]
+}
+
+source_set("device_id_provider") {
+  testonly = true
+
+  sources = [
+    "device_id_provider.cc",
+    "device_id_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.feedback",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("diagnostics") {
+  testonly = true
+
+  sources = [
+    "diagnostics_archive.cc",
+    "diagnostics_archive.h",
+    "diagnostics_batch_iterator.cc",
+    "diagnostics_batch_iterator.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.diagnostics",
+  ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+  ]
+}
+
+source_set("fidl_server") {
+  testonly = true
+
+  sources = [ "fidl_server.h" ]
+
+  public_deps = [
+    "//sdk/lib/fidl/cpp",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("last_reboot_info_provider") {
+  testonly = true
+
+  sources = [
+    "last_reboot_info_provider.cc",
+    "last_reboot_info_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.feedback",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("loader") {
+  testonly = true
+
+  sources = [
+    "loader.cc",
+    "loader.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.net.http",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("product_info_provider") {
+  testonly = true
+
+  sources = [
+    "product_info_provider.cc",
+    "product_info_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.hwinfo",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("network_reachability_provider") {
+  testonly = true
+
+  sources = [
+    "network_reachability_provider.cc",
+    "network_reachability_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.net.interfaces",
+  ]
+
+  deps = [
+    "//sdk/lib/fit",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/testing/predicates",
+  ]
+}
+
+source_set("reboot_methods_watcher_register") {
+  testonly = true
+
+  sources = [
+    "reboot_methods_watcher_register.cc",
+    "reboot_methods_watcher_register.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+  ]
+}
+
+source_set("scenic") {
+  testonly = true
+
+  sources = [
+    "scenic.cc",
+    "scenic.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.ui.scenic",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.images",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("timezone_provider") {
+  testonly = true
+
+  sources = [
+    "timezone_provider.cc",
+    "timezone_provider.h",
+  ]
+
+  public_deps = [
+    ":fidl_server",
+    "//sdk/fidl/fuchsia.intl",
+  ]
+
+  deps = [
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}

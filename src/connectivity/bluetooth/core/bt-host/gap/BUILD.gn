@@ -1,0 +1,173 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+source_set("definitions") {
+  sources = [
+    "gap.cc",
+    "gap.h",
+  ]
+  deps = [ "//src/connectivity/bluetooth/core/bt-host/common" ]
+}
+
+static_library("gap") {
+  sources = [
+    "adapter.cc",
+    "adapter.h",
+    "adapter_state.cc",
+    "adapter_state.h",
+    "bredr_connection.cc",
+    "bredr_connection.h",
+    "bredr_connection_manager.cc",
+    "bredr_connection_manager.h",
+    "bredr_connection_request.cc",
+    "bredr_connection_request.h",
+    "bredr_discovery_manager.cc",
+    "bredr_discovery_manager.h",
+    "bredr_interrogator.cc",
+    "bredr_interrogator.h",
+    "discovery_filter.cc",
+    "discovery_filter.h",
+    "generic_access_client.cc",
+    "generic_access_client.h",
+    "identity_resolving_list.cc",
+    "identity_resolving_list.h",
+    "interrogator.cc",
+    "interrogator.h",
+    "low_energy_address_manager.cc",
+    "low_energy_address_manager.h",
+    "low_energy_advertising_manager.cc",
+    "low_energy_advertising_manager.h",
+    "low_energy_connection.cc",
+    "low_energy_connection.h",
+    "low_energy_connection_handle.cc",
+    "low_energy_connection_handle.h",
+    "low_energy_connection_manager.cc",
+    "low_energy_connection_manager.h",
+    "low_energy_connection_request.cc",
+    "low_energy_connection_request.h",
+    "low_energy_connector.cc",
+    "low_energy_connector.h",
+    "low_energy_discovery_manager.cc",
+    "low_energy_discovery_manager.h",
+    "low_energy_interrogator.cc",
+    "low_energy_interrogator.h",
+    "low_energy_state.cc",
+    "low_energy_state.h",
+    "pairing_delegate.h",
+    "pairing_state.cc",
+    "pairing_state.h",
+    "peer.cc",
+    "peer.h",
+    "peer_cache.cc",
+    "peer_cache.h",
+    "peer_metrics.cc",
+    "peer_metrics.h",
+    "types.cc",
+    "types.h",
+  ]
+
+  public_deps = [
+    ":definitions",
+    "//sdk/banjo/fuchsia.hardware.bt.vendor:fuchsia.hardware.bt.vendor_banjo_cpp",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//src/connectivity/bluetooth/core/bt-host/gatt",
+    "//src/connectivity/bluetooth/core/bt-host/hci",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap",
+    "//src/connectivity/bluetooth/core/bt-host/sco",
+    "//src/connectivity/bluetooth/core/bt-host/sdp",
+    "//src/connectivity/bluetooth/core/bt-host/sm",
+    "//src/lib/fxl",
+    "//src/lib/uuid",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("testing") {
+  testonly = true
+
+  sources = [
+    "fake_adapter.cc",
+    "fake_adapter.h",
+    "fake_adapter_test_fixture.h",
+    "fake_pairing_delegate.cc",
+    "fake_pairing_delegate.h",
+  ]
+
+  public_deps = [
+    ":gap",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap:testing",
+    "//src/lib/fxl",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "adapter_unittest.cc",
+    "bredr_connection_manager_unittest.cc",
+    "bredr_connection_request_unittest.cc",
+    "bredr_discovery_manager_unittest.cc",
+    "bredr_interrogator_unittest.cc",
+    "discovery_filter_unittest.cc",
+    "fake_pairing_delegate_unittest.cc",
+    "identity_resolving_list_unittest.cc",
+    "interrogator_unittest.cc",
+    "low_energy_address_manager_unittest.cc",
+    "low_energy_advertising_manager_unittest.cc",
+    "low_energy_connection_manager_unittest.cc",
+    "low_energy_discovery_manager_unittest.cc",
+    "low_energy_interrogator_unittest.cc",
+    "pairing_state_unittest.cc",
+    "peer_cache_unittest.cc",
+    "peer_unittest.cc",
+    "types_unittest.cc",
+  ]
+
+  deps = [
+    ":gap",
+    ":testing",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//src/connectivity/bluetooth/core/bt-host/gatt:testing",
+    "//src/connectivity/bluetooth/core/bt-host/hci:testing",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap:testing",
+    "//src/connectivity/bluetooth/core/bt-host/sm:testing",
+    "//src/connectivity/bluetooth/core/bt-host/socket",
+    "//src/connectivity/bluetooth/core/bt-host/testing",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+bt_gtest_package("bt-host-gap-tests") {
+  with_death_tests = true
+  deps = [ ":tests" ]
+}
+
+fuzzer("peer_cache_fuzzer") {
+  sources = [ "peer_cache_fuzztest.cc" ]
+  deps = [
+    ":gap",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzzing",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzztest_driver",
+  ]
+}

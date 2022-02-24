@@ -1,0 +1,39 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+library fuchsia.net.debug;
+
+using fuchsia.net;
+using fuchsia.net.interfaces.admin;
+
+/// Network interface debugging functionality.
+///
+/// This protocol is intended for debugging and testing only; and not meant for
+/// load-bearing code.
+@discoverable
+protocol Interfaces {
+    /// Obtain administrative control over a network interface.
+    ///
+    /// + request `id` identifies the interface to be controlled.
+    /// + request `control` grants the client administrative control over
+    ///     the interface. Closed without a terminal event if `id` does not
+    ///     match an existing interface.
+    GetAdmin(resource struct {
+        id fuchsia.net.interface_id;
+        control server_end:fuchsia.net.interfaces.admin.Control;
+    });
+
+    /// Return an interface's MAC address.
+    ///
+    /// + request `id` identifies the interface whose MAC is requested.
+    /// - response `mac` is the interface's MAC address, if it has one.
+    GetMac(struct {
+        id fuchsia.net.interface_id;
+    }) -> (struct {
+        mac fuchsia.net.MacAddress:optional;
+    }) error strict enum {
+        /// `id` does not identify an interface.
+        NOT_FOUND = 1;
+    };
+};

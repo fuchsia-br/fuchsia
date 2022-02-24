@@ -1,0 +1,103 @@
+#!/bin/bash
+# Copyright 2020 The Fuchsia Authors. All Rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script is a replacement for /usr/bin/env that adds Fuchsia-specific
+# information and provides access to prebuilt tools in the source tree.
+#
+# This is not a subcommand of `fx` because multiple pieces of project
+# infrastructure run outside of the build and need access to in-tree prebuilts.
+
+set -e
+
+# Filter out invalid FUCHSIA_DIR settings.
+if [[ -n "${FUCHSIA_DIR}" ]]; then
+  if [[ ! -d "${FUCHSIA_DIR}" ]]; then
+    unset FUCHSIA_DIR
+  elif [[ "${FUCHSIA_DIR#/}" == "${FUCHSIA_DIR}" ]]; then
+    unset FUCHSIA_DIR
+  else
+    PWD="$(pwd)"
+    if [[ "${PWD#${FUCHSIA_DIR}}" = "${PWD}" ]]; then
+      # FUCHSIA_DIR does not contain the current directory
+      unset FUCHSIA_DIR
+    fi
+  fi
+fi
+
+function find_tree_root {
+  local parent="$1"
+  if [[ ! -d "$parent" ]]; then
+    return 1
+  fi
+  while [[ ! -d "${parent}/.jiri_root" ]]; do
+    parent="$(dirname "${parent}")"
+    if [[ "$parent" == "/" ]]; then
+      return 1
+    fi
+  done
+  echo "$parent"
+}
+
+# Mimic `fx` behavior to set up a consistent root and get prebuilt paths.
+#
+# We walk the parent directories looking for .jiri_root rather than using
+# BASH_SOURCE so that we find the fuchsia_dir enclosing the current working
+# directory instead of the one containing this file in case the user has
+# multiple source trees and is picking up this file from another one.
+#
+# NOTE: The FUCHSIA_DIR environment variable is ignored here because it
+# could point to a different Fuchsia checkout in some developer setups.
+#
+# This logic is replicated in //scripts/fx, //scripts/hermetic_env,
+# //scripts/zsh_completion/_fx, and //src/developer/ffx/scripts. For
+# consistency, copy any changes here to those files as well.
+if ! fuchsia_dir="$(find_tree_root "$(pwd)")"; then
+  echo >&2 "ERROR: Cannot find the Platform Source Tree in a parent of the current directory: $(pwd)"
+  exit 1
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+if [[ "${script_dir}" != "${fuchsia_dir}"* ]]; then
+  echo >&2 "ERROR: You are executing fx from outside of the current source tree"
+  echo >&2 "ERROR: This is not supported as fx does not have a stable internal API"
+  echo >&2
+  echo >&2 "    'hermetic-env' was executed from: ${BASH_SOURCE[0]}"
+  echo >&2 "    'fuchsia directory' resolved to: ${fuchsia_dir}"
+  echo >&2
+  echo >&2 "To run a command in the current Fuchsia directory, run fx from:"
+  echo >&2 "  ${fuchsia_dir}/scripts/hermetic-env"
+  echo >&2 "Or, if you use fx-env.sh, source fx-env from the current fuchsia dir:"
+  echo >&2 "  source ${fuchsia_dir}/scripts/fx-env.sh"
+  exit 1
+fi
+
+export FUCHSIA_DIR="${fuchsia_dir}"
+declare -r prebuilt_sh="${fuchsia_dir}/tools/devshell/lib/prebuilt.sh"
+source "${prebuilt_sh}" || exit $?
+
+if [[ "${PATH#${PREBUILT_ALL_PATHS}}" == "${PATH}" ]]; then
+  # Prebuilts have not been added to the path
+  if [[ x"${FUCHSIA_HERMETIC_TOOLS}" == xy ]]; then
+    readonly newpath="${PREBUILT_ALL_PATHS}:${FUCHSIA_DIR}/tools/system"
+  else
+    readonly newpath="${PREBUILT_ALL_PATHS}:${PATH}"
+  fi
+else
+  readonly newpath="${PATH}"
+fi
+
+export PATH="${newpath}"
+
+# Forward the args to the system `env`.
+exec /usr/bin/env -S -i \
+  "FUCHSIA_DIR=${fuchsia_dir}" \
+  "TERM=${TERM}" \
+  "PATH=${newpath}" \
+  "FUCHSIA_HERMETIC_TOOLS=${FUCHSIA_HERMETIC_TOOLS}" \
+  ${NINJA_STATUS+"NINJA_STATUS=${NINJA_STATUS}"} \
+  ${GOMA_DISABLED+"GOMA_DISABLED=${GOMA_DISABLED}"} \
+  ${TMPDIR+"TMPDIR=${TMPDIR}"} \
+  "$@"

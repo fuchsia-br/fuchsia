@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "--provider=widevine"
+        ],
+        "binary": "bin/fake_factory_store_provider"
+    },
+    "sandbox": {
+        "features": [
+            "config-data"
+        ]
+    }
+}

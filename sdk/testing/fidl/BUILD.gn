@@ -1,0 +1,110 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//sdk/cts/build/cts.gni")
+
+cts_source_set("test_support") {
+  testonly = true
+
+  dest = "pkg/fidl_test_support"
+
+  public = [ "async_loop_for_test.h" ]
+
+  sources = [ "async_loop_for_test.cc" ]
+
+  public_deps = [
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+cts_source_set("test") {
+  testonly = true
+
+  dest = "pkg/fidl_test_support"
+
+  public = [
+    "fidl_types.h",
+    "frobinator_impl.h",
+  ]
+
+  sources = [
+    "fidl_types.cc",
+    "frobinator_impl.cc",
+  ]
+
+  public_deps = [ ":frobinator" ]
+
+  deps = [ "//sdk/lib/fidl/cpp" ]
+
+  public_configs = [ "//sdk/config" ]
+}
+
+cts_fidl("frobinator") {
+  testonly = true
+
+  dest = "pkg/fidl_test_support"
+
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [
+    "event-names-must-start-with-on",
+    "string-bounds-not-specified",
+  ]
+
+  name = "fidl.test.frobinator"
+
+  sources = [ "frobinator.test.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+cts_fidl("fidl_test") {
+  name = "fidl.test.misc"
+
+  dest = "pkg/fidl_test_support"
+
+  testonly = true
+
+  sources = [ "fidl_test.test.fidl" ]
+}
+
+cts_fidl("fidl_test_handles") {
+  name = "fidl.test.handles"
+
+  dest = "pkg/fidl_test_support"
+
+  testonly = true
+
+  sources = [ "fidl_test_handles.test.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+cts_fidl("collision_test") {
+  name = "fidl.test.collision"
+
+  dest = "pkg/fidl_test_support"
+
+  testonly = true
+
+  sources = [ "collision.test.fidl" ]
+}
+
+cts_copy_to_sdk("build") {
+  sources = [ "BUILD.gn" ]
+  dest = "pkg/fidl_test_support"
+  testonly = true
+}
+
+sdk_molecule("test_sdks") {
+  deps = [
+    ":build_sdk",
+    ":collision_test_sdk",
+    ":fidl_test_handles_sdk",
+    ":fidl_test_sdk",
+    ":frobinator_sdk",
+    ":test_sdk",
+    ":test_support_sdk",
+  ]
+  testonly = true
+}

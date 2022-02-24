@@ -1,0 +1,24 @@
+{
+    "facets": {
+        "fuchsia.test": {
+            "system-services": [
+                "fuchsia.kernel.HypervisorResource",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.sysinfo.SysInfo"
+            ]
+        }
+    },
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/hypervisor_tests"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.kernel.HypervisorResource",
+            "fuchsia.kernel.VmexResource",
+            "fuchsia.sysinfo.SysInfo"
+        ]
+    }
+}

@@ -1,0 +1,120 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/cpp_fuzzer.gni")
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+source_set("definitions") {
+  sources = [
+    "error.cc",
+    "error.h",
+    "packet.cc",
+    "packet.h",
+    "smp.h",
+    "types.cc",
+    "types.h",
+  ]
+
+  public_deps = [
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//src/connectivity/bluetooth/core/bt-host/hci-spec",  # hci_spec::LinkKey
+  ]
+}
+
+static_library("sm") {
+  sources = [
+    "ecdh_key.cc",
+    "ecdh_key.h",
+    "pairing_channel.cc",
+    "pairing_channel.h",
+    "pairing_phase.cc",
+    "pairing_phase.h",
+    "phase_1.cc",
+    "phase_1.h",
+    "phase_2_legacy.cc",
+    "phase_2_legacy.h",
+    "phase_2_secure_connections.cc",
+    "phase_2_secure_connections.h",
+    "phase_3.cc",
+    "phase_3.h",
+    "sc_stage_1.h",
+    "sc_stage_1_just_works_numeric_comparison.cc",
+    "sc_stage_1_just_works_numeric_comparison.h",
+    "sc_stage_1_passkey.cc",
+    "sc_stage_1_passkey.h",
+    "security_manager.cc",
+    "security_manager.h",
+    "security_request_phase.cc",
+    "security_request_phase.h",
+    "util.cc",
+    "util.h",
+  ]
+
+  public_deps = [
+    ":definitions",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//src/connectivity/bluetooth/core/bt-host/gap:definitions",
+    "//src/connectivity/bluetooth/core/bt-host/hci",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap",
+    "//third_party/boringssl",
+  ]
+}
+
+source_set("testing") {
+  testonly = true
+
+  sources = [
+    "fake_phase_listener.h",
+    "test_security_manager.cc",
+    "test_security_manager.h",
+  ]
+
+  deps = [ ":sm" ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "ecdh_key_unittest.cc",
+    "packet_unittest.cc",
+    "pairing_channel_unittest.cc",
+    "pairing_phase_unittest.cc",
+    "phase_1_unittest.cc",
+    "phase_2_legacy_unittest.cc",
+    "phase_2_secure_connections_unittest.cc",
+    "phase_3_unittest.cc",
+    "sc_stage_1_just_works_numeric_comparison_unittest.cc",
+    "sc_stage_1_passkey_unittest.cc",
+    "security_manager_unittest.cc",
+    "security_request_phase_unittest.cc",
+    "types_unittest.cc",
+    "util_unittest.cc",
+  ]
+
+  deps = [
+    ":sm",
+    ":testing",
+    "//src/connectivity/bluetooth/core/bt-host/hci:testing",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap:testing",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+bt_gtest_package("bt-host-sm-tests") {
+  with_death_tests = true
+  deps = [ ":tests" ]
+}
+
+cpp_fuzzer("valid_packet_reader_fuzzer") {
+  sources = [ "valid_packet_reader_parse_sdu_fuzztest.cc" ]
+  deps = [
+    ":definitions",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzztest_driver",
+  ]
+}

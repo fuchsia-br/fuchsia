@@ -1,0 +1,30 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/fatfs_mounter",
+    },
+    capabilities: [
+        { protocol: "fuchsia.fs.Query" },
+        { protocol: "fuchsia.fs.Admin" },
+    ],
+    use: [
+        {
+            directory: "dev-class-block",
+            rights: [ "rw*" ],
+            path: "/dev/class/block",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.fs.Query",
+            from: "self",
+            as: "svc-fuchsia.fat.Query",
+        },
+        {
+            protocol: "fuchsia.fs.Admin",
+            from: "self",
+            as: "svc-fuchsia.fat.Admin",
+        },
+    ],
+}

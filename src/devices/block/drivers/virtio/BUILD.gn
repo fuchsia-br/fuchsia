@@ -1,0 +1,151 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("virtio_block_bind") {
+  rules = "virtio_block.bind"
+  header_output = "virtio_block_bind.h"
+  tests = "block_bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.pci" ]
+}
+
+fuchsia_driver("virtio_block-driver") {
+  output_name = "virtio_block"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "block_driver.cc" ]
+  deps = [
+    ":block_lib",
+    ":virtio_block_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddktl",
+  ]
+}
+
+fuchsia_driver_component("virtio_block") {
+  component_name = "virtio_block"
+  deps = [ ":virtio_block-driver" ]
+  info = "virtio_block-info.json"
+  colocate = true
+}
+
+source_set("block_lib") {
+  configs += [ "//build/config:all_source" ]
+  sources = [ "block.cc" ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//src/devices/bus/lib/virtio",
+    "//src/lib/ddktl",
+    "//src/lib/listnode",
+  ]
+}
+
+source_set("scsi_lib") {
+  configs += [ "//build/config:all_source" ]
+  sources = [ "scsi.cc" ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//src/devices/block/lib/scsi",
+    "//src/devices/bus/lib/virtio",
+    "//src/lib/ddktl",
+  ]
+}
+
+driver_bind_rules("virtio_scsi_bind") {
+  rules = "virtio_scsi.bind"
+  header_output = "virtio_scsi_bind.h"
+  tests = "scsi_bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.pci" ]
+}
+
+fuchsia_driver("virtio_scsi-driver") {
+  output_name = "virtio_scsi"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "scsi_driver.cc" ]
+  deps = [
+    ":scsi_lib",
+    ":virtio_scsi_bind",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddktl",
+  ]
+}
+
+fuchsia_driver_component("virtio_scsi") {
+  component_name = "virtio_scsi"
+  deps = [ ":virtio_scsi-driver" ]
+  info = "virtio_scsi-info.json"
+  colocate = true
+}
+
+test("virtio-block-test-bin") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  output_name = "virtio-block-test"
+  sources = [ "block_test.cc" ]
+  deps = [
+    ":block_lib",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+test("virtio-scsi-test-bin") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  output_name = "virtio-scsi-test"
+  sources = [ "scsi_test.cc" ]
+  deps = [
+    ":scsi_lib",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":virtio-block-test",
+    ":virtio-scsi-test",
+    ":virtio_block_bind_test",
+    ":virtio_scsi_bind_test",
+  ]
+}
+
+fuchsia_unittest_package("virtio-block-test") {
+  deps = [ ":virtio-block-test-bin" ]
+}
+
+fuchsia_unittest_package("virtio-scsi-test") {
+  deps = [ ":virtio-scsi-test-bin" ]
+}

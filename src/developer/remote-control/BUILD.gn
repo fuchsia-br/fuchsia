@@ -1,0 +1,204 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/images/shell_commands.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/test_spec.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+group("remote-control") {
+  testonly = true
+
+  public_deps = [
+    ":pkg",
+    ":tests",
+  ]
+}
+
+config_data("maps") {
+  for_pkg = "remote-control"
+  sources = [ "data/selector-maps.json" ]
+  outputs = [ "selector-maps.json" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":remote-control-lib-tests",
+    "//src/developer/remote-control/diagnostics-bridge:tests",
+    "//src/developer/remote-control/runner:tests",
+  ]
+}
+
+rustc_library("lib") {
+  name = "remote-control"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.buildinfo:fuchsia.buildinfo-rustc",
+    "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol-rustc",
+    "//sdk/fidl/fuchsia.device:fuchsia.device-rustc",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics-rustc",
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.net.interfaces:fuchsia.net.interfaces-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2-rustc",
+    "//sdk/fidl/fuchsia.test:fuchsia.test-rustc",
+    "//sdk/fidl/fuchsia.test.manager:fuchsia.test.manager-rustc",
+    "//src/connectivity/overnet/lib/hoist",
+    "//src/developer/ffx/lib/selector-maps",
+    "//src/lib/diagnostics/selectors",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/network/fidl_fuchsia_net_ext",
+    "//src/lib/network/fidl_fuchsia_net_interfaces_ext",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  test_deps = [ "//third_party/rust_crates:assert_matches" ]
+
+  sources = [
+    "src/host_identifier.rs",
+    "src/lib.rs",
+    "src/service_discovery.rs",
+  ]
+}
+
+rustc_binary("bin") {
+  output_name = "remote_control_bin"
+  edition = "2018"
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol-rustc",
+    "//sdk/fidl/fuchsia.overnet:fuchsia.overnet-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/connectivity/overnet/lib/hoist",
+    "//src/developer/remote-control/diagnostics-bridge",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "src/args.rs",
+    "src/main.rs",
+  ]
+}
+
+fuchsia_test_component("lib_test-test-driver") {
+  component_name = "test_driver"
+  manifest = "meta/test_driver.cml"
+  deps = [ ":lib_test" ]
+}
+
+fuchsia_test_component("lib_test-component") {
+  component_name = "remote_control_lib_test"
+  manifest = "meta/remote_control_lib_test.cml"
+}
+
+# Used at runtime during testing, but not a test.
+fuchsia_component("mock_sys_launcher-component") {
+  testonly = true
+  component_name = "mock_sys_launcher"
+  manifest = "testing/mock-sys-launcher/meta/mock_sys_launcher.cml"
+  deps = [ "//src/developer/remote-control/testing/mock-sys-launcher:mock-sys-launcher-bin" ]
+}
+
+fuchsia_test_package("remote-control-lib-tests") {
+  test_components = [ ":lib_test-component" ]
+  deps = [
+    ":lib_test-test-driver",
+    ":mock_sys_launcher-component",
+    "//src/connectivity/network/netstack:component",
+  ]
+}
+
+fuchsia_package_with_single_component("pkg-diagnostics-bridge") {
+  package_name = "remote-diagnostics-bridge"
+  deps = [
+    ":bin",
+    "//build/validate:non_production_tag",
+    "//src/developer/remote-control/diagnostics-bridge",
+  ]
+  manifest = "diagnostics-bridge/meta/remote-diagnostics-bridge.cml"
+}
+
+fuchsia_component("remote-control-component") {
+  component_name = "remote-control"
+  manifest = "meta/remote-control.cml"
+  deps = [
+    ":bin",
+    "//src/developer/remote-control/diagnostics-bridge",
+  ]
+}
+
+# Used to ensure that remote_control_runner is available as a shell command,
+# from the 'remote-control' package, but not its other binaries.
+# fuchsia_shell_package() cannot be used here because it would also add
+# 'remote_control_bin' as a shell command.
+shell_command("remote-control-runner_shell_command") {
+  package_name = "remote-control"
+  deps = [ "//src/developer/remote-control/runner" ]
+}
+
+fuchsia_component("remote-control-runner-component") {
+  component_name = "remote-control-runner"
+  manifest = "runner/meta/remote-control-runner.cmx"
+  deps = [ "//src/developer/remote-control/runner" ]
+}
+
+fuchsia_package("pkg") {
+  package_name = "remote-control"
+  deps = [
+    ":maps",
+    ":remote-control-component",
+    ":remote-control-runner-component",
+    ":remote-control-runner_shell_command",
+  ]
+}
+
+# This group is cached in core. Only add dependencies to this
+# if they belong in core.
+group("runtime") {
+  deps = [
+    ":pkg",
+    ":pkg-diagnostics-bridge",
+    "//build/validate:non_production_tag",
+    "//src/connectivity/overnet:runtime",
+  ]
+}
+
+# This shard enables ffx component laboratory functionality
+core_shard("laboratory-core-shard") {
+  shard_file = "meta/laboratory.core_shard.cml"
+}

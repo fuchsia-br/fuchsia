@@ -1,0 +1,26 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.media.playback") {
+  # TODO(fxbug.dev/35879): Remove lint exclusions by fixing known FIDL lint violations in this target
+  excluded_checks = [ "string-bounds-not-specified" ]
+
+  sdk_category = "partner"
+
+  sources = [
+    "player.fidl",
+    "problem.fidl",
+    "seeking_reader.fidl",
+    "source_manager.fidl",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.math",
+    "//sdk/fidl/fuchsia.media",
+    "//sdk/fidl/fuchsia.media.audio",
+    "//sdk/fidl/fuchsia.ui.views",
+  ]
+}

@@ -1,0 +1,65 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config.gni")
+import("//build/json/validate_json.gni")
+
+template("node_config") {
+  resource("${target_name}_resource") {
+    sources = [ "${invoker.source}" ]
+    outputs = [ "config/power_manager/node_config.json" ]
+  }
+
+  validate_json("${target_name}_validate_json") {
+    data = "${invoker.source}"
+    schema = "node_config.schema.json"
+  }
+
+  group(target_name) {
+    deps = [
+      ":${target_name}_resource",
+      ":${target_name}_validate_json",
+    ]
+  }
+}
+
+node_config("astro") {
+  source = "astro_node_config.json"
+}
+
+node_config("base") {
+  source = "base_node_config.json"
+}
+
+node_config("chromebook") {
+  source = "chromebook_node_config.json"
+}
+
+node_config("luis") {
+  source = "luis_node_config.json"
+}
+
+node_config("nelson") {
+  source = "nelson_node_config.json"
+}
+
+node_config("sherlock") {
+  source = "sherlock_node_config.json"
+}
+
+# Make the node config files available for the power-manager-tests test package
+# to allow for some more advanced validation beyond what we can accomplish with
+# JSON schema validation alone.
+# TODO(fxbug.dev/52818): Explore build-time JSON validation
+config_data("test_config_data") {
+  for_pkg = "power-manager-tests"
+  sources = [
+    "astro_node_config.json",
+    "base_node_config.json",
+    "chromebook_node_config.json",
+    "luis_node_config.json",
+    "nelson_node_config.json",
+    "sherlock_node_config.json",
+  ]
+}

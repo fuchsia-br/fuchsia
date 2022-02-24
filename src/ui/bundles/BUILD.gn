@@ -1,0 +1,23 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("drivers") {
+  testonly = true
+  deps = [
+    "//src/ui/backlight:drivers",
+    "//src/ui/input:drivers",
+    "//src/ui/light:drivers",
+  ]
+}
+
+group("utils") {
+  deps = [
+    # utils should not be included in user build which does not have shell
+    # access.
+    "//build/validate:non_production_tag",
+    "//src/ui/backlight/bin/backlight",
+    "//src/ui/input/bin/hid",
+    "//src/ui/light/bin/lights-cli",
+  ]
+}

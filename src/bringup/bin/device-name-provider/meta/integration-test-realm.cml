@@ -1,0 +1,31 @@
+{
+    children: [
+        {
+            name: "device-name-provider",
+            url: "fuchsia-pkg://fuchsia.com/device-name-provider-tests#meta/device-name-provider.cm",
+        },
+        {
+            name: "integration-test",
+            url: "fuchsia-pkg://fuchsia.com/device-name-provider-tests#meta/integration-test-component.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.device.NameProvider",
+            from: "#device-name-provider",
+            to: "#integration-test",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#device-name-provider",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#integration-test",
+            to: "parent",
+        },
+    ],
+}

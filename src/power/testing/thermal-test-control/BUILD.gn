@@ -1,0 +1,24 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+fuchsia_package_with_single_component("thermal-test-control") {
+  manifest = "meta/thermal_test_control.cmx"
+  deps = [ ":thermal_test_control_bin" ]
+}
+
+executable("thermal_test_control_bin") {
+  output_name = "thermal_test_control"
+  sources = [ "thermal_test_control.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.thermal",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/power/fidl/testing:test.thermal",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}

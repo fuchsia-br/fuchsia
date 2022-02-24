@@ -1,0 +1,115 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+group("integration") {
+  testonly = true
+
+  public_deps = [
+    ":linux_x64",
+    ":magma_conformance_tests",
+  ]
+}
+
+group("linux_x64") {
+  testonly = true
+  public_deps = [
+    ":virtmagma_conformance_tests(//build/toolchain:linux_x64)",
+    ":virtmagma_no_cpp_test(//build/toolchain:linux_x64)",
+  ]
+}
+
+executable("magma_conformance_tests") {
+  testonly = true
+
+  sources = [
+    "main.cc",
+    "test_magma.cc",
+    "test_magma_c.c",
+    "test_magma_fidl.cc",
+  ]
+
+  deps = [
+    "$magma_build_root/include:magma",
+    "$magma_build_root/src/libmagma",
+    "$magma_build_root/tests/helper:magma_map_cpu",
+    "//src/graphics/drivers/msd-arm-mali/include",
+    "//src/graphics/drivers/msd-intel-gen/include",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+
+  if (is_fuchsia) {
+    deps += [
+      "//sdk/fidl/fuchsia.gpu.magma:fuchsia.gpu.magma_llcpp",
+      "//sdk/fidl/fuchsia.sysmem",
+      "//sdk/lib/fdio",
+      "//src/graphics/lib/magma/src/magma_util/platform:logger",
+      "//src/graphics/lib/magma/src/magma_util/platform:trace_provider",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/fidl:fidl-llcpp",
+    ]
+  }
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+executable("virtmagma_conformance_tests") {
+  testonly = true
+
+  defines = [ "VIRTMAGMA=1" ]
+
+  sources = [
+    "main.cc",
+    "test_magma.cc",
+    "test_magma_c.c",
+  ]
+
+  deps = [
+    "$magma_build_root/include:magma",
+    "$magma_build_root/src/libmagma_linux",
+    "$magma_build_root/tests/helper:magma_map_cpu",
+    "//src/graphics/drivers/msd-arm-mali/include",
+    "//src/graphics/drivers/msd-intel-gen/include",
+    "//src/lib/fxl",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+executable("virtmagma_no_cpp_test") {
+  testonly = true
+
+  # TODO(fxbug.dev/89257) - use configs to set -no-stdlib++ in a way that doesn't
+  # conflict with -static-libstdc++.
+  ldflags = [
+    "-nostdlib++",
+    "-Wno-unused-command-line-argument",
+  ]
+
+  sources = [
+    "main.c",
+    "test_magma_c.c",
+  ]
+
+  deps = [
+    "$magma_build_root/include:magma",
+    "$magma_build_root/src/libmagma_linux",
+  ]
+
+  disable_syslog_backend = true
+
+  # Builds fail
+  exclude_toolchain_tags = [ "asan" ]
+}

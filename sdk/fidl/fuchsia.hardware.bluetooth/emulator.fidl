@@ -1,0 +1,29 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.bluetooth;
+
+using zx;
+
+const MAX_NAME_LENGTH uint32 = 32;
+
+/// Used for spawning bluetooth emulator devices.
+protocol EmulatorController {
+    /// Creates a child device, and returns the name of the child created.
+    Create() -> (struct {
+        name string:<MAX_NAME_LENGTH, optional>;
+    }) error zx.status;
+};
+
+/// Represents the bt-emulator device protocol. A bt-emulator device is used for configuring and
+/// publishing fake bt-hci devices.
+@for_deprecated_c_bindings
+protocol Emulator {
+    /// Opens a fake controller management channel that speaks the
+    /// "//sdk/fidl/fuchsia.bluetooth.test.HciEmulator" protocol.
+    /// Only one channel to this protocol can be open on a given bt-hci-emulator
+    /// device.
+    Open(resource struct {
+        channel zx.handle:CHANNEL;
+    });
+};

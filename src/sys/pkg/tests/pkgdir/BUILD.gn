@@ -1,0 +1,65 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "pkgdir_integration_test"
+  edition = "2018"
+
+  deps = [
+    "pkg-harness:test.fidl.pkg-rustc",
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:itertools",
+  ]
+
+  sources = [
+    "src/directory.rs",
+    "src/file.rs",
+    "src/lib.rs",
+    "src/node.rs",
+  ]
+}
+
+fuchsia_component("pkgdir-integration-test") {
+  testonly = true
+  manifest = "meta/pkgdir-integration-test.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_component("test-root") {
+  testonly = true
+  manifest = "meta/test-root.cml"
+  deps = [ "//src/storage/testing:storage_driver_test_realm" ]
+}
+
+fuchsia_test_package("pkgdir-integration-tests") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  test_components = [ ":test-root" ]
+  deps = [
+    ":pkgdir-integration-test",
+    "pkg-harness",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":pkgdir-integration-tests" ]
+}

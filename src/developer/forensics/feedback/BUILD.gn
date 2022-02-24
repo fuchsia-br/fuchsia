@@ -1,0 +1,167 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+
+  deps = [
+    "migration:tests",
+    "reboot_log/tests",
+    "tests",
+  ]
+}
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("config") {
+  sources = [
+    "config.cc",
+    "config.h",
+  ]
+
+  public_deps = [
+    ":constants",
+    "//src/developer/forensics/crash_reports:config",
+    "//src/developer/forensics/feedback_data:config",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/files",
+  ]
+}
+
+source_set("constants") {
+  sources = [ "constants.h" ]
+
+  public_deps = [
+    "//src/developer/forensics/utils:storage_size",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("device_id_provider") {
+  sources = [
+    "device_id_provider.cc",
+    "device_id_provider.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/utils:errors",
+    "//src/developer/forensics/utils/fidl:hanging_get_ptr",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [
+    "//src/lib/files",
+    "//src/lib/uuid",
+  ]
+}
+
+source_set("main") {
+  sources = [
+    "main.cc",
+    "main.h",
+  ]
+
+  deps = [
+    ":config",
+    ":constants",
+    ":main_service",
+    ":namespace_init",
+    "annotations",
+    "reboot_log",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/crash_reports:default_annotations",
+    "//src/developer/forensics/feedback/fidl:fuchsia.feedback.internal",
+    "//src/developer/forensics/feedback/migration/utils",
+    "//src/developer/forensics/feedback_data:default_annotations",
+    "//src/developer/forensics/utils/component",
+    "//src/lib/files",
+    "//src/lib/uuid",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+source_set("main_service") {
+  sources = [
+    "annotation_providers.cc",
+    "annotation_providers.h",
+    "crash_reports.cc",
+    "crash_reports.h",
+    "feedback_data.cc",
+    "feedback_data.h",
+    "last_reboot.cc",
+    "last_reboot.h",
+    "main_service.cc",
+    "main_service.h",
+  ]
+
+  public_deps = [
+    ":config",
+    ":constants",
+    ":device_id_provider",
+    ":namespace_init",
+    "reboot_log",
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.process.lifecycle",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/developer/forensics/crash_reports:annotation_map",
+    "//src/developer/forensics/crash_reports:crash_register",
+    "//src/developer/forensics/crash_reports:crash_reporter",
+    "//src/developer/forensics/crash_reports:crash_server",
+    "//src/developer/forensics/crash_reports:default_annotations",
+    "//src/developer/forensics/crash_reports:log_tags",
+    "//src/developer/forensics/crash_reports:snapshot_manager",
+    "//src/developer/forensics/crash_reports/info",
+    "//src/developer/forensics/feedback/annotations:data_register",
+    "//src/developer/forensics/feedback/annotations:time_provider",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/feedback_data:data_provider",
+    "//src/developer/forensics/feedback_data:data_provider_controller",
+    "//src/developer/forensics/feedback_data:datastore",
+    "//src/developer/forensics/feedback_data:inspect_budget",
+    "//src/developer/forensics/last_reboot:last_reboot_info_provider",
+    "//src/developer/forensics/last_reboot:reboot_watcher",
+    "//src/developer/forensics/last_reboot:reporter",
+    "//src/developer/forensics/utils:inspect_node_manager",
+    "//src/developer/forensics/utils:inspect_protocol_stats",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/developer/forensics/utils/component",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("namespace_init") {
+  sources = [
+    "namespace_init.cc",
+    "namespace_init.h",
+  ]
+
+  public_deps = [
+    ":constants",
+    "//src/developer/forensics/utils/cobalt",
+  ]
+
+  deps = [
+    "//src/developer/forensics/feedback_data/system_log_recorder:reader",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:production",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:version",
+    "//src/lib/files",
+    "//src/lib/fxl",
+  ]
+}

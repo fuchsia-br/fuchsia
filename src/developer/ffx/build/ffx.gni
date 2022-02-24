@@ -1,0 +1,101 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_binary.gni")
+import("//src/developer/ffx/lib/version/build/ffx_apply_version.gni")
+import("ffx_plugin.gni")
+
+# Defines FFX
+#
+template("ffx") {
+  assert(is_host, "ffx presently only builds in host toolchains")
+
+  ffx_deps = []
+  if (defined(invoker.plugin_deps)) {
+    foreach(d, invoker.plugin_deps) {
+      dep = d + "_suite"
+      ffx_deps += [ dep ]
+    }
+  }
+
+  ffx_name = target_name
+
+  if (defined(invoker.name)) {
+    ffx_name = invoker.name
+  }
+
+  suite_name = ffx_name + "_lib"
+
+  ffx_plugin(suite_name) {
+    forward_variables_from(invoker, "*", [ "test_deps" ])
+    config_data = [ "data/config.json" ]
+  }
+
+  rustc_binary(ffx_name + "_bin_unversioned") {
+    output_name = ffx_name + "_unversioned"
+    deps = ffx_deps + [
+             ":" + suite_name + "_args",
+             ":" + suite_name + "_sub_command",
+             ":" + suite_name + "_suite",
+             "//sdk/fidl/fuchsia.developer.bridge:fuchsia.developer.bridge-rustc",
+             "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol-rustc",
+             "//sdk/fidl/fuchsia.overnet.protocol:fuchsia.overnet.protocol-rustc",
+             "//src/connectivity/overnet/lib/hoist",
+             "//src/developer/ffx/config:lib",
+             "//src/developer/ffx/core:lib",
+             "//src/developer/ffx/daemon:lib",
+             "//src/developer/ffx/lib/buildid:lib",
+             "//src/developer/ffx/lib/errors:lib",
+             "//src/developer/ffx/lib/metrics:lib",
+             "//src/developer/ffx/lib/timeout:lib",
+             "//src/developer/ffx/lib/version:lib",
+             "//src/developer/ffx/lib/writer:lib",
+             "//src/developer/ffx/plugins/daemon/start:ffx_daemon_start_args",
+             "//src/developer/ffx/plugins/daemon:ffx_daemon_plugin_args",
+             "//src/developer/ffx/plugins/daemon:ffx_daemon_plugin_sub_command",
+             "//src/lib/analytics/rust:lib",
+             "//src/lib/async-utils",
+             "//src/lib/fidl/rust/fidl",
+             "//src/lib/fuchsia-async",
+             "//third_party/rust_crates:anyhow",
+             "//third_party/rust_crates:argh",
+             "//third_party/rust_crates:async-trait",
+             "//third_party/rust_crates:async-net",
+             "//third_party/rust_crates:futures",
+             "//third_party/rust_crates:log",
+           ]
+    non_rust_deps = [
+      "//src/lib/chunked-compression",
+      "//third_party/boringssl",
+    ]
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "name",
+                             "non_rust_deps",
+                           ])
+
+    configs += [ "//build/config/rust:panic_abort" ]
+  }
+
+  # Replace the special linker sections containing the version information with the real values
+  ffx_apply_version(ffx_name + "_bin") {
+    output_name = ffx_name
+
+    deps = [ ":${ffx_name}_bin_unversioned" ]
+  }
+
+  group(ffx_name + "_tests") {
+    testonly = true
+
+    deps = [
+      ":" + ffx_name + "_bin_unversioned_test",
+      ":" + suite_name + "_tests",
+      "config:tests",
+      "core:tests",
+      "daemon:tests",
+    ]
+  }
+}

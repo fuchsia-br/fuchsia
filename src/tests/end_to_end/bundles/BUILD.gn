@@ -1,0 +1,55 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# End to end (E2E) product test runtime dependencies. This bundle can be added
+# to a product build spec that also contains end to end product tests, so they
+# can be executed against an instance of the product.
+#
+# If the end to end product test is meant to run in an environment without a
+# package server - specifically, on a luci bot -, then the end_to_end_deps
+# bundle must be added to base_package_labels or cache_package_labels of the
+# product, but it cannot be, unlike the end to end tests themselves, in the
+# universe_package_labels.
+group("end_to_end_deps") {
+  testonly = true
+  public_deps = [
+    # Needed to send fake input.
+    "//src/ui/tools:input",
+
+    # Needed to start sl4f from ssh.
+    "//garnet/packages/prod:run",
+
+    # Needed to inject and capture audio.
+    "//src/media/audio/bundles:virtual_audio_service_with_config",
+
+    # SL4F to translate JSON-RPC to calls.
+    "//garnet/packages/tools:sl4f",
+
+    # Needed for performance testing.
+    "//garnet/packages/prod:tracing",
+
+    # Needed for file exist verification.
+    "//third_party/sbase:ls",
+
+    # Needed for flutter driver using find to get vmservice-port.
+    "//third_party/sbase:find",
+
+    # Needed for VP9 decode conformance testing.
+    "//src/media/codec/examples:vp9_decoder_conformance_http",
+
+    # Service that tests use to log cpu usage into traces
+    "//src/testing/system-metrics-logger",
+  ]
+}
+
+# Product-specific dependency groups for dependencies that are only used for a
+# small number of tests, to avoid them being included in the cached package set
+# for products that do not include the corresponding test.
+group("terminal_end_to_end_deps") {
+  testonly = true
+  public_deps = [
+    # Needed for running performance tests.
+    "//src/tests/end_to_end/perf:package_deps_for_infra_only",
+  ]
+}

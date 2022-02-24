@@ -1,0 +1,60 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+
+# Device-side library. This doesn't play well with the host compiler, mostly
+# due to re-definition of a bunch of built-in types and functions, so as we
+# expand our host-side unittests we'll probably want to move more of the
+# portable code into the "shared" library below.
+if (is_efi_toolchain) {
+  source_set("lib") {
+    sources = [
+      "console-printf.c",
+      "ctype.c",
+      "inet.c",
+      "printf.c",
+      "stdlib.c",
+      "string.c",
+      "strings.c",
+    ]
+    public_deps = [ ":shared" ]
+
+    # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+    configs += [ "//build/config:Wno-conversion" ]
+  }
+}
+
+# Shared code used by both the device-side lib and the host unittests.
+source_set("shared") {
+  sources = [
+    "cmdline.c",
+    "efi/guids.c",
+    "loadfile.c",
+    "xefi.c",
+  ]
+
+  public_deps = [ "//zircon/kernel/lib/efi" ]
+
+  public_configs = [ ":shared_config" ]
+
+  cflags = [ "-fshort-wchar" ]
+}
+
+config("shared_config") {
+  include_dirs = [ "../include/shared" ]
+}
+
+test("gigaboot_shared_lib_test") {
+  sources = [ "xefi_test.cc" ]
+
+  deps = [
+    ":shared",
+    "../host",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//zircon/kernel/lib/efi",
+    "//zircon/kernel/lib/efi/testing",
+  ]
+}

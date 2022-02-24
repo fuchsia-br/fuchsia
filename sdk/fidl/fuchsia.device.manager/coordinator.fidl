@@ -1,0 +1,360 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.device.manager;
+
+// TODO(teisenbe): Move these interfaces to be internal to the devmgr codebase
+
+using fuchsia.io;
+using zx;
+
+/// This has the same structure as zx_device_prop_t.
+type DeviceProperty = struct {
+    id uint16;
+    reserved uint16;
+    value uint32;
+};
+
+type PropertyValue = strict union {
+    1: int_value uint32;
+    2: str_value string:STR_LENGTH_MAX;
+    3: bool_value bool;
+};
+
+type DeviceStrProperty = struct {
+    key string:STR_LENGTH_MAX;
+    value PropertyValue;
+};
+
+type DevicePropertyList = struct {
+    props vector<DeviceProperty>:PROPERTIES_MAX;
+    str_props vector<DeviceStrProperty>:STR_PROPERTIES_MAX;
+};
+
+// TODO(bwb): Make this descriptive of binding, not zx_bind_inst_t
+// currently a magic bitfield defined in binding.h
+type BindInstruction = struct {
+    /// bitfield that encodes the operation and execution conditions
+    op uint32;
+    /// bitfield that encodes the arguments
+    arg uint32;
+    /// bitfield that encodes debugging information
+    debug uint32;
+};
+
+// Identifier used to let the devcoordinator describe specific devices during
+// composite construction
+alias LocalDeviceId = uint64;
+
+/// This definition must match `ZX_DEVICE_NAME_MAX` and is checked by a static assert.
+const DEVICE_NAME_MAX uint32 = 31;
+
+/// Maximum number of bytes in a path
+// The simple name PATH_MAX collides with a musl #define on c++ bindings.
+const DEVICE_PATH_MAX uint32 = 1024;
+
+/// Maximum number of bytes in a device arguments string.
+const DEVICE_ARGS_MAX uint32 = 1024;
+
+/// Maximum number of bytes in a metadata payload
+const METADATA_BYTES_MAX uint32 = 8192;
+
+/// Maximum number of metadata that can be added to a device
+const METADATA_MAX uint32 = 32;
+
+/// Maximum number of properties that can be attached to a device
+const PROPERTIES_MAX uint32 = 256;
+
+/// Maximum number of string properties that can be attached to a device
+const STR_PROPERTIES_MAX uint32 = 256;
+
+/// Maximum length of a string property key and value.
+const STR_LENGTH_MAX uint32 = 255;
+
+/// Maximum number of fragments that a composite device can have
+const FRAGMENTS_MAX uint32 = 16;
+
+/// Maximum number of parts that a composite device fragment can have
+const DEVICE_FRAGMENT_PARTS_MAX uint32 = 16;
+
+/// Maximum number of instructions in the match program of a device fragment part
+const DEVICE_FRAGMENT_PART_INSTRUCTIONS_MAX uint32 = 32;
+
+// Maximum number of instructions in a driver bind program
+const BIND_RULES_INSTRUCTIONS_MAX uint32 = 256;
+
+/// Bit flags for device add configuration
+type AddDeviceConfig = strict bits : uint32 {
+    /// Device can be a fragment in multiple composite devices
+    ALLOW_MULTI_COMPOSITE = 0x00000001;
+    /// Device should not trigger the auto-bind mechanism
+    SKIP_AUTOBIND = 0x00000004;
+};
+
+/// A part of a description of a DeviceFragment
+type DeviceFragmentPart = struct {
+    match_program vector<BindInstruction>:DEVICE_FRAGMENT_PART_INSTRUCTIONS_MAX;
+};
+
+/// A piece of a composite device
+type DeviceFragment = struct {
+    name string:32;
+    parts vector<DeviceFragmentPart>:DEVICE_FRAGMENT_PARTS_MAX;
+};
+
+/// Metadata that can be added to a device
+type DeviceMetadata = struct {
+    key uint32;
+    data vector<uint8>:METADATA_BYTES_MAX;
+};
+
+/// Composite device parts and properties
+type CompositeDeviceDescriptor = struct {
+    props vector<DeviceProperty>:PROPERTIES_MAX;
+    str_props vector<DeviceStrProperty>:STR_PROPERTIES_MAX;
+    fragments vector<DeviceFragment>:FRAGMENTS_MAX;
+    primary_fragment_index uint32;
+    spawn_colocated bool;
+    metadata vector<DeviceMetadata>:<METADATA_MAX, optional>;
+};
+
+/// A enum of CompatibilityTestStatus
+type CompatibilityTestStatus = strict enum : uint32 {
+    OK = 1;
+    ERR_BIND_NO_DDKADD = 2;
+    ERR_BIND_TIMEOUT = 3;
+    ERR_UNBIND_NO_DDKREMOVE = 4;
+    ERR_UNBIND_TIMEOUT = 5;
+    ERR_SUSPEND_DDKREMOVE = 6;
+    ERR_INTERNAL = 7;
+};
+
+/// Protocol for controlling devices in a devhost process from the devcoordinator
+protocol DeviceController {
+    /// Bind the requested driver to this device.  `driver_path` is informational,
+    /// but all calls to BindDriver/CreateDevice should use the same `driver_path`
+    /// each time they use a `driver` VMO with the same contents. Returns a `status`
+    /// and optionally a channel to the driver's test output. `test_output` will be
+    /// not present unless the driver is configured to run its run_unit_tests hook, in
+    /// which case the other end of the channel will have been passed to the driver.
+    BindDriver(resource struct {
+        driver_path string:DEVICE_PATH_MAX;
+        driver zx.handle:VMO;
+    }) -> (resource struct {
+        status zx.status;
+        test_output zx.handle:<CHANNEL, optional>;
+    });
+
+    /// Give this device a channel to its shadow in another process.
+    ConnectProxy(resource struct {
+        shadow zx.handle:CHANNEL;
+    });
+
+    /// Ask devhost to call the device init hook.
+    Init() -> (struct {
+        status zx.status;
+    });
+
+    /// Ask devhost to unbind this device. On success, the remote end of this
+    /// interface channel will close instead of returning a result.
+    Unbind() -> (struct {}) error zx.status;
+
+    /// Ask the devhost to complete the removal of this device, which previously had
+    /// invoked `ScheduleRemove`. This is a special case that can be removed
+    /// once `device_remove` invokes `unbind`.
+    CompleteRemoval() -> (struct {}) error zx.status;
+
+    /// Ask devhost to suspend this device, using the target state indicated by `flags`.
+    Suspend(struct {
+        flags uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Ask devhost to resume this device, using the target system state indicated by
+    /// 'target_system_state'.
+    Resume(struct {
+        target_system_state uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// See fuchsia.io.Directory/Open for information.
+    Open(resource struct {
+        flags uint32;
+        mode uint32;
+        path string:fuchsia.io.MAX_PATH;
+        object server_end:fuchsia.io.Node;
+    });
+};
+
+const FRAGMENT_NAME_MAX uint32 = 32;
+
+type Fragment = struct {
+    name string:FRAGMENT_NAME_MAX;
+    id LocalDeviceId;
+};
+
+type StubDevice = struct {
+    protocol_id uint32;
+};
+
+type ProxyDevice = resource struct {
+    driver_path string:DEVICE_PATH_MAX;
+    driver zx.handle:VMO;
+    parent_proxy zx.handle:CHANNEL;
+    proxy_args string:<DEVICE_ARGS_MAX, optional>;
+};
+
+type NewProxyDevice = resource struct {
+    incoming_dir client_end:fuchsia.io.Directory;
+};
+
+type CompositeDevice = struct {
+    fragments vector<Fragment>:FRAGMENTS_MAX;
+    name string:DEVICE_NAME_MAX;
+};
+
+type DeviceType = resource union {
+    /// The device has no parent to communicate with and no driver to load.
+    1: stub StubDevice;
+
+    /// The device acts as a proxy for it's parent and talks to it via it's
+    /// proxy channel.
+    2: proxy ProxyDevice;
+
+    /// The parent device lives in another driver host, and provides a directory
+    /// of protocols. This will replace ProxyDevice eventually.
+    3: new_proxy NewProxyDevice;
+
+    /// The device is a composite device with several parents, referred to as
+    /// fragments. The device aggregates all parent devices together. The order of the
+    /// fragments will match the original composite creation request.
+    4: composite CompositeDevice;
+};
+
+/// Protocol for controlling a driver host process from the driver manager
+protocol DriverHostController {
+    /// Create a device in the driver host. |type| describes what type of device
+    /// is set up, how it communicates with it's parent (if it has one).
+    ///
+    /// `local_device_id` will be a unique value within the device's devhost
+    CreateDevice(resource struct {
+        coordinator client_end:Coordinator;
+        device_controller server_end:DeviceController;
+        type DeviceType;
+        local_device_id LocalDeviceId;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    // TODO(fxbug.dev/68309): Currently unimplemented.
+    /// Request to restart the driver host. Also restarts all children devices and drivers and
+    /// rebinds them once the Driver Host has restarted.
+    Restart() -> (struct {
+        status zx.status;
+    });
+};
+
+/// Interface for drivers in driver host to coordinate with the driver
+/// manager.
+protocol Coordinator {
+    /// Record the addition of a new device that can be communicated with via `rpc`.
+    /// For binding purposes, it is has properties `props`. `name` and `driver_path`
+    /// are informational and used for debugging.  The device will have `protocol_id`
+    /// as its primary protocol id.  `args` should only be used for shadowed devices,
+    /// and will be forwarded to the shadow device. `client_remote`, if present,
+    /// will be passed to the device as an open connection for the client.
+    /// On success, the returned `local_device_id` is the identifier assigned by devmgr.
+    // TODO(fxb/74654): String properties are unimplemented.
+    AddDevice(resource struct {
+        coordinator server_end:Coordinator;
+        device_controller client_end:DeviceController;
+        property_list DevicePropertyList;
+        name string:DEVICE_NAME_MAX;
+        protocol_id uint32;
+        driver_path string:<DEVICE_PATH_MAX, optional>;
+        args string:<DEVICE_ARGS_MAX, optional>;
+        device_add_config AddDeviceConfig;
+        has_init bool;
+        inspect zx.handle:<VMO, optional>;
+        client_remote zx.handle:<CHANNEL, optional>;
+        outgoing_dir client_end:<fuchsia.io.Directory, optional>;
+    }) -> (struct {
+        local_device_id LocalDeviceId;
+    }) error zx.status;
+
+    /// Requests the devcoordinator schedule the removal of this device,
+    /// and the unbinding of its children.
+    /// If `unbind_self` is true, the unbind hook for this device will also be called.
+    ScheduleRemove(struct {
+        unbind_self bool;
+    });
+
+    /// Requests the devcoordinator schedule the unbinding of this device's children.
+    ScheduleUnbindChildren();
+
+    /// Attempt to bind a driver against this device.  If `driver_path` is null,
+    /// this will initiate the driver matching algorithm.
+    // TODO(teisenbe): Specify the behavior of invoking this multiple times.  I believe
+    // the current behavior is a bug.
+    BindDevice(struct {
+        driver_path string:<DEVICE_PATH_MAX, optional>;
+    }) -> (struct {}) error zx.status;
+
+    /// Returns the topological path of this device.
+    GetTopologicalPath() -> (struct {
+        path string:DEVICE_PATH_MAX;
+    }) error zx.status;
+
+    /// Requests that the firmware at the given path be loaded and returned.
+    LoadFirmware(struct {
+        driver_path string:DEVICE_PATH_MAX;
+        fw_path string:DEVICE_PATH_MAX;
+    }) -> (resource struct {
+        vmo zx.handle:VMO;
+        size uint64;
+    }) error zx.status;
+
+    /// Retrieve the metadata blob associated with this device and the given key.
+    GetMetadata(struct {
+        key uint32;
+    }) -> (struct {
+        data vector<uint8>:METADATA_BYTES_MAX;
+    }) error zx.status;
+
+    /// Retrieve the metadata size associated with this device and the given key.
+    GetMetadataSize(struct {
+        key uint32;
+    }) -> (struct {
+        size uint64;
+    }) error zx.status;
+
+    /// Add metadata blob associated with this device and the given key.
+    // TODO(teisenbe): Document the behavior of calling this twice with the same
+    // key.  I believe the current behavior results in inaccessible data that is
+    // kept around for the lifetime of the device.
+    AddMetadata(struct {
+        key uint32;
+        data vector<uint8>:<METADATA_BYTES_MAX, optional>;
+    }) -> (struct {}) error zx.status;
+
+    /// Adds the given composite device.  This causes the devcoordinator to try to match the
+    /// fragments against the existing device tree, and to monitor all new device additions
+    /// in order to find the fragments as they are created.
+    AddCompositeDevice(struct {
+        name string:DEVICE_NAME_MAX;
+        comp_desc CompositeDeviceDescriptor;
+    }) -> (struct {}) error zx.status;
+
+    /// Run Compatibility tests for the driver that binds to this device.
+    /// The hook_wait_time is the time that the driver expects to take for
+    /// each device hook in nanoseconds.
+    /// Returns whether the compatibility tests started, and does not convey
+    /// anything about the status of the test.
+    RunCompatibilityTests(struct {
+        hook_wait_time int64;
+    }) -> (struct {
+        status CompatibilityTestStatus;
+    }) error zx.status;
+};

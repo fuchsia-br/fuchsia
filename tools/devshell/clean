@@ -1,0 +1,19 @@
+#!/bin/bash
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Build
+### clean the current Fuchsia build artifacts
+
+## Delete the contents of the output directory except for args.gn and
+## create a Ninja build environment sufficient to regenerate the build.
+##
+## This is equivalent to running `gn clean` on FUCHSIA_BUILD_DIR.
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+fx-config-read
+
+set -ex
+
+fx-gn clean "$FUCHSIA_BUILD_DIR"

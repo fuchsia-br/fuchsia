@@ -1,0 +1,268 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/verify_pragma_once.gni")
+import("//build/sdk/sdk_atom.gni")
+import("//sdk/cts/plasa/config.gni")
+import("//sdk/cts/plasa/plasa_artifacts.gni")
+
+# A source set that can be exported to an SDK.
+#
+# An equivalent to the built-in source_set which adds an SDK atom declaration to
+# allow the set to be included in an SDK as sources.
+#
+# Parameters
+#
+#   category (required)
+#     Publication level of the library in SDKs.
+#     See //build/sdk/sdk_atom.gni.
+#
+#   api (optional)
+#     Path to the file representing the API of this library.
+#     This file is used to ensure modifications to the library's API are
+#     explicitly acknowledged. It is mandatory for publication categories of
+#     "partner" or "public".
+#     Defaults to "<SDK name>.api".
+#
+#   sdk_name (required)
+#     Name of the library in the SDK.
+#
+#   source_dir (optional)
+#     If set, path to the base directory of the sources.
+#     This is useful if the sources are generated and therefore not hosted
+#     directly under the directory where the GN rules are declared.
+#
+#   include_base (optional)
+#     Path to the root directory for includes.
+#     Defaults to "include".
+#
+#   build_as_static (optional)
+#     Whether the sources should be exposed as a static library.
+#     This is mostly used in the transition of Zircon libraries to the GN build.
+#     Defaults to false.
+#
+#   non_sdk_deps (optional)
+#     List of dependencies that should not be reflected in SDKs.
+#     Mostly useful for code generation.
+#
+#   private_headers (optional)
+#     List of header files that are not intended for direct inclusion by users.
+#     Used to help generate stub files, which do not know apriori that a header
+#     is not to be used.  Define these in addition to deps (i.e. repeat them
+#     if they are already mentioned in 'sources').
+template("sdk_source_set") {
+  assert(defined(invoker.category), "Must define an SDK category")
+  assert(defined(invoker.sdk_name), "Must define an SDK name")
+
+  # Not all code paths use this option.
+  not_needed(invoker, [ "private_headers" ])
+
+  if (invoker.category == "partner" || invoker.category == "public") {
+    api_reference = "${invoker.sdk_name}.api"
+    if (defined(invoker.api)) {
+      api_reference = invoker.api
+    }
+  }
+
+  main_target_name = target_name
+  sdk_target_name = "${target_name}_sdk"
+
+  target_type = "source_set"
+  if (defined(invoker.build_as_static) && invoker.build_as_static) {
+    target_type = "static_library"
+  }
+
+  target(target_type, main_target_name) {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "api",
+                             "category",
+                             "include_base",
+                             "non_sdk_deps",
+                             "sdk_name",
+                             "source_dir",
+                           ])
+
+    if (defined(visibility)) {
+      visibility += [ ":$sdk_target_name" ]
+    }
+  }
+
+  # Identify dependencies and their metadata files.
+  sdk_metas = []
+  sdk_deps = []
+  all_deps = []
+  dep_names = []
+  if (defined(invoker.deps)) {
+    all_deps += invoker.deps
+  }
+  if (defined(invoker.public_deps)) {
+    all_deps += invoker.public_deps
+  }
+  foreach(dep, all_deps) {
+    full_label = get_label_info(dep, "label_no_toolchain")
+    sdk_dep = "${full_label}_sdk"
+    sdk_deps += [ sdk_dep ]
+
+    gen_dir = get_label_info(sdk_dep, "target_gen_dir")
+    name = get_label_info(sdk_dep, "name")
+    sdk_metas += [ "$gen_dir/$name.meta.json" ]
+    dep_names += [ get_label_info(dep, "name") ]
+  }
+
+  # Sort headers vs. sources.
+  all_headers = []
+  all_sources = []
+  source_headers_are_public = true
+  if (defined(invoker.public)) {
+    source_headers_are_public = false
+    all_headers += invoker.public
+  }
+  if (defined(invoker.sources)) {
+    foreach(source_file, invoker.sources) {
+      extension = get_path_info(source_file, "extension")
+      if (extension == "h" && source_headers_are_public) {
+        all_headers += [ source_file ]
+      } else {
+        all_sources += [ source_file ]
+      }
+    }
+    not_needed([ "source_headers_are_public" ])
+  } else {
+    not_needed([ "source_headers_are_public" ])
+  }
+
+  # Determine destinations in the SDK for headers and sources.
+  file_base = "pkg/${invoker.sdk_name}"
+  sdk_metadata_headers = []
+  sdk_metadata_sources = []
+  sdk_header_files = []
+  sdk_files = []
+  foreach(header, all_headers) {
+    include_base = "include"
+    if (defined(invoker.include_base)) {
+      include_base = invoker.include_base
+    }
+    relative_destination = rebase_path(header, include_base)
+    destination = "$file_base/include/$relative_destination"
+    sdk_metadata_headers += [ destination ]
+    sdk_header_files += [
+      {
+        source = header
+        dest = destination
+      },
+    ]
+  }
+  sdk_files += sdk_header_files
+  foreach(source, all_sources) {
+    sdk_metadata_sources += [ "$file_base/$source" ]
+    sdk_files += [
+      {
+        source = source
+        dest = "$file_base/$source"
+      },
+    ]
+  }
+
+  verify_pragma_target_name = "${target_name}_sdk_pragma"
+
+  verify_pragma_once(verify_pragma_target_name) {
+    headers = all_headers
+  }
+
+  if (generate_plasa_artifacts) {
+    _plasa_artifacts_target_name = "${main_target_name}_plasa"
+    plasa_artifacts(_plasa_artifacts_target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "source_dir",
+                               "testonly",
+                               "all_headers",
+                               "all_deps",
+                               "private_headers",
+                             ])
+      file_base = file_base
+    }
+  }
+
+  metadata_target_name = "${target_name}_sdk_metadata"
+  metadata_file = "$target_gen_dir/$target_name.sdk_meta.json"
+
+  action(metadata_target_name) {
+    forward_variables_from(invoker, [ "testonly" ])
+    script = "//build/cpp/gen_sdk_sources_meta_file.py"
+
+    inputs = sdk_metas
+
+    outputs = [ metadata_file ]
+
+    args = [
+      "--out",
+      rebase_path(metadata_file, root_build_dir),
+      "--name",
+      invoker.sdk_name,
+      "--root",
+      file_base,
+      "--include-dir",
+      "$file_base/include",
+    ]
+    args += [ "--deps" ] + rebase_path(sdk_metas, root_build_dir)
+    args += [ "--dep_names" ] + dep_names
+    args += [ "--sources" ] + sdk_metadata_sources
+    args += [ "--headers" ] + sdk_metadata_headers
+    deps = sdk_deps
+  }
+
+  sdk_atom(sdk_target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "source_dir",
+                             "testonly",
+                           ])
+
+    id = "sdk://pkg/${invoker.sdk_name}"
+    category = invoker.category
+
+    if (defined(api_reference)) {
+      api = api_reference
+
+      api_contents = sdk_header_files
+    }
+
+    meta = {
+      source = metadata_file
+      dest = "$file_base/meta.json"
+      schema = "cc_source_library"
+    }
+
+    files = sdk_files
+
+    deps = sdk_deps
+
+    non_sdk_deps = [
+      ":$main_target_name",
+      ":$metadata_target_name",
+      ":$verify_pragma_target_name",
+    ]
+    if (generate_plasa_artifacts) {
+      non_sdk_deps += [ ":$_plasa_artifacts_target_name" ]
+    }
+
+    # Explicitly add non-public dependencies, in case some of the source files
+    # are generated.
+    if (defined(invoker.non_sdk_deps)) {
+      non_sdk_deps += invoker.non_sdk_deps
+    }
+
+    metadata = {
+      # Used by the //sdk:sdk_source_set_list build API module.
+      sdk_source_set_sources = rebase_path(all_sources + all_headers, "//")
+    }
+  }
+}
+
+set_defaults("sdk_source_set") {
+  configs = default_common_binary_configs
+}

@@ -1,0 +1,27 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("version") {
+  testonly = true
+  sources = [ "version-test.cc" ]
+  deps = [
+    ":cxx14",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("cxx14") {
+  visibility = [ ":*" ]
+
+  testonly = true
+  sources = [
+    "cxx14.cc",
+    "cxx14.h",
+  ]
+
+  # Remove the default -std=c++17 and compile with c++14.
+  configs -= [ "//build/config:language" ]
+  cflags_cc = [ "-std=c++14" ]
+}

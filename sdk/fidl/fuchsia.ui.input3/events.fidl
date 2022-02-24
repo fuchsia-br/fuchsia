@@ -1,0 +1,152 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.ui.input3;
+
+using fuchsia.input;
+using zx;
+
+/// Type of the keyboard key input event.
+type KeyEventType = strict enum {
+    /// Key is pressed down.
+    PRESSED = 1;
+
+    /// Key is released.
+    RELEASED = 2;
+
+    /// Key was pressed while the client wasn't able to receive it, e.g new device connected
+    /// with a key held down or before system was started.
+    /// Client should not handle this as a key press.
+    SYNC = 3;
+
+    /// Key was released while the client wasn't able to receive it, e.g device was disconnected
+    /// or focus lost.
+    /// Client should not handle this as a key release.
+    CANCEL = 4;
+};
+
+/// NonPrintableKey represents the meaning of a non-symbolic key on a keyboard.
+///
+/// The definition of each key is derived from W3C named values of a key attribute:
+/// https://www.w3.org/TR/uievents-key/#named-key-attribute-values
+///
+/// The space of the arrow keys is subdivided roughly to correspond to the
+/// subsections of section 3 of that document.  The choice for the section
+/// values is arbitrary, so long as blocks of values are allocated at once, and
+/// the keys with similar purpose are kept together.
+type NonPrintableKey = flexible enum : uint32 {
+    // Whitespace keys
+    // Reserved range: 0x00000031 - 0x00000040
+
+    /// The Enter or ↵ key, to activate current selection or accept current input.
+    /// This key value is also used for the Return (Macintosh numpad) key.
+    ENTER = 0x31;
+
+    /// The Horizontal Tabulation Tab key.
+    TAB = 0x32;
+
+    // Editing keys
+    // Reserved range: 0x00000041 - 0x00000060
+
+    /// Delete the character immediately preceding the cursor (i.e. the
+    /// character to the left for LTR languages).
+    BACKSPACE = 0x41;
+
+    // Navigation keys
+    // Range reserved for navigation keys: 0x61-0x81.
+    // Arrow keys are named for consistency with keys in `fuchsia.ui.input`,
+    // althought W3C name them ArrowUp for example, and not Up.
+
+    /// The down arrow navigation key.
+    DOWN = 0x61;
+
+    /// The left arrow navigation key.
+    LEFT = 0x62;
+
+    /// The right arrow navigation key.
+    RIGHT = 0x63;
+
+    /// The up arrow navigation key.
+    UP = 0x64;
+
+    /// The "End" key.
+    END = 0x65;
+
+    /// The "Home" key.
+    HOME = 0x66;
+
+    /// The "Page Down" key.
+    PAGE_DOWN = 0x67;
+
+    /// The "Page Up" key.
+    PAGE_UP = 0x68;
+};
+
+/// The meaning of the key press. This is typically the Unicode codepoint inserted
+/// by this event, or an enum representing a key that corresponds to whitespace or
+/// is otherwise unprintable.
+type KeyMeaning = strict union {
+    /// The Unicode codepoint representing character typed, if any.
+    /// * In Dart and Go, this corresponds to a `rune`.
+    /// * In Rust, this corresponds to a `char`.
+    /// * In C and C++, this corresponds to ICU's UChar32.
+    1: codepoint uint32;
+
+    /// The meaning of the key for key events with no corresponding symbol.
+    2: non_printable_key NonPrintableKey;
+};
+
+/// A Keyboard event generated to reflect key input. `timestamp` and `type` are required.
+/// At least one of `key` and `key_meaning`  must be set for a valid event.
+type KeyEvent = table {
+    /// Time in nanoseconds when the event was recorded, in the `CLOCK_MONOTONIC` time base.
+    /// The timestamp is **required** on every key event, and users can expect that it
+    /// will always be present.
+    1: timestamp zx.time;
+
+    /// Type of event.
+    2: type KeyEventType;
+
+    /// Identifies the key ignoring modifiers, layout, prior key events, etc. This is called
+    /// the "physical key" on some platforms. In cases where the key event did not originate
+    /// from a physical keyboard (e.g. onscreen keyboard) this field may be empty.
+    3: key fuchsia.input.Key;
+
+    /// Modifiers in effect at the time of the event.
+    /// Example:
+    ///  CapsLock is off, user presses CapsLock, then A, then releases both.
+    ///  Event sequence is as follows:
+    ///  1. type: Pressed, key: CapsLock, modifiers: None
+    ///  2. type: Pressed, key: A, modifiers: CapsLock
+    ///  3. type: Released, key: CapsLock, modifiers: CapsLock
+    ///  4. type: Released, key: A, modifiers: CapsLock
+    ///
+    ///  CapsLock is on, user presses CapsLock, then A, then releases both.
+    ///  1. type: Pressed, key: CapsLock, modifiers: CapsLock
+    ///  2. type: Pressed, key: A, modifiers: None
+    ///  3. type: Released, key: CapsLock, modifiers: None
+    ///  4. type: Released, key: A, modifiers: None
+    4: modifiers Modifiers;
+
+    /// Meaning of the key.
+    5: key_meaning KeyMeaning;
+
+    /// The sequence number of this `KeyEvent` in the sequence of autorepeated
+    /// keys.
+    ///
+    /// Unset if this event has been generated in the immediate response to an
+    /// input from the keyboard driver.  If the `KeyEvent` has been generated
+    /// through the autorepeat mechanism, this property is set and is
+    /// incremented by one for each successive generated key event.
+    6: repeat_sequence uint32;
+
+    /// The lock state in effect at the time of the event.
+    ///
+    /// For example, if CapsLock effect is turned on (pressing 'a' results in
+    /// the effect 'A'), the corresponding bit in the lock state is set.
+    ///
+    /// NOTE: `LockState` is different from whether the CapsLock modifier key
+    /// is actuated or not. `LockState.CAPS_LOCK` can be active even if the
+    /// Caps Lock key is not currently actuated.
+    7: lock_state LockState;
+};

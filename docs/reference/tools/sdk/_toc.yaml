@@ -1,0 +1,54 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+toc:
+- title: "ffx command"
+  path: /reference/tools/sdk/ffx.md
+- title: "Coding commands"
+  section:
+  - title: "cmc"
+    path: /reference/tools/sdk/cmc.md
+  - title: "fidl-format"
+    path: /reference/tools/sdk/fidl-format.md
+  - title: "fidlc"
+    path: /reference/tools/sdk/fidlc.md
+  - title: "fidlcat"
+    path: /reference/tools/sdk/fidlcat.md
+  - title: "fidlgen"
+    path: /reference/tools/sdk/fidlgen.md
+- title: "Debugging commands"
+  section:
+  - title: "symbol-index"
+    path: /reference/tools/sdk/symbol-index.md
+  - title: "symbolize"
+    path: /reference/tools/sdk/symbolize.md
+  - title: "symbolizer"
+    path: /reference/tools/sdk/symbolizer.md
+  - title: "triage"
+    path: /reference/tools/sdk/triage.md
+  - title: "zxdb"
+    path: /reference/tools/sdk/zxdb.md
+- title: "Device management commands"
+  section:
+  - title: "bootserver"
+    path: /reference/tools/sdk/bootserver.md
+  - title: "fconfig"
+    path: /reference/tools/sdk/fconfig.md
+  - title: "fserve"
+    path: /reference/tools/sdk/fserve.md
+  - title: "fssh"
+    path: /reference/tools/sdk/fssh.md
+  - title: "fvdl"
+    path: /reference/tools/sdk/fvdl.md
+  - title: "minfs"
+    path: /reference/tools/sdk/minfs.md
+  - title: "zbi"
+    path: /reference/tools/sdk/zbi.md
+- title: "Packaging commands"
+  section:
+  - title: "blobfs-compression"
+    path: /reference/tools/sdk/blobfs-compression.md
+  - title: "fpublish"
+    path: /reference/tools/sdk/fpublish.md
+  - title: "pm"
+    path: /reference/tools/sdk/pm.md

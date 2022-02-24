@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_macro.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_macro("macros") {
+  name = "vfs_macros"
+  version = "0.1.0"
+  edition = "2018"
+
+  deps = [
+    "//third_party/rust_crates:proc-macro2",
+    "//third_party/rust_crates:quote",
+    "//third_party/rust_crates:syn",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+if (is_host) {
+  rustc_test("vfs_macro_test") {
+    name = "vfs_macro_test"
+    edition = "2018"
+    deps = [
+      "//third_party/rust_crates:indoc",
+      "//third_party/rust_crates:proc-macro2",
+      "//third_party/rust_crates:quote",
+      "//third_party/rust_crates:syn",
+    ]
+
+    sources = [
+      "src/lib.rs",
+      "src/tests.rs",
+    ]
+
+    configs += [ "//build/config/rust:proc_macro_test" ]
+  }
+} else {
+  group("tests") {
+    testonly = true
+    public_deps = [ ":vfs_macro_test($host_toolchain)" ]
+  }
+}

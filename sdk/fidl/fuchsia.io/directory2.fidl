@@ -1,0 +1,230 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.io;
+
+using zx;
+
+protocol DirectoryIterator {
+    /// Reads a collection of variably sized directory entries into a buffer.
+    ///
+    /// The number of entries in a directory may be very large: akin to
+    /// calling read multiple times on a file, directories have a seek
+    /// offset which is updated on subsequent calls to `Enumerate`.
+    /// The caller should always use a receiving buffer size as large as the
+    /// maximum channel limit.
+    ///
+    /// When the end of iteration is reached, the returned `entries` vector
+    /// will be empty.
+    ///
+    /// This method does not require any rights, as the rights are checked
+    /// in the [`Directory.Enumerate`] call.
+    @selector("fuchsia.io/DirectoryIterator.GetNext")
+    GetNext() -> (struct {
+        /// Information about an immediate child node of a directory.
+        ///
+        /// If a particular attribute is not applicable or not supported,
+        /// implementations should leave the corresponding field absent.
+        entries vector<@generated_name("DirectoryEntry") table {
+            /// Name of the node. This field must be present.
+            1: name Name;
+
+            /// Describes the kinds of representations supported by the node.
+            2: protocols NodeProtocols;
+
+            /// Describes the kinds of operations supported by the node.
+            3: abilities Abilities;
+
+            /// An ID for the node. See [`Id`].
+            /// This `id` should be unique among all entries of a directory.
+            4: id Id;
+        }>:8192;
+    }) error zx.status;
+};
+
+/// A [`Node2`] that is capable of containing other nodes.
+protocol Directory2 {
+    compose Node2;
+    compose AdvisoryLocking;
+
+    /// Opens or creates a new node relative to this directory node.
+    ///
+    /// + `path` identifies the node to open.
+    ///   If `path` contains multiple segments, then the directory is traversed,
+    ///   one segment at a time, relative to the directory represented by this
+    ///   connection.
+    ///   See [`Path`] for what constitutes a valid path.
+    ///   To open another connection to the current directory, use
+    ///   [`Node2.Reopen`] instead.
+    /// + `mode` controls whether to open existing/create new etc.
+    /// + `options` additional options applicable to both `Open` and `Reopen`,
+    ///   including negotiating protocol and restricting rights.
+    ///   See [`ConnectionOptions`].
+    /// + `object_request` is the server end of a channel created for the new
+    ///   connection. The caller may proceed to send messages on the
+    ///   corresponding client end right away.
+    ///
+    /// This method requires the following rights on the current connection:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.TRAVERSE`]
+    ///
+    /// Errors are presented as an epitaph on the `object_request` channel.
+    ///
+    /// * error `ZX_ERR_ACCESS_DENIED` if the requested rights exceeds
+    ///   what is allowed.
+    /// * error `ZX_ERR_BAD_PATH` if `path` is invalid.
+    @transitional
+    @selector("fuchsia.io/Directory.Open")
+    Open2(resource struct {
+        path Path;
+        mode OpenMode;
+        options ConnectionOptions;
+        object_request zx.handle:CHANNEL;
+    });
+
+    /// Adds a new inotify filter for an object relative to this directory object.
+    ///
+    /// + 'filter` is a mask of different inotify events that need to be watched by the server
+    ///   for a specific file/directory.
+    ///
+    /// + `path` may contain multiple segments, separated by "/" characters,
+    ///   and should never be empty; i.e., "" is an invalid path. Paths should not contain
+    ///   a leading "/".
+    ///
+    /// +`watch_descriptor` is client assigned value to identify a filter.
+    ///   Server shouldn't trust the client-assigned watch_descriptor. They should just send it
+    ///   back to the client in the socket.
+    ///   This value is not used by server, but it is returned back as part of InotifyEvent,
+    ///   to help the client correlate filter with events on this filter.
+    ///
+    /// + `socket` is shared between different filter objects i.e every new filter will
+    ///   have a different server end of the socket and there will be a single client end per
+    ///   inotify instance on inotify init.
+    ///
+    @selector("fuchsia.io/Directory.AddInotifyFilter")
+    AddInotifyFilter(resource struct {
+        path Path;
+        filter InotifyWatchMask;
+        watch_descriptor uint32;
+        socket zx.handle:SOCKET;
+    }) -> ();
+
+    /// Removes a child node from the this directory's list of entries.
+    ///
+    /// Note: this does not guarantee that the underlying object is destroyed.
+    /// Although the link will be removed from the containing directory,
+    /// objects with multiple references (such as files which are still open)
+    /// will not actually be destroyed until all references are closed.
+    ///
+    /// * error `ZX_ERR_ACCESS_DENIED` if the connection does not have
+    ///   [`Rights.WRITE_BYTES`].
+    /// * error `ZX_ERR_NOT_SUPPORTED` if the underlying filesystem does not
+    ///   support writing.
+    /// * error `ZX_ERR_BAD_PATH` if `name` is invalid.
+    /// * error `ZX_ERR_NOT_EMPTY` if `name` refers to a non-empty directory.
+    /// * error `ZX_ERR_UNAVAILABLE` if `name` refers to a mount point,
+    ///   containing a remote channel.
+    /// * error `ZX_ERR_NOT_DIR` if the options requested a directory but something other than a
+    ///     directory was found.
+    ///
+    /// Other errors may be returned for filesystem-specific reasons.
+    ///
+    /// This method requires the following rights:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.MODIFY_DIRECTORY`]
+    @selector("fuchsia.io/Directory.Unlink")
+    Unlink(struct {
+        name Name;
+        options UnlinkOptions;
+    }) -> (struct {}) error zx.status;
+
+    /// Initiates a directory listing operation over the input channel,
+    /// starting at seek offset 0.
+    ///
+    /// This method requires the [`Rights.ENUMERATE`] right. If this right is
+    /// absent, `iterator` will be closed with a `ZX_ERR_ACCESS_DENIED` epitaph.
+    @transitional
+    @selector("fuchsia.io/Directory.Enumerate")
+    Enumerate(resource struct {
+        options @generated_name("DirectoryEnumerateOptions") table {};
+        iterator server_end:DirectoryIterator;
+    });
+
+    /// Renames a node named `src` to the name `dst`, in a directory represented
+    /// by `dst_parent_token`.
+    ///
+    /// `src` and `dst` must be valid node names.
+    /// See [`Name`] for what constitutes a valid name.
+    ///
+    /// This method requires the following rights on both the current
+    /// connection, and the connection identified by `dst_parent_token`:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.MODIFY_DIRECTORY`]
+    ///
+    /// * error `ZX_ERR_INVALID_ARGS` if `src` or `dst` is invalid.
+    @selector("fuchsia.io/Directory.Rename")
+    Rename(resource struct {
+        src Name;
+        dst_parent_token Token;
+        dst Name;
+    }) -> (struct {}) error zx.status;
+
+    // TODO(https://fxbug.dev/77623): uncomment and implement.
+    // /// Creates a link to a node named `src` by the name `dst`,
+    // /// in a directory represented by `dst_parent_token`.
+    // ///
+    // /// Directories cannot be linked, to prevent reference cycles.
+    // ///
+    // /// `src` and `dst` must be valid node names.
+    // /// See [`Name`] for what constitutes a valid name.
+    // ///
+    // /// This method requires the following rights on both the current
+    // /// connection, and the connection identified by `dst_parent_token`:
+    // ///
+    // /// * [`Rights.ENUMERATE`]
+    // /// * [`Rights.MODIFY_DIRECTORY`]
+    // ///
+    // /// * error `ZX_ERR_INVALID_ARGS` if `src` or `dst` is invalid.
+    // /// * error `ZX_ERR_INVALID_ARGS` if `src` is a directory.
+    // @selector("fuchsia.io/Directory.Link")
+    // Link2(resource struct {
+    //     src Name;
+    //     dst_parent_token Token;
+    //     dst Name;
+    // }) -> (struct {}) error zx.status;
+};
+
+/// Options related to node creation during [`Directory.Open`].
+type OpenMode = strict enum : uint32 {
+    /// Only succeed if the object exists.
+    OPEN_EXISTING = 1;
+
+    /// Create the object if it does not exist, otherwise open existing.
+    /// The check and the creation are performed in one atomic step.
+    MAYBE_CREATE = 2;
+
+    /// Assert that the object does not exist, then create it.
+    /// The assertion and creation are performed in one atomic step.
+    ALWAYS_CREATE = 3;
+
+    /// If the object is a mount point, open the local directory
+    /// instead of forwarding the request. The object must be a directory.
+    ///
+    /// This option implies the behavior of `OPEN_EXISTING`.
+    @deprecated("Mount points will be replaced by components.")
+    OPEN_MOUNT_POINT = 0x10000000;
+};
+
+/// Options for [`Directory.Unlink`].
+type UnlinkOptions = table {
+    1: flags UnlinkFlags;
+};
+
+/// Flags for [`Directory.Unlink`].
+type UnlinkFlags = strict bits : uint64 {
+    /// If set, the unlink will fail (with ZX_ERR_NOT_DIR) if the object is not a directory.
+    MUST_BE_DIRECTORY = 0x01;
+};

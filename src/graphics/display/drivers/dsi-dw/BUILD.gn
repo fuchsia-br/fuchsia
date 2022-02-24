@@ -1,0 +1,92 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("dsi_dw_bind") {
+  rules = "dsi_dw.bind"
+  header_output = "dsi_dw_bind.h"
+  bind_output = "dsi-dw.bindbc"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.platform" ]
+}
+
+source_set("common_srcs") {
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "dsi-dw.cc" ]
+  public_deps = [
+    ":dsi_dw_bind",
+    "//sdk/banjo/fuchsia.hardware.dsi:fuchsia.hardware.dsi_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.dsiimpl:fuchsia.hardware.dsiimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.dsi:fuchsia.hardware.dsi_llcpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_c",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/mmio",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/hwreg",
+    "//zircon/system/ulib/mipi-dsi",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver("dsi-dw-driver") {
+  output_name = "dsi-dw"
+  deps = [ ":common_srcs" ]
+}
+
+fuchsia_driver_component("dsi-dw") {
+  component_name = "dsi-dw"
+  deps = [ ":dsi-dw-driver" ]
+  info = "dsi-dw-info.json"
+  colocate = true
+}
+
+test("dsi-dw-test") {
+  output_name = "dsi-dw-test"
+  sources = [ "dsi-dw-test.cc" ]
+  deps = [
+    ":common_srcs",
+    "//src/devices/testing/mock-ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("dsi-dw-test-package") {
+  package_name = "dsi-dw-test"
+  deps = [ ":dsi-dw-test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":dsi-dw-test-package",
+    ":dsi_dw_bind_test",
+  ]
+}

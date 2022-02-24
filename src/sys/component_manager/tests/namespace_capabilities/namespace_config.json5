@@ -1,0 +1,37 @@
+{
+    maintain_utc_clock: false,
+    use_builtin_process_launcher: false,
+    builtin_pkg_resolver: "appmgr_bridge",
+    out_dir_contents: "hub",
+    namespace_capabilities: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+
+                // Injected for test
+                "fidl.examples.routing.echo.Echo",
+            ],
+        },
+        {
+            directory: "test-pkg",
+            path: "/pkg",
+            rights: [
+                "r*",
+            ],
+        },
+    ],
+    builtin_capabilities: [
+        {
+            protocol: [
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.sys2.EventSource",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.sys2.WorkSchedulerControl",
+            ],
+        },
+        {
+            runner: "elf",
+        },
+    ],
+}

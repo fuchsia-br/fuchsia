@@ -1,0 +1,20 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("fuzzing") {
+  testonly = true
+  deps = [
+    ":tests",
+    "go",
+
+    # TODO(fxbug.dev/72439): syzkaller needs to update ddk include paths.
+    # "syzkaller",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  # TODO(fxbug.dev/72439): syzkaller needs to update ddk include paths.
+  # deps = [ "syzkaller:tests" ]
+}

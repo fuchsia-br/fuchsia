@@ -1,0 +1,420 @@
+# Copyright (c) 2018 The Fuchsia Authors.
+#
+# Permission to use, copy, modify, and/or distribute this software for any purpose with or without
+# fee is hereby granted, provided that the above copyright notice and this permission notice appear
+# in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+# SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+# AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+# NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+# OF THIS SOFTWARE.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("config.gni")
+
+# By default, targets are only visible here and to subdirectories.
+visibility = [ "./*" ]
+
+# The brcmfmac driver can be built with support for different system buses (PCIE, SDIO and
+# simulated-firmware), and different configurations will require different support.  To facilitate
+# consolidating all the potentially messy conditional compilation in one place, "binding.cc" is
+# conditionally compiled based on the values of the preprocessor #defines:
+#
+# * CONFIG_BRCMFMAC_PCIE
+# * CONFIG_BRCMFMAC_SDIO
+# * CONFIG_BRCMFMAC_SIM
+# * CONFIG_BRCMFMAC_DRIVER_TEST
+#
+# These #defines are applied as public_configs entries on the targets:
+# respectively:
+#
+# * pcie/pcie
+# * sdio/sdio
+# * sim/sim
+#
+# Thus a target that depends on one of the above targets, can include "binding.cc" in its sources
+# and will then conditionally compile it with the set of preprocessor #defines set by the targets
+# it depends on.
+#
+# See the targets ":fuchsia_driver" and ":test_fuchsia_driver" to see how this is done.
+
+# Sources set for driver logging.
+source_set("debug") {
+  public = [ "debug.h" ]
+  public_deps = [
+    "//src/connectivity/wlan/drivers/lib/log/cpp",
+    "//zircon/system/public",
+  ]
+}
+
+# Sources for utility classes.  Classes here should be small and self-contained, having no
+# dependencies.
+source_set("util") {
+  public = [
+    "intrusive_list.h",
+    "task_queue.h",
+  ]
+}
+
+# Sources for Linux porting compatibility.
+source_set("linuxisms") {
+  sources = [
+    "linuxisms.cc",
+    "netbuf.cc",
+    "workqueue.cc",
+  ]
+  public = [
+    "linuxisms.h",
+    "netbuf.h",
+    "workqueue.h",
+  ]
+  deps = [
+    ":debug",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//zircon/system/public",
+  ]
+}
+
+# Sources for DMA buffer handling.
+source_set("dmabuf") {
+  sources = [
+    "dma_buffer.cc",
+    "dma_pool.cc",
+    "dma_ring.cc",
+  ]
+  public = [
+    "dma_buffer.h",
+    "dma_pool.h",
+    "dma_ring.h",
+  ]
+  deps = [ ":debug" ]
+  public_deps = [
+    "//zircon/system/public",
+    "//zircon/system/ulib/zx",
+  ]
+  friend = [ "test/*" ]
+}
+
+# Sources for the BCDC firmware protocol.
+source_set("bcdc") {
+  sources = [ "bcdc.cc" ]
+  public = [ "bcdc.h" ]
+  deps = [
+    ":core",
+    ":debug",
+    "//zircon/system/public",
+  ]
+  public_deps = [
+    ":core",
+    ":linuxisms",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+# Sources for timer implementation.
+source_set("timer") {
+  sources = [ "timer.cc" ]
+  public = [ "timer.h" ]
+  public_deps = [
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+# Sources for the driver core logic.
+source_set("core") {
+  sources = [
+    "bits.cc",
+    "bits.h",
+    "btcoex.cc",
+    "btcoex.h",
+    "cfg80211.cc",
+    "chip.cc",
+    "common.cc",
+    "core.cc",
+    "d11.cc",
+    "device.cc",
+    "feature.cc",
+    "fweh.cc",
+    "fwil.cc",
+    "utils.cc",
+    "wlan_interface.cc",
+    "wlan_interface.h",
+  ]
+  public = [
+    "bits.h",
+    "brcm_hw_ids.h",
+    "brcmu_d11.h",
+    "brcmu_utils.h",
+    "brcmu_wifi.h",
+    "bus.h",
+    "calls.h",
+    "cfg80211.h",
+    "chip.h",
+    "chipcommon.h",
+    "common.h",
+    "core.h",
+    "defs.h",
+    "device.h",
+    "feature.h",
+    "fweh.h",
+    "fwil.h",
+    "fwil_types.h",
+    "proto.h",
+    "regs.h",
+    "soc.h",
+    "wlan_interface.h",
+  ]
+  deps = [
+    ":timer",
+    "//sdk/banjo/ddk.hw.wlan.ieee80211:ddk.hw.wlan.ieee80211_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_banjo_cpp",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//src/connectivity/wlan/drivers/third_party/broadcom/brcmfmac/inspect",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//src/lib/ddk",
+    "//third_party/bcmdhd/crossdriver:bcmdhd_crossdriver",
+    "//zircon/system/ulib/async",
+  ]
+  public_deps = [
+    ":debug",
+    ":linuxisms",
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlan.fullmac:fuchsia.hardware.wlan.fullmac_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.wlanphyimpl:fuchsia.hardware.wlanphyimpl_banjo_cpp",
+    "//sdk/fidl/fuchsia.factory.wlan:fuchsia.factory.wlan_llcpp",
+    "//sdk/fidl/fuchsia.wlan.common",
+    "//src/connectivity/wlan/drivers/third_party/broadcom/brcmfmac/recovery",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//src/devices/lib/broadcom",
+    "//src/lib/ddktl",
+    "//third_party/bcmdhd/crossdriver:bcmdhd_crossdriver",
+    "//zircon/system/public",
+    "//zircon/system/ulib/sync",
+  ]
+  friend = [ "test/*" ]
+
+  # Suppress warnings the brcmfmac code doesn't comply with.
+  configs += [ "//build/config:Wno-unused-but-set-variable" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+# Source set including the driver sources, and the bus definitions conditionally compiled in on each
+# platform.
+source_set("driver_sources") {
+  deps = [
+    ":core",
+    ":debug",
+    "//src/devices/lib/driver",
+  ]
+
+  # The bus target dependencies below are public_deps so that their configs propagate to users of
+  # this target.
+  public_deps = []
+
+  # Assume for now that arm64 boards use the SDIO interface.
+  if (target_cpu == "arm64") {
+    public_deps += [
+      ":brcmfmac_sdio_bind",
+      "sdio",
+    ]
+  }
+
+  # Assume for now that x64 boards use the PCIE interface.
+  if (target_cpu == "x64") {
+    public_deps += [
+      ":brcmfmac_pcie_bind",
+      "pcie",
+    ]
+  }
+}
+
+bind_library("fuchsia.brcmfmac") {
+  source = "fuchsia.brcmfmac.bind"
+}
+
+driver_bind_rules("brcmfmac_pcie_bind") {
+  rules = "brcmfmac_pcie.bind"
+  header_output = "brcmfmac_pcie_bind.h"
+  bind_output = "brcmfmac_pcie.bindbc"
+  deps = [
+    ":fuchsia.brcmfmac",
+    "//src/devices/bind/fuchsia.pci",
+    "//src/devices/bind/fuchsia.pci.network",
+  ]
+}
+
+driver_bind_rules("brcmfmac_sdio_bind") {
+  rules = "brcmfmac_sdio.bind"
+  header_output = "brcmfmac_sdio_bind.h"
+  bind_output = "brcmfmac_sdio.bindbc"
+  deps = [ "//src/devices/bind/fuchsia.broadcom.platform" ]
+}
+
+# Driver module for the brcmfmac driver.
+fuchsia_driver("fuchsia_driver-driver") {
+  output_name = "brcmfmac"
+  sources = [ "binding.cc" ]
+  deps = [
+    ":brcmfmac_pcie_bind_header",
+    ":brcmfmac_sdio_bind_header",
+    ":core",
+    ":driver_sources",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("fuchsia_driver") {
+  component_name = "brcmfmac"
+  deps = [ ":fuchsia_driver-driver" ]
+  visibility += [
+    "//bundles/drivers:pci",
+    "//src/connectivity/wlan:drivers",
+  ]
+  info = "fuchsia_driver-info.json"
+  colocate = true
+}
+
+# Driver module for the test version of the brcmfmac driver, which includes run_unit_tests() DDK
+# tests.
+fuchsia_driver("test_fuchsia_driver-driver") {
+  output_name = "brcmfmac-test"
+  sources = [ "binding.cc" ]
+  deps = [
+    ":brcmfmac_pcie_bind",
+    ":core",
+    ":driver_sources",
+
+    # All driver test targets are linked into the driver test.  The appropriate test will be
+    # executed at runtime.
+    "pcie:pcie_driver_test",
+  ]
+  defines = [ "CONFIG_BRCMFMAC_DRIVER_TEST=1" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("test_fuchsia_driver") {
+  component_name = "brcmfmac-test"
+  deps = [ ":test_fuchsia_driver-driver" ]
+  visibility += [ "//src/connectivity/wlan:drivers" ]
+  info = "test_fuchsia_driver-info.json"
+  colocate = true
+}
+
+brcmfmac_driver("brcmfmac-astro") {
+  board = "astro"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-astro-mfg") {
+  board = "astro-mfg"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-sherlock") {
+  board = "sherlock"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-sherlock-mfg") {
+  board = "sherlock-mfg"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-luis") {
+  board = "luis"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-luis-mfg") {
+  board = "luis-mfg"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-nelson") {
+  board = "nelson"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+brcmfmac_driver("brcmfmac-nelson-mfg") {
+  board = "nelson-mfg"
+  bus = "sdio"
+  chip = "brcmfmac43455"
+  clm_present = true
+  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+}
+
+#brcmfmac_driver("brcmfmac-x64") {
+#  board = "x64"
+#  bus = "pcie"
+#  chip = "brcmfmac4356"
+#  clm_present = false
+#  diagnostic_deps = [ "//src/diagnostics/config/triage:brcmfmac-detect" ]
+#}
+
+# The test package, including tests in subdirs.
+group("brcmfmac_tests") {
+  deps = [
+    "chipset/test:brcmfmac_chipset_test",
+    "msgbuf/test:brcmfmac_msgbuf_test",
+    "sdio/test:brcmfmac_sdio_test",
+    "sim/test:brcmfmac_sim_test",
+    "test:brcmfmac_test",
+  ]
+  testonly = true
+  visibility += [ "*" ]
+}
+
+group("brcmfmac_host_tests") {
+  deps = [ "test:brcmfmac_host_tests" ]
+  testonly = true
+  visibility += [ "*" ]
+}
+
+# Driver packages.  Depend on one or the other, depending on whether the board definition would like
+# runtime tests in the driver or not.
+
+fuchsia_system_package("brcmfmac") {
+  # Allow upper level targets to depend on this one.
+  visibility = []
+  visibility = [ "*" ]
+}

@@ -1,0 +1,29 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Keep the renderer source set separate from the rest of Flatland
+# due to its dependencies on Escher which we do not want exposed.
+source_set("renderer") {
+  sources = [
+    "mock_renderer.h",
+    "null_renderer.cc",
+    "null_renderer.h",
+    "renderer.h",
+    "vk_renderer.cc",
+    "vk_renderer.h",
+  ]
+
+  public_deps = [
+    "//src/ui/lib/escher/geometry:escher_geometry",
+    "//src/ui/scenic/lib/flatland/buffers",
+    "//third_party/glm",
+  ]
+
+  deps = [ "//src/ui/lib/escher" ]
+
+  configs += [ "//third_party/glm:enable_experimental" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

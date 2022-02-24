@@ -1,0 +1,75 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//third_party/cobalt/metrics_registry.gni")
+
+metrics_registry("bt_a2dp_metrics") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 2322225253
+  generate_rust = true
+  generate_binarypb = false
+}
+
+rustc_library("bt-a2dp") {
+  with_unit_tests = true
+
+  deps = [
+    ":bt_a2dp_metrics_rustlib",
+    "//sdk/fidl/fuchsia.bluetooth:fuchsia.bluetooth-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.avdtp:fuchsia.bluetooth.avdtp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.bredr:fuchsia.bluetooth.bredr-rustc",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//src/connectivity/bluetooth/lib/bt-avdtp",
+    "//src/connectivity/bluetooth/lib/fuchsia-bluetooth",
+    "//src/lib/cobalt/rust:fuchsia-cobalt",
+    "//src/lib/diagnostics/inspect/contrib/rust",
+    "//src/lib/diagnostics/inspect/derive",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:bitflags",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:slab",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  test_deps = [
+    "//src/lib/async-utils",
+    "//src/lib/fuchsia",
+  ]
+
+  sources = [
+    "src/codec.rs",
+    "src/connected_peers.rs",
+    "src/lib.rs",
+    "src/media_task.rs",
+    "src/media_types.rs",
+    "src/peer/controller.rs",
+    "src/peer/mod.rs",
+    "src/permits.rs",
+    "src/rtp.rs",
+    "src/stream.rs",
+  ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+fuchsia_unittest_package("bt-a2dp-lib-tests") {
+  deps = [ ":bt-a2dp_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":bt-a2dp-lib-tests" ]
+}

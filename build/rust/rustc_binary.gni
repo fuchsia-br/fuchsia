@@ -1,0 +1,347 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/clippy.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/toolchain/rbe.gni")
+
+# Defines a Rust binary
+#
+# Parameters
+#
+#   output_name (optional)
+#     Name of the output file. Also used as the crate name of the binary,
+#     except the crate name has dashes replaced with underscores.
+#
+#     Defaults to an underscore-translated version of target name
+#     (see http://fxbug.dev/64100).
+#
+#   name (optional, deprecated)
+#     Deprecated version of output_name.  If not specified, it is
+#     assumed to be the same as the target name.  Unlike output_name, all
+#     dashes will be replaced with underscores in both the output file name
+#     and the crate name.
+#
+#   output_dir (optional)
+#     Directory that the resulting binary should be placed in.
+#     See: `gn help output_dir`
+#
+#   output_extension (optional)
+#     The file extension for the binary.
+#     See: `gn help output_extension`
+#
+#   version (optional)
+#     Semver version of the crate as seen on crates.io.
+#
+#   edition (optional)
+#     Edition of the Rust language to be used.
+#     Options are "2015" and "2018". Defaults to "2018".
+#
+#   configs (optional)
+#     A list of config labels applying to this target.
+#
+#   enforce_source_listing (optional)
+#     When true, enforces that any source files used by the Rust compiler are
+#     listed in `sources`. Defaults to true.
+#
+#   sources (optional)
+#     List of source files which this crate is allowed to compile. Only
+#     allowed when `enforce_source_listing = true`.
+#     The Rust compiler discovers source files by following `mod` declarations
+#     starting at the `source_root`. The discovered source files must match this
+#     list.
+#
+#   inputs (optional)
+#     List of additional non-source files read by the compiler. These are typically
+#     configuration or test-data files included in the build with the `include_str!`
+#     macro. Only allowed when `enforce_source_listing = true`.
+#
+#   deps (optional)
+#     List of rust_library GN targets on which this crate depends.
+#     Third party crates can be included through paths like
+#     "//third_party/rust_crates:<cratename>",
+#
+#   test_deps (optional)
+#     List of rust_library GN targets on which this crate's tests depend.
+#
+#   non_rust_deps (optional)
+#     List of non-rust_library GN targets on which this crate depends.
+#     Obsolete. Please use deps instead.
+#
+#   data_deps (optional)
+#     List of GN targets that are only needed at runtime.
+#
+#   with_unit_tests (optional)
+#     Builds unit tests associated with the binary. This will create a
+#     `<name_underscored>_bin_test` test file in the output directory, and a
+#     new GN target called <name>_test.
+#     Equivalent to adding a `rustc_test` target with that name and the same
+#     source_root.
+#
+#   test_args (optional)
+#     List of flags to pass directly to the test binary, e.g.
+#     ["--nocapture"].
+#
+#   test_environments (optional)
+#     What environments unit tests, if provided, should target. Only used here
+#     for linux and mac tests, with a default value of a general linux/mac
+#     environment (as a function of $current_os).
+#     See environments parameter //build/testing/test_spec.gni for more
+#     details.
+#
+#   sdk_category (optional)
+#     If this field is set, this rust binary will be included in SDK builds for
+#     the provided category. See //build/sdk/sdk_atom.gni for available
+#     categories.
+#
+#   source_root (optional)
+#     Location of the crate root (e.g. `src/main.rs` or `src/lib.rs`).
+#     This defaults to `./src/main.rs` for binaries and `./src/lib.rs` for libraries,
+#     and should only be changed when absolutely necessary
+#     (such as in the case of generated code).
+#
+#   features (optional)
+#     A list of conditional compilation flags to enable. This can be used to set features for crates
+#     built in-tree which are also published to crates.io. This would be passed to rustc as
+#     '--cfg feature=XXX'
+#
+#   disable_rbe (optional)
+#     Set to true to force this target to build locally, overriding the global `enable_rbe`.
+#
+#   disable_clippy (optional)
+#     Don't run clippy on this target.
+#
+# Example of usage:
+#
+#   rustc_binary("foo-bar") {
+#     deps = [
+#       "//garnet/public/rust/bar",
+#       "//third_party/rust_crates:argh",
+#       "//third_party/rust_crates:serde",
+#       "//third_party/rust_crates:slab",
+#     ]
+#     with_unit_tests = true
+#     sources = [ "src/main.rs" ]
+#   }
+#
+# Example of using the outputs of the above:
+#
+#   package("foo") {
+#     deps = [
+#       ":foo-bar",
+#     ]
+#
+#     binaries = [
+#       {
+#         name = "foo_bar"
+#         dest = "foo-bar"
+#       }
+#    }
+#
+#   test_package("foo-bar-tests") {
+#     deps = [
+#       ":foo-bar_test",
+#     ]
+#
+#    tests = [
+#      {
+#        name = "foo_bar_bin_test"
+#      }
+#    ]
+#
+template("rustc_binary") {
+  not_needed(invoker, [ "version" ])
+
+  # use the target name unless another name is specified
+  assert(!(defined(invoker.output_name) && defined(invoker.name)),
+         "Only one of output_name and name may be specified.")
+  package_name = target_name
+  if (defined(invoker.output_name)) {
+    package_name = invoker.output_name
+  } else if (defined(invoker.name)) {
+    package_name = invoker.name
+  }
+
+  # rustc does not support dashes in crate names
+  _crate_name = string_replace(package_name, "-", "_")
+  if (defined(invoker.output_name)) {
+    _output_name = invoker.output_name
+  } else {
+    _output_name = _crate_name
+  }
+
+  # if "with_unit_tests" is set to true, generate an additional rust test target
+  # TODO(https://fxbug.dev/72931): accept a string.
+  if (defined(invoker.with_unit_tests) && invoker.with_unit_tests == true) {
+    rustc_test_internal("${target_name}_test") {
+      output_name = "${package_name}_bin_test"
+
+      if (defined(invoker.test_args)) {
+        args = invoker.test_args
+      }
+
+      configs = []
+      configs = invoker.configs
+
+      # rustc_test defaults to assuming the input is a binary.
+      # specify the source_root here to avoid this.
+      source_root = "src/main.rs"
+      if (defined(invoker.source_root)) {
+        source_root = invoker.source_root
+      }
+      forward_variables_from(invoker,
+                             "*",
+                             [
+                               "name",
+                               "output_name",
+                               "source_root",
+                             ])
+    }
+  }
+
+  ### Shim that converts rustc_binary to a default GN executable pattern ###
+
+  # default location for rust binaries
+  source_root = "src/main.rs"
+  if (defined(invoker.source_root)) {
+    source_root = invoker.source_root
+  }
+
+  # enable these features for the target
+  features = []
+  if (defined(invoker.features)) {
+    foreach(i, invoker.features) {
+      features += [ "--cfg=feature=\"${i}\"" ]
+    }
+  }
+
+  _sources = []
+  _deps = []
+
+  if (!defined(invoker.enforce_source_listing) ||
+      invoker.enforce_source_listing == true) {
+    # fail early when the user forgets to list sources
+    assert(defined(invoker.sources), "sources must be listed")
+    _sources = invoker.sources
+  } else {
+    not_needed(invoker, [ "sources" ])
+
+    # This is a hack to workaround the fact that a GN `tool` invocation can't receive arbitrary input.
+    # Add a sentinel value so that enforcement is skipped.
+    _sources = [ "//build/rust/__SKIP_ENFORCEMENT__.rs" ]
+
+    # Opting out of strict sources check requires that the package is present
+    # in a global allow-list.
+    _deps += [ "//build/rust:disable_strict_sources_check_allowlist" ]
+  }
+
+  _use_rbe = enable_rbe
+  if (defined(invoker.disable_rbe) && invoker.disable_rbe) {
+    _use_rbe = false
+  }
+  _remote_rbe_inputs = []
+  if (defined(invoker.inputs)) {
+    _remote_rbe_inputs = invoker.inputs
+  }
+  _local_inputs = _remote_rbe_inputs
+  if (_use_rbe) {
+    # Depend on Rust/RBE scripts and tools
+    _local_inputs += rust_rbe_deps
+  }
+
+  disable_clippy = defined(invoker.disable_clippy) && invoker.disable_clippy
+  if (generate_clippy && !disable_clippy) {
+    clippy("$target_name.clippy") {
+      forward_variables_from(invoker,
+                             [
+                               "edition",
+                               "deps",
+                               "non_rust_deps",
+                               "sources",
+                             ])
+      crate_type = "bin"
+      rustflags = features
+    }
+  }
+
+  executable(target_name) {
+    crate_root = source_root
+
+    crate_name = _crate_name
+    output_name = _output_name
+
+    rustflags = features
+
+    configs = []
+    configs = invoker.configs
+    if (current_os == "fuchsia") {
+      _deps += [ "//sdk/lib/syslog/cpp:backend_fuchsia_lib_rust" ]
+    }
+    deps = _deps
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+
+    # TODO(https://fxbug.dev/43781) remove "non_rust_deps" as a concept
+    if (defined(invoker.non_rust_deps)) {
+      deps += invoker.non_rust_deps
+    }
+
+    sources = _sources
+
+    # in-tree default in 2018 edition
+    if (defined(invoker.edition)) {
+      assert(invoker.edition == "2015" || invoker.edition == "2018",
+             "Only editions 2015 and 2018 are supported")
+
+      if (invoker.edition == "2015") {
+        configs -= [ "//build/config/rust:edition_2018" ]
+        configs += [ "//build/config/rust:edition_2015" ]
+      }
+    }
+
+    # pass through these variables unmodified
+    forward_variables_from(invoker,
+                           [
+                             "data_deps",
+                             "exclude_toolchain_tags",
+                             "output_dir",
+                             "output_extension",
+                             "testonly",
+                             "visibility",
+                           ])
+    inputs = _local_inputs
+    if (enable_rbe && !_use_rbe) {
+      # Disable RBE for this target through a fake rustflag,
+      # that is intercepted by rustc-remote-wrapper.sh.
+      rustflags += [ "--remote-disable" ]
+    }
+    if (_use_rbe && _remote_rbe_inputs != []) {
+      # Signal to rustc-remote-wrapper.sh that there are additional
+      # inputs to upload.  This flag is stripped away from the eventual
+      # rustc command.
+      rustflags += [
+        "--remote-inputs",
+        string_join(",", rebase_path(_remote_rbe_inputs, root_build_dir)),
+      ]
+    }
+    if (generate_clippy && !disable_clippy) {
+      gen_deps = [ ":$target_name.clippy" ]
+      _outputs = get_target_outputs(":$target_name.clippy")
+      metadata = {
+        rust_source_map = [
+          {
+            clippy =
+                get_label_info(":$target_name.clippy", "label_with_toolchain")
+            output = rebase_path(_outputs[0], root_build_dir)
+            src = []
+            foreach(s, _sources) {
+              src += [ rebase_path(s, root_build_dir) ]
+            }
+          },
+        ]
+      }
+    }
+  }
+}

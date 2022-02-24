@@ -1,0 +1,88 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":mbr-test",
+    ":mbr_bind_test",
+  ]
+}
+
+driver_bind_rules("mbr_bind") {
+  disable_autobind = true
+  rules = "mbr.bind"
+  header_output = "mbr_bind.h"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.hardware.block" ]
+}
+
+fuchsia_driver("mbr-driver") {
+  output_name = "mbr"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "mbr-device.cc",
+    "mbr-device.h",
+    "mbr.cc",
+    "mbr.h",
+  ]
+  deps = [
+    ":mbr_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_banjo_cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/mbr",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("mbr") {
+  component_name = "mbr"
+  deps = [ ":mbr-driver" ]
+  info = "mbr-info.json"
+  colocate = true
+}
+
+test("mbr-test-bin") {
+  output_name = "mbr-test"
+  sources = [
+    "mbr-device-test.cc",
+    "mbr-device.cc",
+    "mbr-test.cc",
+    "mbr.cc",
+  ]
+  deps = [
+    ":mbr_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_banjo_cpp",
+    "//src/devices/testing/mock-ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/mbr",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("mbr-test") {
+  deps = [ ":mbr-test-bin" ]
+}

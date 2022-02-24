@@ -1,0 +1,105 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("ftdi_bind") {
+  rules = "ftdi.bind"
+  header_output = "ftdi_bind.h"
+  bind_output = "ftdi.bindbc"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.usb" ]
+}
+
+fuchsia_driver("ftdi-driver") {
+  output_name = "ftdi"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "ftdi-i2c.cc",
+    "ftdi-mpsse.cc",
+    "ftdi.cc",
+  ]
+  deps = [
+    ":ftdi_bind",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2cimpl:fuchsia.hardware.i2cimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serial:fuchsia.hardware.serial_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serialimpl:fuchsia.hardware.serialimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.composite:fuchsia.hardware.usb.composite_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_llcpp",
+    "//sdk/fidl/fuchsia.hardware.i2c:fuchsia.hardware.i2c_llcpp",
+    "//sdk/fidl/fuchsia.hardware.serial:fuchsia.hardware.serial_c",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("ftdi") {
+  info = "ftdi-info.json"
+  component_name = "ftdi"
+  deps = [ ":ftdi-driver" ]
+  colocate = true
+}
+
+driver_bind_rules("ftdi_function_bind") {
+  rules = "ftdi_function.bind"
+  header_output = "ftdi_function_bind.h"
+  tests = "ftdi_function_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.usb",
+    "//src/devices/bind/fuchsia.usb.vendorspecific",
+  ]
+}
+
+fuchsia_driver("ftdi-fake-usb-driver") {
+  output_name = "ftdi-fake-usb"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "ftdi-function.cc" ]
+  deps = [
+    ":ftdi_function_bind",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.function:fuchsia.hardware.usb.function_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_llcpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+  ]
+}
+
+fuchsia_driver_component("ftdi-fake-usb") {
+  info = "ftdi-fake-usb-info.json"
+  component_name = "ftdi-fake-usb"
+  deps = [ ":ftdi-fake-usb-driver" ]
+  colocate = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ftdi_bind_test",
+    ":ftdi_function_bind_test",
+    "test:ftdi-i2c-test-package",
+    "test:ftdi-integration-test",
+  ]
+}

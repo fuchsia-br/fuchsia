@@ -1,0 +1,98 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# A template for an action that creates a Fuchsia Go test binary.
+
+import("//build/go/go_build.gni")
+import("//build/testing/host_test.gni")
+
+# Parameters: same as go_build, along with
+#
+#   gopackages
+#     Required: The go packages containing the tests to be run.
+#     Type: list of strings.
+#
+#   use_prebuilt_go (optional)
+#     If true, use a prebuilt go toolchain, rather than building the toolchain.
+#     If not set, defaults to false when targetting Fuchsia and true otherwise.
+#
+#   output_name (optional)
+#     The name of the binary that that will be generated.
+#     It defaults to the target name.
+#
+#   args
+#     Optional: additional arguments needed when invoking the test.
+#     Only applies to host tests.
+#     Type: list of strings.
+#
+#   environments
+#     Optional: what environments this test should target. Only applies to host
+#     host tests. See //build/testing/test_spec.gni for more details.
+#     Type: list of scopes.
+#
+#   timeout:
+#     Optional: override default timeout. Only applies to host tests.
+#     Values must be valid Go durations such as "300ms", "-1.5h" or "2h45m".
+#     See https://golang.org/cmd/go/#hdr-Testing_flags for details on timeout.
+#     See https://golang.org/pkg/time/#ParseDuration for duration format.
+#     Type: string.
+template("go_test") {
+  _output_name = target_name
+  if (defined(invoker.output_name)) {
+    _output_name = invoker.output_name
+  }
+
+  assert(is_host || (!defined(invoker.args) && !defined(invoker.environments) &&
+                         !defined(invoker.timeout)),
+         "args, environments, and timeout are only supported for host tests")
+
+  _go_build_target_name = target_name
+
+  if (is_host) {
+    _go_build_target_name = "${target_name}_go_build"
+    host_test(target_name) {
+      binary_path = "$root_out_dir/$_output_name"
+
+      timeout = "5m"
+      if (defined(invoker.timeout)) {
+        timeout = invoker.timeout
+      }
+      args = [
+        "-test.timeout",
+        timeout,
+        "-test.v",  # Emit detailed test case information.
+      ]
+      if (defined(invoker.args)) {
+        args += invoker.args
+      }
+
+      deps = [ ":${_go_build_target_name}" ]
+      if (defined(invoker.deps)) {
+        deps += invoker.deps
+      }
+      if (defined(invoker.non_go_deps)) {
+        deps += invoker.non_go_deps
+      }
+      forward_variables_from(invoker,
+                             [
+                               "data_deps",
+                               "environments",
+                               "public_deps",
+                               "visibility",
+                             ])
+    }
+  }
+
+  go_build(_go_build_target_name) {
+    test = true
+    output_name = _output_name
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "args",
+                             "environments",
+                             "timeout",
+                           ])
+  }
+}

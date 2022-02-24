@@ -1,0 +1,648 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# -------------- READ BEFORE EDITING ---------------
+# This file describes the third-party packages used by Rust code and
+# how they should be built.
+#
+# Every edit to this file should be followed by:
+# - fx update-rustc-third-party
+#
+# Always request non-default features you use. This can sometimes get
+# missed if another third-party crate in our build requests the same
+# feature you use: your builds will usually work, but `fx rustdoc` will
+# fail.
+#
+# More information is available in
+# https://fuchsia.dev/fuchsia-src/development/languages/rust/external_crates .
+
+[package]
+name = "fuchsia-third-party"
+version = "0.1.0"
+
+[dependencies]
+# Keep this sorted alphabetically, please.
+aes = "0.7.5"
+aes-gcm = "0.9"
+ansi_term = "0.11.0"
+anyhow = "1.0.38"
+arbitrary = { version = "1.0.3", features = ["derive"] }
+argh = "0.1.7"
+arrayvec = "0.7.1"
+assert_matches = "1.5.0"
+async-channel = "1.6.1"
+async-lock = "2.3"
+async-trait = "0.1.51"
+atomic-waker = "1.0.0"
+atty = "0.2.11"
+base64 = "0.9"
+bincode = "1.3"
+bitfield = "0.13"
+bitflags = "1"
+blocking = "1.0.2"
+bumpalo = "3.2.1"
+byteorder = { version = "1", features = ["i128"] }
+bytes = "0.5.4"
+camino = "1.0.5"
+# NB: morally we'd like to default-features = false here, but we have
+# transitive dependencies on this crate that *do* enable default features.
+# Cargo does something called "feature unification"
+# (https://doc.rust-lang.org/cargo/reference/features.html#feature-unification)
+# which causes a particular crate to be compiled with the superset of all
+# features requested of it by any of its dependents. In this case, that means
+# we get chrono with its default dependencies regardless of what we write here
+# so long as any of our dependencies themselves depend on chrono with its
+# default dependencies. In particular, an old version of the time crate is an
+# optional dependency of chrono that is enabled by default; we don't want to
+# write default-features = false here lest we prevent some unrelated crate
+# upgrade by causing it to unexpectedly remove features we ourselves rely on.
+#
+# The sanity of this behavior is debated in
+# https://github.com/rust-lang/cargo/issues/4463. Until there's an escape
+# hatch, all we can do is document and shed a silent tear while we wait for the
+# ecosystem to migrate away from time 0.1.
+chrono = "0.4.11"
+chrono-english = "0.1.4"
+clap = "2.33"
+crc = "1.8.1"
+criterion = { version = "0.2", default-features = false }
+crossbeam = "0.8.0"
+crossbeam-utils = "0.8.0"
+cfg-if = "1.0.0"
+chacha20 = "0.8.1"
+csv = "1.0.7"
+cxx = "1.0.50"
+cxxbridge-cmd = "1.0.49"
+darling = "0.12.0"
+dashmap = "4.0.2"
+data-encoding = "2.1.2"
+deepsize = { version = "0.2.0", features = ["chrono", "slab", "smallvec"] }
+derivative = "2.2.0"
+derp = "0.0.14"
+difference = "2.0.0"
+either = "1.5.0"
+eui48 = { version = "0.4.6", features = ["serde", "disp_hexstring"] }
+event-listener = "2.5.1"
+fatfs = { path = "forks/fatfs" }
+flate2 = { version = "1.0.14", default-features = false, features = ["rust_backend"] }
+futures = "=0.3.19"
+futures-channel = "=0.3.19"
+futures-core = "=0.3.19"
+futures-executor = "=0.3.19"
+futures-io = "=0.3.19"
+futures-lite = "1.11.3"
+futures-macro = "=0.3.19"
+futures-sink = "=0.3.19"
+futures-task = "=0.3.19"
+futures-test = "=0.3.19"
+futures-util = "=0.3.19"
+getrandom = { features = ["js"] }
+glob = "0.3.0"
+gpt = "2.0.0"
+heck = "0.3.1"
+hex = "0.3.2"
+humansize = "1.1.1"
+http = "0.2.4"
+hyper = { version = "0.13.10", default-features = false, features = ["stream"] }
+iota = "0.2.2"
+itertools = "0.10"
+itoa = "0.4"
+json5format = "0.2.4"
+lazy_static = "1.4"
+libc = { version = "0.2.116", features = ["extra_traits"] }
+libm = "0.2.1"
+linked-hash-map = "0.5.3"
+log = { version = "0.4.11", features = ["std"] }
+lru-cache = "0.1.2"
+maplit = "1.0"
+matches = "0.1.9"
+maybe-owned = "0.3.2"
+memchr = "2.0"
+# TODO(fxbug.dev/66092) limit to tests
+mockall = "0.9"
+nom = { version = "5.0.0", default-features = false, features = ["std", "regexp_macros"] }
+nom_locate = "2.0.0"
+nonzero_ext = "0.3.0"
+num = { version = "0.4.0", features = ["rand"] }
+num-derive = "0.3"
+num-traits = "0.2"
+numtoa = "0.1.0"
+once_cell = { version = "1.2.0", features = ["parking_lot"] }
+parking_lot = "0.9"
+paste = "1.0"
+percent-encoding = "2.1"
+pest = "2.1.3"
+pest_derive = "2.1"
+pest_generator = "2.1.3"
+pin-project = "1.0.4"
+pin-utils = "0.1.0"
+png = "0.14" # saved for future use
+pretty_assertions = "0.5.1"
+prettytable-rs = "0.8.0"
+proptest = "0.9.3"
+proptest-derive = "0.1.1"
+rand = { version = "0.8", features = ["small_rng"] }
+rand_xorshift = "0.3"
+rayon = "1.2.1"
+regex = "1.0.6"
+regex-syntax = "0.6.5"
+ring = "0.16"
+rustc-demangle = "0.1.16"
+rustc-hash = "1.0.1"
+# FIXME(87798): We can switch to 0.19.1 once we've updated hyper to 0.14.x, and
+# tokio to 1.x.
+#rustls = { version = "0.19.1", features = ["dangerous_configuration"] }
+rustls = { path = "forks/rustls", features = ["dangerous_configuration"] }
+scopeguard = "1.1.0"
+scrypt = "0.8.0"
+serde = { version = "1.0.116", features = ["derive"] }
+serde_cbor = "0.11.1"
+serde_derive = "1.0.116"
+serde_json = "1.0.59"
+serde_json5 = { path = "mirrors/serde_json5" }
+serde_repr = "0.1.7"
+sha2 = "0.9"
+slab = "0.4"
+socket2 = { version = "0.4.4", features = ["all"] }
+splines = "2.2.0"
+static_assertions = "1.1.0"
+streaming-stats = "0.2.3"
+strsim = "0.10.0"
+structopt = "0.2.14"
+tempfile = "3.2"
+tuf = { version = "0.3.0-beta5", default-features = false, features = ["hyper_013"] }
+tui = "0.16.0"
+termion = "1.5.3"
+test-case = "1.1.0"
+textwrap = "0.11.0"
+thiserror = "1.0.23"
+tokio = { version = "0.2.16", default-features = false }
+toml = "0.5"
+toml_edit = "0.2.1"
+tracing = { version = "0.1.29", features = ["log"] }
+tracing-core = "0.1.21"
+tracing-futures = "0.2.5"
+tracing-log = "0.1.2"
+unicase = "2.2.0"
+untrusted = "0.7.1"
+url = "2.1"
+uuid = { version = "0.7.2", features = ["serde", "v4"] } # move ?
+valico = "2.4.2"
+vte = "0.3"
+wasm-bindgen = "0.2.63"
+webpki = "0.21"
+xml-rs = "0.8"
+xts-mode = "0.4.1"
+unic-char-range = "0.9"
+unic-ucd-block = "0.9"
+unicode-segmentation = "1.0"
+unicode-width = "0.1.3"
+unicode-xid = "0.2.0"
+utf8parse = "0.1"
+walkdir = "2.2.7"
+zstd = "0.8.0+zstd.1.4.9"
+zstd-safe = "4.0.0+zstd.1.4.9"
+
+[dependencies.tracing-subscriber]
+version = "0.3.1"
+default-features = false
+features = ["registry", "tracing-log"]
+
+# Target-side only dependencies
+[target.'cfg(target_os = "fuchsia")'.dependencies]
+# do not add back without verifying certificate transparency is ready to use - see fxbug.dev/25100
+# ct-logs = "0.6"
+euclid = { version = "0.22.1", features = [ "serde" ] }
+getopts = "0.2"
+hyper-rustls = { version = "0.20.0", default-features = false }
+lipsum = "0.6.0"
+openat = "0.1.17"
+owning_ref = "0.4.0"
+pretty = "0.5.2"
+proc-macro-nested = "0.1.7"
+rust_icu_common = { version = "2.0.0", default-features = false, features = ["renaming"] }
+rust_icu_sys = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env", "icu_version_67_plus"] }
+rust_icu_ucal = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env"] }
+rust_icu_uchar = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env", "icu_version_67_plus"] }
+rust_icu_udat = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env"] }
+rust_icu_udata = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env"] }
+rust_icu_uenum = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env"] }
+rust_icu_uloc = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env", "icu_version_67_plus"] }
+rust_icu_unorm2 = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env", "icu_version_67_plus"] }
+rust_icu_ustring = { version = "2.0.0", default-features = false, features = ["renaming", "icu_version_in_env"] }
+smallvec = "1.2"
+tokio-rustls = "0.13.0"
+# TODO(https://fxbug.dev/90312): point to a crates.io version when there is a
+# new official release of Trust-DNS that includes
+# https://github.com/bluejekyll/trust-dns/commit/a8842545fc2e9d01c7b985812d85c6aceee9357f.
+#
+# In the meantime, when updating, keep these git revisions in sync with the
+# relevant `source` section in //third_party/rust_crates/.cargo/config.toml.
+trust-dns-proto = { git = "https://github.com/bluejekyll/trust-dns", rev = "e5fa03de354f8a97e59d44ec1f4afe5f923b1003", default-features = false, features = ["testing"] }
+trust-dns-resolver = { git = "https://github.com/bluejekyll/trust-dns", rev = "e5fa03de354f8a97e59d44ec1f4afe5f923b1003", default-features = false, features = ["testing"] }
+ttf-parser = "0.10.1"
+unicode-normalization = "0.1"
+vk-sys = "0.4.0"
+void = "1.0.2"
+
+# Host-side only dependencies
+[target.'cfg(not(target_os = "fuchsia"))'.dependencies]
+async-broadcast = "0.2.0"
+async-executor = "1.4.1"
+async-fs = "1.5"
+async-io = "1.4.1"
+async-net = "1.6.0"
+cargo_metadata = "0.14.1"
+crossterm = "0.19"
+concurrent-queue = "1.2.2"
+easy-parallel = "3.1"
+handlebars = "4.2.1"
+home = "0.5.3"
+hyper-rustls = { version = "0.20.0", default-features = false, features = ["rustls-native-certs"] }
+indoc = "1.0.3"
+# TODO(http://fxbug.dev/70292): Not for use on Fuchsia, this pulls in the
+# latest Tokio, which we're not ready to update yet.
+inotify = { version = "0.9.3", default-features = false }
+# TODO(https://github.com/rust-lang/rust/issues/58590): nix is not generally
+# visible in fuchsia so we don't depend on #[cfg(unix)] things on target
+nix = "0.20"
+notify = "5.0.0-pre.10"
+pathdiff = "0.2.0"
+parking = "2"
+pem = "0.8.3"
+petgraph = "0.5.1"
+proc-macro2 = "1.0.28"
+polling = "2.0.2"
+pulldown-cmark = "0.6.0"
+quote = "1.0.2"
+rustls-native-certs = "0.3.0"
+serial_test = "0.5.1" # Not for use on Fuchsia, only for a single process.
+shared_child = "0.3.5"
+signal-hook = "0.3.8"
+simplelog = "0.10.2"
+syn = { version = "1.0.5", features = ["full", "visit", "visit-mut", "extra-traits"] }
+synstructure = "0.12.1"
+tar = "0.4.25"
+termios = "0.3.2"
+tower-service = "0.3.0"
+waker-fn = "1.1"
+zip = { version = "0.5.5", default-features = false, features = ["deflate"] }
+
+# For crates we don't want to vendor, follow instructions at
+# //docs/development/languages/rust/external_crates.md.
+[patch.crates-io]
+# Keep each section sorted alphabetically, please.
+
+### In-tree Crates: crates which are on crates.io but which we build from our in-tree copy
+fuchsia-cprng = { path = "../../src/lib/zircon/rust/fuchsia-cprng" }
+
+### Ask to Patch: crates which require a policy exception to contribute to.
+aho-corasick = { path = "ask2patch/aho-corasick" }
+byteorder = { path = "ask2patch/byteorder" }
+csv = { path = "ask2patch/csv" }
+csv-core = { path = "ask2patch/csv-core" }
+memchr = { path = "ask2patch/memchr" }
+regex-automata = { path = "ask2patch/regex-automata" }
+same-file = { path = "ask2patch/same-file" }
+streaming-stats = { path = "ask2patch/streaming-stats" }
+termcolor = { path = "ask2patch/termcolor" }
+walkdir = { path = "ask2patch/walkdir" }
+
+### Empty Forks: empty forks kept only for satisfying cargo's resolution
+backtrace-sys = { path = "empty/backtrace-sys" }
+crossterm_winapi = { path = "empty/crossterm_winapi" }
+miow = { path = "empty/miow" }
+ntapi = { path = "empty/ntapi" }
+web-sys = { path = "empty/web-sys" }
+wepoll-sys = { path = "empty/wepoll-sys" }
+winapi = { path = "empty/winapi" }
+winapi-util = { path = "empty/winapi-util" }
+
+### Forks: vendored crates whose code doesn't match the upstream version
+fatfs = { path = "forks/fatfs" }
+libm = { path = "forks/libm" }
+rustls = { path = "forks/rustls" }
+security-framework = { path = "forks/security-framework" }
+tracing-core = { path = "forks/tracing-core" }
+zstd-sys = { path = "forks/zstd-sys" }
+
+### Mirrors: forked crates managed as separate git repos
+serde_json5 = { path = "mirrors/serde_json5" } # TODO(fxbug.dev/75491) remove
+
+#################################################################################
+###                            Cargo GNaw Configs                             ###
+###                                                                           ###
+### See GNaw's documentation in //tools/cargo-gnaw/README.md for more details ###
+### and examples.                                                             ###
+#################################################################################
+
+# Global GN configs that will be added or removed from all generated targets
+
+[gn.config]
+remove_cfgs = [
+  # Fuchsia defaults targets to 2018 edition. third_party can be any version
+  "//build/config/rust:edition_2018",
+  # Fuchsia forces targets to comply with 2018 idioms. third_party can ignore this
+  "//build/config/rust:2018_idioms",
+]
+add_cfgs = []
+
+# The below config data is for the targets being used by cargo-gnaw. This provides custom input that
+# is usually provided by build.rs scripts. If the build.rs script is simple enough, cargo-gnaw will
+# suggest what to put in here. if not, usually reading the build.rs script is sufficient.
+#
+# arguments to target:
+#   rustflags - flags to pass to rustc
+#   deps - native GN dependency
+#   env_vars - environment variables, usually used for pretending to be cargo
+#   configs - native GN config to use
+#
+# Keep this sorted alphabetically, please.
+
+[gn.package.anyhow."1.0.38"]
+# TODO(https://github.com/rust-lang/rust/pull/72981): uncomment when backtrace is stabilized.
+# rustflags = ["--cfg=backtrace"]
+
+[gn.package.async-trait."0.1.51"]
+rustflags = []
+
+[gn.package.bitflags."1.2.1"]
+rustflags = ["--cfg=bitflags_const_fn"]
+
+[gn.package.byteorder."1.3.1"]
+rustflags = ["--cfg=byteorder_i128"]
+
+[gn.package.camino."1.0.5"]
+rustflags = ["--cfg=path_buf_capacity"]
+
+[gn.package.core-foundation-sys."0.7.0".platform."cfg(target_os = \"macos\")"]
+rustflags = ["-lframework=CoreFoundation"]
+
+[gn.package.crc."1.8.1"]
+env_vars = ["OUT_DIR=../../../compat/crc"]
+
+[gn.package.crc32fast."1.2.0"]
+rustflags = ["--cfg=crc32fast_stdarchx86"]
+
+[gn.package.crossbeam-utils."0.8.4"]
+rustflags = [
+  "--cfg=has_min_const_fn",
+  "--cfg=has_atomic_u8",
+  "--cfg=has_atomic_u16",
+  "--cfg=has_atomic_u32",
+  "--cfg=has_atomic_u64",
+  # TODO(https://github.com/rust-lang/rust/issues/32976): AtomicU128 is unstable.
+  # "--cfg=has_atomic_u128",
+]
+
+[gn.package.futures-core."0.3.19"]
+env_vars = [ "CARGO_PKG_NAME=futures-core" ]
+
+[gn.package.futures-channel."0.3.19"]
+env_vars = [ "CARGO_PKG_NAME=futures-channel" ]
+
+[gn.package.futures-macro."0.3.19"]
+env_vars = [ "CARGO_PKG_NAME=futures-macro" ]
+rustflags = [ "--cfg=fn_like_proc_macro" ]
+
+[gn.package.futures-task."0.3.19"]
+env_vars = [ "CARGO_PKG_NAME=futures-task" ]
+
+[gn.package.futures-util."0.3.19"]
+env_vars = [ "CARGO_PKG_NAME=futures-util" ]
+rustflags = [ "--cfg=fn_like_proc_macro" ]
+
+[gn.package.generic-array."0.14.4"]
+rustflags = [ "--cfg=relaxed_coherence" ]
+
+[gn.package.getrandom."0.2.2"]
+env_vars = [ "CARGO_PKG_NAME=getrandom", "CARGO_PKG_VERSION=0.2.2", "CARGO_MANIFEST_DIR=../../third_party/rust_crates/vendor/getrandom" ]
+rustflags = []
+
+[gn.package.httparse."1.5.1"]
+rustflags = ["--cfg=httparse_simd"]
+
+[gn.package.js-sys."0.3.39"]
+env_vars = [ "CARGO_PKG_NAME=js-sys", "CARGO_PKG_VERSION=0.3.39", "CARGO_MANIFEST_DIR=../../third_party/rust_crates/vendor/js-sys" ]
+
+[gn.package.libc."0.2.116"]
+rustflags = [
+  "--cfg=libc_priv_mod_use",
+  "--cfg=libc_union",
+  "--cfg=libc_const_size_of",
+  "--cfg=libc_align",
+  "--cfg=libc_core_cvoid",
+  "--cfg=libc_packedN",
+  "--cfg=libc_cfg_target_vendor",
+  "--cfg=libc_non_exhaustive",
+  "--cfg=libc_ptr_addr_of",
+ ]
+
+[gn.package.libc."0.2.116".platform."cfg(target_os = \"freebsd\")"]
+rustflags = ["--cfg=freebsd11"]
+
+[gn.package.log."0.4.11"]
+rustflags = ["--cfg=atomic_cas"]
+
+[gn.package.memchr."2.4.0"]
+rustflags = ["--cfg=memchr_runtime_simd", "--cfg=memchr_runtime_sse2", "--cfg=memchr_runtime_sse42", "--cfg=memchr_runtime_avx"]
+
+[gn.package.num-bigint."0.4.3"]
+rustflags = [
+  "--cfg=u64_digit",
+  "--cfg=has_try_from",
+]
+env_vars = ["OUT_DIR=../../../../compat/num-bigint"]
+
+[gn.package.num-bigint."0.4.3".platform."cfg(target_arch = \"x86_64\")"]
+rustflags = ["--cfg=use_addcarry"]
+
+[gn.package.num-complex."0.4.0"]
+rustflags = ["--cfg=has_i128", "--cfg=has_const_fn"]
+
+[gn.package.num-integer."0.1.44"]
+rustflags = ["--cfg=has_i128"]
+
+[gn.package.num-rational."0.4.0"]
+rustflags = ["--cfg=has_int_exp_fmt"]
+
+[gn.package.num-traits."0.2.14"]
+rustflags = ["--cfg=has_i128"]
+
+[gn.package.maybe-uninit."2.0.0"]
+rustflags = ["--cfg=derive_copy", "--cfg=repr_transparent", "--cfg=native_uninit"]
+
+[gn.package.memoffset."0.6.3"]
+rustflags = ["--cfg=tuple_ty", "--cfg=allow_clippy", "--cfg=maybe_uninit", "--cfg=doctests", "--cfg=raw_ref_macros"]
+
+[gn.package.num-iter."0.1.42"]
+rustflags = ["--cfg=has_i128"]
+
+[gn.package.proc-macro2."0.4.27"]
+rustflags = ["--cfg=u128", "--cfg=use_proc_macro", "--cfg=wrap_proc_macro"]
+
+# cargo-gnaw suggested "--cfg=proc_macro_span" as well but proc_macro_span is still an unstable feature.
+[gn.package.proc-macro2."1.0.28"]
+rustflags = ["--cfg=span_locations", "--cfg=lexerror_display", "--cfg=hygiene", "--cfg=use_proc_macro", "--cfg=wrap_proc_macro"]
+
+[gn.package.rand."0.6.5"]
+rustflags = ["--cfg=rustc_1_25","--cfg=rustc_1_26",  "--cfg=rustc_1_27",]
+
+[gn.package.rand_chacha."0.1.1"]
+rustflags = ["--cfg=rustc_1_26"]
+
+[gn.package.rand_pcg."0.1.1"]
+rustflags = ["--cfg=rust_1_26"]
+
+[gn.package.ring."0.16.12"]
+deps = [ "//third_party/rust_crates/compat/ring:ring-core" ]
+
+[gn.package.ryu."1.0.3"]
+rustflags = ["--cfg=integer128", "--cfg=must_use_return", "--cfg=maybe_uninit"]
+
+[gn.package.proc-macro-nested."0.1.7"]
+rustflags = []
+env_vars = ["OUT_DIR=../../../compat/proc-macro-nested", "PATH_SEPARATOR=/"]
+
+[gn.package.serde."1.0.116"]
+rustflags = ["--cfg=ops_bound", "--cfg=core_reverse", "--cfg=de_boxed_c_str", "--cfg=de_boxed_path", "--cfg=de_rc_dst", "--cfg=core_duration", "--cfg=integer128", "--cfg=range_inclusive", "--cfg=num_nonzero", "--cfg=core_try_from", "--cfg=num_nonzero_signed", "--cfg=std_atomic64", "--cfg=std_atomic"]
+
+[gn.package.serde_derive."1.0.116"]
+rustflags = ["--cfg=underscore_consts"]
+
+[gn.package.semver."1.0.4"]
+rustflags = []
+
+[gn.package.signal-hook."0.3.8"]
+rustflags = []
+
+[gn.package.typenum."1.14.0"]
+env_vars = [
+  "TYPENUM_BUILD_CONSTS=../../../compat/typenum/consts.rs",
+  "TYPENUM_BUILD_OP=../../../compat/typenum/op.rs",
+]
+
+[gn.package.unicase."2.5.1"]
+rustflags = [
+  "--cfg=__unicase__iter_cmp",
+  "--cfg=__unicase__default_hasher",
+  "--cfg=__unicase__const_fns",
+  "--cfg=__unicase__core_and_alloc",
+]
+
+[gn.package.url."1.7.2"]
+# FIXME(91750): Blocked on updating valico to 3.x.
+visibility = [":*", "//build/sdk/meta:*"]
+
+[gn.package.valico."2.4.2"]
+env_vars = ["OUT_DIR=../../../../compat/valico"]
+
+[gn.package.zstd-safe."4.0.0+zstd.1.4.9"]
+rustflags = []
+
+[gn.package.zstd-sys."1.5.0+zstd.1.4.9"]
+rustflags = []
+
+
+# These don't have build.rs scripts but require platform-specific target configuration.
+#
+# Keep this sorted alphabetically, please.
+
+[gn.package.backtrace."0.3.42".platform."cfg(target_os = \"fuchsia\")"]
+configs = [ "//build/config/fuchsia:libunwind" ]
+
+
+# These don't have build.rs scripts, but they rely on Cargo populating the environment variables
+#
+# Keep this sorted alphabetically, please.
+
+[gn.package.handlebars."4.2.1"]
+# pest relies on this being set to find the grammar file
+env_vars = [ "CARGO_MANIFEST_DIR=../../third_party/rust_crates/vendor/handlebars" ]
+
+[gn.package.rust_icu_uchar."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_common."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_sys."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_ucal."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_udat."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_udata."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_uenum."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_uloc."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_unorm2."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+[gn.package.rust_icu_ustring."2.0.0"]
+configs = [ "//src/lib/icu:version" ]
+
+[gn.package.trust-dns-resolver."0.21.0-alpha.4"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.21.0-alpha.4\\\"" ]
+
+[gn.package.unic-common."0.9.0"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.9.0\\\"", "CARGO_PKG_NAME=\\\"unic-common\\\"",  "CARGO_PKG_DESCRIPTION=\\\"\\\"", ]
+[gn.package.unic-ucd-version."0.9.0"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.9.0\\\"", "CARGO_PKG_NAME=\\\"unic-ucd-version\\\"",  "CARGO_PKG_DESCRIPTION=\\\"\\\"", ]
+[gn.package.unic-char-range."0.9.0"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.9.0\\\"", "CARGO_PKG_NAME=\\\"unic-char-range\\\"",  "CARGO_PKG_DESCRIPTION=\\\"\\\"", ]
+[gn.package.unic-char-property."0.9.0"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.9.0\\\"", "CARGO_PKG_NAME=\\\"unic-char-property\\\"",  "CARGO_PKG_DESCRIPTION=\\\"\\\"", ]
+[gn.package.unic-ucd-block."0.9.0"]
+env_vars = [ "CARGO_PKG_VERSION=\\\"0.9.0\\\"", "CARGO_PKG_NAME=\\\"unic-ucd-block\\\"",  "CARGO_PKG_DESCRIPTION=\\\"\\\"", ]
+
+[gn.package.wasm-bindgen-shared."0.2.63"]
+# Do not quote, this is embedded directly in .wasm sections and is needed by wasm-bindgen.
+env_vars = [ "CARGO_PKG_VERSION=0.2.63" ]
+
+# These dependencies have build.rs scripts, but dummy invocations indicating they
+# do not need to be run are sufficient for our build.
+#
+# Keep this sorted alphabetically, please.
+[gn.package.crossbeam-epoch."0.8.2"]
+[gn.package.crossbeam-utils."0.7.2"]
+# cxx's build.rs is only used to build it's src/cxx.cc file, for crates that use cxx and build with
+# cargo. It is replaced with //src/lib/rust_cxx:cxx_lib.
+[gn.package.cxx."1.0.50"]
+# cxx uses this to link against libc++ or libstdc++, for crates that use cxx and build with cargo.
+# It is replaced by our own build machinery.
+[gn.package.link-cplusplus."1.0.2"]
+[gn.package.memoffset."0.5.3"]
+[gn.package.nom."5.0.0"]
+[gn.package.parking_lot."0.9.0"]
+[gn.package.parking_lot_core."0.6.2"]
+[gn.package.pulldown-cmark."0.6.0"]
+[gn.package.rayon-core."1.7.0"]
+[gn.package.serde_json."1.0.59"]
+rustflags = ["--cfg=limb_width_64"]
+[gn.package.syn."1.0.74"]
+[gn.package.test-case."1.1.0"]
+[gn.package.wasm-bindgen."0.2.63"]
+
+
+# This section defines GN binary targets that should be generated from Cargo binary targets. (By
+# default, cargo-gnaw will only generate targets for libraries and proc-macros.)
+#
+# Example:
+#
+#   [gn.package.cargo-package-name."1.2.3".binary.cargo-target-name]
+#   output_name = "gn-name"
+#   rustflags = [ ... ]
+#   configs = [ ... ]
+#
+#
+# In the above example, "gn-name" will become both the name of the group target to depend
+# upon and the executable's output_name, so usages can assume output_name == target_name (and must
+# since get_target_outputs only works within the same file).
+#
+# "cargo-target-name" is the name of the Cargo binary target within "cargo-package-name".
+#
+# Keep this sorted alphabetically, please.
+
+[gn.package.cxxbridge-cmd."1.0.50".binary.cxxbridge]
+output_name = "cxxbridge"

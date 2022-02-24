@@ -1,0 +1,113 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/config/sysroot.gni")
+
+config("compiler") {
+  configs = [
+    ":sysroot",
+    ":target",
+    ":clang_defaults",
+  ]
+
+  rustflags = [
+    "-Clinker=$rebased_clang_prefix/clang++",
+    "-Cdefault-linker-libraries",
+  ]
+}
+
+config("default-pie") {
+  if (!toolchain_variant.is_pic_default) {
+    # Rust links are always PIE on Linux.  C/C++ static library code that is
+    # linked into Rust programs must be compiled as PIE too.  Since there's no
+    # good way to distinguish code going into Rust links from other code, just
+    # do it for everything.
+    cflags = [ "-fPIE" ]
+    asmflags = cflags
+
+    # Since we're compiling as PIE, link as PIE too.
+    # This makes `#ifdef __PIE__` checks comport with link-time behavior.
+    ldflags = cflags + [ "-pie" ]
+
+    rustflags = []
+    foreach(flag, ldflags) {
+      rustflags += [ "-Clink-arg=$flag" ]
+    }
+  }
+}
+
+config("implicit-host-libs") {
+  ldflags = [
+    # Use static C++ standard library.
+    "-static-libstdc++",
+
+    # Set rpath to find dynamically linked libraries placed next to executables
+    # in the host build directory.
+    "-Wl,-rpath=\$ORIGIN/",
+  ]
+
+  # TODO(fxbug.dev/26846) The implicitly linked static libc++.a depends on these.
+  libs = [
+    "dl",
+    "pthread",
+  ]
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}
+
+config("sysroot") {
+  cflags = [ "--sysroot=" + rebase_path(sysroot, root_build_dir) ]
+  ldflags = cflags
+  asmflags = cflags
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}
+
+config("target") {
+  cflags = [ "--target=$current_target_tuple" ]
+  asmflags = cflags
+  ldflags = cflags
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}
+
+# These flags are enabled by default in Fuchsia's Clang toolchain, but we set
+# them explicitly to support other Clang toolchains and Clang-based tools.
+config("clang_defaults") {
+  cflags_cc = [
+    # Use libc++ as the C++ standard library.
+    "-stdlib=libc++",
+  ]
+  ldflags = [
+    # Use libc++ as the C++ standard library.
+    "-stdlib=libc++",
+
+    # Use unwinder provided by the C++ standard library.
+    "-unwindlib=",
+
+    # Use compiler-rt as the compiler runtime.
+    "-rtlib=compiler-rt",
+
+    # Use lld as the linker.
+    "-fuse-ld=lld",
+
+    # Generate build ID for all binaries.
+    "-Wl,--build-id",
+  ]
+
+  rustflags = []
+  foreach(flag, ldflags) {
+    rustflags += [ "-Clink-arg=$flag" ]
+  }
+}

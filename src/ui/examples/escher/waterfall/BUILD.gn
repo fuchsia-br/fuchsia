@@ -1,0 +1,58 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/lib/vulkan/build/vulkan_targets.gni")
+
+if (is_host && !has_prebuilt_vulkan_runtime) {
+  # Escher cannot run without prebuilt Vulkan runtime on host for now.
+  # Since we may include Escher host tests in the default build,
+  # we substitute in a dummy executable in the case of a mac build.
+  executable("waterfall") {
+    sources = [ "//src/ui/examples/escher/common/null_executable.cc" ]
+  }
+} else {
+  vulkan_executable("waterfall") {
+    sources = [ "waterfall_main.cc" ]
+
+    deps = [
+      ":waterfall_demo",
+      "//src/lib/vulkan",
+      "//src/ui/examples/escher/common",
+      "//third_party/glm",
+    ]
+
+    include_dirs = [
+      "//lib",
+      "//src/ui/lib/escher",
+    ]
+
+    if (is_fuchsia) {
+      deps += [ "//zircon/system/ulib/trace" ]
+    }
+  }
+}
+
+source_set("waterfall_demo") {
+  sources = [
+    "waterfall_demo.cc",
+    "waterfall_demo.h",
+  ]
+
+  deps = [
+    ":waterfall_scenes",
+    "//src/lib/vulkan",
+    "//src/ui/examples/escher/common:demo_base",
+  ]
+}
+
+source_set("waterfall_scenes") {
+  sources = [
+    "scenes/paper_demo_scene1.cc",
+    "scenes/paper_demo_scene1.h",
+    "scenes/scene.cc",
+    "scenes/scene.h",
+  ]
+
+  deps = [ "//src/ui/examples/escher/common:demo_base" ]
+}

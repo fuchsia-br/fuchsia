@@ -1,0 +1,50 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+static_library("parser") {
+  sources = [
+    "ast.cc",
+    "ast.h",
+    "combinators.cc",
+    "combinators.h",
+    "error.cc",
+    "error.h",
+    "parse_result.cc",
+    "parse_result.h",
+    "parser.cc",
+    "parser.h",
+    "text_match.cc",
+    "text_match.h",
+  ]
+
+  deps = [
+    "//sdk/lib/fit",
+    "//sdk/lib/syslog/cpp",
+    "//third_party/icu",
+  ]
+
+  public_deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+test("parser_tests_bin") {
+  sources = [
+    "combinator_test.cc",
+    "error_test.cc",
+    "parser_test.cc",
+    "text_match_test.cc",
+  ]
+
+  deps = [
+    ":parser",
+    "//sdk/lib/fit",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}
+
+fuchsia_unittest_package("shell-parser-unittests") {
+  deps = [ ":parser_tests_bin" ]
+}

@@ -1,0 +1,74 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("common/x64-common.gni")
+
+_imports = {  # Import into hidden scope, to avoid importing into args.gn.
+  import("//boards/emulation/virtio_drivers.gni")
+}
+
+board_name = "x64"
+board_description = "A generic x64 device"
+
+_bootfs_deps = [
+  # Drivers
+  "//src/connectivity/ethernet/drivers/realtek-8111",
+  "//src/devices/serial/drivers/uart16550",
+  "//src/graphics/display/drivers/simple:simple.amd-kaveri",
+  "//src/graphics/display/drivers/simple:simple.nv",
+  "//zircon/third_party/dev/ethernet/e1000",
+
+  # Use legacy serial for bootfs.
+  "//boards/kernel_cmdline:serial-legacy",
+]
+
+# Additional drivers to support running as a virtualization guest.
+_bootfs_deps +=
+    _imports.virtio_drivers + [
+      "//src/graphics/display/drivers/simple:simple.bochs",
+      "//src/graphics/display/drivers/simple:simple.gga",
+      "//src/graphics/display/drivers/simple:simple.intel",
+      "//src/graphics/display/drivers/simple:simple.vmware",
+      "//src/media/audio/drivers/intel-hda/codecs/qemu:qemu-audio-codec",
+    ]
+
+board_bootfs_labels += _bootfs_deps
+board_recovery_bootfs_labels += _bootfs_deps
+board_zedboot_bootfs_labels += _bootfs_deps
+
+# Some users leave a USB key (containing zedboot) plugged into their
+# device at all times. To avoid unintentionally breaking remote workflows,
+# we permit multiple GPT devices.
+board_fshost_config += [ "gpt-all" ]
+
+use_vbmeta = true
+build_uefi_disk = true
+avb_key =
+    "//third_party/android/platform/external/avb/test/data/testkey_atx_psk.pem"
+avb_atx_metadata =
+    "//third_party/android/platform/external/avb/test/data/atx_metadata.bin"
+
+# TODO(fxbug.dev/78185): don't hardcode the expected size, we should instead
+# inflate to whatever the FVM partition size is at runtime.
+#
+# For now just hardcode 16GiB which is the minimum FVM partition size defined
+# in the x64 paver.
+#
+# This also assumes we are not using raw NAND but that's a safer assumption.
+# In this case "emmc" is a misnomer, it really just means "not raw NAND".
+fvm_emmc_partition_size = 17179869184
+
+# TODO(fxbug.dev/68692): finish implementing decompression in Gigaboot so we
+# can compress here to speed up FVM transmission.
+fvm_fastboot_compression = "none"
+
+zircon_a_partition = "zircon-a"
+zircon_b_partition = "zircon-b"
+zircon_r_partition = "zircon-r"
+vbmeta_a_partition = "vbmeta_a"
+vbmeta_b_partition = "vbmeta_b"
+vbmeta_r_partition = "vbmeta_r"
+fvm_partition = "fvm"
+active_partition = "a"
+fastboot_product = "gigaboot"

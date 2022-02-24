@@ -1,0 +1,36 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_trace") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+  args_with_unit_tests = true
+
+  args_sources = [ "src/args.rs" ]
+
+  sources = [ "src/lib.rs" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.tracing.controller:fuchsia.tracing.controller-rustc",
+    "//src/developer/ffx/lib/errors:lib",
+    "//src/developer/ffx/lib/writer:lib",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-fs",
+    "//third_party/rust_crates:blocking",
+    "//third_party/rust_crates:serde",
+  ]
+
+  args_deps = [
+    "//sdk/fidl/fuchsia.developer.bridge:fuchsia.developer.bridge-rustc",
+    "//sdk/fidl/fuchsia.tracing.controller:fuchsia.tracing.controller-rustc",
+  ]
+
+  test_deps = [
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde_json",
+  ]
+}

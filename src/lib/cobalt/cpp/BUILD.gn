@@ -1,0 +1,74 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("cobalt_logger") {
+  sources = [
+    "cobalt_logger.cc",
+    "cobalt_logger.h",
+    "cobalt_logger_impl.cc",
+    "cobalt_logger_impl.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+  ]
+
+  deps = [
+    "//src/lib/backoff",
+    "//src/lib/fsl",
+  ]
+}
+
+source_set("unittests") {
+  testonly = true
+
+  sources = [
+    "cobalt_event_builder_unittest.cc",
+    "cobalt_logger_unittest.cc",
+    "metric_event_builder_unittest.cc",
+  ]
+
+  public_deps = [ "//src/lib/testing/loop_fixture" ]
+
+  deps = [
+    ":cobalt_event_builder",
+    ":cobalt_logger",
+    ":metric_event_builder",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fsl",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-testing",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("cobalt_event_builder") {
+  sources = [
+    "cobalt_event_builder.cc",
+    "cobalt_event_builder.h",
+  ]
+  configs += [ "//third_party/cobalt:cobalt_config" ]
+  public_deps = [ "//sdk/fidl/fuchsia.cobalt" ]
+  deps = [ "//sdk/lib/syslog/cpp" ]
+}
+
+source_set("metric_event_builder") {
+  sources = [
+    "metric_event_builder.cc",
+    "metric_event_builder.h",
+  ]
+  configs += [ "//third_party/cobalt:cobalt_config" ]
+  public_deps = [ "//sdk/fidl/fuchsia.metrics" ]
+
+  deps = [ "//sdk/lib/syslog/cpp" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

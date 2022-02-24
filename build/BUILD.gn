@@ -1,0 +1,354 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("build") {
+  testonly = true
+
+  deps = [ ":tests" ]
+}
+
+# The tests listed in this target will be built by the default build.
+group("tests") {
+  testonly = true
+
+  deps = [
+    "components:tests",
+    "dart:tests",
+    "fidl:tests",
+    "images:tests",
+    "python:tests",
+    "rust:tests",
+    "sdk:tests",
+    "tools:tests",
+    "tracer:tests",
+  ]
+}
+
+group("non_hermetic_deps") {
+  #  ________  _________  ________  ________
+  # |\   ____\|\___   ___\\   __  \|\   __  \
+  # \ \  \___|\|___ \  \_\ \  \|\  \ \  \|\  \
+  #  \ \_____  \   \ \  \ \ \  \\\  \ \   ____\
+  #   \|____|\  \   \ \  \ \ \  \\\  \ \  \___|
+  #     ____\_\  \   \ \__\ \ \_______\ \__\
+  #    |\_________\   \|__|  \|_______|\|__|
+  #    \|_________|
+  # This is an allowlist of actions with `hermetic_deps = false`.
+  #
+  # Introducing new actions that are non-hermetic is not allowed.
+  # A cleanup is in progress. See:
+  # https://fuchsia.dev/fuchsia-src/contribute/open_projects/build/hermetic_actions
+  #
+  # For more information about hermetic build actions:
+  # https://fuchsia.dev/fuchsia-src/development/build/hermetic_actions
+  #
+  # Maintainers will accept changes to the allowlist below that support
+  # refactors, such as moving a legacy target to a different directory.
+  #
+  # To regenerate:
+  # { fx gn refs $(fx get-build-dir) '//build:non_hermetic_deps'; fx gn refs $(fx get-build-dir) '//build:non_hermetic_deps(//build/toolchain:host_x64)'; } | sed 's|\([^:]*\):.*|"\1/*",|' | sort | uniq
+  visibility = [
+    "//build/prebuilt/*",
+    "//scripts/sdk/gn/*",
+    "//third_party/crashpad/*",
+    "//vendor/google/*",
+    "//zircon/kernel/lib/version/*",
+  ]
+
+  # See: fxrev.dev/528291
+  visibility += [ "//build/rust:*" ]
+
+  # TODO(http://fxbug.dev/92612): Remove entries when
+  # assembly input bundle creation no longer triggers false-positives in the
+  # action_tracer.py due to how it cleans it's dynamic outputs.
+  visibility += [ "//build/assembly/*" ]
+
+  # TODO(http://fxbug.dev/77290): Remove entries when
+  # //build/images/assemble_system.gni no longer needs `hermetic_deps = false`.
+  visibility += [
+    "//build/images/*",
+    "//src/security/pkg_test/tests/*",
+    "//third_party/network-conformance/images/*",
+  ]
+
+  # These repos are not in the default checkout.
+  visibility += [
+    # This git repo is only checked out when the vulkan-cts attribute is set.
+    "//third_party/arm-mali-bifrost/*",
+    "//third_party/vulkan-cts/fuchsia/*",
+  ]
+}
+
+# Build targets that use the legacy zx_library and zx_host_tool templates
+# need to depend on the target below and appear in the visibility list.
+# Please don't introduce new uses of these wrappers. Rather:
+#
+# Instead of zx_library, please use one of the following templates:
+# - source_set
+# - sdk_source_set
+# - static_library
+# - sdk_static_library
+# - shared_library
+# - sdk_shared_library
+#
+# Instead of zx_host_tool, use executable and set host_toolchain as needed.
+#
+# See: https://fuchsia.dev/fuchsia-src/contribute/open_projects/build/zx_wrappers_deprecation
+group("deprecated_zx_wrapper_allowlist") {
+  visibility = [
+    ":*",
+    "//sdk/lib/fdio/*",
+    "//sdk/lib/fit-promise/*",
+    "//sdk/lib/fit/*",
+    "//sdk/lib/stdcompat/*",
+    "//src/bringup/bin/svchost/*",
+    "//src/connectivity/bluetooth/lib/device-protocol-bt-gatt-svc/*",
+    "//src/connectivity/openthread/lib/ot-radio/*",
+    "//src/connectivity/openthread/lib/ot-stack/*",
+    "//src/devices/block/lib/scsi/*",
+    "//src/devices/bus/lib/device-protocol-pdev/*",
+    "//src/devices/bus/lib/device-protocol-platform-device/*",
+    "//src/devices/bus/lib/virtio/*",
+    "//src/devices/bus/testing/mock-sdio/*",
+    "//src/devices/i2c/lib/device-protocol-i2c-channel/*",
+    "//src/devices/i2c/lib/device-protocol-i2c/*",
+    "//src/devices/i2c/testing/fake-i2c/*",
+    "//src/devices/i2c/testing/mock-i2c/*",
+    "//src/devices/lib/amlogic/*",
+    "//src/devices/lib/broadcom/*",
+    "//src/devices/lib/dev-operation/*",
+    "//src/devices/lib/dma-buffer/*",
+    "//src/devices/lib/driver-info/*",
+    "//src/devices/lib/focaltech/*",
+    "//src/devices/lib/mmio/*",
+    "//src/devices/lib/synchronous-executor/*",
+    "//src/devices/lib/thermal/*",
+    "//src/devices/lib/ti/*",
+    "//src/devices/pci/lib/device-protocol-pci/*",
+    "//src/devices/pci/lib/pci/*",
+    "//src/devices/rtc/lib/rtc/*",
+    "//src/devices/sysmem/testing/mock-sysmem/*",
+    "//src/devices/testing/devmgr-integration-test-shim",
+    "//src/devices/testing/fake-bti/*",
+    "//src/devices/testing/fake-dma-buffer/*",
+    "//src/devices/testing/fake-mmio-reg/*",
+    "//src/devices/testing/fake-msi/*",
+    "//src/devices/testing/fake-object/*",
+    "//src/devices/testing/fake-resource/*",
+    "//src/devices/testing/fake_ddk/*",
+    "//src/devices/testing/mock-mmio-reg/*",
+    "//src/devices/usb/lib/usb/*",
+    "//src/firmware/lib/abr/*",
+    "//src/firmware/lib/zbi/*",
+    "//src/firmware/lib/zircon_boot/*",
+    "//src/graphics/display/lib/device-protocol-display/*",
+    "//src/lib/ddk/*",
+    "//src/lib/ddktl/*",
+    "//src/lib/elfldltl/*",
+    "//src/lib/fasync/*",
+    "//src/lib/framebuffer/*",
+    "//src/lib/llvm-profdata/*",
+    "//src/lib/storage/fs_management/*",
+    "//src/lib/storage/ramdevice_client/*",
+    "//src/lib/trivial-allocator/*",
+    "//src/media/audio/drivers/lib/audio-driver-proto/*",
+    "//src/media/audio/drivers/lib/audio-proto-utils/*",
+    "//src/media/audio/drivers/lib/audio-utils-legacy/*",
+    "//src/media/audio/drivers/lib/audio-utils/*",
+    "//src/media/audio/drivers/lib/intel-hda/*",
+    "//src/media/audio/lib/simple-audio-stream/*",
+    "//src/media/audio/lib/simple-codec/*",
+    "//src/security/kms-stateless/*",
+    "//src/storage/gpt/*",
+    "//src/storage/lib/disk_inspector/*",
+    "//src/storage/lib/paver/*",
+    "//src/storage/lib/watchdog/*",
+    "//src/storage/memfs/*",
+    "//src/ui/input/testing/fake-hidbus-ifc/*",
+    "//src/ui/input/testing/mock-hidbus-ifc/*",
+    "//third_party/android/platform/external/avb/*",
+    "//tools/fidl/fidlc/*",
+    "//zircon/kernel/arch/x86/*",
+    "//zircon/kernel/arch/x86/cpuid/*",
+    "//zircon/kernel/arch/x86/page_tables/*",
+    "//zircon/kernel/arch/x86/phys/*",
+    "//zircon/kernel/dev/coresight/*",
+    "//zircon/kernel/dev/hw_rng/*",
+    "//zircon/kernel/dev/interrupt/*",
+    "//zircon/kernel/dev/iommu/dummy/*",
+    "//zircon/kernel/dev/iommu/intel/*",
+    "//zircon/kernel/dev/pcie/*",
+    "//zircon/kernel/dev/pdev/*",
+    "//zircon/kernel/dev/pdev/hw_watchdog/*",
+    "//zircon/kernel/dev/udisplay/*",
+    "//zircon/kernel/hypervisor/*",
+    "//zircon/kernel/lib/abi_type_validator/*",
+    "//zircon/kernel/lib/acpi_lite/*",
+    "//zircon/kernel/lib/arch/*",
+    "//zircon/kernel/lib/arch/host/*",
+    "//zircon/kernel/lib/arch/x86/*",
+    "//zircon/kernel/lib/boot-options/*",
+    "//zircon/kernel/lib/cbuf/*",
+    "//zircon/kernel/lib/cmdline/*",
+    "//zircon/kernel/lib/console/*",
+    "//zircon/kernel/lib/counters/*",
+    "//zircon/kernel/lib/crashlog/*",
+    "//zircon/kernel/lib/crypto/*",
+    "//zircon/kernel/lib/debuglog/*",
+    "//zircon/kernel/lib/devicetree/*",
+    "//zircon/kernel/lib/efi/*",
+    "//zircon/kernel/lib/fbl/*",
+    "//zircon/kernel/lib/fixed_point/*",
+    "//zircon/kernel/lib/gfx/*",
+    "//zircon/kernel/lib/gfxconsole/*",
+    "//zircon/kernel/lib/heap/*",
+    "//zircon/kernel/lib/init/*",
+    "//zircon/kernel/lib/instrumentation/*",
+    "//zircon/kernel/lib/io/*",
+    "//zircon/kernel/lib/kpci/*",
+    "//zircon/kernel/lib/ktl/*",
+    "//zircon/kernel/lib/ktrace/*",
+    "//zircon/kernel/lib/libc/*",
+    "//zircon/kernel/lib/lockup_detector/*",
+    "//zircon/kernel/lib/memory_limit/*",
+    "//zircon/kernel/lib/mtrace/*",
+    "//zircon/kernel/lib/perfmon/*",
+    "//zircon/kernel/lib/pow2_range_allocator/*",
+    "//zircon/kernel/lib/root_resource_filter/*",
+    "//zircon/kernel/lib/special-sections/*",
+    "//zircon/kernel/lib/syscalls/*",
+    "//zircon/kernel/lib/topology/*",
+    "//zircon/kernel/lib/unittest/*",
+    "//zircon/kernel/lib/user_copy/*",
+    "//zircon/kernel/lib/userabi/*",
+    "//zircon/kernel/lib/version/*",
+    "//zircon/kernel/lib/zxc/*",
+    "//zircon/kernel/object/*",
+    "//zircon/kernel/phys/*",
+    "//zircon/kernel/platform/pc/*",
+    "//zircon/kernel/vm/*",
+    "//zircon/system/ulib/abs_clock/*",
+    "//zircon/system/ulib/affine/*",
+    "//zircon/system/ulib/async-default/*",
+    "//zircon/system/ulib/async-loop/*",
+    "//zircon/system/ulib/async-testing/*",
+    "//zircon/system/ulib/async/*",
+    "//zircon/system/ulib/backtrace-request/*",
+    "//zircon/system/ulib/bitmap/*",
+    "//zircon/system/ulib/c/*",
+    "//zircon/system/ulib/closure-queue/*",
+    "//zircon/system/ulib/cmdline/*",
+    "//zircon/system/ulib/cobalt-client/*",
+    "//zircon/system/ulib/ddk-platform-defs/*",
+    "//zircon/system/ulib/debugdata/*",
+    "//zircon/system/ulib/devmgr-integration-test/*",
+    "//zircon/system/ulib/devmgr-launcher/*",
+    "//zircon/system/ulib/driver-integration-test/*",
+    "//zircon/system/ulib/driver-unit-test/*",
+    "//zircon/system/ulib/edid/*",
+    "//zircon/system/ulib/elf-psabi/*",
+    "//zircon/system/ulib/elf-search/*",
+    "//zircon/system/ulib/elfload/*",
+    "//zircon/system/ulib/explicit-memory/*",
+    "//zircon/system/ulib/fbl/*",
+    "//zircon/system/ulib/fdio-caller/*",
+    "//zircon/system/ulib/ffl/*",
+    "//zircon/system/ulib/fidl-async-2/*",
+    "//zircon/system/ulib/fidl-async/*",
+    "//zircon/system/ulib/fidl-utils/*",
+    "//zircon/system/ulib/fidl/*",
+    "//zircon/system/ulib/fs-host/*",
+    "//zircon/system/ulib/fs-pty/*",
+    "//zircon/system/ulib/ftl-mtd/*",
+    "//zircon/system/ulib/ftl/*",
+    "//zircon/system/ulib/fzl/*",
+    "//zircon/system/ulib/gfx-font-data/*",
+    "//zircon/system/ulib/gfx/*",
+    "//zircon/system/ulib/hid-parser/*",
+    "//zircon/system/ulib/hid/*",
+    "//zircon/system/ulib/hwreg-i2c/*",
+    "//zircon/system/ulib/hwreg/*",
+    "//zircon/system/ulib/hwreg/test/asm/*",
+    "//zircon/system/ulib/id_allocator/*",
+    "//zircon/system/ulib/image-format/*",
+    "//zircon/system/ulib/inspect/*",
+    "//zircon/system/ulib/inspector/*",
+    "//zircon/system/ulib/io-scheduler/*",
+    "//zircon/system/ulib/kcounter/*",
+    "//zircon/system/ulib/kernel-debug/*",
+    "//zircon/system/ulib/ktrace/*",
+    "//zircon/system/ulib/launchpad/*",
+    "//zircon/system/ulib/lazy_init/*",
+    "//zircon/system/ulib/ldmsg/*",
+    "//zircon/system/ulib/lockdep/*",
+    "//zircon/system/ulib/log-writer-logger/*",
+    "//zircon/system/ulib/log-writer-textfile/*",
+    "//zircon/system/ulib/logger/*",
+    "//zircon/system/ulib/mbr/*",
+    "//zircon/system/ulib/mini-process/*",
+    "//zircon/system/ulib/mipi-dsi/*",
+    "//zircon/system/ulib/mmio-ptr/*",
+    "//zircon/system/ulib/mock-boot-arguments/*",
+    "//zircon/system/ulib/mock-function/*",
+    "//zircon/system/ulib/mtd/*",
+    "//zircon/system/ulib/nand-redundant-storage/*",
+    "//zircon/system/ulib/perftest/*",
+    "//zircon/system/ulib/pretty/*",
+    "//zircon/system/ulib/processargs/*",
+    "//zircon/system/ulib/profile/*",
+    "//zircon/system/ulib/ram-crashlog/*",
+    "//zircon/system/ulib/range/*",
+    "//zircon/system/ulib/refcount/*",
+    "//zircon/system/ulib/region-alloc/*",
+    "//zircon/system/ulib/runtests-utils/*",
+    "//zircon/system/ulib/runtime/*",
+    "//zircon/system/ulib/service/*",
+    "//zircon/system/ulib/simplehid/*",
+    "//zircon/system/ulib/smbios/*",
+    "//zircon/system/ulib/spi/*",
+    "//zircon/system/ulib/statusor/*",
+    "//zircon/system/ulib/storage-metrics/*",
+    "//zircon/system/ulib/storage/buffer/*",
+    "//zircon/system/ulib/storage/operation/*",
+    "//zircon/system/ulib/svc/*",
+    "//zircon/system/ulib/sync/*",
+    "//zircon/system/ulib/sysconfig-client/*",
+    "//zircon/system/ulib/syslog/*",
+    "//zircon/system/ulib/sysmem-connector/*",
+    "//zircon/system/ulib/sysmem-make-tracking/*",
+    "//zircon/system/ulib/sysmem-version/*",
+    "//zircon/system/ulib/task-utils/*",
+    "//zircon/system/ulib/test-exceptions/*",
+    "//zircon/system/ulib/test-utils/*",
+    "//zircon/system/ulib/tftp/*",
+    "//zircon/system/ulib/thread-safe-deleter/*",
+    "//zircon/system/ulib/trace-engine/*",
+    "//zircon/system/ulib/trace-provider/*",
+    "//zircon/system/ulib/trace-reader/*",
+    "//zircon/system/ulib/trace-test-utils/*",
+    "//zircon/system/ulib/trace-vthread/*",
+    "//zircon/system/ulib/trace/*",
+    "//zircon/system/ulib/uart/*",
+    "//zircon/system/ulib/usb-peripheral-utils/*",
+    "//zircon/system/ulib/usb-virtual-bus-launcher/*",
+    "//zircon/system/ulib/virtio/*",
+    "//zircon/system/ulib/xdc-host-utils/*",
+    "//zircon/system/ulib/xdc-server-utils/*",
+    "//zircon/system/ulib/zbitl/*",
+    "//zircon/system/ulib/zircon-internal/*",
+    "//zircon/system/ulib/zx-panic-libc/*",
+    "//zircon/system/ulib/zx/*",
+    "//zircon/system/ulib/zxc/*",
+    "//zircon/third_party/lib/jitterentropy/*",
+    "//zircon/third_party/ulib/boringssl/*",
+    "//zircon/third_party/ulib/cksum/*",
+    "//zircon/third_party/ulib/linenoise/*",
+    "//zircon/third_party/ulib/lz4/*",
+    "//zircon/third_party/ulib/ngunwind/*",
+    "//zircon/third_party/ulib/safemath/*",
+    "//zircon/tools/kazoo/*",
+    "//zircon/tools/lz4/*",
+    "//zircon/tools/zbi/*",
+  ]
+}

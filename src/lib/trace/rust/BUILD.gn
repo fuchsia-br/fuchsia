@@ -1,0 +1,111 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_staticlib.gni")
+import("//build/test.gni")
+
+rustc_library("trace") {
+  name = "fuchsia_trace"
+  with_unit_tests = true
+  edition = "2018"
+  deps = [
+    "//src/lib/cstr",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:libc",
+  ]
+  non_rust_deps = [ "//zircon/system/ulib/trace-engine" ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+rustc_staticlib("rust-cpp-test-lib") {
+  name = "rust_cpp_test_lib"
+  version = "0.1.0"
+  edition = "2018"
+  testonly = true
+
+  deps = [ ":trace" ]
+
+  public = [ "test/lib.h" ]
+
+  source_root = "test/lib.rs"
+  sources = [ "test/lib.rs" ]
+}
+
+source_set("cpp-test-runner") {
+  testonly = true
+  visibility = [ ":*" ]
+  sources = [ "test/test_runner.cc" ]
+  deps = [
+    ":rust-cpp-test-lib",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-engine:trace-engine-headers-for-reader",
+    "//zircon/system/ulib/trace-reader",
+    "//zircon/system/ulib/trace-test-utils",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+test("rust_cpp_test") {
+  deps = [
+    ":cpp-test-runner",
+    "//zircon/system/ulib/trace-engine",
+  ]
+}
+
+fuchsia_unittest_component("fuchsia_trace_lib_test_component") {
+  deps = [ ":trace_test" ]
+}
+
+fuchsia_unittest_component("rust_cpp_test_component") {
+  deps = [ ":rust_cpp_test" ]
+}
+
+fuchsia_test_package("rust-trace-test") {
+  test_components = [
+    ":rust_cpp_test_component",
+    ":fuchsia_trace_lib_test_component",
+  ]
+  test_specs = {
+    environments = [ emu_env ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":rust-trace-test" ]
+}
+
+shared_library("rust-trace-provider") {
+  visibility = [ ":*" ]
+  deps = [
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+  sources = [ "trace-provider/trace_provider.cc" ]
+}
+
+rustc_library("trace-provider") {
+  name = "fuchsia_trace_provider"
+  edition = "2018"
+  source_root = "trace-provider/src/lib.rs"
+  non_rust_deps = [
+    ":rust-trace-provider",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+
+  sources = [ "trace-provider/src/lib.rs" ]
+}

@@ -1,0 +1,234 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+source_set("verified-volume-client") {
+  sources = [ "verified-volume-client.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//src/lib/digest",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("geometry") {
+  sources = [ "geometry.cc" ]
+}
+
+test("geometry-test") {
+  testonly = true
+
+  output_name = "geometry-test"
+  sources = [ "geometry-tests.cc" ]
+  deps = [
+    ":geometry",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("sealer") {
+  sources = [
+    "hash-block-accumulator.cc",
+    "sealer.cc",
+  ]
+  deps = [
+    "//src/lib/digest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("sealer-test") {
+  testonly = true
+
+  output_name = "sealer-test"
+  sources = [ "sealer-tests.cc" ]
+  deps = [
+    ":geometry",
+    ":sealer",
+    "//src/lib/digest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("block-verifier") {
+  sources = [ "block-verifier.cc" ]
+  deps = [
+    "//src/lib/digest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("block-verifier-test") {
+  testonly = true
+
+  output_name = "block-verifier-test"
+  sources = [ "block-verifier-tests.cc" ]
+  deps = [
+    ":block-verifier",
+    ":geometry",
+    "//src/lib/digest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+source_set("config") {
+  sources = [ "config.cc" ]
+  public_deps =
+      [ "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp" ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//src/lib/ddk",
+  ]
+}
+
+test("config-test") {
+  testonly = true
+  output_name = "config-test"
+  sources = [ "config-tests.cc" ]
+  deps = [
+    ":config",
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//src/devices/testing/no_ddk",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+driver_bind_rules("bind") {
+  disable_autobind = true
+  rules = "block-verity.bind"
+  header_output = "block-verity-bind.h"
+  bind_output = "block-verity.bindbc"
+  deps = [ "//src/devices/bind/fuchsia.hardware.block" ]
+}
+
+bind_test("block-verity-bind-test") {
+  rules = "block-verity.bind"
+  tests = "bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.hardware.block" ]
+}
+
+fuchsia_driver("block-verity-driver") {
+  output_name = "block-verity"
+
+  sources = [
+    "device-info.cc",
+    "device-manager.cc",
+    "device.cc",
+    "driver-sealer.cc",
+    "extra.cc",
+    "superblock-verifier.cc",
+    "verified-device.cc",
+  ]
+
+  configs += [ "//build/config/fuchsia:integer-paranoia" ]
+
+  deps = [
+    ":bind",
+    ":block-verifier",
+    ":config",
+    ":geometry",
+    ":sealer",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/lib/digest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("block-verity") {
+  component_name = "block-verity"
+  deps = [ ":block-verity-driver" ]
+  info = "block-verity-info.json"
+  colocate = true
+}
+
+test("block-verity-test") {
+  output_name = "block-verity-test"
+  sources = [ "block-verity-test.cc" ]
+  deps = [
+    ":verified-volume-client",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.verified:fuchsia.hardware.block.verified_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//src/devices/testing/driver-integration-test-shim",
+    "//src/lib/digest",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/storage/fvm:test_support",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("block-verity-geometry-test") {
+  deps = [ ":geometry-test" ]
+}
+
+fuchsia_unittest_package("block-verity-sealer-test") {
+  deps = [ ":sealer-test" ]
+}
+
+fuchsia_unittest_package("block-verity-block-verifier-test") {
+  deps = [ ":block-verifier-test" ]
+}
+
+fuchsia_unittest_package("block-verity-config-test") {
+  deps = [ ":config-test" ]
+}
+
+fuchsia_unittest_package("block-verity-integration-test-package") {
+  package_name = "block-verity-test"
+  deps = [
+    ":block-verity",
+    ":block-verity-test",
+    "//src/devices/block/drivers/core",
+    "//src/devices/block/drivers/ramdisk",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":block-verity-bind-test",
+    ":block-verity-block-verifier-test",
+    ":block-verity-config-test",
+    ":block-verity-geometry-test",
+    ":block-verity-integration-test-package",
+    ":block-verity-sealer-test",
+  ]
+}

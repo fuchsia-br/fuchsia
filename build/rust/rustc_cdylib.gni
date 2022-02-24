@@ -1,0 +1,189 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_test.gni")
+import("//build/toolchain/rbe.gni")
+
+# Defines a Rust cdylib library
+#
+# Parameters
+#
+#   output_name (optional)
+#   name (optional, deprecated)
+#     Name of the crate as defined in its manifest file. If not specified, it is
+#     assumed to be the same as the target name.
+#
+#   version
+#     Semver version of the crate as seen on crates.io.
+#
+#   edition (optional)
+#     Edition of the Rust language to be used.
+#     Options are "2015" and "2018". Defaults to "2018".
+#
+#   configs (optional)
+#     A list of config labels applying to this target.
+#
+#   deps (optional)
+#     List of rust_library GN targets on which this crate depends.
+#     Third party crates can be included through paths like
+#     "//third_party/rust_crates:<cratename>",
+#
+#   test_deps (optional)
+#     List of rust_library GN targets on which this crate's tests depend.
+#
+#   non_rust_deps (optional)
+#     List of non-rust_library GN targets on which this crate depends.
+#     Obsolete. Please use deps instead.
+#
+#   data_deps (optional)
+#     List of GN targets that are only needed at runtime.
+#
+#   with_unit_tests (optional)
+#     Builds unit tests associated with the binary. This will create a
+#     `<name>-bin-unit-test` test file in the output directory.
+#
+#   source_root (optional)
+#     Location of the crate root (e.g. `src/main.rs` or `src/lib.rs`).
+#     This defaults to `./src/main.rs` for binaries and `./src/lib.rs` for libraries,
+#     and should only be changed when absolutely necessary
+#     (such as in the case of generated code).
+#
+#   output_name (optional)
+#     Name of the output file.
+#
+#   features (optional)
+#     A list of conditional compilation flags to enable. This can be used to set features for crates
+#     built in-tree which are also published to crates.io. This would be passed to rustc as
+#     '--cfg feature=XXX'
+#
+#   output_dir (optional)
+#     Directory that the resulting library should be placed in.
+#     See: `gn help output_dir`
+#
+#   disable_rbe (optional)
+#     Set to true to force this target to build locally, overriding the global `enable_rbe`.
+#
+# Example of usage:
+#
+#   rustc_cdylib("foo") {
+#     deps = [
+#       "//garnet/public/rust/bar",
+#       "//third_party/rust_crates:argh",
+#       "//third_party/rust_crates:serde",
+#       "//third_party/rust_crates:slab",
+#     ]
+#     with_unit_tests = true
+#   }
+template("rustc_cdylib") {
+  not_needed(invoker, [ "version" ])
+
+  # if "with_unit_tests" is set to true, generate an additional rust test target
+  # TODO(https://fxbug.dev/72931): accept a string.
+  if (defined(invoker.with_unit_tests) && invoker.with_unit_tests == true) {
+    rustc_test("${target_name}_test") {
+      not_needed(invoker, [ "public" ])
+      assert(!(defined(invoker.output_name) && defined(invoker.name)),
+             "Only one of output_name and name may be specified.")
+      output_name = invoker.target_name + "_cdylib_test"
+      if (defined(invoker.output_name)) {
+        output_name = invoker.output_name + "_cdylib_test"
+      } else if (defined(invoker.name)) {
+        output_name = invoker.name + "_cdylib_test"
+      }
+      forward_variables_from(invoker, "*", [ "output_name" ])
+    }
+  }
+
+  rustc_target = "_${target_name}_rustc"
+  rustc_target = string_replace(rustc_target, "-", "_")
+  group_target = "${target_name}"
+
+  if (!defined(invoker.source_root)) {
+    source_root = "src/lib.rs"
+  } else {
+    source_root = invoker.source_root
+  }
+
+  if (!defined(invoker.output_name)) {
+    _lib_output_name = "${target_name}"
+  } else {
+    _lib_output_name = invoker.output_name
+  }
+
+  shared_library(rustc_target) {
+    crate_type = "cdylib"
+    crate_root = source_root
+    output_name = _lib_output_name
+    deps = []
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+
+    # TODO(https://fxbug.dev/43781) remove "non_rust_deps"
+    if (defined(invoker.non_rust_deps)) {
+      deps += invoker.non_rust_deps
+    }
+
+    configs = []
+    configs = invoker.configs
+
+    # in-tree default in 2018 edition
+    if (defined(invoker.edition)) {
+      assert(invoker.edition == "2015" || invoker.edition == "2018",
+             "Only editions 2015 and 2018 are supported")
+
+      if (invoker.edition == "2015") {
+        configs -= [ "//build/config/rust:edition_2018" ]
+        configs += [ "//build/config/rust:edition_2015" ]
+      }
+    }
+
+    forward_variables_from(invoker,
+                           [
+                             "data_deps",
+                             "output_dir",
+                             "testonly",
+                             "visibility",
+                           ])
+  }
+
+  public_hdrs = []
+  if (defined(invoker.public)) {
+    public_hdrs += invoker.public
+  }
+
+  header_target = "_${_lib_output_name}_cdylib_headers"
+
+  source_set(header_target) {
+    public = public_hdrs
+    visibility = [ ":$group_target" ]
+    deps = []
+    if (defined(invoker.non_rust_deps)) {
+      # TODO(fxbug.dev/43781): This allows propagating non rust dependencies through a
+      # single level of indirection, but does not handle propagating
+      # dependencies through an intermediate Rust target.
+      deps += invoker.non_rust_deps
+    }
+  }
+
+  inputs = []
+  if (defined(invoker.inputs)) {
+    inputs = invoker.inputs
+  }
+  _use_rbe = enable_rbe
+  if (defined(invoker.disable_rbe) && invoker.disable_rbe) {
+    _use_rbe = false
+  }
+  if (_use_rbe) {
+    # Depend on Rust/RBE scripts and tools
+    inputs += rust_rbe_deps
+  }
+
+  group(target_name) {
+    public_deps = [
+      ":$header_target",
+      ":$rustc_target",
+    ]
+  }
+}

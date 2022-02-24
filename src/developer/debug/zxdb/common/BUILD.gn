@@ -1,0 +1,118 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This library contains some low-level helpers that need to be shared between
+# the "client" and "symbols", but which doesn't below in the symbol library
+# itself.
+
+import("//build/info/info.gni")
+
+action("version_inc") {
+  script = "generate_version_inc.sh"
+  inputs = [ build_info_files.version ]
+  outputs = [ "$target_gen_dir/version.inc" ]
+  args = rebase_path(inputs + outputs)
+  deps = [ "//build/info:latest-commit-date" ]
+}
+
+source_set("version") {
+  public = [ "version.h" ]
+  sources = [ "version.cc" ]
+  deps = [ ":version_inc" ]
+}
+
+static_library("common") {
+  public = [
+    "adapters.h",
+    "address_range.h",
+    "address_ranges.h",
+    "cache_dir.h",
+    "completion_callback.h",
+    "curl.h",
+    "data_extractor.h",
+    "err.h",
+    "err_or.h",
+    "file_util.h",
+    "host_util.h",
+    "inet_util.h",
+    "ref_ptr_to.h",
+    "scoped_temp_file.h",
+    "string_util.h",
+    "tagged_data.h",
+    "tagged_data_builder.h",
+  ]
+
+  sources = [
+    "address_ranges.cc",
+    "cache_dir.cc",
+    "curl.cc",
+    "data_extractor.cc",
+    "err.cc",
+    "file_util.cc",
+    "host_util.cc",
+    "inet_util.cc",
+    "scoped_temp_file.cc",
+    "string_util.cc",
+    "tagged_data.cc",
+    "tagged_data_builder.cc",
+  ]
+
+  public_deps = [
+    ":version",
+    "//sdk/lib/fit",
+    "//src/developer/debug/shared",
+    "//src/lib/containers/cpp",
+    "//src/lib/fxl",
+    "//third_party/curl:libcurl",
+  ]
+}
+
+source_set("test_support") {
+  testonly = true
+  sources = [ "test_with_loop.h" ]
+  public_deps = [
+    ":common",
+    "//src/developer/debug/shared:test_support",
+  ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "adapters_unittest.cc",
+    "address_ranges_unittest.cc",
+    "cache_dir_unittest.cc",
+    "completion_callback_unittest.cc",
+    "curl_unittest.cc",
+    "data_extractor_unittest.cc",
+    "err_or_unittest.cc",
+    "file_util_unittest.cc",
+    "inet_util_unittest.cc",
+    "string_util_unittest.cc",
+    "tagged_data_unittest.cc",
+  ]
+
+  deps = [
+    ":common",
+    "//src/lib/files",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+# Simple support library for writing perf tests. This is a much simpler variant
+# of //zircon/system/ulib/perftest that will run on the host.
+source_set("perf_test") {
+  testonly = true
+
+  sources = [
+    "perf_test.cc",
+    "perf_test.h",
+  ]
+
+  public_deps = [ "//third_party/googletest:gtest" ]
+
+  deps = [ "//src/lib/fxl" ]
+}

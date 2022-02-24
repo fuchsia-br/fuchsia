@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/grpc_client_stress"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-cache-storage"
+        ],
+        "services": [
+            "fuchsia.netemul.guest.GuestDiscovery",
+            "fuchsia.virtualization.Manager"
+        ]
+    }
+}

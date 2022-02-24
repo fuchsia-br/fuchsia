@@ -1,0 +1,102 @@
+#!/bin/bash
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Device management
+### flash and, optionally, pave a connected device
+## usage: fx flash [-s <serial>] [--build|--no-build] [--pave]
+##   --build | --no-build    Build (or not) the required dependencies
+##   --pave                  Pave device after flashing (recommended)
+##   -s                      Serial of device you wish to flash to (only necessary
+##                           if multiple devices in fastboot mode)
+##  --skip-verify            Skip hardware verification. This is dangerous, please be
+##                           sure the images you are flashing match the device. Only
+##                           supported with ffx
+##
+## Defaults are defined by the "incremental" feature:
+##    'fx --enable=incremental flash'  defaults to "--build"
+##    'fx --disable=incremental flash'  defaults to "--no-build"
+
+set -e
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/image_build_vars.sh || exit $?
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/fx-flash.sh || exit $?
+
+usage() {
+    fx-command-help
+    echo "Available devices:"
+    fx-command-run host-tool fastboot devices -l
+    exit 1
+}
+
+build=false
+if is_feature_enabled "incremental"; then
+  # In incremental workflows, these defaults have changed.
+  # Keep old behavior if incremental is not enabled.
+  build=true
+fi
+pave=false
+serial=
+device=$(get-device-name)
+skip_verify=false
+while [[ $# -ge 1 ]]; do
+  case "$1" in
+  -h|--help)
+    usage
+    ;;
+  --no-build)
+    build=false
+    ;;
+  --build)
+    build=true
+    ;;
+  --pave)
+    pave=true
+    ;;
+  --nopave|--no-pave)
+    pave=false
+    ;;
+  -s)
+    shift
+    serial="$1"
+    ;;
+  -device)
+    shift
+    device="$1"
+    ;;
+  --skip-verify)
+    skip_verify=true
+    ;;
+  *)
+    break
+  esac
+  shift
+done
+
+if $build; then
+  artifacts=($(fx-command-run list-build-artifacts flash)) || exit $?
+  if $pave; then
+    artifacts+=($(fx-command-run list-build-artifacts pave)) || exit $?
+  fi
+  fx-info "Building/refreshing targets ${artifacts[@]}"
+  fx-command-run build "${artifacts[@]}"
+fi
+
+if is-remote-workflow-device; then
+  fx-error "It is not possible to flash a device over a remote tunnel, as flashing requires a direct USB connection."
+  fx-error "Use \`fx flash-remote\` from the local side of the link in these secarios."
+  fx-error "A lightweight build on the local side is: \`fx set core.x64 && fx self-build\`"
+  echo >&2
+  fx-error "If you are not using a remote workflow, run \`fx unset-device\` to remove the remote device configuration."
+  exit 1
+fi
+
+flash_manifest="${FUCHSIA_BUILD_DIR}/$(fx-command-run list-build-artifacts --expect-one --name flash-manifest images)"
+cd "${FUCHSIA_BUILD_DIR}"
+fx-flash "${serial}" "${device}" "${flash_manifest}" "${skip_verify}"
+
+if $pave; then
+  # no need to build, since all dependencies were already built above.
+  fx-command-exec pave -1 --no-build
+fi

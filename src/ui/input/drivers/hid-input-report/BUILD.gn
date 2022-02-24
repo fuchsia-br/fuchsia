@@ -1,0 +1,95 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("hid_input_report_bind") {
+  rules = "hid_input_report.bind"
+  header_output = "hid_input_report_bind.h"
+  bind_output = "hid-input-report.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.hid" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":hid-input-report-test",
+    ":hid_input_report_bind_test",
+  ]
+}
+
+fuchsia_driver("hid-input-report-driver") {
+  output_name = "hid-input-report"
+  sources = [
+    "input-report.cc",
+    "input-reports-reader.cc",
+  ]
+  deps = [
+    ":hid_input_report_bind",
+    "//sdk/banjo/fuchsia.hardware.hiddevice:fuchsia.hardware.hiddevice_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.input:fuchsia.hardware.input_c",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report_llcpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/ui/input/lib/hid-input-report",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/hid-parser",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/trace:trace-driver",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("hid-input-report") {
+  component_name = "hid-input-report"
+  deps = [ ":hid-input-report-driver" ]
+  info = "hid-input-report-info.json"
+  colocate = true
+}
+
+test("hid-input-report-test-bin") {
+  sources = [
+    "input-report.cc",
+    "input-reports-reader.cc",
+    "test.cc",
+  ]
+  deps = [
+    ":hid_input_report_bind",
+    "//sdk/banjo/fuchsia.hardware.hiddevice:fuchsia.hardware.hiddevice_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.input:fuchsia.hardware.input_c",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report_llcpp",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//src/devices/lib/driver",
+    "//src/devices/testing/fake_ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//src/ui/input/lib/hid-input-report",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/hid-parser",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/trace:trace-driver",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("hid-input-report-test") {
+  deps = [ ":hid-input-report-test-bin" ]
+}

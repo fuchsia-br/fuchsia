@@ -1,0 +1,115 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//src/sys/core/build/core_shard.gni")
+import("//third_party/cobalt/metrics_registry.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":wlandevicemonitor-tests" ]
+}
+
+metrics_registry("wlan_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 3708719327
+  generate_rust = true
+
+  # We don't need to include a copy of our projects's Cobalt registry in our package because we
+  # rely on it being packaged with Cobalt itself
+  generate_binarypb = false
+}
+
+wlandevicemonitor_deps = [
+  "//garnet/lib/rust/io_util",
+  "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+  "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common-rustc",
+  "//sdk/fidl/fuchsia.wlan.device:fuchsia.wlan.device-rustc",
+  "//sdk/fidl/fuchsia.wlan.device.service:fuchsia.wlan.device.service-rustc",
+  "//sdk/fidl/fuchsia.wlan.internal:fuchsia.wlan.internal-rustc",
+  "//sdk/fidl/fuchsia.wlan.mlme:fuchsia.wlan.mlme-rustc",
+  "//sdk/fidl/fuchsia.wlan.tap:fuchsia.wlan.tap-rustc",
+  "//sdk/lib/device-watcher/rust",
+  "//src/connectivity/wlan/lib/common/rust/:wlan-common",
+  "//src/connectivity/wlan/lib/ieee80211",
+  "//src/connectivity/wlan/lib/wlan_dev",
+  "//src/lib/diagnostics/inspect/contrib/rust",
+  "//src/lib/diagnostics/inspect/runtime/rust",
+  "//src/lib/diagnostics/inspect/rust",
+  "//src/lib/fdio/rust:fdio",
+  "//src/lib/fidl/rust/fidl",
+  "//src/lib/fuchsia-async",
+  "//src/lib/fuchsia-component",
+  "//src/lib/storage/fuchsia-vfs-watcher",
+  "//src/lib/syslog/rust:syslog",
+  "//src/lib/zerocopy",
+  "//src/lib/zircon/rust:fuchsia-zircon",
+  "//third_party/rust_crates:anyhow",
+  "//third_party/rust_crates:argh",
+  "//third_party/rust_crates:futures",
+  "//third_party/rust_crates:log",
+  "//third_party/rust_crates:parking_lot",
+  "//third_party/rust_crates:pin-utils",
+  "//third_party/rust_crates:tempfile",
+  "//third_party/rust_crates:test-case",
+  "//third_party/rust_crates:void",
+]
+
+wlandevicemonitor_srcs = [
+  "src/device.rs",
+  "src/device_watch.rs",
+  "src/inspect.rs",
+  "src/main.rs",
+  "src/service.rs",
+  "src/watchable_map.rs",
+  "src/watcher_service.rs",
+]
+
+wlandevicemonitor_test_deps =
+    [ "//src/connectivity/wlan/testing/wlantap-client" ]
+
+# Because the IsolatedDevMgr works differently in Components Framework v2, a separate build rule is
+# needed so that different test behaviors can be conditionally compiled in.
+rustc_binary("bin") {
+  name = "wlandevicemonitor"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = wlandevicemonitor_deps
+  test_deps = wlandevicemonitor_test_deps
+  sources = wlandevicemonitor_srcs
+  features = [ "v2" ]
+}
+
+fuchsia_package_with_single_component("wlandevicemonitor") {
+  deps = [
+    ":bin",
+    ":wlan_metrics_registry",
+  ]
+  manifest = "meta/wlandevicemonitor.cml"
+}
+
+# This component orchestrates the v2 components that are required in order to
+# run the wlandevicemonitor unit tests.
+fuchsia_component("wlandevicemonitor-test-component") {
+  testonly = true
+  deps = [
+    ":bin_test",
+    "//sdk/lib/driver_test_realm/simple",
+    "//src/connectivity/wlan/testing/wlan-devmgr:wlan_devmgr_deps",
+  ]
+  manifest = "meta/wlandevicemonitor_bin_test.cml"
+}
+
+# This component groups up all of the dependencies to run the v2 unit tests.
+fuchsia_test_package("wlandevicemonitor-tests") {
+  test_components = [ ":wlandevicemonitor-test-component" ]
+}
+
+# core_shard for integrating wlandevicemonitor with core.gni.
+core_shard("wlandevicemonitor-core-shard") {
+  shard_file = "meta/wlandevicemonitor.core_shard.cml"
+}

@@ -1,0 +1,173 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    children: [
+        {
+            name: "blobfs",
+            url: "fuchsia-boot:///#meta/blobfs.cm",
+            startup: "eager",
+        },
+    ],
+    capabilities: [
+        {
+            directory: "pkgfs-delayed",
+            rights: [ "rx*" ],
+            path: "/delayed/fs/pkgfs",
+        },
+        {
+            directory: "pkgfs-packages-delayed",
+            rights: [ "rx*" ],
+            path: "/delayed/fs/pkgfs/packages",
+        },
+        {
+            directory: "system-delayed",
+            rights: [ "rx*" ],
+            path: "/delayed/fs/system",
+        },
+        {
+            directory: "bin",
+            rights: [ "rx*" ],
+            path: "/fs/bin",
+        },
+        {
+            directory: "minfs",
+            rights: [ "rw*" ],
+            path: "/fs/data",
+        },
+        {
+            directory: "minfs-delayed",
+            rights: [
+                "enumerate",
+                "traverse",
+            ],
+            path: "/delayed/fs/data",
+        },
+        {
+            directory: "pkgfs",
+            rights: [
+                "execute",
+                "rw*",
+            ],
+            path: "/fs/pkgfs",
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/delayed/fs/pkgfs/packages/config-data/0/meta/data",
+        },
+        {
+            directory: "root-ssl-certificates",
+            rights: [ "r*" ],
+            path: "/delayed/fs/pkgfs/packages/root_ssl_certificates/0/data",
+        },
+        {
+            directory: "build-info",
+            rights: [ "r*" ],
+            path: "/delayed/fs/pkgfs/packages/build-info/0/data",
+        },
+        {
+            directory: "system",
+            rights: [ "rx*" ],
+            path: "/fs/system",
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.feedback.CrashReporter",
+            ],
+        },
+        {
+            protocol: "fuchsia.fs.startup.Startup",
+            from: "#blobfs",
+            path: "/blobfs/fuchsia.fs.startup.Startup",
+        },
+        {
+            directory: "blob-exec",
+            from: "#blobfs",
+            rights: [
+                "execute",
+                "rw*",
+            ],
+            path: "/blob",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.blobfs.internal.DecompressorCreator",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.logger.LogSink",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#blobfs",
+        },
+        {
+            directory: "dev",
+            from: "parent",
+            to: "#blobfs",
+        },
+    ],
+    expose: [
+        {
+            directory: "pkgfs-delayed",
+            from: "self",
+        },
+        {
+            directory: "pkgfs-packages-delayed",
+            from: "self",
+        },
+        {
+            directory: "system-delayed",
+            from: "self",
+        },
+        {
+            directory: "bin",
+            from: "self",
+        },
+        {
+            directory: "root",
+            from: "#blobfs",
+            as: "blob",
+        },
+        {
+            directory: "minfs",
+            from: "self",
+        },
+        {
+            directory: "minfs-delayed",
+            from: "self",
+        },
+        {
+            directory: "pkgfs",
+            from: "self",
+        },
+        {
+            directory: "config-data",
+            from: "self",
+        },
+        {
+            directory: "root-ssl-certificates",
+            from: "self",
+        },
+        {
+            directory: "build-info",
+            from: "self",
+        },
+        {
+            directory: "system",
+            from: "self",
+        },
+        {
+            protocol: "fuchsia.update.verify.BlobfsVerifier",
+            from: "#blobfs",
+        },
+    ],
+}

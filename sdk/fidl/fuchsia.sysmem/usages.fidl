@@ -1,0 +1,96 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.sysmem;
+
+// Describes how a client will access the contents of a buffer.
+// TODO(fxbug.dev/32119): change struct to table
+@for_deprecated_c_bindings
+type BufferUsage = struct {
+    none uint32;
+    cpu uint32;
+    vulkan uint32;
+    display uint32;
+    video uint32;
+};
+
+// TODO(fxbug.dev/55935): Consts should use upper snake case per FIDL style guide.
+// We should reformat the naming of consts in this FIDL file.
+
+// Flag for "none" usage.
+//
+// This bit indicates that there is no direct usage from the participant, and
+// that the participant hasn't forgotten to set usage.
+const noneUsage uint32 = 1;
+
+// Flags for "cpu" usage.
+// The "often" variants prefer cacheable memory.
+const cpuUsageRead uint32 = 1;
+const cpuUsageReadOften uint32 = 2;
+const cpuUsageWrite uint32 = 4;
+const cpuUsageWriteOften uint32 = 8;
+
+// Flags for "vulkan" usage.
+
+// Vulkan image usage flags.
+// Based on https://www.khronos.org/registry/vulkan/specs/1.1-extensions/man/html/VkImageUsageFlagBits.html
+const VULKAN_IMAGE_USAGE_TRANSFER_SRC uint32 = 0X0001;
+const VULKAN_IMAGE_USAGE_TRANSFER_DST uint32 = 0X0002;
+const VULKAN_IMAGE_USAGE_SAMPLED uint32 = 0X0004;
+const VULKAN_IMAGE_USAGE_STORAGE uint32 = 0X0008;
+const VULKAN_IMAGE_USAGE_COLOR_ATTACHMENT uint32 = 0X0010;
+const VULKAN_IMAGE_USAGE_STENCIL_ATTACHMENT uint32 = 0X0020;
+const VULKAN_IMAGE_USAGE_TRANSIENT_ATTACHMENT uint32 = 0X0040;
+const VULKAN_IMAGE_USAGE_INPUT_ATTACHMENT uint32 = 0X0080;
+
+// Deprecated. Use |VULKAN_IMAGE_USAGE_*| instead.
+const vulkanUsageTransferSrc uint32 = 0x0001;
+const vulkanUsageTransferDst uint32 = 0x0002;
+const vulkanUsageSampled uint32 = 0x0004;
+const vulkanUsageStorage uint32 = 0x0008;
+const vulkanUsageColorAttachment uint32 = 0x0010;
+const vulkanUsageStencilAttachment uint32 = 0x0020;
+const vulkanUsageTransientAttachment uint32 = 0x0040;
+const vulkanUsageInputAttachment uint32 = 0x0080;
+
+// Vulkan buffer usage flags.
+// Based on https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkBufferUsageFlagBits.html
+const VULKAN_BUFFER_USAGE_TRANSFER_SRC uint32 = 0X00010000;
+const VULKAN_BUFFER_USAGE_TRANSFER_DST uint32 = 0X00020000;
+const VULKAN_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER uint32 = 0X00040000;
+const VULKAN_BUFFER_USAGE_STORAGE_TEXEL_BUFFER uint32 = 0X00080000;
+const VULKAN_BUFFER_USAGE_UNIFORM_BUFFER uint32 = 0X00100000;
+const VULKAN_BUFFER_USAGE_STORAGE_BUFFER uint32 = 0X00200000;
+const VULKAN_BUFFER_USAGE_INDEX_BUFFER uint32 = 0X00400000;
+const VULKAN_BUFFER_USAGE_VERTEX_BUFFER uint32 = 0X00800000;
+const VULKAN_BUFFER_USAGE_INDIRECT_BUFFER uint32 = 0X01000000;
+
+// Flags for "display" usage.
+const displayUsageLayer uint32 = 1;
+const displayUsageCursor uint32 = 2;
+
+// Flags for "video" usage.
+// TODO(fxbug.dev/32118): Add more specific HwDecoder flags if needed.
+const videoUsageHwDecoder uint32 = 1;
+const videoUsageHwEncoder uint32 = 2;
+// TODO(fxbug.dev/34192): This bit is redundant with secure_required and supported heaps.  This bit will
+// not be carried forward.
+const videoUsageHwProtected uint32 = 4;
+const videoUsageCapture uint32 = 8;
+// videoUsageDecryptorOutput is for the output of a decryptor; such buffers will contain decrypted
+// encoded access units.  The decryptor output may be in secure memory (controlled separately via
+// secure_required).
+//
+// TODO(fxbug.dev/34192): Overhaul usage so we can add usage categories without breaking client struct init
+// code repeatedly.  For now, this value is in the "video" category but to some degree isn't really
+// video; this usage can be used for the output of any secure decryptor.  Also, other usages should
+// include input vs. output as those are separate buffer collections and are really separate usages.
+//
+// We have this as a separate usage because each participant that needs VMO handles needs to specify
+// a usage that isn't nonUsage, and the decryptor output participant shouldn't be specifying
+// videoUsageHwDecoder because the decryptor isn't the decoder.
+const videoUsageDecryptorOutput uint32 = 16;
+// This usage is for a HW video decoder's internal buffers that aren't shared with other
+// particpants.  These are allocated via sysmem becuase sysmem pre-reserves contiguous SYSTEM_RAM
+// as appropriate, and is the only way to allocate secure memory.
+const videoUsageHwDecoderInternal uint32 = 32;

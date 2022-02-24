@@ -1,0 +1,128 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/testing/host_test_data.gni")
+
+group("disable_strict_sources_check_allowlist") {
+  #  ________  _________  ________  ________
+  # |\   ____\|\___   ___\\   __  \|\   __  \
+  # \ \  \___|\|___ \  \_\ \  \|\  \ \  \|\  \
+  #  \ \_____  \   \ \  \ \ \  \\\  \ \   ____\
+  #   \|____|\  \   \ \  \ \ \  \\\  \ \  \___|
+  #     ____\_\  \   \ \__\ \ \_______\ \__\
+  #    |\_________\   \|__|  \|_______|\|__|
+  #    \|_________|
+  # This is an allowlist of packages that do not enforce that the source files
+  # are listed in `source`. This is only intended to be used as a temporary
+  # allowlist during soft migrations.
+  #
+  # All file dependencies of the targets in this list should be covered by the
+  # paths in the skipAnalysisAllowlist in
+  # //tools/integration/fint/should_build.go.
+  visibility = []
+}
+
+cargo_toml_gen_desc_out = "$target_out_dir/cargo_toml_gen_desc.json"
+action("cargo_toml_gen_desc") {
+  visibility = [ ":cargo_toml_gen" ]
+  script = "//scripts/generate_cargo_desc.py"
+  sources = []
+  inputs = []
+  hermetic_deps = false
+  outputs = [ cargo_toml_gen_desc_out ]
+  depfile = "$cargo_toml_gen_desc_out.d"
+  args = [
+    "--root_build_dir",
+    ".",
+    "--fuchsia_dir",
+    rebase_path("//", root_build_dir),
+    "--gn_binary",
+    rebase_path("//prebuilt/third_party/gn/${host_platform}/gn",
+                root_build_dir),
+    "--output",
+    rebase_path(cargo_toml_gen_desc_out, root_build_dir),
+    "--depfile",
+    rebase_path("$cargo_toml_gen_desc_out.d", root_build_dir),
+  ]
+}
+
+# NOTE: This target is used by "fx set --cargo-toml-gen ..." which
+# will do the following:
+#
+#  1) Ensure that "fx gen" (and "fx build") will pass `--ide-json`
+#     to `gn gen`, which generates an up-to-date
+#     `$root_build_dir/project.json` file, used here as input.
+#
+#  2) Add this target to the base packages list to ensure its
+#     action script is run by "fx build".
+#
+# For more details, see docs/development/language/rust/README.md
+#
+action("cargo_toml_gen") {
+  # Nothing in-tree should depend on Cargo files.
+  visibility = [
+    "//:additional_base_packages",
+    "//:additional_cache_packages",
+    "//:additional_universe_packages",
+  ]
+  script = "//scripts/generate_cargo.py"
+  sources = []
+  inputs = [
+    cargo_toml_gen_desc_out,
+    "//third_party/rust_crates/Cargo.toml",
+  ]
+  hermetic_deps = false
+
+  outputs = [ "$root_build_dir/cargo/generate_cargo.stamp" ]
+  depfile = "$root_build_dir/cargo/generate_cargo.stamp.d"
+  args = [
+    rebase_path(cargo_toml_gen_desc_out, root_build_dir),
+    "--root_build_dir",
+    ".",
+    "--fuchsia_dir",
+    rebase_path("//", root_build_dir),
+  ]
+  deps = [ ":cargo_toml_gen_desc" ]
+}
+
+# When panic=abort, the Rust libtest framework requires sys.process.Launcher in
+# every test manifest. This is so it can launch a subprocess for each unit
+# test.
+#
+# We stick a test_needs_process_launcher flag in metadata so that any
+# package which contains this test automatically has its manifest patched
+# with the sys.process.Launcher capability (this is done in
+# //build/package.gni).
+#
+# This group is included in every Rust test.
+group("rust_test_metadata") {
+  metadata = {
+    cmx_patches_data = [
+      {
+        sandbox = {
+          services = [ "fuchsia.process.Launcher" ]
+        }
+      },
+    ]
+  }
+}
+
+# Multiple integration tests rely on having a Rust toolchain available on the host test runner,
+# and host_test_data does not appear to support multiple definitions of the same output path in
+# the same build, so we provide a central target here to be used by integration tests that need
+# cargo or rustc.
+if (is_host) {
+  host_test_data("prebuilt_toolchain_host_test_data") {
+    sources = [
+      "//prebuilt/third_party/rust/${host_platform}/bin/cargo",
+      "//prebuilt/third_party/rust/${host_platform}/bin/rustc",
+      "//prebuilt/third_party/rust/${host_platform}/lib",
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "tests" ]
+}

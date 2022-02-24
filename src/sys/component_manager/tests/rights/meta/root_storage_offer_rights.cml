@@ -1,0 +1,35 @@
+// Passes a read only storage capability to a child, this is invalid and so should not be mapped
+// into the child process as it is expecting read write.
+{
+    children: [
+        {
+            name: "use_storage",
+            url: "fuchsia-pkg://fuchsia.com/rights_integration_test#meta/use_storage.cm",
+        },
+        {
+            name: "expose_dir_rights",
+            url: "fuchsia-pkg://fuchsia.com/rights_integration_test#meta/expose_dir_rights.cm",
+        },
+    ],
+    capabilities: [
+        {
+            storage: "data",
+            from: "#expose_dir_rights",
+            backing_dir: "read_write",
+            storage_id: "static_instance_id_or_moniker",
+        },
+    ],
+    offer: [
+        {
+            storage: "data",
+            from: "self",
+            to: "#use_storage",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fidl.test.components.Trigger",
+            from: "#use_storage",
+        },
+    ],
+}

@@ -1,0 +1,15 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.net.stack") {
+  sdk_category = "excluded"
+  sources = [ "stack.fidl" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.ethernet",
+    "//sdk/fidl/fuchsia.net",
+    "//sdk/fidl/fuchsia.net.name",
+  ]
+}

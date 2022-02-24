@@ -1,0 +1,128 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("amlogic_display_bind") {
+  rules = "amlogic-display.bind"
+  header_output = "amlogic-display-bind.h"
+  bind_output = "amlogic-display.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.amlogic.platform" ]
+}
+
+source_set("common_srcs") {
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "amlogic-display.cc",
+    "clock.cc",
+    "dsi-host.cc",
+    "hdmi-host.cc",
+    "hdmitx-clk.cc",
+    "lcd.cc",
+    "mipi-phy.cc",
+    "osd.cc",
+    "vout.cc",
+    "vpu.cc",
+  ]
+  public_deps = [
+    ":amlogic_display_bind",
+    "//sdk/banjo/fuchsia.hardware.amlogiccanvas:fuchsia.hardware.amlogiccanvas_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.display.capture:fuchsia.hardware.display.capture_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.display.clamprgb:fuchsia.hardware.display.clamprgb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.display.controller:fuchsia.hardware.display.controller_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.dsiimpl:fuchsia.hardware.dsiimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.hdmi:fuchsia.hardware.hdmi_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2cimpl:fuchsia.hardware.i2cimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.sysmem:fuchsia.hardware.sysmem_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.hdmi:fuchsia.hardware.hdmi_llcpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/lib/device-protocol-platform-device",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/mmio",
+    "//src/graphics/display/lib/device-protocol-display",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/hwreg",
+    "//zircon/system/ulib/image-format",
+    "//zircon/system/ulib/image-format:image-format-llcpp",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/mipi-dsi",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver("amlogic-display-driver") {
+  output_name = "amlogic-display"
+  deps = [ ":common_srcs" ]
+}
+
+fuchsia_driver_component("amlogic-display") {
+  component_name = "amlogic-display"
+  deps = [ ":amlogic-display-driver" ]
+  info = "amlogic-display-info.json"
+  colocate = true
+}
+
+test("amlogic-display-test") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "amlogic-display-test.cc",
+    "vout-test.cc",
+  ]
+  deps = [
+    ":common_srcs",
+    "//src/devices/testing/no_ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":amlogic-display-test-package",
+    ":amlogic_display_bind_test",
+  ]
+}
+
+fuchsia_unittest_package("amlogic-display-test-package") {
+  package_name = "amlogic-display-test"
+  deps = [ ":amlogic-display-test" ]
+}

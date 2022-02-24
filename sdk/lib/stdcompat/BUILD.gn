@@ -1,0 +1,57 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ "test:tests" ]
+}
+
+zx_library("stdcompat") {
+  sdk = "source"
+  sdk_publishable = true
+
+  sdk_headers = [
+    "lib/stdcompat/algorithm.h",
+    "lib/stdcompat/array.h",
+    "lib/stdcompat/atomic.h",
+    "lib/stdcompat/bit.h",
+    "lib/stdcompat/cstddef.h",
+    "lib/stdcompat/functional.h",
+    "lib/stdcompat/iterator.h",
+    "lib/stdcompat/memory.h",
+    "lib/stdcompat/optional.h",
+    "lib/stdcompat/source_location.h",
+    "lib/stdcompat/span.h",
+    "lib/stdcompat/string_view.h",
+    "lib/stdcompat/tuple.h",
+    "lib/stdcompat/type_traits.h",
+    "lib/stdcompat/utility.h",
+    "lib/stdcompat/variant.h",
+    "lib/stdcompat/version.h",
+
+    # Due to a bug in the SDK bazel generation, private headers in sources are
+    # not propagated correctly until this is fixed, internal healders are un the public
+    # section.
+    "lib/stdcompat/internal/algorithm.h",
+    "lib/stdcompat/internal/array.h",
+    "lib/stdcompat/internal/atomic.h",
+    "lib/stdcompat/internal/bit.h",
+    "lib/stdcompat/internal/constructors.h",
+    "lib/stdcompat/internal/functional.h",
+    "lib/stdcompat/internal/exception.h",
+    "lib/stdcompat/internal/span.h",
+    "lib/stdcompat/internal/storage.h",
+    "lib/stdcompat/internal/tuple.h",
+    "lib/stdcompat/internal/type_traits.h",
+    "lib/stdcompat/internal/utility.h",
+  ]
+
+  friend = [ "test:*" ]
+
+  # Since this doesn't actually compile any code, don't let it contribute any
+  # implicit link inputs from default configs.
+  configs = []
+}

@@ -1,0 +1,56 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  name = "inspect_validator_rust_puppet"
+  edition = "2018"
+  testonly = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/diagnostics/validator/inspect/fidl:validate-rustc",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_component("inspect-validator-rust-puppet") {
+  testonly = true
+  manifest = "meta/inspect-validator-rust-puppet.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_unittest_package("inspect-validator-test-rust") {
+  manifest = "meta/validator.cmx"
+  deps = [
+    ":inspect-validator-rust-puppet",
+    "//src/diagnostics/validator/inspect:validator_bin",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":inspect-validator-test-rust" ]
+}

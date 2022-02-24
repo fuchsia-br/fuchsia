@@ -1,0 +1,41 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//tools/fidl/lib/fidlgentest/fidlgentest_go_test.gni")
+
+go_library("fidlgen") {
+  sources = [
+    "formatter.go",
+    "generator.go",
+    "identifiers.go",
+    "identifiers_test.go",
+    "names.go",
+    "names.go",
+    "names_test.go",
+    "reserved_names.go",
+    "strings.go",
+    "strings_test.go",
+    "templates.go",
+    "types.go",
+    "types_test.go",
+    "write_file_if_changed.go",
+  ]
+}
+
+if (is_host) {
+  fidlgentest_go_test("fidlgen_lib_test") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/fidl/lib/fidlgen" ]
+    deps = [
+      ":fidlgen",
+      "//third_party/golibs:github.com/google/go-cmp",
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fidlgen_lib_test($host_toolchain)" ]
+}

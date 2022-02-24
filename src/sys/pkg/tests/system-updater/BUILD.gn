@@ -1,0 +1,90 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "system_updater_test"
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.space:fuchsia.space-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/fuchsia-url",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer-rustc",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//src/sys/pkg/lib/fuchsia-pkg",
+    "//src/sys/pkg/lib/fuchsia-pkg-testing",
+    "//src/sys/pkg/lib/metrics:cobalt_sw_delivery_registry_rustlib",
+    "//src/sys/pkg/testing/mock-paver",
+    "//src/sys/pkg/testing/mock-reboot",
+    "//src/sys/pkg/testing/mock-resolver",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:pretty_assertions",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tempfile",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/board.rs",
+    "src/cobalt_metrics.rs",
+    "src/epoch.rs",
+    "src/fetch_packages.rs",
+    "src/history.rs",
+    "src/lib.rs",
+    "src/mode_force_recovery.rs",
+    "src/mode_normal.rs",
+    "src/progress_reporting.rs",
+    "src/reboot_controller.rs",
+    "src/retained_packages.rs",
+    "src/update_package.rs",
+    "src/writes_firmware.rs",
+    "src/writes_images.rs",
+  ]
+}
+
+fuchsia_component("system-updater-test") {
+  testonly = true
+  manifest = "meta/system-updater-test.cml"
+  deps = [ ":driver" ]
+}
+
+fuchsia_test_package("system-updater-integration-tests") {
+  test_components = [ ":system-updater-test" ]
+  deps = [ "//src/sys/pkg/bin/system-updater:isolated-v2" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":system-updater-integration-tests" ]
+}

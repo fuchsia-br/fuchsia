@@ -1,0 +1,107 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/testing/host_test_data.gni")
+
+test_dirs = []
+
+if (host_os == "linux") {
+  # Each of these tests runs against a QEMU instance, but on ASAN builds it
+  # takes a very long time to bring up QEMU (>1 minute), which means we can
+  # easily exceed the global test timeout if we try to run multiple tests in
+  # the same test target.
+  #
+  # Instead, shard each test into its own target so it has enough time to
+  # spin up QEMU, run the test, and bring it back down.
+  #
+  # If this becomes problematic it's possible to put multiple tests in a file,
+  # but this makes them more brittle and tricky to write since the QEMU
+  # instance is now shared state that carries over between tests.
+  test_dirs += [
+    "test_advert_frequency",
+    "test_init_partition_tables",
+    "test_pave_no_bind",
+    "test_pave_no_bind_failure",
+    "test_write_firmware_no_type",
+    "test_write_firmware_with_type",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = []
+  foreach(test_dir, test_dirs) {
+    deps += [ ":bootserver_${test_dir}($host_toolchain)" ]
+  }
+}
+
+if (is_linux) {
+  go_library("lib") {
+    testonly = true
+    name = "go.fuchsia.dev/fuchsia/tools/bootserver_old/tests/..."
+    deps = [
+      "//tools/emulator/emulatortest",
+      "//tools/net/netutil",
+      "//tools/net/tftp",
+    ]
+    non_go_deps = [
+      ":bootserver_user_tools",
+      "//build/images/fuchsia:fuchsia_zbi_for_host_tests",
+    ]
+    sources = [
+      "common.go",
+      "test_advert_frequency/test_advert_frequency_test.go",
+      "test_init_partition_tables/test_init_partition_tables_test.go",
+      "test_pave_no_bind/test_pave_no_bind_test.go",
+      "test_pave_no_bind_failure/test_pave_no_bind_failure_test.go",
+      "test_write_firmware_no_type/test_write_firmware_no_type_test.go",
+      "test_write_firmware_with_type/test_write_firmware_with_type_test.go",
+    ]
+  }
+
+  host_out_dir = get_label_info("//bogus($host_toolchain)", "root_out_dir")
+
+  host_test_data("copy_bootserver") {
+    visibility = [ ":*" ]
+    sources = [ "$host_out_dir/bootserver" ]
+    outputs = [ "$root_out_dir/test_data/bootserver_tools/bootserver" ]
+    deps = [ "//tools/bootserver_old:bootserver($host_toolchain)" ]
+  }
+
+  host_test_data("copy_netls") {
+    visibility = [ ":*" ]
+    sources = [ "$host_out_dir/netls" ]
+    outputs = [ "$root_out_dir/test_data/bootserver_tools/netls" ]
+    deps = [ "//tools/netprotocol:netls($host_toolchain)" ]
+  }
+
+  host_test_data("copy_fake_firmware") {
+    visibility = [ ":*" ]
+    sources = [ "testdata/fake_firmware" ]
+    outputs = [ "$root_out_dir/test_data/bootserver_tools/fake_firmware" ]
+  }
+
+  group("bootserver_user_tools") {
+    testonly = true
+    deps = [
+      ":copy_bootserver",
+      ":copy_fake_firmware",
+      ":copy_netls",
+    ]
+  }
+
+  foreach(test_dir, test_dirs) {
+    go_test("bootserver_${test_dir}") {
+      gopackages =
+          [ "go.fuchsia.dev/fuchsia/tools/bootserver_old/tests/${test_dir}" ]
+      args = [
+        "--test_data_dir",
+        rebase_path("$root_out_dir/test_data", root_build_dir),
+      ]
+      deps = [ ":lib" ]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    children: [
+        {
+            name: "pkg_cache_integration_test",
+            url: "#meta/pkg-cache-integration-test.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+                "fuchsia.sys.Launcher",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#pkg_cache_integration_test",
+        },
+        {
+            storage: "tmp",
+            from: "parent",
+            to: "#pkg_cache_integration_test",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#pkg_cache_integration_test",
+        },
+    ],
+}

@@ -1,0 +1,54 @@
+// Copyright 2013 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.netstack;
+
+using fuchsia.hardware.ethernet;
+using fuchsia.net.dhcp;
+using fuchsia.net.interfaces;
+using zx;
+
+@discoverable
+protocol Netstack {
+    /// Creates a bridge and returns the newly created nicid or an
+    /// error if the creation fails.
+    // TODO(https://fxbug.dev/86661): Redesign and re-home this.
+    BridgeInterfaces(struct {
+        nicids vector<uint32>:MAX;
+    }) -> (struct {
+        result strict union {
+            1: message string:<MAX>;
+            2: nicid uint32;
+        };
+    });
+
+    /// Adds a new interface backed by the given ethernet device.
+    AddEthernetDevice(resource struct {
+        topological_path string:MAX;
+        interface_config struct {
+            name fuchsia.net.interfaces.name;
+
+            /// An unstable file path corresponding to the interface. Used in
+            /// watching the creation and destruction of the interface, or in
+            /// accessing the interface using netdump.
+            filepath string:MAX;
+
+            metric uint32;
+        };
+        device client_end:fuchsia.hardware.ethernet.Device;
+    }) -> (struct {
+        nicid uint32;
+    }) error zx.status;
+
+    /// Connects to a DHCP client.
+    ///
+    /// + request `nicid` the interface on which the target client is running.
+    /// + request `request` grants control over the client.
+    // TODO(stijlist): re-home this protocol. GetDhcpClient should be a member
+    // of the protocol that eventually owns network interface management
+    // in general.
+    GetDhcpClient(resource struct {
+        nicid uint32;
+        client server_end:fuchsia.net.dhcp.Client;
+    }) -> (struct {}) error zx.status;
+};

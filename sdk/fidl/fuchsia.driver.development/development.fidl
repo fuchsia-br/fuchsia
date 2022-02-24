@@ -1,0 +1,171 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.driver.development;
+
+using fuchsia.device.manager;
+using fuchsia.driver.framework;
+using fuchsia.url;
+using zx;
+
+type BindRulesBytecode = strict union {
+    /// Bind rules in the old bytecode format.
+    1: bytecode_v1
+            vector<fuchsia.device.manager.BindInstruction>:fuchsia.device.manager.BIND_RULES_INSTRUCTIONS_MAX;
+
+    /// Bind rules in the new bytecode format.
+    2: bytecode_v2 vector<uint8>:MAX;
+};
+
+type DriverInfo = table {
+    /// Path to the driver shared library.
+    1: libname string:fuchsia.device.manager.DEVICE_PATH_MAX;
+
+    /// Name of the driver, taken from the first field of the `ZIRCON_DRIVER`
+    /// macro in the driver.
+    2: name string:MAX;
+
+    /// URL of the driver component's manifest. This will only be populated if
+    /// the driver is a component.
+    3: url string:fuchsia.url.MAX_URL_LENGTH;
+
+    /// Bind rules which declare set of constraints to evaluate in order to
+    /// determine whether the driver indexer should bind this driver to a
+    /// device.
+    4: bind_rules BindRulesBytecode;
+};
+
+type DeviceFlags = strict bits : uint32 {
+    //// This device is never destroyed
+    IMMORTAL = 0x0001;
+    /// This device requires that children are created in a
+    /// new driver_host attached to a proxy device
+    MUST_ISOLATE = 0x0002;
+
+    /// This device may be bound multiple times
+    MULTI_BIND = 0x0004;
+
+    /// This device is bound and not eligible for binding
+    /// again until unbound.  Not allowed on MULTI_BIND ctx.
+    BOUND = 0x0008;
+
+    /// Device has been remove()'d
+    DEAD = 0x0010;
+
+    /// This device is a fragment of a composite device and
+    /// can be part of multiple composite devices.
+    ALLOW_MULTI_COMPOSITE = 0x0020;
+
+    /// Device is a proxy -- its "parent" is the device it's
+    /// a proxy to.
+    PROXY = 0x0040;
+
+    /// Device is not visible in devfs or bindable.
+    /// Devices may be created in this state, but may not
+    /// return to this state once made visible.
+    INVISIBLE = 0x0080;
+
+    /// Device should not go through auto-bind process.
+    SKIP_AUTOBIND = 0x0100;
+};
+
+type DeviceInfo = table {
+    /// (DFv1/DFv2) Unique ID identifying the device.
+    1: id uint64;
+
+    /// (DFv1/DFv2) List of ids representing parents. If more than one, this
+    /// device is a composite device node.
+    2: parent_ids vector<uint64>:MAX;
+
+    /// (DFv1/DFv2) List of ids representing children.
+    3: child_ids vector<uint64>:MAX;
+
+    // TODO(fxbug.dev/90735): Make process KOID available in DFv2
+    /// (DFv1) The process KOID of the driver host the driver resides within.
+    4: driver_host_koid zx.koid;
+
+    /// (DFv1) The topological path of the driver.
+    5: topological_path string:fuchsia.device.manager.DEVICE_PATH_MAX;
+
+    /// (DFv1) Path to the driver shared library.
+    6: bound_driver_libname string:fuchsia.device.manager.DEVICE_PATH_MAX;
+
+    /// (DFv2) URL to the driver component manifest
+    7: bound_driver_url string:fuchsia.url.MAX_URL_LENGTH;
+
+    /// (DFv1) Properties of the device.
+    8: property_list fuchsia.device.manager.DevicePropertyList;
+
+    /// (DFv1) Tracks the state of the device.
+    9: flags DeviceFlags;
+
+    /// (DFv2) The collection-relative moniker of the node.
+   10: moniker string:fuchsia.device.manager.DEVICE_PATH_MAX;
+
+    /// (DFv2) Properties of the node.
+   11: node_property_list
+            vector<fuchsia.driver.framework.NodeProperty>:fuchsia.driver.framework.MAX_PROPERTY_COUNT;
+};
+
+protocol DriverInfoIterator {
+    /// Return 0 drivers when no more entries left.
+    GetNext() -> (struct {
+        drivers vector<DriverInfo>:MAX;
+    });
+};
+
+/// Interface for developing and debugging drivers.
+/// This interface should only be used for development and disabled in release builds.
+@discoverable
+protocol DriverIndex {
+    /// Returns a list of all drivers that are known to the system.
+    /// If a |driver_filter| is provided, the returned list will be filtered to
+    /// only include drivers specified in the filter.
+    ///
+    /// |iterator| is closed with following epitaphs on error:
+    /// ZX_ERR_NOT_FOUND indicates that there is no driver matching the given path for at least
+    /// one driver in |driver_filter|.
+    /// ZX_ERR_BUFFER_TOO_SMALL indicates that the driver's bind program is longer than the
+    /// maximum number of instructions (BIND_PROGRAM_INSTRUCTIONS_MAX).
+    GetDriverInfo(resource struct {
+        driver_filter vector<string:MAX>:MAX;
+        iterator server_end:DriverInfoIterator;
+    });
+};
+
+protocol DeviceInfoIterator {
+    /// Return 0 devices when no more entries left.
+    GetNext() -> (struct {
+        drivers vector<DeviceInfo>:MAX;
+    });
+};
+
+/// Interface for developing and debugging drivers.
+/// This interface should only be used for development and disabled in release builds.
+@discoverable
+protocol DriverDevelopment {
+    compose DriverIndex;
+
+    /// Restarts all driver hosts containing the driver specified by `driver path`, and returns the
+    /// number of driver hosts that were restarted.
+    RestartDriverHosts(struct {
+        driver_path string:fuchsia.device.manager.DEVICE_PATH_MAX;
+    }) -> (struct {
+        count uint32;
+    }) error zx.status;
+
+    /// Returns the list of devices that are running on the system.
+    /// If a |device_filter| is provided, the returned list will be filtered to
+    /// only include devices specified in the filter.
+    /// ZX_ERR_NOT_FOUND indicates that there is no device matching the given path for at least one
+    /// device in |device_filter|.
+    ///
+    /// |iterator| is closed with following epitaphs on error:
+    /// ZX_ERR_BAD_PATH indicates that the given path is not valid.
+    /// ZX_ERR_BUFFER_TOO_SMALL indicates either that the given path is too long,
+    /// or that the device has more than the maximum number of properties (PROPERTIES_MAX).
+    GetDeviceInfo(resource struct {
+        device_filter vector<string:MAX>:MAX;
+        iterator server_end:DeviceInfoIterator;
+    });
+};

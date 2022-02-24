@@ -1,0 +1,22 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/disabled/logs_integration_go_tests"
+    },
+    "sandbox": {
+        "dev": [
+            "null"
+        ],
+        "features": [
+            "isolated-temp",
+            "shell-commands"
+        ],
+        "services": [
+            "fuchsia.logger.Log",
+            "fuchsia.process.Launcher",
+            "fuchsia.process.Resolver"
+        ]
+    }
+}

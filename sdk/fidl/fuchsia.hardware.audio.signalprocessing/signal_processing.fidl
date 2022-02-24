@@ -1,0 +1,416 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.audio.signalprocessing;
+
+using zx;
+
+// TODO(fxbug.dev/64877): Complete parameters and types for processing elements.
+
+const MAX_COUNT_PROCESSING_ELEMENTS uint32 = 64;
+const MAX_COUNT_TOPOLOGIES uint32 = 64;
+const MAX_COUNT_PROCESSING_ELEMENTS_EDGE_PAIRS uint32 = 64;
+const MAX_COUNT_EQUALIZER_BANDS uint32 = 64;
+const MAX_STRING_SIZE uint32 = 256;
+
+type ElementType = flexible enum {
+    /// Vendor Specific. A type of processing element not covered by any subsequent type definition.
+    VENDOR_SPECIFIC = 1;
+
+    /// Define pipelines start/end.
+    END_POINT = 2;
+
+    /// Controls pipelines channel mixing and routing.
+    CONNECTION_POINT = 3;
+
+    /// Gain control, a.k.a. Volume control.
+    GAIN = 4;
+
+    /// Automatic Gain Control.
+    /// Automatically maintains a suitable signal level regardless of variation of its input.
+    AUTOMATIC_GAIN_CONTROL = 5;
+
+    /// Automatic Gain Limiter.
+    /// Automatically maintains a signal level below a level specified.
+    /// Input below the level is unaffected, and peaks above the level are attenuated.
+    AUTOMATIC_GAIN_LIMITER = 6;
+
+    /// Dynamic Range Compression.
+    /// Reduces the dynamic range by lowering higher signal levels and increasing lower signal
+    /// levels.
+    DYNAMIC_RANGE_COMPRESSION = 7;
+
+    /// Mute.
+    MUTE = 8;
+
+    /// Delay.
+    DELAY = 9;
+
+    /// Equalizer.
+    EQUALIZER = 10;
+
+    /// Sample Rate Conversion.
+    SAMPLE_RATE_CONVERSION = 11;
+};
+
+/// Type specific parameters for an `Element` with `type` equal to `VENDOR_SPECIFIC`.
+type VendorSpecific = table {};
+
+/// Hardware domain of the gain, e.g. ANALOG.
+type GainDomain = flexible enum : uint8 {
+    /// The processing element gain is applied in the digital domain.
+    DIGITAL = 1;
+
+    /// The processing element gain is applied in the analog domain.
+    ANALOG = 2;
+
+    /// The processing element gain is mixed using digital and analog hardware.
+    MIXED = 3;
+};
+
+/// Gain type of representation.
+type GainType = strict enum : uint8 {
+    /// Gain specified in dB, for example -103.0dB or +3.2dB.
+    DECIBELS = 1;
+
+    /// Gain specified as a percentage, for example 10.0% or 80.5%.
+    PERCENT = 2;
+};
+
+/// Parameters for an `Element` with `type` equal to `GAIN`.
+type Gain = table {
+    /// Specifies what the numbers for gain represent, e.g. a percentage. Required.
+    1: type GainType;
+
+    /// If included, the gain is applied in the specified `GainDomain`.
+    /// If not included, the gain domain is unspecified.
+    2: domain GainDomain;
+
+    /// Minimum gain in `GainType` format. Required.
+    3: min_gain float32;
+
+    /// Maximum gain in `GainType` format. Required.
+    4: max_gain float32;
+
+    /// Minimum gain step in `GainType` format, this value must not be negative, but may be zero to
+    /// convey an effectively continuous range of values. Must not exceed `max_gain` - `min_gain`.
+    /// The actual gain set may be queried by the client with a `WatchElement` call.
+    /// Required.
+    5: min_gain_step float32;
+};
+
+/// Type of the equalizer band.
+type EqualizerBandType = flexible enum : uint64 {
+    /// Increase/decrease in `gain_db` in the vicinity of a `frequency` with an optional `q`.
+    PEAK = 1;
+
+    /// Narrow band rejection significantly attenuating a `frequency` with an optional `q`.
+    NOTCH = 2;
+
+    /// Decresase gain below a `frequency` with an optional `q`, a.k.a high pass.
+    LOW_CUT = 3;
+
+    /// Decresase gain above a `frequency` with an optional `q`, a.k.a low pass.
+    HIGH_CUT = 4;
+
+    /// Decresase gain below a `frequency` for a `gain_db` amount with a plateau effect.
+    LOW_SHELF = 5;
+
+    /// Decresase gain above a `frequency` for a `gain_db` amount with a plateau effect.
+    HIGH_SHELF = 6;
+};
+
+/// Parameters for an equalizer Band.
+type EqualizerBand = table {
+    /// Unique ID for this band, only required to be unique within the corresponding
+    /// `Element`, and valid until the channel associated with the `SignalProcessing`
+    /// protocol is closed. Required.
+    1: id uint64;
+};
+
+/// Equalizer supported controls specified in `Equalizer`.
+type EqualizerSupportedControls = flexible bits : uint64 {
+    /// If included, the `frequency` of the equalizer bands can be changed with
+    /// `SetElement`.
+    CAN_CONTROL_FREQUENCY = 0x1;
+
+    /// If included, the `q` of the equalizer bands can be changed with `SetElement`.
+    CAN_CONTROL_Q = 0x2;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `PEAK`.
+    SUPPORTS_TYPE_PEAK = 0x4;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `NOTCH`.
+    SUPPORTS_TYPE_NOTCH = 0x8;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `LOW_CUT`.
+    SUPPORTS_TYPE_LOW_CUT = 0x10;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `HIGH_CUT`.
+    SUPPORTS_TYPE_HIGH_CUT = 0x20;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `LOW_SHELF`.
+    SUPPORTS_TYPE_LOW_SHELF = 0x40;
+
+    /// If included, the `type` of the equalizer bands can be changed with `SetElement`
+    /// to `EqualizerBandType` `HIGH_SHELF`.
+    SUPPORTS_TYPE_HIGH_SHELF = 0x80;
+};
+
+/// Parameters for a `Element` with `type` equal to `EQUALIZER`.
+type Equalizer = table {
+    /// Equalizers in this protocol are built by a number of bands, each specifying a number of
+    /// parameters here and `EqualizerElementState` that can be changed with
+    /// `SetElement`.
+    /// The number of elements of the `bands` vector determines the number of bands
+    /// supported by this processing element.
+    1: bands vector<EqualizerBand>:MAX_COUNT_EQUALIZER_BANDS;
+
+    /// The controls supported by this equalizer.
+    2: supported_controls EqualizerSupportedControls;
+
+    /// If included and true, individual bands can be disabled via `ElementState`.
+    /// If not included or false, the bands are always enabled.
+    /// For a band to be functional its enclosing equalizer processing element has to be enabled.
+    3: can_disable_bands bool;
+
+    /// Minimum frequency for the bands in Hz. Required.
+    4: min_frequency uint32;
+
+    /// Maximum frequency for the bands in Hz. Required.
+    5: max_frequency uint32;
+
+    /// Maximum quality factor, usually denoted by "Q", for the bands. Optional.
+    /// Indicates how narrow the frequency transition is. Higher Q values imply narrower
+    /// notches/peaks and steeper cuts/shelves. Must be positive.
+    6: max_q float32;
+
+    /// Minimum gain in dB.
+    /// Required if any `EqualizerBand.EqualizerBandType` is set to `PEAK`, `LOW_SHELF`,
+    /// `HIGH_SHELF`.
+    7: min_gain_db float32;
+
+    /// Maximum gain in dB.
+    /// Required if any `EqualizerBand.EqualizerBandType` is set to `PEAK`, `LOW_SHELF`,
+    /// `HIGH_SHELF`.
+    8: max_gain_db float32;
+};
+
+/// Type specific Parameters for an `Element`.
+type TypeSpecificElement = flexible union {
+    1: vendor_specific VendorSpecific;
+    2: gain Gain;
+    3: equalizer Equalizer;
+};
+
+type Latency = flexible union {
+    /// Latency added to the pipeline as a zx.duration.
+    1: latency_time zx.duration;
+
+    /// Latency added to the pipeline as a number of frames.
+    2: latency_frames uint32;
+};
+
+type Element = table {
+    /// Unique ID for this element. The scope of this id is only within the `SignalProcessing`
+    /// protocol lifespan, i.e. until the channel associated with the protocol is closed.
+    /// Required.
+    1: id uint64;
+
+    /// Processing element type. Required.
+    2: type ElementType;
+
+    /// If included, type specific parameters for the processing element.
+    3: type_specific TypeSpecificElement;
+
+    /// If included and true, the processing element can be disabled via
+    /// `ElementSetState`.
+    /// If not included or false, the processing element is always enabled.
+    4: can_disable bool;
+
+    /// If included, a textual description of the processing element.
+    5: description string:MAX_STRING_SIZE;
+};
+
+/// State for an `Element` with `type` equal to `VENDOR_SPECIFIC`.
+type VendorSpecificState = table {};
+
+/// State for an `Element` with `type` equal to `GAIN`.
+type GainElementState = table {
+    /// Current gain in `GainType` format. Required.
+    1: gain float32;
+};
+
+/// State for a single band within a `Element` with `type` equal to `EQUALIZER`.
+type EqualizerBandState = table {
+    /// Unique ID for the band. Must match one of the `id`s specified in
+    /// `Equalizer` `bands`. Required.
+    1: id uint64;
+
+    /// Type of band. Optional.
+    2: type EqualizerBandType;
+
+    /// Center frequency for the band. Optional.
+    3: frequency uint32;
+
+    /// Quality factor, usually denoted as "Q". Optional.
+    /// Indicates how narrow the frequency transition is. Higher Q values imply narrower
+    /// notches/peaks and steeper cuts/shelves. Must be positive.
+    4: q float32;
+
+    /// Gain in dB. Required for `EqualizerBandType` `PEAK`, `LOW_SHELF` and `HIGH_SHELF`.
+    /// May not be included for `EqualizerBandType` `NOTCH`, `LOW_CUT` or `HIGH_CUT`.
+    5: gain_db float32;
+
+    /// Enable/disable the band. Optional. By default all bands are enabled.
+    /// Disabling the enclosing processing element by setting `ElementState.enabled` to
+    /// false disables the whole equalizer and it does not change this field. For a band to be
+    /// functional its enclosing equalizer processing element has to be enabled.
+    6: enabled bool;
+};
+
+/// State for a `Element` with `type` equal to `EQUALIZER`.
+type EqualizerElementState = table {
+    /// The number of elements of the `bands_state` vector must be equal or smaller than the
+    /// number of elements of the `bands` returned in returned in the corresponding
+    /// `Equalizer`. `bands_state` must have at least one element.
+    /// The bands controlled by `bands_state` are determined by each `band.id`.
+    // Required.
+    1: bands_state vector<EqualizerBandState>:MAX_COUNT_EQUALIZER_BANDS;
+};
+
+/// Type specific processing element state.
+/// The type of processing element control is defined by the type of parameters provided in this
+/// union. Must match the type returned in the corresponding `ElementType` entry in the
+/// corresponding `Element`.
+type TypeSpecificElementState = flexible union {
+    1: vendor_specific VendorSpecificState;
+    2: gain GainElementState;
+    3: equalizer EqualizerElementState;
+};
+
+type ElementState = table {
+    /// If included, type specific state parameters for the processing element.
+    ///
+    /// If this processing element is disabled and its type specific state is provided, then the
+    /// type specific state is only informational, for instance if a `SetElementState` enables a
+    /// disabled processing element providing a `TypeSpecificElementState`, then any previous
+    /// informational `TypeSpecificElementState` is superceded.
+    1: type_specific TypeSpecificElementState;
+
+    /// Process element enable/disable state. Optional. By default processing elements are enabled.
+    /// If the corresponding `Element` returned `can_disable` equals to `false`, then
+    /// this field can't be set to `false`.
+    /// If `enabled` is not included, then `state` must be included if and only if the processing
+    /// element is currently enabled.
+    2: enabled bool;
+
+    /// If included, how much latency is added to the pipeline if this processing element is
+    /// enabled. This field must not be present in a `SetElementState` `state` since
+    /// the latency can't be set by a client, it can only provided by the server in a
+    /// `WatchElementState` reply.
+    3: latency Latency;
+};
+
+/// Edge pairs between processing elements used to define ordering in processing elements
+/// arrangements.
+type EdgePair = struct {
+    processing_element_id_from uint64;
+    processing_element_id_to uint64;
+};
+
+/// A `Topology` specifies one way processing elements are arranged within the hardware.
+type Topology = table {
+    /// Unique ID for this topology. The scope of this id is only within the `SignalProcessing`
+    /// protocol lifespan, i.e. until the channel associated with the protocol is closed.
+    /// Required.
+    1: id uint64;
+
+    /// Vector of processing elements edge pairs in this order.
+    /// The ordering of processing elements with edge pairs form pipelines.
+    /// To define multiple possible pipelines, return more `Topology` entries in `GetTopologies`.
+    /// Required.
+    2: processing_elements_edge_pairs vector<EdgePair>:MAX_COUNT_PROCESSING_ELEMENTS_EDGE_PAIRS;
+};
+
+/// For an overview see
+/// [[Signal Processing Interface]](https://fuchsia.dev/fuchsia-src/concepts/drivers/driver_architectures/audio_drivers/audio_signal_processing).
+protocol SignalProcessing {
+    /// Returns a vector of supported processing elements.
+    /// Must return one or more processing elements, or ZX_ERR_NOT_SUPORTED.
+    GetElements() -> (struct {
+        processing_elements vector<Element>:MAX_COUNT_PROCESSING_ELEMENTS;
+    }) error zx.status;
+
+    /// Controls a processing element using a unique id returned by `GetElements`.
+    /// Returns `ZX_ERR_INVALID_ARGS` if the `processing_element_id` does not match an id returned
+    /// by `GetElements` or the type of `TypeSpecificElementState` does not
+    /// match the `ElementType` of the processing element returned by
+    /// `GetElements` for this id.
+    /// The driver may return `ZX_ERR_INVALID_ARGS` if the `state` values are invalid, i.e. any
+    /// of the values violates rules specified in this protocol, e.g. trying to change an
+    /// `EQUALIZER` processing element's `EqualizerBandState` `frequency` when this processing
+    /// element did not advertise `CAN_CONTROL_FREQUENCY` in its `supported_controls`.
+    ///
+    /// `SetElementState` may be called before or after non-`SignalProcessing` protocol
+    /// calls. If called after non-`SignalProcessing` protocol calls then
+    /// `SetElementState` may or may not require renegotiation of the driver state as
+    /// reached with calls of the protocol composing `SignalProcessing`, e.g. `Dai`.
+    /// For instance, `SetElementState` changing an `AGL` processing element's parameters
+    /// may not require renegotiation of the `Dai` state because changing a gain parameter usually
+    /// does not change the set of supported audio formats.
+    /// By contrast, if `SetElementState` changes the parameters of a `CONNECTION_POINT`
+    /// element, the change may require renegotiation becuase it may invalidate the set of
+    /// supported formats returned in a previous `GetDaiFormats` `Dai` protocol call.
+    ///
+    /// It is the driver's job to determine when renegotiation is required. If renegotiation is
+    /// required, then `SetElementState` must return ZX_ERR_BAD_STATE and the client must
+    /// close the protocol channel such that the protocol negotiations are started over.
+    /// The client then must make the `SetElementState` call that returned
+    /// ZX_ERR_BAD_STATE before any non-`SignalProcessing` protocol calls.
+    SetElementState(struct {
+        processing_element_id uint64;
+        state ElementState;
+    }) -> (struct {}) error zx.status;
+
+    /// Get the processing element state via a hanging get. For a given `processing_element_id`,
+    /// the driver will reply to the first `WatchElement` sent by the client.
+    /// The driver will not respond to subsequent client `WatchElement` calls for a
+    /// given `processing_element_id` until any field of the `Element` table
+    /// changes from what was most recently reported for that `processing_element_id`.
+    WatchElementState(struct {
+        processing_element_id uint64;
+    }) -> (struct {
+        state ElementState;
+    });
+
+    /// Returns a vector of supported topologies.
+    /// Must return one or more topologies, or ZX_ERR_NOT_SUPORTED.
+    /// If more than one topology is returned, then the client may choose any of the topologies from
+    /// the list with `SetTopology`.
+    /// If only one topology is returned, then the topology definition is informational only since
+    /// the one and only topology used can't be changed with `SetTopology`.
+    /// If `GetElements` returns one or more elements, `GetTopologies` must return one or
+    /// more topologies.
+    GetTopologies() -> (struct {
+        topologies vector<Topology>:MAX_COUNT_TOPOLOGIES;
+    }) error zx.status;
+
+    /// Sets the topology to be used using an id to the vector returned by `GetTopologies`.
+    /// If `GetTopologies` returns more than one `Topology`, `SetTopology` must be called to put the
+    /// driver in an initialized state. If `GetTopologies` returns only one `Topology`,
+    /// `SetTopology` is optional and has no effect.
+    ///
+    /// `SetTopology` may be called before or after non-`SignalProcessing` protocol calls.
+    /// If called after non-`SignalProcessing` protocol calls, then `SetTopology` may return
+    /// ZX_ERR_BAD_STATE to indicate that the operation can not proceed without renegotiation of the
+    /// driver state. See `SetElementState` for further discussion.
+    SetTopology(struct {
+        topology_id uint64;
+    }) -> (struct {}) error zx.status;
+};

@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/smart-door-server-unittest"
+    },
+    "sandbox": {
+        "features": [
+            "config-data"
+        ]
+    }
+}

@@ -1,0 +1,22 @@
+{
+    // The nested realm that will bootstrap what we want to test.
+    children: [
+        {
+            name: "nested_realm",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/realm_offered_nested.cm",
+            startup: "eager",
+        },
+    ],
+
+    // Route Echo service from server to client.
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.sys2.EventSource",
+            ],
+            from: "parent",
+            to: "#nested_realm",
+        },
+    ],
+}

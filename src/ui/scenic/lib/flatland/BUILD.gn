@@ -1,0 +1,94 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("flatland") {
+  sources = [
+    "default_flatland_presenter.cc",
+    "default_flatland_presenter.h",
+    "flatland.cc",
+    "flatland.h",
+    "flatland_display.cc",
+    "flatland_display.h",
+    "flatland_manager.cc",
+    "flatland_manager.h",
+    "flatland_presenter.h",
+    "global_image_data.cc",
+    "global_image_data.h",
+    "global_matrix_data.cc",
+    "global_matrix_data.h",
+    "global_topology_data.cc",
+    "global_topology_data.h",
+    "hanging_get_helper.h",
+    "link_system.cc",
+    "link_system.h",
+    "transform_graph.cc",
+    "transform_graph.h",
+    "transform_handle.cc",
+    "transform_handle.h",
+    "uber_struct.h",
+    "uber_struct_system.cc",
+    "uber_struct_system.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.composition",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/lib/fxl",
+
+    # TODO(fxbug.dev/56879): this dependency should be broken down into smaller libraries,
+    # since it is currently only used for escher::FenceQueue.
+    "//sdk/lib/fit",
+    "//src/ui/lib/escher",
+    "//src/ui/scenic/lib/display",
+    "//src/ui/scenic/lib/flatland/buffers",
+    "//src/ui/scenic/lib/utils",
+    "//src/ui/scenic/lib/view_tree:view_tree_snapshot",
+    "//third_party/glm",
+    "//zircon/system/ulib/async-default",
+  ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/ui/scenic/cpp:cpp",
+    "//src/ui/scenic/lib/gfx:object_linker",
+    "//src/ui/scenic/lib/gfx:validate_eventpair",
+    "//src/ui/scenic/lib/scenic/util",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler_interface",
+    "//src/ui/scenic/lib/scheduling:present_helpers",
+    "//src/ui/scenic/lib/utils",
+    "//zircon/system/ulib/trace",
+  ]
+
+  configs += [ "//third_party/glm:enable_experimental" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+group("pixeltests") {
+  testonly = true
+
+  public_deps = [ "engine/tests/pixeltests" ]
+}
+
+group("unittests") {
+  testonly = true
+
+  public_deps = [
+    "buffers/tests:unittests",
+    "engine/tests:unittests",
+    "renderer/tests:unittests",
+    "tests:unittests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  public_deps = [
+    ":pixeltests",
+    ":unittests",
+  ]
+}

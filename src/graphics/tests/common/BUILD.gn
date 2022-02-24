@@ -1,0 +1,62 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//build/components.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+source_set("common") {
+  testonly = true
+
+  sources = [
+    "//src/graphics/tests/common/utils.cc",
+    "//src/graphics/tests/common/vulkan_context.cc",
+    "//src/graphics/tests/common/vulkan_context.h",
+  ]
+
+  public_deps = [
+    "//src/lib/vulkan",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("vkcontext_bin") {
+  testonly = true
+  output_name = "vkcontext"
+
+  sources = [ "test_vkcontext.cc" ]
+
+  deps = [
+    ":common",
+    "//src/lib/vulkan",
+  ]
+
+  public_deps = [
+    "//src/lib/fxl/test:test_settings",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_component("vkcontext_cmp") {
+  testonly = true
+  component_name = "vkcontext"
+  deps = [
+    ":vkcontext_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+
+  manifest = "meta/vkcontext.cmx"
+}
+
+fuchsia_test_package("vkcontext-pkg") {
+  package_name = "vkcontext"
+  test_components = [ ":vkcontext_cmp" ]
+  test_specs = {
+    environments = magma_libvulkan_hardware_envs
+    environments += [ aemu_env ]
+  }
+}
+
+group("vkcontext") {
+  testonly = true
+  deps = [ ":vkcontext-pkg" ]
+}

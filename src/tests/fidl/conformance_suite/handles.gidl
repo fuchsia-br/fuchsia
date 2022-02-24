@@ -1,0 +1,1100 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+success("SingleHandle") {
+    handle_defs = {
+        #0 = event(),
+    },
+    value = SingleHandle{
+        h: #0,
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+}
+
+success("SingleOptionalHandlePresent") {
+    handle_defs = {
+        #0 = event(),
+    },
+    value = SingleOptionalHandle{
+        h: #0,
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+}
+
+success("SingleOptionalHandleAbsent") {
+    value = SingleOptionalHandle{},
+    bytes = {
+        v1, v2 = [
+            repeat(0x00):4, padding:4,
+        ],
+    },
+}
+
+success("ArrayOfHandles") {
+    handle_defs = {
+        #0 = event(),
+        #1 = event(),
+        #2 = event(),
+    },
+    value = ArrayOfHandles{
+        a: [#2, #0, #1],
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #2, #0, #1,
+        ],
+    },
+}
+
+success("ArrayOfOptionalHandles") {
+    handle_defs = {
+        #0 = event(),
+    },
+    value = ArrayOfOptionalHandles{
+        a: [null, #0, null],
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0x00):4, repeat(0xff):4, repeat(0x00):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+}
+
+success("VectorOfHandles") {
+    // TODO(fxbug.dev/88707) Fix on C. (Unknown failure reason).
+    bindings_denylist = [c],
+    handle_defs = {
+        #0 = event(),
+        #1 = event(),
+        #2 = event(),
+    },
+    value = VectorOfHandles{
+        v: [#2, #0, #1],
+    },
+    bytes = {
+        v1, v2 = [
+            num(3):8, repeat(0xff):8,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #2, #0, #1,
+        ],
+    },
+}
+
+success("VectorOfOptionalHandles") {
+    // TODO(fxbug.dev/88707) Fix on C. (Unknown failure reason).
+    bindings_denylist = [c],
+    handle_defs = {
+        #0 = event(),
+    },
+    value = VectorOfOptionalHandles{
+        v: [null, #0, null],
+    },
+    bytes = {
+        v1, v2 = [
+            num(3):8, repeat(0xff):8,
+            repeat(0x00):4, repeat(0xff):4, repeat(0x00):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+}
+
+success("MultipleHandleSubtypes") {
+    handle_defs = {
+        #0 = channel(),
+        #1 = event(),
+        #2 = channel(),
+    },
+    value = MultipleHandleSubtypes{
+        untyped: #0,
+        event: #1,
+        channel: #2,
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0, #1, #2,
+        ],
+    },
+}
+
+decode_failure("TooManyHandles") {
+    bindings_denylist = [rust],
+    handle_defs = {
+        #0 = event(),
+        #1 = event(),
+    },
+    type = SingleHandle,
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0, #1,
+        ],
+    },
+    err = TOO_MANY_HANDLES_IN_MESSAGE,
+}
+
+decode_failure("TooFewHandles") {
+    // TODO(fxbug.dev/58385): Close handles on encode/decode failure in Rust.
+    bindings_denylist = [rust],
+    type = SingleHandle,
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    err = TOO_FEW_HANDLES,
+}
+
+// Currently channels max out at 64-handles.
+success("ChannelMaxHandles") {
+    // TODO(fxbug.dev/88707) Fix on C. (Unknown failure reason).
+    bindings_denylist = [c],
+    handle_defs = {
+        #0 = event(), #1 = event(), #2 = event(), #3 = event(),
+        #4 = event(), #5 = event(), #6 = event(), #7 = event(),
+        #8 = event(), #9 = event(), #10 = event(), #11 = event(),
+        #12 = event(), #13 = event(), #14 = event(), #15 = event(),
+        #16 = event(), #17 = event(), #18 = event(), #19 = event(),
+        #20 = event(), #21 = event(), #22 = event(), #23 = event(),
+        #24 = event(), #25 = event(), #26 = event(), #27 = event(),
+        #28 = event(), #29 = event(), #30 = event(), #31 = event(),
+        #32 = event(), #33 = event(), #34 = event(), #35 = event(),
+        #36 = event(), #37 = event(), #38 = event(), #39 = event(),
+        #40 = event(), #41 = event(), #42 = event(), #43 = event(),
+        #44 = event(), #45 = event(), #46 = event(), #47 = event(),
+        #48 = event(), #49 = event(), #50 = event(), #51 = event(),
+        #52 = event(), #53 = event(), #54 = event(), #55 = event(),
+        #56 = event(), #57 = event(), #58 = event(), #59 = event(),
+        #60 = event(), #61 = event(), #62 = event(), #63 = event(),
+    },
+    value = VectorOfHandles{
+        v: [
+            #0, #1, #2, #3, #4, #5, #6, #7,
+            #8, #9, #10, #11, #12, #13, #14, #15,
+            #16, #17, #18, #19, #20, #21, #22, #23,
+            #24, #25, #26, #27, #28, #29, #30, #31,
+            #32, #33, #34, #35, #36, #37, #38, #39,
+            #40, #41, #42, #43, #44, #45, #46, #47,
+            #48, #49, #50, #51, #52, #53, #54, #55,
+            #56, #57, #58, #59, #60, #61, #62, #63,
+        ],
+    },
+    bytes = {
+        v1, v2 = [
+            num(64):8, repeat(0xff):8,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+            repeat(0xff):4, repeat(0xff):4, repeat(0xff):4, repeat(0xff):4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0, #1, #2, #3, #4, #5, #6, #7,
+            #8, #9, #10, #11, #12, #13, #14, #15,
+            #16, #17, #18, #19, #20, #21, #22, #23,
+            #24, #25, #26, #27, #28, #29, #30, #31,
+            #32, #33, #34, #35, #36, #37, #38, #39,
+            #40, #41, #42, #43, #44, #45, #46, #47,
+            #48, #49, #50, #51, #52, #53, #54, #55,
+            #56, #57, #58, #59, #60, #61, #62, #63,
+        ],
+    },
+}
+
+// There should be support for at least 64 handles in unknown fields.
+decode_success("ChannelMaxUnknownHandlesDropped") {
+    // LLCPP is the only binding that does not store unknowns.
+    bindings_allowlist = [llcpp],
+    handle_defs = {
+        #0 = event(), #1 = event(), #2 = event(), #3 = event(),
+        #4 = event(), #5 = event(), #6 = event(), #7 = event(),
+        #8 = event(), #9 = event(), #10 = event(), #11 = event(),
+        #12 = event(), #13 = event(), #14 = event(), #15 = event(),
+        #16 = event(), #17 = event(), #18 = event(), #19 = event(),
+        #20 = event(), #21 = event(), #22 = event(), #23 = event(),
+        #24 = event(), #25 = event(), #26 = event(), #27 = event(),
+        #28 = event(), #29 = event(), #30 = event(), #31 = event(),
+        #32 = event(), #33 = event(), #34 = event(), #35 = event(),
+        #36 = event(), #37 = event(), #38 = event(), #39 = event(),
+        #40 = event(), #41 = event(), #42 = event(), #43 = event(),
+        #44 = event(), #45 = event(), #46 = event(), #47 = event(),
+        #48 = event(), #49 = event(), #50 = event(), #51 = event(),
+        #52 = event(), #53 = event(), #54 = event(), #55 = event(),
+        #56 = event(), #57 = event(), #58 = event(), #59 = event(),
+        #60 = event(), #61 = event(), #62 = event(), #63 = event(),
+    },
+    value = ReservedFieldTableStruct{
+        table: ReservedFieldTable{},
+    },
+    bytes = {
+        v1 = [
+            num(1):8, repeat(0xff):8, // Table header
+            num(256):4, num(64):4, repeat(0xff):8, // Reserved envelope
+            repeat(0xff):256, // Handle values.
+        ],
+        v2 = [
+            num(1):8, repeat(0xff):8, // Table header
+            num(256):4, num(64):2, num(0):2, // Reserved envelope
+            repeat(0xff):256, // Handle values.
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0, #1, #2, #3, #4, #5, #6, #7,
+            #8, #9, #10, #11, #12, #13, #14, #15,
+            #16, #17, #18, #19, #20, #21, #22, #23,
+            #24, #25, #26, #27, #28, #29, #30, #31,
+            #32, #33, #34, #35, #36, #37, #38, #39,
+            #40, #41, #42, #43, #44, #45, #46, #47,
+            #48, #49, #50, #51, #52, #53, #54, #55,
+            #56, #57, #58, #59, #60, #61, #62, #63,
+        ],
+    },
+}
+
+// this test is the same as ChannelMaxUnknownHandlesDropped, but expects
+// that the unknown data is stored in the value instead of discarded
+success("ChannelMaxUnknownHandlesStored") {
+    // TODO(fxbug.dev/88707) Fix on C. (Unknown failure reason).
+    // LLCPP is tested in the ChannelMaxUnknownHandlesDropped test
+    bindings_denylist = [llcpp, c],
+    handle_defs = {
+        #0 = event(), #1 = event(), #2 = event(), #3 = event(),
+        #4 = event(), #5 = event(), #6 = event(), #7 = event(),
+        #8 = event(), #9 = event(), #10 = event(), #11 = event(),
+        #12 = event(), #13 = event(), #14 = event(), #15 = event(),
+        #16 = event(), #17 = event(), #18 = event(), #19 = event(),
+        #20 = event(), #21 = event(), #22 = event(), #23 = event(),
+        #24 = event(), #25 = event(), #26 = event(), #27 = event(),
+        #28 = event(), #29 = event(), #30 = event(), #31 = event(),
+        #32 = event(), #33 = event(), #34 = event(), #35 = event(),
+        #36 = event(), #37 = event(), #38 = event(), #39 = event(),
+        #40 = event(), #41 = event(), #42 = event(), #43 = event(),
+        #44 = event(), #45 = event(), #46 = event(), #47 = event(),
+        #48 = event(), #49 = event(), #50 = event(), #51 = event(),
+        #52 = event(), #53 = event(), #54 = event(), #55 = event(),
+        #56 = event(), #57 = event(), #58 = event(), #59 = event(),
+        #60 = event(), #61 = event(), #62 = event(), #63 = event(),
+    },
+    value = ReservedFieldTableStruct{
+        table: ReservedFieldTable{
+            1: {
+                // 256 bytes for 64 handles' 4-byte presence markers.
+                bytes = [
+                    repeat(0xff):256,
+                ],
+                handles = [
+                    #0, #1, #2, #3, #4, #5, #6, #7,
+                    #8, #9, #10, #11, #12, #13, #14, #15,
+                    #16, #17, #18, #19, #20, #21, #22, #23,
+                    #24, #25, #26, #27, #28, #29, #30, #31,
+                    #32, #33, #34, #35, #36, #37, #38, #39,
+                    #40, #41, #42, #43, #44, #45, #46, #47,
+                    #48, #49, #50, #51, #52, #53, #54, #55,
+                    #56, #57, #58, #59, #60, #61, #62, #63,
+                ],
+            },
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8, repeat(0xff):8, // Table header
+            num(256):4, num(64):4, repeat(0xff):8, // Reserved envelope
+            repeat(0xff):256, // Handle values.
+        ],
+        v2 = [
+            num(1):8, repeat(0xff):8, // Table header
+            num(256):4, num(64):2, num(0):2, // Reserved envelope
+            repeat(0xff):256, // Handle values.
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0, #1, #2, #3, #4, #5, #6, #7,
+            #8, #9, #10, #11, #12, #13, #14, #15,
+            #16, #17, #18, #19, #20, #21, #22, #23,
+            #24, #25, #26, #27, #28, #29, #30, #31,
+            #32, #33, #34, #35, #36, #37, #38, #39,
+            #40, #41, #42, #43, #44, #45, #46, #47,
+            #48, #49, #50, #51, #52, #53, #54, #55,
+            #56, #57, #58, #59, #60, #61, #62, #63,
+        ],
+    },
+}
+
+encode_success("EncodeHandleTypeAndRightsComeFromFIDL") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = EventWithDefaultRights{
+        h: #0,
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: event_default},
+        ],
+    },
+}
+
+decode_success("DecodeHandleHasExactTypeAndRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = EventWithDefaultRights{
+        h: restrict(#0, rights: event_default),
+    },
+}
+
+decode_failure("DecodeHandleHasWrongType") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(),
+    },
+    type = EventWithDefaultRights,
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = INCORRECT_HANDLE_TYPE,
+}
+
+decode_success("DecodeHandleHasExtraRights") {
+    // Rust does not support GIDL tests involving reducing rights.
+    bindings_allowlist = [llcpp, hlcpp, cpp, go],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = EventWithReducedRights{
+        h: restrict(#0, rights: basic),
+    },
+}
+
+decode_failure("DecodeHandleHasTooFewRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: basic),
+    },
+    type = EventWithDefaultRights,
+    bytes = {
+        v1, v2 = [
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = MISSING_REQUIRED_HANDLE_RIGHTS,
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with structs, which may have different behavior than other types.
+encode_success("EncodeArrayOfVectorOfEventInStruct") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = ArrayOfVectorOfEventInStructWithReducedRights{h: [[#0]]},
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with structs, which may have different behavior than other types.
+encode_success("EncodeVectorOfArrayOfEventInStruct") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = VectorOfArrayOfEventInStructWithReducedRights{h: [[#0]]},
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with tables, which may have different behavior than other types.
+encode_success("EncodeArrayOfVectorOfEventInTable") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart, transformer],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = ArrayOfVectorOfEventInTableWithReducedRightsStruct{
+        t: ArrayOfVectorOfEventInTableWithReducedRights{
+            h: [[#0]],
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with tables, which may have different behavior than other types.
+encode_success("EncodeVectorOfArrayOfEventInTable") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = VectorOfArrayOfEventInTableWithReducedRightsStruct{
+        t: VectorOfArrayOfEventInTableWithReducedRights{
+            h: [[#0]],
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with unions, which may have different behavior than other types.
+encode_success("EncodeArrayOfVectorOfEventInUnion") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart, transformer],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = ArrayOfVectorOfEventInUnionWithReducedRightsStruct{
+        u: ArrayOfVectorOfEventInUnionWithReducedRights{
+            h: [[#0]],
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle type information in some bindings.
+// Test this with unions, which may have different behavior than other types.
+encode_success("EncodeVectorOfArrayOfEventInUnion") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: channel_default),
+    },
+    value = VectorOfArrayOfEventInUnionWithReducedRightsStruct{
+        u: VectorOfArrayOfEventInUnionWithReducedRights{
+            h: [[#0]],
+        },
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handle_dispositions = {
+        v1, v2 = [
+            {#0, type: event, rights: basic},
+        ],
+    },
+}
+
+// Vector and arrays can't hold handle rights information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a struct use the correct
+// rights by reducing the rights.
+decode_success("DecodeArrayOfVectorOfEventInStructExtraRights") {
+    // Rust does not support GIDL tests involving reducing rights.
+    bindings_allowlist = [llcpp, hlcpp, cpp, go],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = ArrayOfVectorOfEventInStructWithReducedRights{
+        h: [[restrict(#0, rights: basic)]],
+    },
+}
+
+decode_failure("DecodeArrayOfVectorOfEventInStructHasTooFewRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: basic),
+    },
+    type = ArrayOfVectorOfEventInStructWithDefaultRights,
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = MISSING_REQUIRED_HANDLE_RIGHTS,
+}
+
+// Vector and arrays can't hold handle type information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a struct have the type
+// checked by failing when there is a type mismatch.
+decode_failure("DecodeArrayOfVectorOfEventInStructType") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: transfer),
+    },
+    type = ArrayOfVectorOfEventInStructWithReducedRights,
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = INCORRECT_HANDLE_TYPE,
+}
+
+// Vector and arrays can't hold handle rights information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in a vector of an array in a struct use the correct
+// rights by reducing the rights.
+decode_success("DecodeVectorOfArrayOfEventInStructExtraRights") {
+    // Rust does not support GIDL tests involving reducing rights.
+    bindings_allowlist = [llcpp, hlcpp, cpp, go],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = VectorOfArrayOfEventInStructWithReducedRights{
+        h: [[restrict(#0, rights: basic)]],
+    },
+}
+
+decode_failure("DecodeVectorOfArrayOfEventInStructHasTooFewRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: basic),
+    },
+    type = VectorOfArrayOfEventInStructWithDefaultRights,
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = MISSING_REQUIRED_HANDLE_RIGHTS,
+}
+
+// Vector and arrays can't hold handle type information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in a vector of an array in a struct have the type
+// checked by failing when there is a type mismatch.
+decode_failure("DecodeVectorOfArrayOfEventInStructType") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: transfer),
+    },
+    type = VectorOfArrayOfEventInStructWithReducedRights,
+    bytes = {
+        v1, v2 = [
+            num(1):8,
+            repeat(0xff):8,
+            repeat(0xff):4,
+            padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = INCORRECT_HANDLE_TYPE,
+}
+
+// Vector and arrays can't hold handle rights information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a table use the correct
+// rights by reducing the rights.
+decode_success("DecodeArrayOfVectorOfEventInTableExtraRights") {
+    // Rust does not support GIDL tests involving reducing rights.
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, transformer],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = ArrayOfVectorOfEventInTableWithReducedRightsStruct{
+        t: ArrayOfVectorOfEventInTableWithReducedRights{
+            h: [[restrict(#0, rights: basic)]],
+        },
+    },
+}
+
+decode_failure("DecodeArrayOfVectorOfEventInTableHasTooFewRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: basic),
+    },
+    type = ArrayOfVectorOfEventInTableWithDefaultRightsStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = MISSING_REQUIRED_HANDLE_RIGHTS,
+}
+
+// Vector and arrays can't hold handle type information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a table have the type
+// checked by failing when there is a type mismatch.
+decode_failure("DecodeArrayOfVectorOfEventInTableType") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: transfer),
+    },
+    type = ArrayOfVectorOfEventInTableWithReducedRightsStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            repeat(0xff):8,
+
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = INCORRECT_HANDLE_TYPE,
+}
+
+// Vector and arrays can't hold handle rights information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a union use the correct
+// rights by reducing the rights.
+decode_success("DecodeArrayOfVectorOfEventInUnionExtraRights") {
+    // Rust does not support GIDL tests involving reducing rights.
+    bindings_allowlist = [llcpp, hlcpp, cpp, go],
+    handle_defs = {
+        #0 = event(rights: event_default),
+    },
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    value = ArrayOfVectorOfEventInUnionWithReducedRightsStruct{
+        u: ArrayOfVectorOfEventInUnionWithReducedRights{
+            h: [[restrict(#0, rights: basic)]],
+        },
+    },
+}
+
+decode_failure("DecodeArrayOfVectorOfEventInUnionHasTooFewRights") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = event(rights: basic),
+    },
+    type = ArrayOfVectorOfEventInUnionWithDefaultRightsStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = MISSING_REQUIRED_HANDLE_RIGHTS,
+}
+
+// Vector and arrays can't hold handle type information in some bindings
+// This behavior can also differ based on the type of the parent object holding
+// the vector and arrays.
+// Test whether handles in an array of a vector in a union have the type
+// checked by failing when there is a type mismatch.
+decode_failure("DecodeArrayOfVectorOfEventInUnionType") {
+    bindings_allowlist = [llcpp, hlcpp, cpp, go, rust, dart],
+    handle_defs = {
+        #0 = channel(rights: transfer),
+    },
+    type = ArrayOfVectorOfEventInUnionWithReducedRightsStruct,
+    bytes = {
+        v1 = [
+            num(1):8,
+            num(24):4, num(1):4,
+            repeat(0xff):8,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+        v2 = [
+            num(1):8,
+            num(24):4, num(1):2, num(0):2,
+
+            num(1):8,
+            repeat(0xff):8,
+
+            repeat(0xff):4, padding:4,
+        ],
+    },
+    handles = {
+        v1, v2 = [
+            #0,
+        ],
+    },
+    err = INCORRECT_HANDLE_TYPE,
+}

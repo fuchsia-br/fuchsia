@@ -1,0 +1,59 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("serial_bind") {
+  rules = "serial.bind"
+  header_output = "serial_bind.h"
+  bind_output = "serial.bindbc"
+  tests = "tests/tests.json"
+  deps = [ "//src/devices/bind/fuchsia.serial" ]
+}
+
+fuchsia_driver("serial-driver") {
+  output_name = "serial"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  deps = [
+    ":common",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("serial") {
+  info = "serial-info.json"
+  component_name = "serial"
+  deps = [ ":serial-driver" ]
+  colocate = true
+}
+
+source_set("common") {
+  configs += [ "//build/config:all_source" ]
+  sources = [ "serial.cc" ]
+  public_deps = [
+    ":serial_bind",
+    "//sdk/banjo/fuchsia.hardware.serial:fuchsia.hardware.serial_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serialimpl:fuchsia.hardware.serialimpl_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.serial:fuchsia.hardware.serial_c",
+    "//sdk/fidl/fuchsia.hardware.serial:fuchsia.hardware.serial_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":serial_bind_test",
+    "tests",
+  ]
+}

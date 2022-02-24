@@ -1,0 +1,127 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// console-launcher component manifest.
+// For information on manifest format and features,
+// see https://fuchsia.dev/fuchsia-src/concepts/components/component_manifests.
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/console-launcher",
+    },
+    use: [
+        {
+            directory: "bin",
+            rights: [ "rx*" ],
+            path: "/bin",
+        },
+        {
+            directory: "boot",
+            rights: [ "rx*" ],
+            path: "/boot",
+        },
+        {
+            directory: "blob",
+            rights: [ "rw*" ],
+            path: "/blob",
+        },
+        {
+            directory: "minfs",
+            rights: [ "rw*" ],
+            path: "/data",
+        },
+        {
+            directory: "dev",
+            rights: [ "rw*" ],
+            path: "/dev",
+        },
+        {
+            directory: "hub-legacy",
+            rights: [ "rw*" ],
+            path: "/hub",
+        },
+        {
+            directory: "hub",
+            rights: [ "r*" ],
+            path: "/hub-v2",
+        },
+        {
+            directory: "install",
+            rights: [ "rw*" ],
+            path: "/install",
+        },
+        {
+            directory: "mnt",
+            rights: [ "rw*" ],
+            path: "/mnt",
+        },
+        {
+            directory: "pkgfs",
+            rights: [ "rx*" ],
+            path: "/pkgfs",
+        },
+        {
+            directory: "system",
+            rights: [ "rx*" ],
+            path: "/system",
+        },
+        {
+            directory: "system-delayed",
+            rights: [ "r*" ],
+            path: "/system-delayed",
+        },
+        {
+            directory: "tmp",
+            rights: [ "rw*" ],
+            path: "/tmp",
+        },
+        {
+            protocol: [
+                "console",
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.NameProvider",
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+                "fuchsia.hardware.power.statecontrol.Admin",
+                "fuchsia.hardware.pty.Device",
+                "fuchsia.hardware.usb.DeviceWatcher",
+                "fuchsia.kernel.Counter",
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.Stats",
+                "fuchsia.logger.Log",
+                "fuchsia.paver.Paver",
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.pkg.RepositoryManager",
+                "fuchsia.pkg.rewrite.Engine",
+                "fuchsia.process.Launcher",
+                "fuchsia.process.Resolver",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.Launcher",
+                "fuchsia.sys.Loader",
+                "fuchsia.sysinfo.SysInfo",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tpm.cr50.Cr50",
+                "fuchsia.tracing.controller.Controller",
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.vboot.FirmwareParam",
+                "fuchsia.virtualconsole.SessionManager",
+                "fuchsia.virtualization.Manager",
+            ],
+        },
+    ],
+}

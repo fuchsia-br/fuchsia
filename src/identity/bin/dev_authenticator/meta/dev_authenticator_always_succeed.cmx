@@ -1,0 +1,12 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "--mode",
+            "ALWAYS_SUCCEED"
+        ],
+        "binary": "bin/dev_authenticator"
+    }
+}

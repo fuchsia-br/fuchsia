@@ -1,0 +1,202 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":fvm-integration-test",
+    ":fvm-tests",
+    ":fvm_unit($host_toolchain)",
+    "//src/storage/fvm/driver:tests",
+  ]
+}
+
+static_library("fvm") {
+  sources = [
+    "format.cc",
+    "fvm.cc",
+    "fvm_check.cc",
+    "metadata.cc",
+    "metadata_buffer.cc",
+    "sparse_reader.cc",
+  ]
+
+  deps = [
+    "//sdk/lib/fit",
+    "//src/lib/digest",
+    "//src/lib/uuid",
+    "//third_party/boringssl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/range",
+    "//zircon/third_party/ulib/lz4",
+    "//zircon/third_party/ulib/safemath",
+  ]
+  public_deps = [
+    "//src/lib/digest",
+    "//src/storage/gpt",
+    "//zircon/system/ulib/zxc",
+    "//zircon/third_party/ulib/lz4",
+  ]
+
+  if (is_fuchsia) {
+    sources += [
+      "client.cc",
+      "vmo_metadata_buffer.cc",
+    ]
+
+    deps += [
+      "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_c",
+      "//src/lib/storage/block_client/cpp",
+      "//src/storage/gpt",
+      "//zircon/system/ulib/fzl",
+      "//zircon/system/ulib/sync",
+      "//zircon/system/ulib/zx",
+    ]
+  } else {
+    # fvm-check.cpp has #include <zircon/status.h> even when built for host.
+    public_deps += [ "//src/zircon/lib/zircon:zircon-headers" ]
+  }
+}
+
+static_library("test_support") {
+  testonly = true
+
+  sources = [
+    "test_support.cc",
+    "test_support.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_c",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/storage/fvm",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_c",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_c",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/storage/fvm",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+test("fvm_unit") {
+  output_name = "fvm-unit-test"
+  sources = [
+    "format_test.cc",
+    "integrity_validation_test.cc",
+    "metadata_test.cc",
+    "partition_entry_test.cc",
+    "slice_entry_test.cc",
+  ]
+
+  deps = [
+    "//src/lib/uuid",
+    "//src/storage/fvm",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  if (is_fuchsia) {
+    sources += [ "client_test.cc" ]
+    deps += [
+      "//sdk/lib/fdio",
+      "//src/lib/storage/block_client/cpp",
+      "//zircon/system/ulib/fdio-caller",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+
+fuchsia_unittest_package("fvm-tests") {
+  deps = [ ":fvm_unit" ]
+}
+
+test("fvm-integration") {
+  output_name = "fvm-integration-test"
+  sources = [
+    "fvm_integration_test.cc",
+    "resize_integration_test.cc",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  deps = [
+    ":test_support",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_c",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//src/devices/testing/driver-integration-test-shim",
+    "//src/lib/storage/block_client/cpp",
+    "//src/lib/storage/fs_management",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//src/storage/blobfs",
+    "//src/storage/fvm",
+    "//src/storage/minfs",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # Other components/binaries we depend on.
+  deps += [
+    "//src/devices/block/drivers/core",
+    "//src/devices/block/drivers/ramdisk",
+    "//src/devices/bus/drivers/platform",
+    "//src/storage/fvm/driver",
+  ]
+
+  data_deps = [
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/minfs",
+  ]
+}
+
+fuchsia_test_component("test-component") {
+  component_name = "fvm-integration-test"
+  manifest = "meta/fvm_integration_test.cml"
+  deps = [ ":fvm-integration" ]
+}
+
+fuchsia_test_package("fvm-integration-test") {
+  test_components = [ ":test-component" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

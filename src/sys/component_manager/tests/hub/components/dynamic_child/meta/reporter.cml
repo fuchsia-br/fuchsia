@@ -1,0 +1,61 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/dynamic_child_reporter",
+    },
+    collections: [
+        {
+            name: "coll",
+            durability: "transient",
+        },
+    ],
+    use: [
+        { protocol: "fuchsia.sys2.EventSource" },
+        {
+            protocol: [ "fuchsia.component.Realm" ],
+            from: "framework",
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+        },
+        {
+            event: [ "started" ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+        {
+            event: [
+                "destroyed",
+                "purged",
+                "stopped",
+            ],
+            from: "framework",
+            modes: [ "sync" ],
+        },
+        {
+            event_stream_deprecated: "DynamicChildEventStream",
+            subscriptions: [
+                {
+                    event: "purged",
+                    mode: "sync",
+                },
+                {
+                    event: "destroyed",
+                    mode: "sync",
+                },
+                {
+                    event: "stopped",
+                    mode: "sync",
+                },
+                {
+                    event: "started",
+                    mode: "async",
+                },
+            ],
+        },
+    ],
+}

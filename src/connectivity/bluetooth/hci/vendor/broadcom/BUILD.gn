@@ -1,0 +1,96 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("bcm_hci_bind") {
+  rules = "bcm_hci.bind"
+  header_output = "bcm_hci_bind.h"
+  bind_output = "bt-hci-broadcom.bindbc"
+  tests = "bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.bluetooth",
+    "//src/devices/bind/fuchsia.broadcom.serial",
+  ]
+}
+
+fuchsia_driver("bt-hci-broadcom-driver") {
+  output_name = "bt-hci-broadcom"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "bt-hci-broadcom.c" ]
+  deps = [
+    ":bcm_hci_bind",
+    "//sdk/banjo/fuchsia.hardware.bt.hci:fuchsia.hardware.bt.hci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.bt.vendor:fuchsia.hardware.bt.vendor_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serialimpl.async:fuchsia.hardware.serialimpl.async_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.bluetooth:fuchsia.hardware.bluetooth_c",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/sync",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("bt-hci-broadcom") {
+  component_name = "bt-hci-broadcom"
+  deps = [ ":bt-hci-broadcom-driver" ]
+  info = "bt-hci-broadcom-info.json"
+  colocate = true
+}
+
+resource("broadcom-firmware") {
+  sources =
+      [ "//prebuilt/connectivity/bluetooth/firmware/broadcom/BCM4345C5.hcd" ]
+  outputs = [ "lib/firmware/{{source_file_part}}" ]
+}
+
+test("bt-hci-broadcom-test-bin") {
+  output_name = "bt-hci-broadcom-test"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "bt-hci-broadcom-test.c" ]
+  deps = [
+    ":bcm_hci_bind",
+    "//sdk/banjo/fuchsia.hardware.bt.hci:fuchsia.hardware.bt.hci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.bt.vendor:fuchsia.hardware.bt.vendor_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.serialimpl.async:fuchsia.hardware.serialimpl.async_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.bluetooth:fuchsia.hardware.bluetooth_c",
+    "//sdk/lib/fdio",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/testing/mock-sdio",
+    "//src/devices/testing/no_ddk",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/mock-function",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("bt-hci-broadcom-test") {
+  deps = [ ":bt-hci-broadcom-test-bin" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":bcm_hci_bind_test",
+    ":bt-hci-broadcom-test",
+  ]
+}

@@ -1,0 +1,1069 @@
+{
+    children: [
+        {
+            name: "archivist",
+            url: "fuchsia-boot:///#meta/archivist.cm",
+        },
+        {
+            name: "device_name_provider",
+            url: "fuchsia-boot:///#meta/device-name-provider.cm",
+        },
+        {
+            name: "driver_manager",
+            url: "fuchsia-boot:///#meta/driver_manager.cm",
+            environment: "#driver_manager-env",
+        },
+        {
+            name: "driver_index",
+            url: "fuchsia-boot:///#meta/driver-index.cm",
+            on_terminate: "reboot",
+        },
+        {
+            name: "flashmap",
+            url: "fuchsia-boot:///#meta/flashmap.cm",
+        },
+        {
+            name: "fshost",
+            url: "fuchsia-boot:///#meta/fshost.cm",
+            environment: "#fshost-env",
+        },
+        {
+            name: "console",
+            url: "fuchsia-boot:///#meta/console.cm",
+
+            // Usually, console is started when console-launcher starts. But, startup eager is
+            // required because in products with console.shell=false, console-launcher exits
+            // early and does not start console; it should be started in order to get serial logs.
+            startup: "eager",
+        },
+        {
+            name: "console-launcher",
+            url: "fuchsia-boot:///#meta/console-launcher.cm",
+            startup: "eager",
+        },
+        {
+            name: "decompressor",
+            url: "fuchsia-boot:///#meta/decompressor-sandbox.cm",
+        },
+        {
+            name: "miscsvc",
+            url: "fuchsia-boot:///#meta/miscsvc.cm",
+        },
+        {
+            name: "live_usb",
+            url: "fuchsia-boot:///#meta/live-usb.cm",
+            startup: "eager",
+        },
+        {
+            name: "netsvc",
+            url: "fuchsia-boot:///#meta/netsvc.cm",
+            startup: "eager",
+        },
+        {
+            name: "ptysvc",
+            url: "fuchsia-boot:///#meta/ptysvc.cm",
+        },
+        {
+            name: "pwrbtn-monitor",
+            url: "fuchsia-boot:///#meta/pwrbtn-monitor.cm",
+
+            // pwrbtn-monitor should start eagerly - the only services it offers may never be called
+            // on some builds, so there's no other way to start it.
+            startup: "eager",
+        },
+        {
+            name: "shutdown_shim",
+            url: "fuchsia-boot:///#meta/shutdown-shim.cm",
+        },
+        {
+            name: "svchost",
+            url: "fuchsia-boot:///#meta/svchost.cm",
+
+            // Start eager in order to register the crash handler as early as
+            // possible.
+            startup: "eager",
+        },
+        {
+            name: "sysinfo",
+            url: "fuchsia-boot:///#meta/sysinfo.cm",
+        },
+        {
+            name: "cr50_agent",
+            url: "fuchsia-boot:///#meta/cr50_agent.cm",
+        },
+        {
+            name: "vboot-fwparam",
+            url: "fuchsia-boot:///#meta/vboot-fwparam.cm",
+        },
+        {
+            // base_resolver is present on all product configurations except
+            // bringup builds, as its dependency pkgfs is not available on
+            // bringup builds either.
+            name: "base_resolver",
+            url: "fuchsia-boot:///#meta/base-resolver.cm",
+        },
+        {
+            name: "power_manager",
+            url: "fuchsia-boot:///#meta/power-manager.cm",
+        },
+        {
+            name: "virtual_console",
+            url: "fuchsia-boot:///#meta/virtual-console.cm",
+        },
+    ],
+    collections: [
+        {
+            name: "driver-hosts",
+            environment: "#driver-host-env",
+            durability: "single_run",
+        },
+        {
+            name: "boot-drivers",
+            environment: "#boot-driver-env",
+            durability: "single_run",
+            allowed_offers: "static_and_dynamic",
+        },
+        {
+            name: "pkg-drivers",
+            environment: "#pkg-driver-env",
+            durability: "single_run",
+            allowed_offers: "static_and_dynamic",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#virtual_console",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.FactoryItems",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.exception.Handler",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.kernel.RootJobForInspect",
+                "fuchsia.kernel.Stats",
+                "fuchsia.metrics.MetricEventLoggerFactory",
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.pkg.RepositoryManager",
+                "fuchsia.pkg.rewrite.Engine",
+                "fuchsia.process.Launcher",
+                "fuchsia.process.Resolver",
+                "fuchsia.sys.Environment",
+                "fuchsia.sys.Launcher",
+                "fuchsia.sys.Loader",
+                "fuchsia.tracing.controller.Controller",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [
+                // Allow launching / managing guests from the console.
+                "fuchsia.virtualization.Manager",
+            ],
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+            ],
+            from: "#archivist",
+            to: "#console-launcher",
+        },
+        {
+            directory: "boot",
+            from: "parent",
+            to: [
+                "#console-launcher",
+                "#driver_index",
+                "#driver_manager",
+                "#fshost",
+                "#miscsvc",
+                "#netsvc",
+            ],
+            rights: [ "rx*" ],
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.Items",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.kernel.RootJob",
+
+                // This is only used when the kernel commandline flag devmgr.enable-ephemeral
+                // is set, which enables loading drivers ephemerally. This is intended for
+                // eng builds only.
+                "fuchsia.pkg.PackageResolver",
+                "fuchsia.process.Launcher",
+                "fuchsia.process.Resolver",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#driver_manager",
+        },
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+            to: "#driver_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.driver.development.DriverIndex",
+                "fuchsia.driver.framework.DriverIndex",
+            ],
+            from: "#driver_index",
+            to: "#driver_manager",
+        },
+        {
+            protocol: [ "fuchsia.power.manager.DriverManagerRegistration" ],
+            from: "#power_manager",
+            to: "#driver_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#driver-hosts",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Items",
+                "fuchsia.boot.RootResource",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: "#boot-drivers",
+        },
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+            from: "parent",
+            to: "#pkg-drivers",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.kernel.DebugResource",
+            ],
+            from: "parent",
+            to: "#console",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.Items",
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: "#fshost",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.pkg.rewrite.Engine",
+            ],
+            from: "parent",
+            to: "#live_usb",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: "#miscsvc",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.RootResource",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.exception.Handler",
+                "fuchsia.kernel.RootJob",
+                "fuchsia.virtualconsole.SessionManager",
+            ],
+            from: "parent",
+            to: "#svchost",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.WriteOnlyLog",
+            ],
+            from: "parent",
+            to: "#device_name_provider",
+        },
+        {
+            protocol: [ "fuchsia.boot.WriteOnlyLog" ],
+            from: "parent",
+            to: [
+                "#console",
+                "#fshost",
+                "#ptysvc",
+                "#pwrbtn-monitor",
+                "#shutdown_shim",
+                "#sysinfo",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.metrics.MetricEventLoggerFactory",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: [
+                "#fshost",
+                "#power_manager",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.kernel.CpuResource" ],
+            from: "parent",
+            to: "#power_manager",
+        },
+        {
+            protocol: [ "fuchsia.kernel.VmexResource" ],
+            from: "parent",
+            to: "#fshost",
+        },
+        {
+            protocol: [ "fuchsia.scheduler.ProfileProvider" ],
+            from: "#svchost",
+            to: [
+                "#decompressor",
+                "#fshost",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.tracing.provider.Registry" ],
+            from: "parent",
+            to: "#decompressor",
+        },
+        {
+            protocol: [ "fuchsia.blobfs.internal.DecompressorCreator" ],
+            from: "#decompressor",
+            to: "#fshost",
+        },
+        {
+            // TODO(fxbug.dev/34633): DEPRECATED. Do not add new dependencies on the fshost
+            // loader service!
+            protocol: "fuchsia.fshost.Loader",
+            from: "#fshost",
+            to: "#driver_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.virtualconsole.SessionManager" ],
+            from: "#virtual_console",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.kernel.Reader",
+            ],
+            from: "#svchost",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.hardware.usb.DeviceWatcher",
+            ],
+            from: "#driver_manager",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+                "#svchost",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.device.fs.Exporter" ],
+            from: "#driver_manager",
+            to: [
+                "#boot-drivers",
+                "#pkg-drivers",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.scheduler.ProfileProvider" ],
+            from: "#svchost",
+            to: "#driver_manager",
+
+            // This must be weak because svchost needs sysmem from driver_manager, which creates
+            // a cycle. Sysmem can be pulled out of svchost to break this cycle.
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sysmem.Allocator",
+            ],
+            from: "#svchost",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.sysmem.Allocator" ],
+            from: "#svchost",
+            to: "#virtual_console",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            to: [
+                "#console-launcher",
+                "#flashmap",
+                "#fshost",
+                "#miscsvc",
+                "#sysinfo",
+                "#vboot-fwparam",
+                "#virtual_console",
+            ],
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "dev-class-ethernet",
+            to: [
+                "#device_name_provider",
+                "#netsvc",
+            ],
+            subdir: "class/ethernet",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "dev-class-network",
+            to: [
+                "#device_name_provider",
+                "#netsvc",
+            ],
+            subdir: "class/network",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "dev-class-block",
+            to: "#live_usb",
+            subdir: "class/block",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "dev-class-tpm",
+            to: "#cr50_agent",
+            subdir: "class/tpm",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "dev-misc",
+            to: "#live_usb",
+            subdir: "misc",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "input-report",
+            to: "#virtual_console",
+            subdir: "class/input-report",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "sysmem",
+            to: "#svchost",
+            subdir: "class/sysmem",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "display-controller",
+            to: "#virtual_console",
+            subdir: "class/display-controller",
+        },
+        {
+            directory: [
+                "bin",
+                "blob",
+                "install",
+                "minfs",
+                "pkgfs",
+                "system",
+                "system-delayed",
+                "tmp",
+            ],
+            from: "#fshost",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+            dependency: "weak_for_migration",
+        },
+        {
+            directory: [ "mnt" ],
+            from: "#fshost",
+            to: [ "#console-launcher" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            directory: "system-delayed",
+            from: "#fshost",
+            to: "#driver_manager",
+            dependency: "weak_for_migration",
+        },
+
+        // Offer the log services to the console
+        {
+            protocol: [ "fuchsia.logger.Log" ],
+            from: "#archivist",
+            to: "#console",
+        },
+
+        // Offer the kernel serial console to the console-launcher
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#console",
+            as: "console",
+            to: "#console-launcher",
+        },
+        {
+            protocol: "fuchsia.device.NameProvider",
+            from: "#device_name_provider",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+
+            // TODO: Once svchost is spawned by component manager, we can
+            // remove this.
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#ptysvc",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+                "#virtual_console",
+            ],
+        },
+
+        // The v1 hub is needed for the serial console.
+        {
+            directory: "hub-legacy",
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            directory: "hub",
+            from: "parent",
+            to: "#console-launcher",
+        },
+        {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "#sysinfo",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            // TODO(fxb/65708) This is only needed for an ordered shutdown.
+            // Driver_manager has to shut down before shutdown_shim.
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "#shutdown_shim",
+            to: "#driver_manager",
+        },
+        {
+            // TODO(fxb/65708) This is only needed for an ordered shutdown.
+            // Console should outlive driver_manager so that logs at the end of the boot process
+            // can still be seen.
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#console",
+            to: "#driver_manager",
+        },
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "#shutdown_shim",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+                "#pwrbtn-monitor",
+                "#svchost",
+                "#virtual_console",
+            ],
+        },
+
+        // Things shutdown_shim and power_manager need
+        {
+            protocol: [ "fuchsia.sys2.SystemController" ],
+            from: "parent",
+            to: [
+                "#power_manager",
+                "#shutdown_shim",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.device.manager.SystemStateTransition" ],
+            from: "#driver_manager",
+            to: "#shutdown_shim",
+
+            // TODO(fxb/65708) When this bug is complete, this can be a strong dependency.
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.hardware.power.statecontrol.Admin" ],
+            from: "#power_manager",
+            to: "#shutdown_shim",
+        },
+        {
+            protocol: [ "fuchsia.device.manager.Administrator" ],
+            from: "#driver_manager",
+            to: "#fshost",
+        },
+        {
+            protocol: [ "fuchsia.device.manager.Administrator" ],
+            from: "#driver_manager",
+            to: "#power_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.feedback.CrashReporter",
+                "fuchsia.kernel.Stats",
+
+                // These capabilities are required for the Power Manager to implement the
+                // fuchsia.power.profile.Watcher service.
+                // (see: https://fuchsia.dev/reference/fidl/fuchsia.power.profile)
+                "fuchsia.settings.Input",
+                "fuchsia.ui.activity.Provider",
+            ],
+            from: "parent",
+            to: "#power_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.Counter",
+                "fuchsia.paver.Paver",
+            ],
+            from: "#miscsvc",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.paver.Paver" ],
+            from: "#miscsvc",
+            to: "#live_usb",
+        },
+        {
+            protocol: "fuchsia.logger.Log",
+            from: "#archivist",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "#archivist",
+            to: [
+                "#base_resolver",
+                "#boot-drivers",
+                "#console-launcher",
+                "#cr50_agent",
+                "#decompressor",
+                "#device_name_provider",
+                "#driver-hosts",
+                "#driver_index",
+                "#driver_manager",
+                "#flashmap",
+                "#fshost",
+                "#live_usb",
+                "#netsvc",
+                "#pkg-drivers",
+                "#power_manager",
+                "#pwrbtn-monitor",
+                "#svchost",
+                "#vboot-fwparam",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.vboot.FirmwareParam" ],
+            from: "#vboot-fwparam",
+            to: [
+                "#console-launcher",
+                "#miscsvc",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.power.button.Monitor" ],
+            from: "#pwrbtn-monitor",
+            to: "#cr50_agent",
+        },
+        {
+            protocol: [ "fuchsia.fshost.BlockWatcher" ],
+            from: "#fshost",
+            to: [
+                "#console-launcher",
+                "#netsvc",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.fshost.Admin" ],
+            from: "#fshost",
+            to: "#driver_manager",
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.tpm.cr50.Cr50" ],
+            from: "#cr50_agent",
+            to: [
+                "#console-launcher",
+                "#miscsvc",
+            ],
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+            as: "input",
+            to: "#pwrbtn-monitor",
+            subdir: "class/input",
+        },
+        {
+            protocol: [
+                "fuchsia.fshost.BlockWatcher",
+                "fuchsia.fshost.Registry",
+            ],
+            from: "#fshost",
+            to: "#miscsvc",
+        },
+        {
+            protocol: "fuchsia.nand.flashmap.Manager",
+            from: "#flashmap",
+            to: [
+                "#miscsvc",
+                "#vboot-fwparam",
+            ],
+        },
+        {
+            protocol: [ "fuchsia.fshost.BlockWatcher" ],
+            from: "#fshost",
+            to: "#live_usb",
+        },
+        {
+            directory: "pkgfs-delayed",
+            from: "#fshost",
+            to: "#driver_manager",
+            dependency: "weak_for_migration",
+        },
+
+        // -- Archivist offers below here --
+
+        // Required events
+        {
+            event: [
+                "running",
+                "started",
+                "stopped",
+            ],
+            from: "parent",
+            to: "#archivist",
+            modes: [ "async" ],
+        },
+        {
+            event: "directory_ready",
+            from: "parent",
+            to: "#archivist",
+            filter: { name: "diagnostics" },
+            modes: [ "async" ],
+        },
+        {
+            event: "capability_requested",
+            from: "parent",
+            to: "#archivist",
+            filter: { name: "fuchsia.logger.LogSink" },
+        },
+
+        // Required services
+        {
+            protocol: [
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.sys2.EventSource",
+            ],
+            from: "parent",
+            to: "#archivist",
+        },
+
+        // Weak services from appmgr and diagnostics products.
+        {
+            protocol: [
+                "fuchsia.component.DetectBinder",
+                "fuchsia.component.KcounterBinder",
+                "fuchsia.component.LogStatsBinder",
+                "fuchsia.component.PersistenceBinder",
+                "fuchsia.component.SamplerBinder",
+                "fuchsia.sys.internal.ComponentEventProvider",
+                "fuchsia.sys.internal.LogConnector",
+            ],
+            from: "parent",
+            to: "#archivist",
+            dependency: "weak_for_migration",
+        },
+
+        // Configuration
+        {
+            directory: "boot",
+            from: "parent",
+            as: "config-data",
+            to: "#archivist",
+            rights: [ "r*" ],
+            subdir: "config/archivist",
+        },
+
+        // -- End Archivist offers --
+        {
+            directory: [
+                "minfs-delayed",
+                "pkgfs-packages-delayed",
+            ],
+            from: "#fshost",
+            to: "#base_resolver",
+        },
+        {
+            directory: "pkgfs-packages-delayed",
+            from: "#fshost",
+            to: "#driver_index",
+            dependency: "weak_for_migration",
+        },
+    ],
+    expose: [
+        // This handle is used by base_resolver to resolve packages from the base package set.
+        {
+            directory: "pkgfs-delayed",
+            from: "#fshost",
+        },
+        {
+            directory: "dev",
+            from: "#driver_manager",
+        },
+        {
+            directory: [
+                "bin",
+                "blob",
+                "build-info",
+                "config-data",
+                "durable",
+                "factory",
+                "minfs",
+                "mnt",
+                "pkgfs",
+                "root-ssl-certificates",
+                "system",
+                "tmp",
+            ],
+            from: "#fshost",
+        },
+        {
+            protocol: "fuchsia.fshost.BlockWatcher",
+            from: "#fshost",
+        },
+        {
+            protocol: "fuchsia.update.verify.BlobfsVerifier",
+            from: "#fshost",
+        },
+        {
+            protocol: "fuchsia.device.NameProvider",
+            from: "#device_name_provider",
+        },
+        {
+            protocol: [
+                "fuchsia.device.manager.Administrator",
+                "fuchsia.device.manager.DebugDumper",
+                "fuchsia.device.manager.SystemStateTransition",
+                "fuchsia.driver.registrar.DriverRegistrar",
+                "fuchsia.hardware.usb.DeviceWatcher",
+            ],
+            from: "#driver_manager",
+        },
+        {
+            protocol: [ "fuchsia.vboot.FirmwareParam" ],
+            from: "#vboot-fwparam",
+        },
+        {
+            protocol: "fuchsia.sys2.ComponentResolver",
+            from: "#base_resolver",
+        },
+        {
+            protocol: [ "fuchsia.virtualconsole.SessionManager" ],
+            from: "#virtual_console",
+        },
+        {
+            protocol: [
+                "fuchsia.tpm.cr50.Cr50",
+                "fuchsia.tpm.cr50.PinWeaver",
+            ],
+            from: "#cr50_agent",
+        },
+        {
+            protocol: "fuchsia.hardware.power.statecontrol.Admin",
+            from: "#shutdown_shim",
+        },
+        {
+            protocol: "fuchsia.hardware.pty.Device",
+            from: "#ptysvc",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.Counter",
+                "fuchsia.paver.Paver",
+            ],
+            from: "#miscsvc",
+        },
+        {
+            protocol: "fuchsia.sysinfo.SysInfo",
+            from: "#sysinfo",
+        },
+        {
+            protocol: [
+                "fuchsia.hardware.power.statecontrol.RebootMethodsWatcherRegister",
+                "fuchsia.power.profile.Watcher",
+                "fuchsia.power.systemmode.ClientConfigurator",
+                "fuchsia.power.systemmode.Requester",
+                "fuchsia.thermal.ClientStateConnector",
+                "fuchsia.thermal.Controller",
+            ],
+            from: "#power_manager",
+        },
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+                "fuchsia.diagnostics.LogSettings",
+                "fuchsia.logger.Log",
+                "fuchsia.logger.LogSink",
+            ],
+            from: "#archivist",
+        },
+        {
+            protocol: [
+                "fuchsia.kernel.DebugBroker",
+                "fuchsia.scheduler.ProfileProvider",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.kernel.Controller",
+                "fuchsia.tracing.kernel.Reader",
+            ],
+            from: "#svchost",
+        },
+        {
+            resolver: "base_resolver",
+            from: "#base_resolver",
+        },
+        {
+            protocol: "fuchsia.nand.flashmap.Manager",
+            from: "#flashmap",
+        },
+    ],
+    environments: [
+        {
+            name: "fshost-env",
+            extends: "realm",
+
+            // 20 minutes
+            __stop_timeout_ms: 1200000,
+        },
+        {
+            name: "driver_manager-env",
+            extends: "realm",
+
+            // 1 minute
+            __stop_timeout_ms: 60000,
+        },
+        {
+            name: "driver-host-env",
+            extends: "realm",
+
+            // 2 seconds
+            __stop_timeout_ms: 2000,
+        },
+        {
+            name: "boot-driver-env",
+            extends: "none",
+            runners: [
+                {
+                    runner: "driver",
+                    from: "#driver_manager",
+                },
+            ],
+            resolvers: [
+                {
+                    resolver: "boot_resolver",
+                    from: "parent",
+                    scheme: "fuchsia-boot",
+                },
+            ],
+
+            // 1 second
+            __stop_timeout_ms: 1000,
+        },
+        {
+            name: "pkg-driver-env",
+            extends: "none",
+            runners: [
+                {
+                    runner: "driver",
+                    from: "#driver_manager",
+                },
+            ],
+            resolvers: [
+                {
+                    resolver: "base_resolver",
+                    from: "#base_resolver",
+                    scheme: "fuchsia-pkg",
+                },
+            ],
+
+            // 1 second
+            __stop_timeout_ms: 1000,
+        },
+    ],
+}

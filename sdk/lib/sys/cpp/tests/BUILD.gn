@@ -1,0 +1,135 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+test("component_cpp_unittests_bin") {
+  sources = [
+    "component_context_unittest.cc",
+    "echo_server.h",
+    "file_descriptor_unittest.cc",
+    "outgoing_directory_unittest.cc",
+    "service_directory_unittest.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/fidl",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_component("component_cpp_unittests") {
+  manifest = "meta/component_cpp_unittests.cmx"
+  deps = [ ":component_cpp_unittests_bin" ]
+}
+
+test("component_cpp_testing_unittests_bin") {
+  sources = [
+    "component_context_provider_unittest.cc",
+    "echo_server.h",
+    "service_directory_provider_unittest.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/fidl",
+  ]
+}
+
+fuchsia_unittest_component("component_cpp_testing_unittests") {
+  deps = [ ":component_cpp_testing_unittests_bin" ]
+  manifest = "meta/component_cpp_testing_unittests.cmx"
+}
+
+test("component_cpp_testing_tests_bin") {
+  sources = [
+    "component_interceptor_unittest.cc",
+    "enclosing_environment_test.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.debugdata",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/fidl/fuchsia.sys2",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/fidl",
+  ]
+}
+
+fuchsia_unittest_component("component_cpp_testing_tests") {
+  deps = [ ":component_cpp_testing_tests_bin" ]
+  manifest = "meta/component_cpp_testing_tests.cmx"
+}
+
+executable("helper_proc_bin") {
+  testonly = true
+
+  sources = [ "helper.cc" ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_component("helper_proc") {
+  deps = [ ":helper_proc_bin" ]
+  manifest = "meta/helper_proc.cmx"
+  testonly = true
+}
+
+executable("constructor_helper_proc") {
+  testonly = true
+
+  sources = [ "constructor_helper.cc" ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/files",
+    "//src/lib/fxl",
+    "//src/testing/fidl:placeholders",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_test_package("sys_cpp_tests") {
+  package_deps_for_infra_only = [ "//sdk/lib/sys/cpp/testing/environment_delegating_runner:environment_delegating_runner" ]
+  test_components = [
+    ":component_cpp_testing_tests",
+    ":component_cpp_testing_unittests",
+    ":component_cpp_unittests",
+  ]
+  deps = [
+    ":constructor_helper_proc",
+    ":helper_proc",
+  ]
+}

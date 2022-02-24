@@ -1,0 +1,71 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # Board name used for paving and amber updates.
+  board_name = ""
+
+  # Human readable board description corresponding to the board name.
+  board_description = ""
+
+  # Configs that are added when targeting this board.
+  board_configs = []
+
+  # A list of driver package labels to include in the 'base' package set. Used
+  # by the board definition rather than the product definition.
+  board_driver_package_labels = []
+
+  # A list of package labels to include in the 'base' package set. Used by the
+  # board definition rather than the product definition.
+  board_package_labels = []
+
+  # A list of package labels to include in the recovery package set. Used by the
+  # board definition rather than the product definition.
+  board_recovery_package_labels = []
+
+  # A list of binary labels to include in the ZBI.
+  board_bootfs_labels = []
+
+  # List of kernel command line arguments to bake into the zedboot image that are
+  # required by this board. See also zedboot_cmdline_args in
+  # //build/images/zedboot/BUILD.gn
+  board_zedboot_cmdline_args = []
+
+  # A list of binary labels to include in the zedboot ZBI.
+  board_zedboot_bootfs_labels = []
+
+  # A list of binary labels to include in the recovery ZBI.
+  board_recovery_bootfs_labels = []
+
+  # A list of fshost options to add to the fshost config.
+  board_fshost_config = []
+
+  # A list of fshost options to add to the fshost config in the zedboot image.
+  board_zedboot_fshost_config = []
+
+  # A list of binary labels to include in the system_image package.
+  board_system_image_deps = []
+
+  # Core realm shards specific to this board. See //src/sys/core for more
+  # context.
+  board_core_realm_shards = []
+
+  # A list of paths to the unlock credentials file necessary to unlock this
+  # board's fastboot protocol.
+  board_fastboot_unlock_credentials = []
+
+  # List of paths to board-specific tools to include in the build output.
+  #
+  # Most development tools can just be used in-tree and do not need to be
+  # included here. This arg is only meant for tools which may need to be
+  # distributed along with the build files, for example tools for flashing
+  # from SoC recovery mode.
+  #
+  # Assets included in this way are included best-effort only and do not form
+  # any kind of stable contract for users of the archive.
+  board_tools = []
+
+  # Whether or not the board pulls in the system-update-configurator component.
+  board_supports_update_configurator = false
+}

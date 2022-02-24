@@ -1,0 +1,204 @@
+#!/bin/bash
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Build
+### set up a build directory
+
+## usage: fx set PRODUCT.BOARD [--with GNLABEL1,GNLABEL2,...]
+##               [--release] [--auto-dir] [--args ARG] [--variant VARIANT]
+##               [--with-base GNLABEL1,GNLABEL2,...]
+##
+## where PRODUCT is an entry from `//products` or `//vendor/*/products` and
+## BOARD is an entry from `//boards` or `//vendor/*/boards`. Use the
+## `fx list-products` and `fx list-boards` commands to see a list of
+## possible products and boards (respectively). See the README.md in those
+## directories for a description of the various options.
+##
+## Use `fx --dir BUILD_DIR set` to specify the build directory. If it begins with
+## `//` or `out/` then it's taken as relative to FUCHSIA_DIR. Otherwise it should
+## be an absolute path or a path relative to the current working directory that
+## winds up in `FUCHSIA_DIR/out`. It defaults to `out/default`.
+##
+## This command stores the location of the build directory in the //.fx-build-dir
+## file, which causes subsequent `fx` commands to use that build directory. Use
+## `fx use` to switch build directories.
+##
+## Ensures Goma is ready (if Goma is enabled).
+##
+## This is a wrapper around running `gn gen --check=system BUILD_DIR --args ...`.
+## If GN fails with an error, `fx set` does not change anything.
+##
+## optional arguments:
+##   --args                Additional argument to pass to gn.  If the --args
+##                         argument is given multiple times, all the specified
+##                         arguments are passed to gn.
+##                         N.B. Arguments must be expressed using GN's syntax.
+##                         In particular this means that for strings they must
+##                         be quoted with double-quotes, and the quoting must
+##                         survive, for example, the shell. Thus when passing
+##                         an argument that takes a string, pass it with
+##                         something like --args=foo='"bar"'. E.g.,
+##                         bash$ fx set core.x64 --args=foo='"bar"'
+##                         More complicated arguments, e.g., lists, require
+##                         their own special syntax. See GN documentation
+##                         for the syntax of each kind of argument.
+##   --auto-dir            Act like `fx --dir out/PRODUCT.BOARD set ...`.
+##   --ccache|--no-ccache  Whether to use ccache during the build. Ccache attempts
+##                         to make builds faster by caching build artifacts.
+##                         Defaults to detecting whether the CCACHE_DIR environment
+##                         variable is set to a directory.
+##   --fuzz-with           Pass a sanitizer name, e.g. "--fuzz-with asan" to
+##                         enable ALL supporting fuzzers.  Use --variant for
+##                         individual fuzzers, e.g. "--variant asan-fuzzer/foo".
+##   --goma|--no-goma      Whether to use the goma service during the build. Goma
+##                         attempts to make builds faster using remote build
+##                         servers. Defaults to detecting whether goma has been
+##                         set up via `fx goma`.
+##   --rbe                 If set, use the remote backend (RBE) service during
+##                         the build.  RBE offloads work onto remote servers and
+##                         offers caching benefits to accelerate builds.
+##                         Default: disabled
+##   --ide                 Pass --ide=VALUE to gn when generating to create project
+##                         files usable with that IDE. Useful values include "vs"
+##                         for Visual Studio or "xcode" for Xcode.
+##   --json-ide-script     Pass --json-ide-script=python_script to gn which runs
+##                         the given python script after the JSON project file is
+##                         generated when using --ide json. The path to the project
+##                         file is given as the first argument to the script.
+##                         The script may be a path or a gn label.
+##   --netboot             Ensure that a network ramboot image is always built.
+##   --no-ensure-goma      Skip ensuring that goma is started when using goma.
+##   --release             an alias for "--args=is_debug=false"
+##   --variant             Selects which runtime variant to use (e.g., asan) by
+##                         passing a `select_variant=[VARIANT*,...]` argument
+##                         to gn that collects all the --variant arguments in
+##                         order. Variants are normal builds in most respects,
+##                         but allow users to test different runtime settings
+##                         for either the whole build or for a specific target.
+##                         This can be specified by passing the variant name
+##                         to this argument (e.g. `--variant asan`) for the
+##                         former, or the variant name and the target name
+##                         separated by a slash (e.g. `--variant asan/my_test`)
+##                         for the latter.
+##   --with GNLABEL        Labels of additional packages to include in the
+##                         'universe' set of available packages. These packages
+##                         can be run ephemerally. Multiple labels can be
+##                         provided delimited by commas or the --with argument
+##                         can be provided multiple times.
+##   --with-base GNLABEL   Labels of additional packages to include in the
+##                         'base' set of packages. These packages are included in
+##                         the system image and can be updated only with an OTA.
+##                         Multiple labels can be provided delimited by commas
+##                         or the --with-base argument can be provided multiple
+##                         times.
+##   --with-cache GNLABEL  Labels of additional packages to include in the
+##                         'cache' set of packages. These packages are made
+##                         available on disk immediately after paving and in
+##                         factory flows. These packages are not updated with
+##                         an OTA, but are instead updated ephemerally. This
+##                         cache of software can be evicted by the system if
+##                         storage pressure arises or other policies indicate.
+##                         Multiple labels can be provided delimited by commas
+##                         or the --with-cache argument can be provided
+##                         multiple times.
+##   --with-host GNLABEL   Labels of additional host-only targets to be
+##                         produced by the build. Multiple labels can be
+##                         provided delimited by commas or the --with-host
+##                         argument can be provided multiple times.
+##   --cargo-toml-gen      Enable generation of Cargo.toml files
+##   --dev                 Always recompile fx-set from source.
+##
+## Example:
+##
+##   $ fx set core.x64 --with //bundles:tests
+##   -> build directory: out/default
+##      board: //boards/x64.gni
+##      product: //products/core.gni
+##      universe: //bundles:tests (all test packages)
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+
+set -e
+
+function main {
+  fx-standard-switches "$@"
+  set -- "${FX_ARGV[@]}"
+
+  # Check if the --dev flag is set. If it is, then we'll always build fx-set
+  # from source.
+  local dev=false
+  for arg; do
+    shift
+    if [ "$arg" = --dev ]; then
+      dev=true
+      continue
+    fi
+    # Include every arg besides --dev in the args we pass to fx-set.
+    set -- "$@" "$arg"
+  done
+
+  # Cache the compiled executable for later invocations.
+  readonly exe_path="${FX_CACHE_DIR}/fx-set"
+  readonly revision_file="${FX_CACHE_DIR}/fx-set-revision"
+  local current_revision
+  current_revision="$(git --no-optional-locks -C "$FUCHSIA_DIR" rev-parse HEAD)"
+
+  # Determine whether we need to rebuild the fx-set executable. We'll only
+  # rebuild if the --dev flag is set, or if the cached version of fx-set was
+  # built at a revision other than the current revision. We determine that by
+  # storing the current HEAD of fuchsia.git in a cached version file whenever
+  # we build fx-set, and then we rebuild if the current HEAD differs from the
+  # revision referenced in the cached file.
+  local should_rebuild=true
+  if ! $dev && [ -f "$exe_path" ] && [ -f "$revision_file" ]; then
+    local fx_set_revision
+    fx_set_revision="$(head -n 1 "$revision_file")"
+    if [ "$fx_set_revision" = "$current_revision" ]; then
+      should_rebuild=false
+    fi
+  fi
+
+  if $should_rebuild; then
+    # Build in a temporary directory where we can arrange the module.
+    #
+    # Avoid "TMPDIR" since Go looks at that environment variable.
+    BUILD_DIR=$(mktemp -d)
+    trap 'rm -rf $BUILD_DIR' EXIT
+    pushd "$BUILD_DIR" > /dev/null
+    for target in go.{mod,sum} vendor; do
+      ln -s "$FUCHSIA_DIR"/third_party/golibs/$target .
+    done
+    # fx-set's only local imports (direct and transitive) are from //tools. We
+    # can symlink more top-level directories as necessary if fx-set ever needs
+    # to import their code.
+    ln -s "$FUCHSIA_DIR"/tools .
+    # GOPROXY=off enforces that we only use vendored dependencies and don't
+    # download anything.
+    # GO111MODULE=on ensures that we use modules for the build even if the
+    # user has GO111MODULE=off in their local environment.
+    if ! GOPROXY=off GO111MODULE=on fx-command-run go build -o "$exe_path" ./tools/build/fx-set/cmd; then
+      if ! $dev; then # If running in dev mode, compilation failures are expected.
+        fx-error "Failed to build fx set."
+        fx-error "Please file a bug using \`fx report-bug set\` with the full error copy-pasted."
+      fi
+      return 1
+    fi
+    popd > /dev/null
+
+    # Record the current HEAD *after* building fx-set so that we always try
+    # to rebuild on subsequent attempts if compilation fails the first time.
+    echo "$current_revision" > "$revision_file"
+  fi
+
+  "$exe_path" "$@"
+  status="$?"
+
+  # Check for RBE requirements if enabled.
+  fx-check-rbe-setup
+
+  return "$status"
+}
+
+main "$@"

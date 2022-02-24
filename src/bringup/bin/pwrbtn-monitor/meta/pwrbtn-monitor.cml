@@ -1,0 +1,29 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/pwrbtn-monitor",
+    },
+    capabilities: [
+        { protocol: "fuchsia.power.button.Monitor" },
+    ],
+    use: [
+        {
+            directory: "input",
+            rights: [ "rw*" ],
+            path: "/input",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.hardware.power.statecontrol.Admin",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.power.button.Monitor",
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,18 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/regulatory_region_integration_test",
+        args: [ "--test-threads=1" ],
+    },
+    offer: [
+        {
+            storage: "cache",
+            from: "parent",
+            to: "#realm_builder",
+        },
+    ],
+}

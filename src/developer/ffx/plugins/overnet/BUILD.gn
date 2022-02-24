@@ -1,0 +1,19 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ONET_TOOL = "//src/connectivity/overnet/lib/onet_tool"
+
+ffx_plugin("ffx_overnet_plugin") {
+  version = "0.1.0"
+  edition = "2018"
+
+  deps = [ ONET_TOOL ]
+  args_deps = [ ONET_TOOL ]
+
+  args_sources = [ "src/args.rs" ]
+
+  sources = [ "src/lib.rs" ]
+}

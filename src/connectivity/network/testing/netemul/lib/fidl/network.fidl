@@ -1,0 +1,257 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.netemul.network;
+
+using fuchsia.hardware.ethernet;
+using fuchsia.hardware.ethertap;
+using fuchsia.hardware.network;
+using fuchsia.net.virtualization;
+using fuchsia.net;
+using zx;
+
+/// Provides emulated latency configuration.
+type LatencyConfig = struct {
+    /// Average latency, in ms.
+    average uint64;
+    /// Latency standard deviation, in ms.
+    std_dev uint64;
+};
+
+// Note: Loss config is a union to be able to provide other models of packet loss.
+/// Provides emulated packet loss configuration.
+type LossConfig = strict union {
+    /// Rate of packet loss expressed as independent drop probability [0-100].
+    1: random_rate uint8;
+};
+
+/// Provides emulated packet reordering configuration.
+type ReorderConfig = struct {
+    /// Size of buffer, in packets, to store and forward with randomized order.
+    store_buff uint32;
+    /// Tick/deadline in ms to empty buffer, regardless of full state.
+    /// 0 will cause buffer to flush only when full (dangerous).
+    tick uint64;
+};
+
+/// Used to configure a network with emulated adversity conditions.
+type NetworkConfig = table {
+    /// Latency configuration.
+    1: latency LatencyConfig;
+    /// Packet loss configuration.
+    2: packet_loss LossConfig;
+    /// Packet reordering configuration.
+    3: reorder ReorderConfig;
+};
+
+/// Manages virtual networks.
+protocol NetworkManager {
+    /// Lists emulated networks by name.
+    ListNetworks() -> (struct {
+        nets vector<string:MAX>:MAX;
+    });
+    /// Creates a new network with given name and config.
+    CreateNetwork(struct {
+        name string:MAX;
+        config NetworkConfig;
+    }) -> (resource struct {
+        status zx.status;
+        net client_end:<Network, optional>;
+    });
+    /// Gets a handle to a network.
+    GetNetwork(struct {
+        name string:MAX;
+    }) -> (resource struct {
+        net client_end:<Network, optional>;
+    });
+};
+
+/// Backing of an emulated endpoint.
+type EndpointBacking = strict enum {
+    /// Endpoint backed by ethertap device.
+    ETHERTAP = 1;
+    /// Endpoint backed by a network-tun device.
+    /// The created `fuchsia.hardware.network.Device` always acts as a virtual ethernet device.
+    NETWORK_DEVICE = 2;
+};
+
+/// Configuration used to create an endpoint.
+type EndpointConfig = struct {
+    /// Fake ethernet mtu.
+    mtu uint16;
+    /// Fake ethernet mac address, if not provided will be set to randomized local mac,
+    /// using endpoint name as seed.
+    mac box<fuchsia.net.MacAddress>;
+    /// Backing type of emulated endpoint.
+    backing EndpointBacking;
+};
+
+/// Manages virtual endpoints.
+protocol EndpointManager {
+    /// Lists endpoints by name.
+    ListEndpoints() -> (struct {
+        endp vector<string:MAX>:MAX;
+    });
+    /// Creates endpoint with given name and config.
+    CreateEndpoint(struct {
+        name string:fuchsia.hardware.ethertap.MAX_NAME_LENGTH;
+        config EndpointConfig;
+    }) -> (resource struct {
+        status zx.status;
+        endpoint client_end:<Endpoint, optional>;
+    });
+    /// Gets a handle to an endpoint.
+    GetEndpoint(struct {
+        name string:fuchsia.hardware.ethertap.MAX_NAME_LENGTH;
+    }) -> (resource struct {
+        endpoint client_end:<Endpoint, optional>;
+    });
+};
+
+/// Fake endpoint can be added to a network to snoop or inject packets.
+protocol FakeEndpoint {
+    /// Writes a frame to the network.
+    Write(struct {
+        data vector<uint8>:MAX;
+    }) -> ();
+    /// Reads a single frame from the network.
+    ///
+    /// Blocks until new data is available to be read. FakeEndpoint will keep a limited amount of
+    /// frames to be read, dropping the oldest ones if the data is not fetched fast enough. The
+    /// number of dropped frames since the last call to `Read` is returned in `dropped_frames`.
+    ///
+    /// Issuing a second `Read` request when the first one is still pending will cause the channel
+    /// to be closed with `ZX_ERR_BAD_STATE`.
+    Read() -> (struct {
+        data vector<uint8>:MAX;
+        dropped_frames uint64;
+    });
+};
+
+/// Virtual network.
+protocol Network {
+    // Allows guest VMs to interact with the [`Network`].
+    compose fuchsia.net.virtualization.Network;
+
+    /// Gets network configuration.
+    GetConfig() -> (struct {
+        config NetworkConfig;
+    });
+    /// Gets network name.
+    GetName() -> (struct {
+        name string:MAX;
+    });
+    /// Updates network configuration.
+    SetConfig(struct {
+        config NetworkConfig;
+    }) -> (struct {
+        status zx.status;
+    });
+    /// Attaches endpoint with given name to network.
+    AttachEndpoint(struct {
+        name string:MAX;
+    }) -> (struct {
+        status zx.status;
+    });
+    /// Removes endpoint with given name from network.
+    RemoveEndpoint(struct {
+        name string:MAX;
+    }) -> (struct {
+        status zx.status;
+    });
+    /// Injects a fake endpoint.
+    CreateFakeEndpoint(resource struct {
+        ep server_end:FakeEndpoint;
+    });
+};
+
+/// Simple interface to serve devices over fidl.
+protocol DeviceProxy {
+    /// Fulfills the device request.
+    /// The fulfilled requests's protocol is defined by the `Endpoint`'s `EndpointBacking`.
+    ServeDevice(resource struct {
+        req zx.handle:CHANNEL;
+    });
+};
+
+/// A connection to an endpoint's underlying protocol.
+type DeviceConnection = strict resource union {
+    /// Set if the endpoint's backing is `ETHERTAP`.
+    1: ethernet client_end:fuchsia.hardware.ethernet.Device;
+    /// Set if the endpoint's backing is `NETWORK_DEVICE`.
+    // NOTE(brunodalbo) the DeviceInstance protocol is a transient protocol that is exposed by devfs.
+    // As documented in its definition, users should avoid passing this forward, but connect to its
+    // internal protocols instead.
+    2: network_device client_end:fuchsia.hardware.network.DeviceInstance;
+};
+
+/// Virtual ethernet endpoint.
+protocol Endpoint {
+    // Gets endpoint configuration.
+    GetConfig() -> (struct {
+        config EndpointConfig;
+    });
+    /// Gets endpoint name.
+    GetName() -> (struct {
+        name string:MAX;
+    });
+    /// Sends link up or down signal
+    SetLinkUp(struct {
+        up bool;
+    }) -> ();
+    /// Opens a channel with the underlying device protocol.
+    /// The resulting `DeviceConnection` variant is defined by this `Endpoint`'s `EndpointBacking`.
+    GetDevice() -> (resource struct {
+        device DeviceConnection;
+    });
+    /// Gets a proxy to open requests with zircon ethernet device.
+    GetProxy(resource struct {
+        proxy server_end:DeviceProxy;
+    });
+};
+
+/// Convenience struct for creating entire network setups.
+type NetworkSetup = struct {
+    /// Network name, must be unique in network context.
+    name string:MAX;
+    /// NetworkConfig to use when creating network.
+    config NetworkConfig;
+    /// Collection of endpoints to create and attach to network.
+    endpoints vector<EndpointSetup>:MAX;
+};
+
+/// Convenience struct for creating endpoints along with network setup.
+type EndpointSetup = struct {
+    /// Endpoint name, must be unique in network context.
+    name string:MAX;
+    /// Optional endpoint config, if not provided defaults will be used.
+    /// Default values are: mtu = 1500, backing = ETHERTAP, mac = randomized.
+    config box<EndpointConfig>;
+    /// Start endpoint with link status up.
+    link_up bool;
+};
+
+/// Handle returned when using NetworkContext.Setup for quick network configuration.
+/// Networks and endpoints created by Setup are tied to the lifecycle of the SetupHandle's channel.
+protocol SetupHandle {};
+
+/// Main entry point to manage virtual networks and endpoints.
+@discoverable
+protocol NetworkContext {
+    GetNetworkManager(resource struct {
+        net_manager server_end:NetworkManager;
+    });
+    GetEndpointManager(resource struct {
+        endp_manager server_end:EndpointManager;
+    });
+    /// Creates a collection of networks described by `networks`.
+    /// `status` is `ZX_OK` for success
+    /// `setup_handle` is a resource that references and maintains the lifecycle of
+    ///                the created networks and endpoints.
+    Setup(struct {
+        networks vector<NetworkSetup>:MAX;
+    }) -> (resource struct {
+        status zx.status;
+        setup_handle client_end:<SetupHandle, optional>;
+    });
+};

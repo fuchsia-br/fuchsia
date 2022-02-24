@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/netstack3"
+    },
+    "sandbox": {
+        "dev": [
+            "class/ethernet"
+        ]
+    }
+}

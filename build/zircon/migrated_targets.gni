@@ -1,0 +1,10 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Zircon BUILD.gn files that want to use zx_library() or zx_host_tool()
+# may include this file to get their definitions, as well as various
+# global variables inherited from the now-retired Zircon build.
+#
+import("//build/zircon/zx_host_tool.gni")
+import("//build/zircon/zx_library.gni")

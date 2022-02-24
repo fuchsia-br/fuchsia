@@ -1,0 +1,207 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//products/core.gni")
+
+core_realm_package_name = "core-workstation"
+core_realm_shards += [
+  "//src/developer/build_info:build_info_core_shard",
+  "//src/developer/memory/monitor:memory_monitor_core_shard",
+  "//src/identity/bin/account:account-core-shard",
+  "//src/media/audio/drivers/configurator:configurator_provider_shard",
+  "//src/power/battery-manager:battery-manager-core-shard",
+  "//src/session/bin/session_manager:workstation_core_shard",
+  "//src/ui:ui-core-shard",
+]
+
+base_package_labels += [
+  "//garnet/packages/config:shortcut",
+  "//src/dart:dart_jit",
+  "//src/dart:dart_jit_product",
+  "//src/developer/memory/buckets:workstation_memory_monitor_config",
+  "//src/developer/ssh-key-manager",
+  "//src/experiences/session_shells/ermine/session:session_manager",
+  "//src/fonts",
+  "//src/fonts:open-fonts-collection",
+  "//src/graphics/bin/vulkan_loader",
+  "//src/identity/bin:minimal_auth",
+  "//src/intl/intl_services/config:sysmgr",
+  "//src/intl/intl_services:pkg",
+  "//src/media/audio/bundles:services",
+  "//src/media/audio/drivers/configurator",
+  "//src/power:battery",
+  "//src/sys/activity",
+  "//src/ui:workstation",
+  "//src/ui/bin/brightness_manager",
+  "//src/ui/bin/screensaver",
+  "//src/ui/bin/shortcut",
+  "//third_party/openssh-portable:openssh-tools",
+
+  # TODO(fxbug.dev/82822): Remove after out-of-tree tests migrate to
+  # text_manager.
+  "//src/ui/bin/text:ime_service",
+  "//src/ui/bin/text:text_manager",
+
+  # Setting service configuration
+  "//src/setui/config:workstation_interface_config",
+]
+base_package_labels -= [ "//src/intl/intl_services/config:sysmgr_small" ]
+
+# Add build type config data
+base_package_labels += [ "//src/fonts:build_type_eng" ]
+
+# Add Linux runner and Wayland bridge
+base_package_labels += [
+  "//src/ui/wayland/bin/bridge",
+  "//src/virtualization/bin/linux_runner",
+]
+
+# Disable reporting DEBUG metrics in Cobalt
+base_package_labels -= [ "//src/cobalt/bin/app:config" ]
+base_package_labels += [ "//src/cobalt/bin/app:user_config" ]
+
+# Explicitly prefer wired networking on workstation
+base_package_labels -= [
+  "//src/connectivity/management:network_config_default",
+  "//src/connectivity/network/netcfg:config-default",
+]
+base_package_labels +=
+    [ "//src/connectivity/network/netcfg:config-prefer-wired" ]
+
+cache_package_labels += [
+  "//src/chromium:chrome_browser",
+  "//src/experiences/bin/settings/license:license_settings",
+  "//src/experiences/bin/simple_browser:simple-browser",
+  "//src/experiences/session_shells/ermine",
+  "//src/experiences/tests/chrome:end_to_end_deps",
+  "//src/dart:dart_jit",
+  "//src/dart:dart_jit_product",
+  "//src/fonts",
+  "//src/flutter",
+  "//src/media/playback/bundles:services",
+  "//src/media/playback/bundles:audio_consumer_config",
+  "//src/session",
+  "//src/ui/bin/terminal",
+  "//src/ui/scenic",
+]
+
+# Add Bluetooth packages
+core_realm_shards +=
+    [ "//src/connectivity/bluetooth/profiles/bt-a2dp:eager_core_shard" ]
+
+# To use the eager shard, cache the packages so they are available before network.
+cache_package_labels += [
+  "//src/connectivity/bluetooth/profiles/bt-a2dp:source-only",
+  "//src/connectivity/bluetooth/profiles/bt-avrcp-target",
+
+  # TODO(fxbug.dev/79542): Demote to universe when sysui handles pairing+connecting
+  "//src/connectivity/bluetooth/tools/bt-cli",
+  "//src/connectivity/bluetooth/tools/bt-pairing-tool",
+]
+
+universe_package_labels += [
+  "//examples/fidl:tests",
+
+  "//src/lib/ui/carnelian:examples",
+  "//src/ui/examples/bouncing_ball",
+  "//src/ui/examples/spinning_square_view",
+  "//src/virtualization/bin",
+
+  "//src/proc/bundles:examples",
+]
+
+product_bootfs_labels += [
+  # hide the virtual console on boot
+  "//products/kernel_cmdline:virtcon.hide-on-boot",
+
+  # enable boot animation
+  "//products/kernel_cmdline:virtcon.boot-animation--true",
+
+  # enable DPI based scale factors, 1.25x above 160 DPI, 2x above 240, etc.
+  "//products/kernel_cmdline:virtcon.dpi--160-240-360-480",
+
+  # enable double buffered output
+  "//products/kernel_cmdline:virtcon.buffer-count--2",
+
+  # enable component manager hosted bootfs
+  "//products/kernel_cmdline:bootsvc.next--host_bootfs",
+]
+
+# Add bold and italic Vircon fonts.
+virtcon_bold_font_path =
+    "//prebuilt/third_party/fonts/robotomono/RobotoMono-Bold.ttf"
+virtcon_italic_font_path =
+    "//prebuilt/third_party/fonts/robotomono/RobotoMono-Italic.ttf"
+virtcon_bold_italic_font_path =
+    "//prebuilt/third_party/fonts/robotomono/RobotoMono-BoldItalic.ttf"
+
+# End to end (E2E) product test runtime dependencies. Must be added to cache,
+# not universe, so the test can run on bots where there is no package server.
+#
+# TODO(fxbug.dev/9892): Support a package server on bots so this can be added to
+# universe like the tests.
+cache_package_labels += [
+  # Used for Chromium tests for example:
+  #    //src/chromium/web_runner_tests:tests
+  "//src/testing/fidl/intl_property_manager",
+
+  "//src/tests/end_to_end/bundles:end_to_end_deps",
+  "//src/tests/end_to_end/bundles:end_to_end_deps",
+  "//src/experiences/tests/e2e:end_to_end_deps",
+  "//src/experiences/tests/performance:performance_deps",
+
+  # CFv2 test framework.
+  "//src/sys/run_test_suite",
+]
+
+# E2E Product Tests. They don't produce fuchsia packages, but host executables
+# used by the tests.
+host_labels += [
+  "//src/experiences/tests/chrome:test",
+  "//src/experiences/tests/e2e:test",
+  "//src/experiences/tests/performance:test",
+  "//src/tests/end_to_end/copy_files:test",
+]
+
+universe_package_labels += [
+  # E2E Product Tests. They don't produce fuchsia packages, but host
+  # executables, and must just be included somewhere in the build configuration
+  # of the product.
+  "//src/tests/end_to_end/screen_is_not_black",
+  "//src/tests/end_to_end/sl4f:test",
+  "//src/tests/end_to_end/time_sync:test",
+
+  # Only for products in which Flutter is supported.
+  "//src/tests/intl/timezone:tests-for-flutter",
+
+  "//src/fonts:open-fonts",
+]
+
+# Add SDK tools set to "cache" so these tools are automatically available in
+# QEMU images generated for the SDK, but in cache, so they can be updated.
+cache_package_labels += [ "//sdk/bundles:tools" ]
+
+core_realm_shards += [ "//src/media/codec:codec_factory_shard" ]
+
+# Enable the live_usb component.
+with_live_usb = true
+product_bootfs_labels += [ "//src/sys/live_usb:live_usb_is_system" ]
+
+# Enable input injection for testing through `fuchsia.input.injection.InputDeviceRegistry`.
+use_modern_input_injection = true
+
+# Create an additional (initially empty) account partition in FVM to enable
+# user data protection.
+include_account_in_fvm = true
+
+product_bootfs_labels += [
+  "//src/storage/fxfs",
+  "//src/storage/fxfs-crypt",
+]
+
+# Use Flatland as the default graphics protocol in Scenic.
+use_flatland_by_default = true
+
+# Use Fxfs for the data partition.
+data_filesystem_format = "fxfs"

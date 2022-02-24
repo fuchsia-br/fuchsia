@@ -1,0 +1,727 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Definitions to build each of the Fuchsia SDKs.
+
+import("//build/config/build_api_module.gni")
+import("//build/dart/toolchain.gni")
+import("//build/fidl/toolchain.gni")
+import("//build/sdk/sdk.gni")
+import("//build/sdk/sdk_documentation.gni")
+import("//build/sdk/sdk_package.gni")
+import("//build/sdk/version_history_sdk_element.gni")
+import("//sdk/cts/build/cts_sdk.gni")
+import("config.gni")
+
+_sdk_public_deps = [
+  ":core",
+  ":core_testing",
+  ":e2e_testing",
+  ":modular_testing",
+  ":zircon_sysroot",
+]
+
+# This default target should contain all public or partner SDKs.
+# Any public or partner SDKs added to this target should also be
+# added to ALLOWED_CTS_SDKS in //sdk/cts/build/allowed_cts_deps.gni.
+group("sdk") {
+  testonly = true
+
+  public_deps = _sdk_public_deps
+  data_deps = [ ":sdk_source_set_list" ]
+}
+
+# This file contains the list of all source files used in sdk_source_set()
+# targets reachable from //sdk:sdk. The schema is simply a JSON list, where
+# each item is the path to a single source file, relative to the source
+# directory. Path are not sorted and appear in order of metadata walk, which
+# is unstable.
+build_api_module("sdk_source_set_list") {
+  testonly = true
+  data_keys = [ "sdk_source_set_sources" ]
+  deps = _sdk_public_deps
+}
+
+# Create generated file for fidldoc to read.
+generated_file("all_fidl_sdk_json") {
+  deps = [ "//sdk:fidl" ]
+
+  outputs = [ "$root_build_dir/all_fidl_sdk_json.txt" ]
+  data_keys = [ "fidl_json" ]
+}
+
+# Contains the list of all plasa fragment files, which have a dump of the
+# public API surfaces.
+generated_file("plasa") {
+  testonly = true
+  data_keys = [ "plasa" ]
+  outputs = [ "$root_build_dir/manifest.plasa.json" ]
+  output_conversion = "json"
+  deps = _sdk_public_deps
+}
+
+# This target is used by infra builders to build all SDK archives that
+# make up the "core" SDK.
+group("archives") {
+  testonly = true
+  public_deps = [
+    ":core_archive",
+    ":core_testing_archive",
+    ":e2e_testing_archive",
+    ":fuchsia_dart_archive",
+    ":modular_testing_archive",
+  ]
+}
+
+group("sdk.modular") {
+  testonly = true
+
+  public_deps = [
+    ":core.modular",
+    ":host_tools.all",
+    ":modular_testing",
+    ":zircon_sysroot",
+    "//scripts/sdk/gn:gn.modular.tar.gz",
+  ]
+}
+
+group("tests_no_e2e") {
+  testonly = true
+  assert_no_deps = e2e_test_libs
+
+  deps = [
+    "cts/plasa:tests",
+    "dart:tests",
+    "lib:tests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "cts/plasa:tests",
+
+    # `testing:tests` contains unit tests for sl4f, which depend on sl4f so it
+    # can't live inside `test_no_e2e`.
+    "testing:tests",
+  ]
+}
+
+version_history_sdk_element("version_history_sdk_element") {
+  schema = "//build/sdk/meta/version_history-ef02ef45.json"
+  data = "version_history.json"
+}
+
+sdk_element_adapter("version_history") {
+  deps = [ ":version_history_sdk_element" ]
+}
+
+# License/rights related information for the SDK.
+sdk_documentation("open_source") {
+  name = "open_source"
+
+  category = "public"
+
+  files = []
+  foreach(file,
+          [
+            "AUTHORS",
+            "LICENSE",
+            "PATENTS",
+          ]) {
+    files += [
+      {
+        source = "//$file"
+        dest = file
+      },
+    ]
+  }
+}
+
+# Licensing information for the 'libc'-style musl library.
+sdk_documentation("musl_license") {
+  name = "musl_license"
+
+  category = "public"
+
+  files = [
+    {
+      source = "//zircon/third_party/ulib/musl/COPYRIGHT"
+      dest = "COPYRIGHT.musl"
+    },
+  ]
+}
+
+cts_sdk("cts") {
+  testonly = true
+  category = "cts"
+  deps = [
+    ":license",
+    "cts:cts_tests",
+  ]
+}
+
+# License/copyright files for the SDK.
+sdk_molecule("license") {
+  visibility = [ ":*" ]
+  deps = [
+    ":musl_license",
+    ":open_source",
+  ]
+}
+
+sdk("zircon_sysroot") {
+  category = "internal"
+
+  deps = [ "//zircon/public/sysroot/sdk:sysroot_sdk" ]
+}
+
+sdk("e2e_testing") {
+  # TODO(fxbug.dev/6128): this id should not be necessary.
+  id = sdk_id
+
+  category = "partner"
+
+  api = "manifests/e2e_testing.manifest"
+
+  deps = [
+    ":e2e_testing_tools",
+    "//sdk/testing/sl4f/client:client_sdk($dart_toolchain)",
+  ]
+}
+
+sdk_molecule("e2e_testing_tools") {
+  visibility = [ ":*" ]
+
+  deps = [ "//garnet/bin/trace2json:bin_sdk($host_toolchain)" ]
+}
+
+# Fuchsia IDL (FIDL) files defining much of the API for the SDK.
+sdk_molecule("fidl") {
+  visibility = [
+    ":*",
+    "//build/fidl:sdk_fidl",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.accessibility.gesture:fuchsia.accessibility.gesture_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.accessibility.semantics:fuchsia.accessibility.semantics_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.accessibility.virtualkeyboard:fuchsia.accessibility.virtualkeyboard_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.audio.effects:fuchsia.audio.effects_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.auth.oldtokens:fuchsia.auth.oldtokens_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.a2dp:fuchsia.bluetooth.a2dp_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.gatt:fuchsia.bluetooth.gatt_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.gatt2:fuchsia.bluetooth.gatt2_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.hfp:fuchsia.bluetooth.hfp_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.le:fuchsia.bluetooth.le_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.bluetooth.sys:fuchsia.bluetooth.sys_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.buildinfo:fuchsia.buildinfo_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.camera:fuchsia.camera_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.camera2:fuchsia.camera2_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.camera2.hal:fuchsia.camera2.hal_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.camera3:fuchsia.camera3_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castauth:fuchsia.castauth_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castconfig:fuchsia.castconfig_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castremotecontrol:fuchsia.castremotecontrol_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castsetup:fuchsia.castsetup_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castsysteminfo:fuchsia.castsysteminfo_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.castwindow:fuchsia.castwindow_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.component:fuchsia.component_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.component.runner:fuchsia.component.runner_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.component.test:fuchsia.component.test_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.component.types:fuchsia.component.types_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.data:fuchsia.data_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.developer.tiles:fuchsia.developer.tiles_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.element:fuchsia.element_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.factory:fuchsia.factory_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.factory.wlan:fuchsia.factory.wlan_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.feedback:fuchsia.feedback_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.fonts:fuchsia.fonts_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.adc:fuchsia.hardware.adc_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.goldfish:fuchsia.hardware.goldfish_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.light:fuchsia.hardware.light_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.radar:fuchsia.hardware.radar_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hwinfo:fuchsia.hwinfo_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.images:fuchsia.images_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.input:fuchsia.input_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.input.report:fuchsia.input.report_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.input.virtualkeyboard:fuchsia.input.virtualkeyboard_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.inspect:fuchsia.inspect_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.legacymetrics:fuchsia.legacymetrics_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.lightsensor:fuchsia.lightsensor_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.location:fuchsia.location_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.location.namedplace:fuchsia.location.namedplace_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.location.position:fuchsia.location.position_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.location.sensor:fuchsia.location.sensor_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.lowpan.bootstrap:fuchsia.lowpan.bootstrap_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.math:fuchsia.math_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media:fuchsia.media_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.audio:fuchsia.media.audio_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.drm:fuchsia.media.drm_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.playback:fuchsia.media.playback_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.sessions2:fuchsia.media.sessions2_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.sounds:fuchsia.media.sounds_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.media.target:fuchsia.media.target_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.mediastreams:fuchsia.mediastreams_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.memorypressure:fuchsia.memorypressure_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.metrics:fuchsia.metrics_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.migration:fuchsia.migration_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.net.interfaces:fuchsia.net.interfaces_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.net.mdns:fuchsia.net.mdns_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.net.routes:fuchsia.net.routes_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.power.clientlevel:fuchsia.power.clientlevel_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.power.profile:fuchsia.power.profile_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.power.systemmode:fuchsia.power.systemmode_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.process:fuchsia.process_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.recovery:fuchsia.recovery_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.recovery.ui:fuchsia.recovery.ui_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.session:fuchsia.session_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.settings:fuchsia.settings_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.settings.policy:fuchsia.settings.policy_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.sys.test:fuchsia.sys.test_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.thermal:fuchsia.thermal_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.activity:fuchsia.ui.activity_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.activity.control:fuchsia.ui.activity.control_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.app:fuchsia.ui.app_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.brightness:fuchsia.ui.brightness_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.gfx:fuchsia.ui.gfx_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.input:fuchsia.ui.input_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.input3:fuchsia.ui.input3_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.pointer:fuchsia.ui.pointer_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.pointer.augment:fuchsia.ui.pointer.augment_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.pointerinjector:fuchsia.ui.pointerinjector_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.policy:fuchsia.ui.policy_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.scenic:fuchsia.ui.scenic_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.types:fuchsia.ui.types_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.views:fuchsia.ui.views_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ultrasound:fuchsia.ultrasound_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.update:fuchsia.update_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.update.channel:fuchsia.update.channel_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.update.channelcontrol:fuchsia.update.channelcontrol_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.update.config:fuchsia.update.config_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.url:fuchsia.url_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.weave:fuchsia.weave_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.web:fuchsia.web_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.policy:fuchsia.wlan.policy_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.product.deprecatedclient:fuchsia.wlan.product.deprecatedclient_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.product.deprecatedconfiguration:fuchsia.wlan.product.deprecatedconfiguration_sdk($fidl_toolchain)",
+  ]
+}
+
+# Tools and data used on a 'host' development machine; where host is often
+# Linux or Mac OS.
+sdk_molecule("host_tools") {
+  visibility = [ ":*" ]
+
+  cross_compiled = [
+    "//tools/fidl/fidlgen_hlcpp:fidlgen_sdk",
+    "//tools/cmc:cmc_sdk",
+    "//tools/fvdl:fvdl_sdk",
+    "//tools/sdk-tools/fconfig:fconfig_sdk",
+    "//tools/sdk-tools/fpublish:fpublish_sdk",
+    "//tools/sdk-tools/fserve:fserve_sdk",
+    "//tools/sdk-tools/fssh:fssh_sdk",
+    "//src/developer/debug/zxdb:zxdb_sdk",
+    "//src/developer/ffx:bin_sdk",
+    "//src/storage/bin/fvm:fvm_sdk",
+    "//src/storage/tools/blobfs-compression:blobfs-compression_sdk",
+    "//src/sys/pkg/bin/far:bin_sdk",
+    "//src/sys/pkg/bin/pm:pm_bin_sdk",
+    "//tools/bootserver_old:bootserver_sdk",
+    "//tools/net/device-finder:device-finder_sdk",
+    "//tools/symbol-index:symbol_index_sdk",
+    "//tools/symbolizer:sdk",
+    "//tools/fidl/fidlc:fidl-format_sdk",
+    "//tools/fidl/fidlc:fidlc_sdk",
+    "//tools/fidlcat:fidlcat_sdk",
+    "//zircon/tools/blobfs:blobfs_sdk",
+    "//zircon/tools/merkleroot:merkleroot_sdk",
+    "//zircon/tools/minfs:minfs_sdk",
+    "//zircon/tools/zbi:zbi_sdk",
+    "//src/developer/ffx/plugins/emulator:aemu_internal",
+  ]
+
+  toolchains = []
+  if (host_os == "linux") {
+    toolchains += [
+      host_x64_toolchain,
+      host_arm64_toolchain,
+    ]
+  } else if (host_os == "mac") {
+    toolchains += [ host_toolchain ]
+  }
+
+  deps = []
+
+  foreach(toolchain, toolchains) {
+    foreach(dep, cross_compiled) {
+      deps += [ "$dep($toolchain)" ]
+      if (toolchain == host_toolchain) {
+        deps += [ "${dep}_legacy($toolchain)" ]
+      }
+    }
+  }
+}
+
+sdk_molecule("core_lib") {
+  visibility = [ ":*" ]
+
+  deps = [
+    "//sdk/lib/fdio:fdio_sdk",
+    "//sdk/lib/fidl/cpp:cpp_sdk",
+    "//sdk/lib/fit-promise:fit-promise_sdk",
+    "//sdk/lib/inspect/service/cpp:cpp_sdk",
+    "//sdk/lib/media/cpp:cpp_sdk",
+    "//sdk/lib/modular/cpp:cpp_sdk",
+    "//sdk/lib/stdcompat:stdcompat_sdk",
+    "//sdk/lib/svc:svc_sdk",
+    "//sdk/lib/sys/component:realm_builder_shard_sdk",
+    "//sdk/lib/sys/cpp:cpp_sdk",
+    "//sdk/lib/sys/inspect/cpp:cpp_sdk",
+    "//sdk/lib/sys/testing:elf_test_runner_shard_sdk",
+    "//sdk/lib/syslog",
+    "//sdk/lib/syslog/structured_backend:structured_backend_sdk",
+    "//sdk/lib/ui/scenic/cpp:cpp_sdk",
+    "//sdk/lib/vfs/cpp:cpp_sdk",
+    "//sdk/lib/vulkan",
+    "//src/storage/memfs:memfs_sdk",
+    "//zircon/system/ulib/async:async-cpp_sdk",
+    "//zircon/system/ulib/async:async_sdk",
+    "//zircon/system/ulib/async-default:async-default_sdk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp_sdk",
+    "//zircon/system/ulib/async-loop:async-loop-default_sdk",
+    "//zircon/system/ulib/async-loop:async-loop_sdk",
+    "//zircon/system/ulib/async-loop/testing:async-loop-testing_sdk",
+    "//zircon/system/ulib/inspect:inspect_sdk",
+    "//zircon/system/ulib/sync:sync_sdk",
+    "//zircon/system/ulib/syslog:syslog_sdk",
+    "//zircon/system/ulib/trace:trace_sdk",
+    "//zircon/system/ulib/trace-engine:trace-engine_sdk",
+    "//zircon/system/ulib/trace-provider:trace-provider-so_sdk",
+  ]
+}
+
+# Pieces of the IDK sans host tools (which are in ":host_tools").
+sdk_molecule("core_idk") {
+  visibility = [ ":*" ]
+
+  deps = [
+    ":core_lib",
+    ":fidl",
+    ":license",
+    ":version_history",
+    "devices",
+    "docs",
+    "//src/lib/vulkan:vulkan_layers",
+    "//third_party/Vulkan-Loader:libvulkan_sdk",
+    "//third_party/Vulkan-Loader:vulkan_license",
+    "//zircon/public/sysroot/sdk:sysroot_sdk",
+  ]
+}
+
+sdk_molecule("core_testing_idk") {
+  visibility = [ ":*" ]
+
+  testonly = true
+
+  deps = [
+    "//sdk/lib/sys/component/cpp/testing:cpp_library_sdk",
+    "//sdk/lib/sys/cpp/testing:cpp_sdk",
+    "//zircon/system/ulib/async-testing:async-testing_sdk",
+  ]
+}
+
+sdk("core") {
+  id = sdk_id
+
+  category = "partner"
+
+  api = "manifests/core.manifest"
+
+  deps = [
+    ":core_idk",
+    ":host_tools",
+  ]
+}
+
+sdk("core_testing") {
+  id = sdk_id
+
+  testonly = true
+
+  category = "partner"
+
+  api = "manifests/core_testing.manifest"
+
+  deps = [ ":core_testing_idk" ]
+}
+
+sdk("core.modular") {
+  id = sdk_id
+
+  category = "partner"
+
+  api = "manifests/core.modular.manifest"
+
+  testonly = true
+
+  deps = [ ":core_idk" ]
+}
+
+group("host_tools.all") {
+  public_deps = []
+  if (host_os == "linux") {
+    public_deps += [
+      ":host_tools.modular($host_arm64_toolchain)",
+      ":host_tools.modular($host_x64_toolchain)",
+    ]
+  } else if (host_os == "mac") {
+    public_deps += [ ":host_tools.modular($host_toolchain)" ]
+  }
+}
+
+if (is_host) {
+  sdk("host_tools.modular") {
+    id = sdk_id
+    category = "partner"
+    api = "manifests/host_tools_${current_os}_${current_cpu}.manifest"
+
+    deps = [
+      "//src/developer/debug/zxdb:zxdb_sdk",
+      "//src/developer/ffx:bin_sdk",
+      "//src/storage/bin/fvm:fvm_sdk",
+      "//src/storage/tools/blobfs-compression:blobfs-compression_sdk",
+      "//src/sys/pkg/bin/far:bin_sdk",
+      "//src/sys/pkg/bin/pm:pm_bin_sdk",
+      "//tools/bootserver_old:bootserver_sdk",
+      "//tools/cmc:cmc_sdk",
+      "//tools/fidl/fidlc:fidl-format_sdk",
+      "//tools/fidl/fidlc:fidlc_sdk",
+      "//tools/fidl/fidlgen_hlcpp:fidlgen_sdk",
+      "//tools/fidlcat:fidlcat_sdk",
+      "//tools/fvdl:fvdl_sdk",
+      "//tools/net/device-finder:device-finder_sdk",
+      "//tools/symbol-index:symbol_index_sdk",
+      "//tools/symbolizer:sdk",
+      "//zircon/tools/blobfs:blobfs_sdk",
+      "//zircon/tools/merkleroot:merkleroot_sdk",
+      "//zircon/tools/minfs:minfs_sdk",
+      "//zircon/tools/zbi:zbi_sdk",
+    ]
+  }
+}
+
+# The `modular_testing` SDK provides FIDL protocols and C++ libraries for writing hermetic
+# integration tests which use modular.
+#
+# The modular framework is deprecated: new products should use the session framework
+# instead. See //docs/concepts/session/introduction.md.
+#
+# This SDK has runtime dependencies on the following fuchsia packages:
+#  * environment_delegating_runner
+#  * modular_test_harness
+sdk("modular_testing") {
+  testonly = true
+
+  id = sdk_id
+
+  api = "manifests/modular_testing.manifest"
+
+  category = "partner"
+
+  deps = [
+    "//sdk/fidl/fuchsia.element:fuchsia.element_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.modular:fuchsia.modular_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.modular.testing:fuchsia.modular.testing_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.ui.lifecycle:fuchsia.ui.lifecycle_sdk($fidl_toolchain)",
+    "//sdk/lib/modular/testing/cpp:cpp_sdk",
+  ]
+}
+
+# Firmware SDK.
+sdk("firmware") {
+  category = "experimental"
+
+  deps = [
+    "//sdk/docs:firmware",
+    "//src/firmware/lib/abr:abr_sdk",
+    "//src/firmware/lib/zbi:zbi_sdk",
+    "//src/firmware/lib/zircon_boot:zircon_boot_sdk",
+    "//third_party/android/platform/external/avb:avb_sdk",
+    "//zircon/public/sysroot/sdk:sysroot_sdk",
+  ]
+}
+
+# Tools and libraries to develop for Fuchsia with Dart.
+sdk("fuchsia_dart") {
+  category = "partner"
+
+  id = sdk_id
+
+  api = "manifests/fuchsia_dart.manifest"
+
+  deps = [
+    "//sdk/dart:gen_snapshot_sdk($dart_toolchain)",
+    "//sdk/dart:kernel_compiler_sdk($dart_toolchain)",
+    "//sdk/docs:modular_config_schema",
+
+    # TODO(leetodd): remove, needed to soft transition
+    # https://fuchsia-review.googlesource.com/c/fuchsia/+/399537
+    "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics_sdk",
+
+    # TODO(viktard): remove, needed to soft transition
+    # https://fuchsia-review.googlesource.com/c/fuchsia/+/295264
+    "//sdk/fidl/fuchsia.ui.app:fuchsia.ui.app_sdk",
+
+    # TODO(fxbug.dev/24537): Remove this temporary dependency.
+    # Temporarily added as a direct dependency so that it can be removed from
+    # //sdk/fidl/fuchsia.ui.views.
+    "//sdk/fidl/fuchsia.intl:fuchsia.intl_sdk",
+
+    # Direct FIDL deps.
+    # If a FIDL deps is part of the SDK, it should be explicitly listed here.
+    "//sdk/dart/fidl:fidl_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia:fuchsia_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_inspect:fuchsia_inspect_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_logger:fuchsia_logger_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_modular:fuchsia_modular_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_modular_testing:fuchsia_modular_testing_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_scenic:fuchsia_scenic_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_scenic_flutter:fuchsia_scenic_flutter_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_services:fuchsia_services_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_vfs:fuchsia_vfs_sdk($dart_toolchain)",
+    "//sdk/dart/fuchsia_webview_flutter:fuchsia_webview_flutter_sdk($dart_toolchain)",
+    "//sdk/fidl/fuchsia.element:fuchsia.element_sdk",
+    "//sdk/fidl/fuchsia.hardware.audio:fuchsia.hardware.audio_sdk",
+    "//tools/fidl/fidlgen_dart:fidlgen_dart_sdk_legacy($host_toolchain)",
+  ]
+
+  toolchains = []
+  if (host_os == "linux") {
+    toolchains += [
+      host_x64_toolchain,
+      host_arm64_toolchain,
+    ]
+  } else if (host_os == "mac") {
+    toolchains += [ host_toolchain ]
+  }
+  foreach(toolchain, toolchains) {
+    deps += [ "//tools/fidl/fidlgen_dart:fidlgen_dart_sdk($toolchain)" ]
+  }
+}
+
+# Tools Fuchsia driver developers used on the host platform; where host is often
+# Linux or Mac OS.
+sdk_molecule("ddk_host_tools") {
+  visibility = [ ":*" ]
+
+  cross_compiled = [
+    "//src/devices/tools/fidlgen_banjo:fidlgen_banjo_bin_sdk",
+    "//tools/bindc:bindc_sdk",
+    "//tools/fidl/fidlgen_llcpp:fidlgen_llcpp_sdk",
+  ]
+
+  toolchains = []
+  if (host_os == "linux") {
+    toolchains += [
+      host_x64_toolchain,
+      host_arm64_toolchain,
+    ]
+  } else if (host_os == "mac") {
+    toolchains += [ host_toolchain ]
+  }
+
+  deps = []
+
+  foreach(toolchain, toolchains) {
+    foreach(dep, cross_compiled) {
+      deps += [ "$dep($toolchain)" ]
+      if (toolchain == host_toolchain) {
+        deps += [ "${dep}_legacy($toolchain)" ]
+      }
+    }
+  }
+}
+
+sdk_molecule("banjo") {
+  visibility = [ ":*" ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.i2cimpl:fuchsia.hardware.i2cimpl_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.serial:fuchsia.hardware.serial_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.serialimpl:fuchsia.hardware.serialimpl_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.wlan.associnfo:fuchsia.hardware.wlan.associnfo_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.wlan.softmac:fuchsia.hardware.wlan.softmac_sdk($fidl_toolchain)",
+    "//sdk/banjo/fuchsia.hardware.wlanphyimpl:fuchsia.hardware.wlanphyimpl_sdk($fidl_toolchain)",
+  ]
+}
+
+sdk_molecule("bind") {
+  visibility = [ ":*" ]
+  deps = [
+    "//src/devices/bind/fuchsia.pci:fuchsia.pci_sdk",
+    "//src/devices/bind/fuchsia.test:fuchsia.test_sdk",
+    "//src/devices/bind/fuchsia.usb:fuchsia.usb_sdk",
+  ]
+}
+
+sdk_molecule("ddk_fidl") {
+  visibility = [ ":*" ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.i2c:fuchsia.hardware.i2c_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.ieee80211:fuchsia.wlan.ieee80211_sdk($fidl_toolchain)",
+    "//sdk/fidl/fuchsia.wlan.internal:fuchsia.wlan.internal_sdk($fidl_toolchain)",
+  ]
+}
+
+# An experimental SDK for developing drivers.
+sdk("ddk") {
+  id = sdk_id
+
+  category = "experimental"
+
+  api = "manifests/ddk.manifest"
+
+  deps = [
+    ":banjo",
+    ":bind",
+    ":ddk_fidl",
+    ":ddk_host_tools",
+    "//src/devices/usb/lib/usb:usb_sdk",
+    "//src/lib/ddk:ddk_sdk",
+    "//src/lib/ddktl:ddktl_sdk",
+  ]
+}
+
+# Experimental SDK packaging using fuchsia packages.
+sdk_package("version_history_package") {
+  package_name = "sdk_version_history"
+  deps = [ ":version_history" ]
+}
+
+group("packages") {
+  deps = [
+    ":version_history_package",
+    "//sdk/tools:packages",
+  ]
+}

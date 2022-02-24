@@ -1,0 +1,63 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/testing/zbi_test.gni")
+import("//src/bringup/lib/mexec/testing/zbi_test.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":mexec-entropy-test",
+    ":mexec-smoke-test",
+  ]
+}
+
+executable("no-op-success") {
+  testonly = true
+  sources = [ "no-op-success.cc" ]
+}
+
+zbi_test("smoke-zbi-test") {
+  assert(current_cpu != "")
+
+  args = [
+    "userboot.next=bin/no-op-success",
+    "userboot.shutdown",
+  ]
+
+  deps = [
+    ":no-op-success",
+    "//zircon/kernel",
+  ]
+}
+
+# This test is not intended to be run directly, as it relies
+# on requiring entropy from the cmdline.
+# It is intended to be used as part of an mexec_zbi_test.
+zbi_test("entropy-zbi-test") {
+  assert(current_cpu != "")
+
+  args = [
+    "userboot.next=bin/no-op-success",
+    "userboot.shutdown",
+    "kernel.cprng-seed-require.cmdline=true",
+  ]
+
+  deps = [
+    ":no-op-success",
+    "//zircon/kernel",
+  ]
+}
+
+mexec_zbi_test("mexec-smoke-test") {
+  child_zbi = ":smoke-zbi-test.zbi"
+
+  # Force that data ZBI to be put above the 4GiB mark in physical memory; this
+  # covers an edge case that can arise with particularly large ZBIs.
+  args = [ "kernel.mexec-force-high-ramdisk=true" ]
+}
+
+mexec_zbi_test("mexec-entropy-test") {
+  child_zbi = ":entropy-zbi-test.zbi"
+}

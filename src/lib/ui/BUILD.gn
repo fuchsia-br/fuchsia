@@ -1,0 +1,35 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("ui") {
+  deps = [
+    "carnelian",
+    "input-synthesis",
+    "keymaps",
+    "scenic/cpp",
+    "terminal",
+    "wayland",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":rust-ui-crates-tests",
+    "carnelian:carnelian-tests",
+    "flatland-frame-scheduling:tests",
+    "fuchsia-framebuffer:fuchsia-framebuffer-tests",
+    "fuchsia-vulkan:fuchsia_vulkan_tests",
+    "input-synthesis:tests",
+    "keymaps:tests",
+    "terminal:tests",
+    "wayland:tests",
+  ]
+}
+
+fuchsia_unittest_package("rust-ui-crates-tests") {
+  deps = [ "fuchsia-scenic:fuchsia-scenic_test" ]
+}

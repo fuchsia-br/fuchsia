@@ -1,0 +1,303 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/config/build_api_module.gni")
+import("//build/dart/dart_packages.gni")
+import("//build/python/python_binary.gni")
+import("//build/python/python_host_test.gni")
+
+group("docsgen") {
+  testonly = true
+  deps = [ ":generated_docs" ]
+}
+
+_dartdoc_transforms_script_target = "dartdoc_transforms"
+python_binary(_dartdoc_transforms_script_target) {
+  main_source = "//build/dart/gen_reference_docs.py"
+  output_name = "gen_reference_docs.pyz"
+  sources = [ "//build/dart/generate_dart_toc.py" ]
+  deps = [ "//third_party/pyyaml:yaml" ]
+}
+
+# See dartdoc_transforms.py for more information
+action("dart_sdk_docs") {
+  script_output = get_target_outputs(":${_dartdoc_transforms_script_target}")
+  script = script_output[0]
+  metadata = {
+    # Record metadata for the //tools/docsgen build API.
+    generated_docset = [
+      {
+        name = "dartdoc"
+        archive = {
+          origin_file =
+              rebase_path("$host_out_dir/obj/tools/docsgen/dartdoc_out.zip",
+                          root_build_dir)
+          base_folder = "dartdoc"
+        }
+        dest_folder = "sdk/dart"
+      },
+    ]
+  }
+  inputs = [
+    "//sdk/dart",
+    "//analysis_options.yaml",
+    "//prebuilt/third_party/dart/${host_platform}/bin/dart",
+  ]
+
+  outputs = [
+    "$target_out_dir/dartdoc_out.zip",
+    "$target_gen_dir/.packages",
+    "$target_gen_dir/lib/lib.dart",
+    "$target_gen_dir/pubspec.lock",
+    "$target_gen_dir/pubspec.yaml",
+  ]
+  depfile = "$target_out_dir/$target_name.d"
+
+  args = [
+    "--delete-artifact-files",
+    "--run-toc",
+    "--zipped-result",
+    "--gen-dir",
+    rebase_path(target_gen_dir, root_build_dir),
+    "--out-dir",
+    rebase_path(target_out_dir, target_gen_dir),
+    "--prebuilts-dir",
+    rebase_path("//prebuilt/third_party/dart/${host_platform}/bin",
+                target_gen_dir),
+    "--dep-file",
+    rebase_path(depfile, root_build_dir),
+  ]
+
+  foreach(pkg, dart_packages_list) {
+    args += [ rebase_path(pkg, root_build_dir) ]
+  }
+
+  deps = [ ":${_dartdoc_transforms_script_target}" ] + dart_packages_list
+}
+
+_fidldoc_transforms_script_target = "fidldoc_transforms"
+python_binary(_fidldoc_transforms_script_target) {
+  main_source = "//build/fidl/gen_fidldocs.py"
+  output_name = "gen_fidldocs.pyz"
+  sources = []
+  deps = []
+}
+
+# Runs one time python fidldoc generation script.
+action("invoke_fidldoc") {
+  script_output = get_target_outputs(":${_fidldoc_transforms_script_target}")
+  script = script_output[0]
+  metadata = {
+    # Record metadata for the //tools/docsgen build API.
+    generated_docset = [
+      {
+        name = "fidldoc"
+        archive = {
+          origin_file =
+              rebase_path("$host_out_dir/obj/tools/docsgen/fidldoc.zip",
+                          root_build_dir)
+          base_folder = "fidldoc"
+        }
+        dest_folder = "sdk/fidl"
+      },
+    ]
+  }
+  inputs = []
+
+  outputs = [ "$target_out_dir/fidldoc.zip" ]
+  depfile = "$target_out_dir/$target_name.d"
+
+  args = [
+    "--zipped-result",
+    "--build-dir",
+    rebase_path(root_build_dir, root_build_dir),
+    "--out-dir",
+    rebase_path(target_out_dir, root_build_dir),
+    "--dep-file",
+    rebase_path(depfile, root_build_dir),
+  ]
+
+  deps = [
+    ":${_fidldoc_transforms_script_target}",
+    "//build/fidl:sdk_fidl",
+    "//tools/fidl/fidldoc($host_toolchain)",
+  ]
+}
+
+clidoc_tarfile = "clidoc_out.tar.gz"
+compiled_action("invoke_clidoc") {
+  tool = "//tools/clidoc:clidoc_bin"
+  tool_output_name = "clidoc"
+  testonly = true
+  deps = [ "//tools:tools" ]
+  metadata = {
+    # Record metadata for the //tools/docsgen build API.
+    generated_docset = [
+      {
+        name = "clidoc"
+        archive = {
+          origin_file =
+              rebase_path("$host_out_dir/obj/tools/docsgen/$clidoc_tarfile",
+                          root_build_dir)
+          base_folder = "clidoc"
+        }
+        dest_folder = "tools/sdk"
+      },
+    ]
+  }
+  outputs = [ "$target_out_dir/$clidoc_tarfile" ]
+  args = [
+    "-o",
+    rebase_path("docs/reference/tools/sdk-docs", root_build_dir),
+
+    # TODO (https://fxbug.dev/86553) to rename tarball-dir.
+    "--tarball-dir",
+    rebase_path("$target_out_dir/$clidoc_tarfile", root_build_dir),
+  ]
+}
+
+_helpdoc_script_target = "helpdoc_generation"
+helpdoc_tarfile = "helpdoc_out.tar.gz"
+python_binary(_helpdoc_script_target) {
+  main_source = "//tools/docsgen/gen_helpdocs.py"
+  output_name = "gen_helpdocs.pyz"
+  sources = []
+  deps = []
+}
+
+_docsgen_transforms_script_target = "docsgen_transforms"
+python_binary(_docsgen_transforms_script_target) {
+  main_source = "//tools/docsgen/docsgen_transforms.py"
+  output_name = "docsgen_transforms.pyz"
+  sources = []
+  deps = []
+}
+
+if (is_host) {
+  python_host_test("gen_helpdocs_test") {
+    main_source = "gen_helpdocs_test.py"
+    sources = [ "gen_helpdocs.py" ]
+  }
+
+  python_host_test("docsgen_transforms_test") {
+    main_source = "docsgen_transforms_test.py"
+    sources = [ "docsgen_transforms.py" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":docsgen_transforms_test($host_toolchain)",
+    ":gen_helpdocs_test($host_toolchain)",
+  ]
+}
+
+# Runs one time python helpdoc generation script.
+# TODO (https://fxbug.dev/87512) to add depsfile.
+action("invoke_helpdoc") {
+  script_output = get_target_outputs(":${_helpdoc_script_target}")
+  script = script_output[0]
+  testonly = true
+  metadata = {
+    # Record metadata for the //tools/docsgen build API.
+    generated_docset = [
+      {
+        name = "helpdoc"
+        archive = {
+          origin_file =
+              rebase_path("$host_out_dir/obj/tools/docsgen/$helpdoc_tarfile",
+                          root_build_dir)
+          base_folder = "helpdoc"
+        }
+        dest_folder = "tools/fx"
+      },
+    ]
+  }
+  outputs = [ "$target_out_dir/$helpdoc_tarfile" ]
+
+  args = [
+    "--out-path",
+    rebase_path("$target_out_dir/$helpdoc_tarfile", root_build_dir),
+    "--src-dir",
+    rebase_path("//", root_build_dir),
+  ]
+
+  deps = [ ":${_helpdoc_script_target}" ]
+}
+
+compiled_action("invoke_cmldoc") {
+  tool = "//tools/cmc:cmc"
+  tool_output_name = "cmc"
+  testonly = true
+  metadata = {
+    # Record metadata for the //tools/docsgen build API.
+    generated_docset = [
+      {
+        name = "cmldoc"
+        origin_files = [ rebase_path("$target_out_dir/cmldoc_out/index.md",
+                                     root_build_dir) ]
+        dest_folder = "sdk/cml"
+      },
+    ]
+  }
+  outputs = [ "$target_out_dir/cmldoc_out/index.md" ]
+  args = [
+    "print-cml-reference",
+    "-o",
+    rebase_path("$target_out_dir/cmldoc_out/index.md", root_build_dir),
+  ]
+  deps = [ "//tools/cmc($host_toolchain)" ]
+}
+
+# This exposes relevant reference doc paths for infra to upload.
+#
+# Type: list(scope)
+#
+#   name:
+#     Required: name of the reference docs to be generated. This name
+#     will be used to identify the ref doc git commit process downstream
+#     in the docsgen recipe.
+#     Type: string
+#
+#   archive:
+#     Optional: If this key is present, this denotes that the ref docs
+#     are compressed. This is most likely to adhere to hermetic builds.
+#     Additional specific parameters will be included pertaining to archive
+#     paths.
+#     Type: scope
+#
+#     origin_file:
+#        Required: path to compressed archived file holding ref docs.
+#        Type: path relative to $root_build_dir
+#
+#     base_folder:
+#        Optional: base folder containing all ref docs once origin file
+#        is decompresssed. Alternatively if base folder is not specified.
+#        all reference docs are simply decompressed into the current dir.
+#        Type: string
+#
+#   origin_files:
+#     Optional: If this key is present, this denotes that the ref docs
+#     can be listed and are decompressed.
+#     Type: list of file paths relative to $root_build_dir
+#
+#   dest_folder:
+#     Required: path to destination folder within reference docs repo
+#     Type: path relative to reference docs repo root directory
+#
+
+build_api_module("generated_docs") {
+  testonly = true
+  data_keys = [ "generated_docset" ]
+  deps = [
+    ":dart_sdk_docs($host_toolchain)",
+    ":invoke_clidoc($host_toolchain)",
+    ":invoke_cmldoc($host_toolchain)",
+    ":invoke_fidldoc($host_toolchain)",
+    ":invoke_helpdoc($host_toolchain)",
+    "//bundles:create_all_drivers_doc",
+  ]
+}

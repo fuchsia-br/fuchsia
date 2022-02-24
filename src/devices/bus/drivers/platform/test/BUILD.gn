@@ -1,0 +1,728 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+
+test("platform-bus") {
+  output_name = "platform-bus-test"
+  sources = [ "main.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo_llcpp",
+    "//sdk/lib/fdio",
+    "//src/devices/testing/devmgr-integration-test-shim",
+    "//src/lib/ddk",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+driver_bind_rules("test-board-bind") {
+  rules = "test-board.bind"
+  header_output = "test-board-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-board-driver") {
+  output_name = "test-board"
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "test-board.cc",
+    "test-clock.cc",
+    "test-goldfish.cc",
+    "test-gpio.cc",
+    "test-i2c.cc",
+    "test-pci.cc",
+    "test-power-sensor.cc",
+    "test-power.cc",
+    "test-pwm.cc",
+    "test-spi.cc",
+    "test-vreg.cc",
+    "test.cc",
+  ]
+  deps = [
+    ":test-board-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/driver",
+    "//src/devices/lib/fidl-metadata",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_driver_component("test-board") {
+  component_name = "test-board"
+  deps = [ ":test-board-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-gpio-bind") {
+  rules = "test/test-gpio.bind"
+  header_output = "test-gpio-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-gpio-driver") {
+  output_name = "test-gpio"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/gpio.cc" ]
+  deps = [
+    ":test-gpio-bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpioimpl:fuchsia.hardware.gpioimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-gpio") {
+  component_name = "test-gpio"
+  deps = [ ":test-gpio-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-power-bind") {
+  rules = "test/test-power.bind"
+  header_output = "test-power-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-power-driver") {
+  output_name = "test-power"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/power.cc" ]
+  deps = [
+    ":test-power-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.power:fuchsia.hardware.power_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.powerimpl:fuchsia.hardware.powerimpl_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-power") {
+  component_name = "test-power"
+  deps = [ ":test-power-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-goldfish-address-space-bind") {
+  rules = "test/test-goldfish-address-space.bind"
+  header_output = "test-goldfish-address-space-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-goldfish-address-space-driver") {
+  output_name = "test-goldfish-address-space"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/goldfish_address_space.cc" ]
+  deps = [
+    ":test-goldfish-address-space-bind",
+    "//sdk/banjo/fuchsia.hardware.goldfish.addressspace:fuchsia.hardware.goldfish.addressspace_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-goldfish-address-space") {
+  component_name = "test-goldfish-address-space"
+  deps = [ ":test-goldfish-address-space-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-goldfish-pipe-bind") {
+  rules = "test/test-goldfish-pipe.bind"
+  header_output = "test-goldfish-pipe-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-goldfish-pipe-driver") {
+  output_name = "test-goldfish-pipe"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/goldfish_pipe.cc" ]
+  deps = [
+    ":test-goldfish-pipe-bind",
+    "//sdk/banjo/fuchsia.hardware.goldfish.pipe:fuchsia.hardware.goldfish.pipe_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-goldfish-pipe") {
+  component_name = "test-goldfish-pipe"
+  deps = [ ":test-goldfish-pipe-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-goldfish-sync-bind") {
+  rules = "test/test-goldfish-sync.bind"
+  header_output = "test-goldfish-sync-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-goldfish-sync-driver") {
+  output_name = "test-goldfish-sync"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/goldfish_sync.cc" ]
+  deps = [
+    ":test-goldfish-sync-bind",
+    "//sdk/banjo/fuchsia.hardware.goldfish.sync:fuchsia.hardware.goldfish.sync_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-goldfish-sync") {
+  component_name = "test-goldfish-sync"
+  deps = [ ":test-goldfish-sync-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-clock-bind") {
+  rules = "test/test-clock.bind"
+  header_output = "test-clock-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-clock-driver") {
+  output_name = "test-clock"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/clock.cc" ]
+  deps = [
+    ":test-clock-bind",
+    "//sdk/banjo/fuchsia.hardware.clock:fuchsia.hardware.clock_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.clockimpl:fuchsia.hardware.clockimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-clock") {
+  component_name = "test-clock"
+  deps = [ ":test-clock-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-i2c-bind") {
+  rules = "test/test-i2c.bind"
+  header_output = "test-i2c-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-i2c-driver") {
+  output_name = "test-i2c"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/i2c.cc" ]
+  deps = [
+    ":test-i2c-bind",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2cimpl:fuchsia.hardware.i2cimpl_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-i2c") {
+  component_name = "test-i2c"
+  deps = [ ":test-i2c-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-spi-bind") {
+  rules = "test/test-spi.bind"
+  header_output = "test-spi-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-spi-driver") {
+  output_name = "test-spi"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/spi.cc" ]
+  deps = [
+    ":test-spi-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.spi:fuchsia.hardware.spi_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.spiimpl:fuchsia.hardware.spiimpl_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-spi") {
+  component_name = "test-spi"
+  deps = [ ":test-spi-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-pwm-bind") {
+  rules = "test/test-pwm.bind"
+  header_output = "test-pwm-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-pwm-driver") {
+  output_name = "test-pwm"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/pwm.cc" ]
+  deps = [
+    ":test-pwm-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.pwm:fuchsia.hardware.pwm_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-pwm") {
+  component_name = "test-pwm"
+  deps = [ ":test-pwm-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-vreg-bind") {
+  rules = "test/test-vreg.bind"
+  header_output = "test-vreg-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+driver_bind_rules("test-pci-bind") {
+  rules = "test/test-pci.bind"
+  header_output = "test-pci-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.pci",
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-pci-driver") {
+  output_name = "test-pci"
+  testonly = true
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/pci.cc" ]
+  deps = [
+    ":test-pci-bind",
+    "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/devices/pci/testing:pci-protocol-fake",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver_component("test-pci") {
+  testonly = true
+  component_name = "test-pci"
+  deps = [ ":test-pci-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+fuchsia_driver("test-vreg-driver") {
+  output_name = "test-vreg"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/vreg.cc" ]
+  deps = [
+    ":test-vreg-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.vreg:fuchsia.hardware.vreg_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-vreg") {
+  component_name = "test-vreg"
+  deps = [ ":test-vreg-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-composite-bind") {
+  rules = "test/test-composite.bind"
+  header_output = "test-composite-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+
+fuchsia_driver("test-composite-driver") {
+  output_name = "test-composite"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/composite.c" ]
+  deps = [
+    ":test-composite-bind",
+    "//sdk/banjo/fuchsia.hardware.clock:fuchsia.hardware.clock_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.goldfish.addressspace:fuchsia.hardware.goldfish.addressspace_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.goldfish.pipe:fuchsia.hardware.goldfish.pipe_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.goldfish.sync:fuchsia.hardware.goldfish.sync_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.i2c:fuchsia.hardware.i2c_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.pci:fuchsia.hardware.pci_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.power:fuchsia.hardware.power_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.power.sensor:fuchsia.hardware.power.sensor_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.pwm:fuchsia.hardware.pwm_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.spi:fuchsia.hardware.spi_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.vreg:fuchsia.hardware.vreg_banjo_cpp",
+    "//src/devices/i2c/lib/device-protocol-i2c",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+fuchsia_driver_component("test-composite") {
+  component_name = "test-composite"
+  deps = [ ":test-composite-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-child-2.proxy-bind") {
+  header_output = "test-child-2.proxy-bind.h"
+  disable_autobind = true
+}
+
+fuchsia_driver("test-child-2.proxy-driver") {
+  output_name = "test-child-2.proxy"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/child-2.proxy.c" ]
+  deps = [
+    ":test-child-2.proxy-bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+  ]
+}
+
+fuchsia_driver_component("test-child-2.proxy") {
+  component_name = "test-child-2.proxy"
+  deps = [ ":test-child-2.proxy-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+simple_drivers = [
+  "child-1",
+  "child-2",
+  "child-3",
+  "parent",
+]
+
+foreach(driver, simple_drivers) {
+  driver_bind_rules("test-${driver}-bind") {
+    rules = "test/test-${driver}.bind"
+    header_output = "test-${driver}-bind.h"
+    deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+  }
+
+  fuchsia_driver("test-$driver-driver") {
+    output_name = "test-$driver"
+    configs += [ "//build/config:all_source" ]
+    sources = [ "test/$driver.c" ]
+    deps = [
+      ":test-${driver}-bind",
+      "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+      "//src/devices/lib/driver",
+      "//src/lib/ddk",
+
+      # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+      "//src/lib/ddk:ddk-deprecated-binding-headers",
+    ]
+  }
+
+  fuchsia_driver_component("test-$driver") {
+    component_name = "test-$driver"
+    deps = [ ":test-$driver-driver" ]
+    info = "test-driver-info.json"
+    colocate = true
+  }
+}
+
+fuchsia_unittest_package("platform-bus-test") {
+  deps = [
+    ":platform-bus",
+    ":test-board",
+    ":test-child-2.proxy",
+    ":test-clock",
+    ":test-composite",
+    ":test-goldfish-address-space",
+    ":test-goldfish-pipe",
+    ":test-goldfish-sync",
+    ":test-gpio",
+    ":test-i2c",
+    ":test-pci",
+    ":test-power",
+    ":test-power-sensor",
+    ":test-pwm",
+    ":test-spi",
+    ":test-vreg",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/clock/drivers/clock",
+    "//src/devices/gpio/drivers/gpio",
+    "//src/devices/i2c/drivers/i2c",
+    "//src/devices/internal/drivers/fragment",
+    "//src/devices/power/drivers/power",
+    "//src/devices/pwm/drivers/pwm",
+    "//src/devices/spi/drivers/spi",
+  ]
+  foreach(driver, simple_drivers) {
+    deps += [ ":test-$driver" ]
+  }
+}
+
+fidl("fuchsia.hardware.btitest") {
+  sources = [ "bti.test.fidl" ]
+}
+
+driver_bind_rules("test-bti-board-bind") {
+  rules = "test-bti-board.bind"
+  header_output = "test-bti-board-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-bti-board-driver") {
+  output_name = "test-bti-board"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test-bti-board.cc" ]
+  deps = [
+    ":test-bti-board-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_driver_component("test-bti-board") {
+  component_name = "test-bti-board"
+  deps = [ ":test-bti-board-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+driver_bind_rules("test-bti-bind") {
+  rules = "test-bti.bind"
+  header_output = "test-bti-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test.platform" ]
+}
+fuchsia_driver("test-bti-driver") {
+  output_name = "test-bti"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test-bti.cc" ]
+  deps = [
+    ":fuchsia.hardware.btitest_llcpp",
+    ":test-bti-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-bti") {
+  component_name = "test-bti"
+  deps = [ ":test-bti-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+test("platform-bus-bti") {
+  output_name = "platform-bus-bti-test"
+  sources = [ "bti-test.cc" ]
+  deps = [
+    ":fuchsia.hardware.btitest_llcpp",
+    "//sdk/fidl/fuchsia.driver.test",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/driver_test_realm/realm_builder/cpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+driver_bind_rules("test-power-sensor-bind") {
+  rules = "test/test-power-sensor.bind"
+  header_output = "test-power-sensor-bind.h"
+  deps = [
+    "//src/devices/bind/fuchsia.platform",
+    "//src/devices/bind/fuchsia.test.platform",
+  ]
+}
+
+fuchsia_driver("test-power-sensor-driver") {
+  output_name = "test-power-sensor"
+  configs += [ "//build/config:all_source" ]
+  sources = [ "test/power-sensor.cc" ]
+  deps = [
+    ":test-power-sensor-bind",
+    "//sdk/banjo/fuchsia.hardware.platform.bus:fuchsia.hardware.platform.bus_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.platform.device:fuchsia.hardware.platform.device_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.power.sensor:fuchsia.hardware.power.sensor_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("test-power-sensor") {
+  component_name = "test-power-sensor"
+  deps = [ ":test-power-sensor-driver" ]
+  info = "test-driver-info.json"
+  colocate = true
+}
+
+fuchsia_unittest_package("platform-bus-bti-test") {
+  manifest = "meta/platform-bus-bti-test.cml"
+  deps = [
+    ":platform-bus-bti",
+    ":test-bti",
+    ":test-bti-board",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/internal/drivers/fragment",
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "configVersion": 2,
+    "generator": "gen_dart_package_config.py",
+    "packages": [
+        {
+            "languageVersion": "2.12",
+            "name": "fxtest",
+            "packageUri": "lib",
+            "rootUri": "."
+        },
+        {
+            "languageVersion": "2.12",
+            "name": "fxutils",
+            "packageUri": "lib",
+            "rootUri": "../fxutils"
+        }
+    ]
+}

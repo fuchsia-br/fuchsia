@@ -1,0 +1,8 @@
+{
+    "sandbox": {
+        "services": [
+            "fuchsia.net.name.Lookup",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

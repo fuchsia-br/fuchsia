@@ -1,0 +1,70 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+source_set("common") {
+  testonly = true
+  visibility = [ ":*" ]
+
+  sources = [
+    "broker-test.cc",
+    "parent.cc",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.nand:fuchsia.hardware.nand_banjo_cpp",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.driver.test:fuchsia.driver.test_llcpp",
+    "//sdk/fidl/fuchsia.hardware.nand:fuchsia.hardware.nand_c",
+    "//sdk/fidl/fuchsia.nand:fuchsia.nand_c",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/driver_test_realm",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/ramdevice_client/cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+test("nand-broker") {
+  output_name = "nand-broker-test"
+  sources = [ "main.cc" ]
+  deps = [ ":common" ]
+}
+
+test("nandpart-broker") {
+  output_name = "nandpart-broker-test"
+  sources = [ "nandpart-main.cc" ]
+  deps = [ ":common" ]
+}
+
+fuchsia_unittest_package("nand-broker-test") {
+  deps = [
+    ":nand-broker",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/nand/drivers/broker:nand-broker",
+    "//src/devices/nand/drivers/nand",
+    "//src/devices/nand/drivers/ram-nand",
+  ]
+}
+
+fuchsia_unittest_package("nandpart-broker-test") {
+  deps = [
+    ":nandpart-broker",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/nand/drivers/broker:nand-broker",
+    "//src/devices/nand/drivers/nand",
+    "//src/devices/nand/drivers/nandpart",
+    "//src/devices/nand/drivers/ram-nand",
+    "//src/devices/nand/drivers/skip-block",
+  ]
+}

@@ -1,0 +1,21 @@
+{
+    "include": [
+        "//src/connectivity/network/lib/net_interfaces/client.shard.cmx",
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/exceptions"
+    },
+    "sandbox": {
+        "features": [
+            "config-data",
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.feedback.CrashReporter",
+            "fuchsia.process.Launcher",
+            "fuchsia.sys.internal.CrashIntrospect",
+            "fuchsia.sys2.CrashIntrospect"
+        ]
+    }
+}

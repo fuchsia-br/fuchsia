@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("lib") {
+  testonly = true
+  deps = [
+    "core",
+    "hoist",
+    "onet_tool",
+    "quic",
+    "serial_link",
+    "stream_framer",
+    "stream_link",
+    "udp_link",
+  ]
+  if (is_host) {
+    deps += [ "ascendd" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "core:tests",
+    "hoist:tests",
+    "quic:tests",
+    "serial_link:tests",
+    "stream_framer:tests",
+    "stream_link:tests",
+    "udp_link:tests",
+  ]
+}

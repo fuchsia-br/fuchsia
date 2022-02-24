@@ -1,0 +1,13 @@
+bjoernj@google.com
+joshconner@google.com
+karlward@google.com
+karthikrish@google.com
+kiettran@google.com
+rsakthi@google.com
+yjlou@google.com
+zhiyichen@google.com
+
+# Driver Framework Team for refactoring.
+include /src/devices/OWNERS
+
+# COMPONENT: WLAN

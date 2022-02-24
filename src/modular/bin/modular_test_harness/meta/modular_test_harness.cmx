@@ -1,0 +1,42 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/modular_test_harness_bin"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.accessibility.ColorTransform",
+            "fuchsia.accessibility.gesture.ListenerRegistry",
+            "fuchsia.accessibility.Magnifier",
+            "fuchsia.accessibility.semantics.SemanticsManager",
+            "fuchsia.boot.ReadOnlyLog",
+            "fuchsia.device.NameProvider",
+            "fuchsia.devicesettings.DeviceSettingsManager",
+            "fuchsia.hardware.power.statecontrol.Admin",
+            "fuchsia.kernel.RootJobForInspect",
+            "fuchsia.kernel.Stats",
+            "fuchsia.modular.SessionRestartController",
+            "fuchsia.net.name.Lookup",
+            "fuchsia.posix.socket.Provider",
+            "fuchsia.recovery.ui.FactoryResetCountdown",
+            "fuchsia.scheduler.ProfileProvider",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Loader",
+            "fuchsia.sysinfo.SysInfo",
+            "fuchsia.ui.accessibility.view.Registry",
+            "fuchsia.ui.activity.Provider",
+            "fuchsia.ui.annotation.Registry",
+            "fuchsia.ui.focus.FocusChainListenerRegistry",
+            "fuchsia.ui.input.PointerCaptureListenerRegistry",
+            "fuchsia.ui.input.accessibility.PointerEventRegistry",
+            "fuchsia.ui.pointerinjector.Registry",
+            "fuchsia.ui.policy.DeviceListenerRegistry",
+            "fuchsia.ui.policy.Presenter",
+            "fuchsia.ui.scenic.Scenic",
+            "fuchsia.ui.views.accessibility.FocuserRegistry",
+            "fuchsia.vulkan.loader.Loader"
+        ]
+    }
+}

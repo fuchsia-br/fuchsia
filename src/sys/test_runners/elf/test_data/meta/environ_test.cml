@@ -1,0 +1,13 @@
+{
+    include: [
+        "//src/sys/test_runners/elf/default.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/environ_test",
+        environ: [
+            "FOO=BAR",
+            "HELLO=WORLD",
+        ],
+    },
+}

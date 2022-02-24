@@ -1,0 +1,49 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+executable("aml-g12-pdm-test-bin") {
+  testonly = true
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "../audio-stream-in.cc",
+    "test.cc",
+  ]
+  deps = [
+    "../:aml_g12_pdm_bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp_mock",
+    "//sdk/fidl/fuchsia.hardware.audio:fuchsia.hardware.audio_llcpp",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/bus/testing/fake-pdev",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/mmio",
+    "//src/devices/testing/fake-mmio-reg",
+    "//src/devices/testing/fake_ddk",
+    "//src/devices/testing/mock-mmio-reg",
+    "//src/lib/ddktl",
+    "//src/media/audio/drivers/lib/audio-driver-proto",
+    "//src/media/audio/drivers/lib/audio-proto-utils",
+    "//src/media/audio/lib/simple-audio-stream",
+    "//src/media/lib/memory_barriers:memory_barriers",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/mock-function",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("test-package") {
+  package_name = "aml-g12-pdm-test"
+  deps = [ ":aml-g12-pdm-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}

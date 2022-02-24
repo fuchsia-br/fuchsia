@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/connectivity/network/lib/net_interfaces/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/queue_unittest_exe"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-cache-storage",
+            "isolated-temp"
+        ]
+    }
+}

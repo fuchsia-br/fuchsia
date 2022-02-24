@@ -1,0 +1,26 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("fake-transport-base") {
+  testonly = true
+
+  sources = [
+    "fake-transport-base.cc",
+    "fake-transport-base.h",
+  ]
+
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.test:fuchsia.hardware.test_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.telephony.transport:fuchsia.hardware.telephony.transport_llcpp",
+    "//sdk/fidl/fuchsia.telephony.snoop:fuchsia.telephony.snoop_llcpp",
+    "//sdk/lib/fdio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}

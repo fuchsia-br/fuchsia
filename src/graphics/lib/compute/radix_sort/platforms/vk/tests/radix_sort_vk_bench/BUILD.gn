@@ -1,0 +1,77 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/graphics/lib/compute/gn/build_rules.gni")
+
+#
+# Radix Sort benchmark
+#
+graphics_compute_vulkan_executable("radix-sort-vk-bench") {
+  sources = [
+    "cpu_sort.cc",
+    "main.c",
+  ]
+  deps = [
+    "${graphics_compute_dir}/common",
+    "${graphics_compute_dir}/common/vk",
+    "${graphics_compute_dir}/radix_sort/platforms/vk:vk_tests",
+  ]
+
+  #
+  # Target archives
+  #
+  if (is_fuchsia) {
+    #
+    # Fuchsia builds only include required targets
+    #
+    if (board_name == "astro") {
+      deps += [
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost4/u32:radix_sort_vk_arm_bifrost4_u32_resource",
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost4/u64:radix_sort_vk_arm_bifrost4_u64_resource",
+      ]
+    } else if (board_name == "sherlock" || board_name == "vim3") {
+      deps += [
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost8/u32:radix_sort_vk_arm_bifrost8_u32_resource",
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost8/u64:radix_sort_vk_arm_bifrost8_u64_resource",
+      ]
+    } else {  # Default assumes an Intel GEN GPU (x86) board_name
+      deps += [
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/intel/gen8/u32:radix_sort_vk_intel_gen8_u32_resource",
+        "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/intel/gen8/u64:radix_sort_vk_intel_gen8_u64_resource",
+      ]
+    }
+  } else {  # Otherwise, this is a host build
+    #
+    # Defaults to linking every target archive -- this is normally not
+    # what you want but it's a host build.
+    #
+    defines = [ "RS_VK_TARGET_ARCHIVE_LINKABLE" ]
+    deps += [
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/amd/gcn3/u32:radix_sort_vk_amd_gcn3_u32_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/amd/gcn3/u64:radix_sort_vk_amd_gcn3_u64_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost4/u32:radix_sort_vk_arm_bifrost4_u32_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost4/u64:radix_sort_vk_arm_bifrost4_u64_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost8/u32:radix_sort_vk_arm_bifrost8_u32_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/arm/bifrost8/u64:radix_sort_vk_arm_bifrost8_u64_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/intel/gen8/u32:radix_sort_vk_intel_gen8_u32_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/intel/gen8/u64:radix_sort_vk_intel_gen8_u64_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/nvidia/sm35/u32:radix_sort_vk_nvidia_sm35_u32_linkable",
+      "${graphics_compute_dir}/radix_sort/platforms/vk/targets/vendors/nvidia/sm35/u64:radix_sort_vk_nvidia_sm35_u64_linkable",
+    ]
+  }
+
+  #
+  # Ensure that a host executable is build on Linux hosts
+  #
+  if (is_fuchsia && host_os == "linux") {
+    data_deps = [ ":radix-sort-vk-bench($host_toolchain)" ]
+  }
+}
+
+#
+# Group
+#
+group("radix_sort_vk_bench") {
+  public_deps = [ ":radix-sort-vk-bench" ]
+}

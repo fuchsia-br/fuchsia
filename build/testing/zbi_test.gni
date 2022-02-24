@@ -1,0 +1,192 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/testing/zbi_test_success.gni")
+import("//build/zbi/zbi.gni")
+import("//build/zbi/zbi_input.gni")
+
+# Composes a test zbi out of Zircon artifacts.
+#
+# The $target_name target is a group() that holds the metadata and is what
+# should be used in deps.  The actual zbi() target is defined as
+# "$target_name.zbi" so that e.g. get_target_outputs(":$target_name.zbi")
+# can be used.
+#
+# Parameters
+#
+#   args (optional)
+#     [list of strings] Command line arguments for the resulting zbi. ZBI tests
+#     using the kernel and a non-default `userboot.next` options must add
+#     `userboot.{shutdown,reboot}` as well in order to guarantee that a success
+#     string is printed. See //zircon/system/utest/core:core-tests for a
+#     canonical example.
+#
+#   device_types
+#     [list of strings] Devices the test should run on.
+#     Allowable values are those among the entries in
+#     //build/testing/platforms.gni; others will be ignored.
+#     Defaults to [ "QEMU" ].
+#
+#   deps, data_deps, replace, complete, compress
+#     See //build/zbi/zbi.gni.
+template("zbi_test") {
+  main_target = target_name
+  zbi_target = "${target_name}.zbi"
+
+  not_needed(invoker,
+             [
+               "qemu_kernel",
+               "timeout",
+             ])
+
+  input_deps = []
+  group_deps = []
+
+  entries = []
+  if (defined(invoker.args)) {
+    entries += invoker.args
+  }
+
+  if (entries != []) {
+    input_target = "${target_name}_input"
+    input_deps += [ ":$input_target" ]
+
+    zbi_input(input_target) {
+      forward_variables_from(invoker, [ "deps" ])
+      testonly = true
+      type = "cmdline"
+      args = []
+      foreach(entry, entries) {
+        args += [ "--entry=$entry" ]
+      }
+    }
+  }
+
+  zbi(zbi_target) {
+    testonly = true
+    data_deps = []
+    forward_variables_from(invoker,
+                           [
+                             "cpu",
+                             "compress",
+                             "data_deps",
+                             "output_dir",
+                             "output_extension",
+                             "output_name",
+                             "visibility",
+                           ])
+    if (defined(visibility)) {
+      visibility += [ ":$main_target" ]
+    }
+    if (!defined(output_name)) {
+      output_name = main_target
+    }
+    deps = invoker.deps + input_deps
+    if (defined(invoker.qemu_kernel)) {
+      data_deps += [ invoker.qemu_kernel ]
+    }
+
+    _output_dir = target_out_dir
+    if (defined(output_dir)) {
+      _output_dir = output_dir
+    }
+    _output_extension = "zbi"
+    if (defined(output_extension)) {
+      _output_extension = output_extension
+    }
+    _output_file = "${_output_dir}/${output_name}"
+    if (_output_extension != "") {
+      _output_file += ".${_output_extension}"
+    }
+
+    metadata = {
+      images = [
+        {
+          label = get_label_info(":$zbi_target", "label_with_toolchain")
+          name = output_name
+          path = rebase_path(_output_file, root_build_dir)
+          type = "zbi"
+          cpu = current_cpu
+          compressed =
+              !defined(invoker.compressed) ||
+              (invoker.compressed != false && invoker.compressed != "none")
+          if (defined(testonly) && testonly) {
+            testonly = true
+          }
+          forward_variables_from(invoker, [ "tags" ])
+        },
+      ]
+    }
+  }
+
+  group_deps += [ ":$zbi_target" ]
+
+  output_file = target_name
+  if (defined(invoker.output_name)) {
+    output_file = invoker.output_name
+  }
+  if (defined(invoker.output_extension)) {
+    if (invoker.output_extension != "") {
+      output_file += ".${invoker.output_extension}"
+    }
+  } else {
+    output_file += ".zbi"
+  }
+  if (defined(invoker.output_dir)) {
+    output_file = "${invoker.output_dir}/$output_file"
+  } else {
+    output_file = "$target_out_dir/$output_file"
+  }
+
+  if (defined(invoker.device_types)) {
+    _device_types = invoker.device_types
+  } else {
+    _device_types = [
+      "AEMU",
+      "QEMU",
+    ]
+  }
+
+  group(main_target) {
+    forward_variables_from(invoker,
+                           [
+                             "assert_no_deps",
+                             "visibility",
+                           ])
+
+    testonly = true
+
+    public_deps = group_deps
+
+    metadata = {
+      # Used by the zbi() template to ensure that this is not included into
+      # any ZBI that depends on this target.
+      zbi_input_barrier = []
+
+      # Used by build_api_module("zbi_tests") in //BUILD.gn
+      zbi_tests = [
+        {
+          cpu = current_cpu
+          disabled = defined(invoker.tags) && invoker.tags + [ "disabled" ] -
+                                              [ "disabled" ] != invoker.tags
+          name = main_target
+          label = get_label_info(":$target_name", "label_with_toolchain")
+          path = rebase_path(output_file, root_build_dir)
+          bootserver_netboot = [ "--boot" ]
+          success_string = zbi_test_success_string
+          device_types = _device_types
+          if (defined(invoker.qemu_kernel)) {
+            assert(device_types == [ "QEMU" ],
+                   "`qemu_kernel` tests can only run on QEMU")
+            qemu_kernel_label =
+                get_label_info(invoker.qemu_kernel, "label_with_toolchain")
+          }
+          if (defined(invoker.timeout) && invoker.timeout != false) {
+            timeout = invoker.timeout
+          }
+        },
+      ]
+    }
+  }
+}

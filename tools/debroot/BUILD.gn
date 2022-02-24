@@ -1,0 +1,27 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+
+go_library("main") {
+  source_dir = "cmd"
+  deps = [
+    "//third_party/golibs:github.com/google/subcommands",
+    "//third_party/golibs:github.com/ulikunitz/xz",
+    "//third_party/golibs:golang.org/x/crypto",
+    "//third_party/golibs:gopkg.in/yaml.v2",
+  ]
+  sources = [
+    "debian-archive-keyring.gpg",
+    "main.go",
+    "packages.lock",
+    "packages.yml",
+  ]
+}
+
+go_binary("debroot") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/debroot/cmd"
+  deps = [ ":main" ]
+}

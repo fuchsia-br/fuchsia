@@ -1,0 +1,86 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("virtio_input_bind") {
+  rules = "virtio_input.bind"
+  header_output = "virtio_input_bind.h"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.pci" ]
+}
+
+fuchsia_driver("virtio_input-driver") {
+  output_name = "virtio_input"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [
+    "input.cc",
+    "input_driver.cc",
+    "input_kbd.cc",
+    "input_mouse.cc",
+    "input_touch.cc",
+  ]
+  deps = [
+    ":virtio_input_bind",
+    "//sdk/banjo/fuchsia.hardware.hidbus:fuchsia.hardware.hidbus_banjo_cpp",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/lib/driver",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/hid",
+  ]
+}
+
+fuchsia_driver_component("virtio_input") {
+  component_name = "virtio_input"
+  deps = [ ":virtio_input-driver" ]
+  info = "virtio_input-info.json"
+  colocate = true
+}
+
+test("virtio-input-test") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [
+    "input_kbd.cc",
+    "input_mouse.cc",
+    "input_test.cc",
+    "input_touch.cc",
+  ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.hidbus:fuchsia.hardware.hidbus_banjo_cpp",
+    "//src/devices/bus/lib/virtio",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/no_ddk",
+    "//src/ui/input/lib/hid-input-report",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/hid-parser",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("virtio-input-test-package") {
+  package_name = "virtio-input-test"
+  deps = [ ":virtio-input-test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":virtio-input-test-package",
+    ":virtio_input_bind_test",
+  ]
+}

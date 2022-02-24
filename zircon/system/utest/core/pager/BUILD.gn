@@ -1,0 +1,48 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/library_headers.gni")
+
+source_set("pager") {
+  configs += [ "//build/config:all_source" ]
+
+  testonly = true
+  sources = [ "pager.cc" ]
+  deps = [
+    ":userpager",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/elf-search",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+library_headers("userpager_headers") {
+  include_dir = "."
+  headers = [
+    "test_thread.h",
+    "userpager.h",
+  ]
+  public_deps = [ "//zircon/system/ulib/sync" ]
+}
+
+source_set("userpager") {
+  configs += [ "//build/config:all_source" ]
+
+  testonly = true
+  sources = [
+    "test_thread.cc",
+    "userpager.cc",
+  ]
+  deps = [ "//zircon/system/ulib/inspector" ]
+  public_deps = [
+    ":userpager_headers",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}

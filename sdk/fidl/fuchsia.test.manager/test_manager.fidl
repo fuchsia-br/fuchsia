@@ -1,0 +1,405 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.test.manager;
+
+using fuchsia.component;
+using fuchsia.developer.remotecontrol;
+using fuchsia.diagnostics;
+using fuchsia.io;
+using fuchsia.url;
+using zx;
+
+/// Holds the server end of an iterator over the isolated logs of a test.
+type LogsIterator = flexible resource union {
+    /// Server end of the iterator, when this protocol is used by host-side clients.
+    1: archive server_end:fuchsia.developer.remotecontrol.ArchiveIterator;
+    /// Server end of the iterator, when this protocol is used by Fuchsia clients.
+    2: batch server_end:fuchsia.diagnostics.BatchIterator;
+};
+
+/// Error for `LaunchSuite` call.
+type LaunchError = flexible enum {
+    /// There were insufficient resources to perform the operation.
+    RESOURCE_UNAVAILABLE = 1;
+
+    /// Cannot resolve `test_url`.
+    INSTANCE_CANNOT_RESOLVE = 2;
+
+    /// Invalid argument(s) passed.
+    INVALID_ARGS = 3;
+
+    /// Failed to connect to the `fuchsia.test.TestSuite` that the test should
+    /// expose.
+    FAILED_TO_CONNECT_TO_TEST_SUITE = 4;
+
+    /// Failed to enumerate tests.
+    CASE_ENUMERATION = 5;
+
+    /// Some internal error occured. Something wrong with test manager setup.
+    /// Check logs and report bug.
+    INTERNAL_ERROR = 6;
+
+    /// No test cases matched the specified test filters. This error is only
+    /// returned when a test filter is specified. In the case of a test suite
+    /// with no test cases, the suite will pass.
+    NO_MATCHING_CASES = 7;
+};
+/// Human-readable name for a test case.
+alias CaseName = string:512;
+
+/// Information about the enumerated test case.
+type Case = table {
+    /// Name of the test case.
+    1: name CaseName;
+};
+
+/// Iterator for listing available test cases.
+protocol CaseIterator {
+    /// Returns the next batch of test cases.
+    /// Empty vector if no more test cases.
+    GetNext() -> (struct {
+        cases vector<Case>:MAX;
+    });
+};
+
+// Query server for tests which implement `fuchsia.test.Suite` protocol.
+@discoverable
+protocol Query {
+    /// Enumerates test cases.
+    Enumerate(resource struct {
+        test_url fuchsia.url.Url;
+        iterator server_end:CaseIterator;
+    }) -> (struct {}) error LaunchError;
+};
+
+/// This is the entry point of running test suites. A test "run" consists of
+/// multiple test "suites" which consists of running multiple "test cases".
+@discoverable
+protocol RunBuilder {
+    /// Add a suite to this run. A suite is a component that implements
+    /// `fuchsia.test.Suite`. Implementors of this API will talk to test suites
+    /// using "Suite" protocol and return results using `controller`. The
+    /// controller is also used to control the execution of the test suite.
+    AddSuite(resource struct {
+        test_url fuchsia.url.Url;
+        options RunOptions;
+        controller server_end:SuiteController;
+    });
+
+    /// Build and schedule the run.
+    ///
+    /// This runs all suites added with their respective filters and closes the
+    /// channel once it is done.
+    Build(resource struct {
+        controller server_end:RunController;
+    });
+};
+
+/// Optional additional instructions for executing a test suite.
+type RunOptions = table {
+    /// If set to true, test cases that have been disabled by the test author
+    /// will nonetheless be executed. Defaults to false.
+    1: run_disabled_tests bool;
+
+    /// Defines maximum number of test cases to run simultaneously.
+    /// If unspecified, the default behavior is chosen by the `Suite`
+    /// implementation.
+    2: parallel uint16;
+
+    /// Optional arguments to pass to the test.
+    /// Test runners will decide how to pass these arguments to tests.
+    3: arguments vector<string:MAX>:MAX;
+
+    /// Timeout in seconds for the entire suite.
+    4: timeout zx.duration;
+
+    /// glob case filter. This filter will match based on glob pattern
+    /// [https://en.wikipedia.org/wiki/Glob_(programming)].
+    /// Only test cases matching at least one pattern will be run. In
+    /// addition, negative filters may be specified by prepending '-'. When
+    /// negative filters are specified, test cases matching the negative filter
+    /// are excluded.
+    /// The behavior of combinations of these filters is as follows:
+    ///  * When no filters are specified, all test cases are run.
+    ///  * When only positive filters are specified, test cases that match at
+    ///    least one filter are run.
+    ///  * When only negative filters are specified, test cases that match none
+    ///    of the filters are run.
+    ///  * When both positive and negative filters are specified, test cases
+    ///    that match at least one positive filter, but do not match any
+    ///    negative filters, are run.
+    ///
+    /// For example, given that a suite has the test cases `Foo.Test1`,
+    /// `Foo.Test2`, `Bar.Test1`, and `Bar.Test2`:
+    ///  * The filters `["Foo.*"]` will execute `Foo.Test1` and `Foo.Test2`.
+    ///  * The filters `["-Foo.*"]` will execute `Bar.Test1` and `Bar.Test2`.
+    ///  * The filters `["Foo.*", "-*.Test1"]` will execute `Foo.Test2`.
+    5: case_filters_to_run vector<string:MAX>:MAX;
+
+    /// Defines what kind of log iterator the client supports. Default value is
+    /// Batch iterator.
+    6: log_iterator LogsIteratorOption;
+};
+
+/// Option which specifies which kind of iterator the client supports
+type LogsIteratorOption = flexible enum {
+    BATCH_ITERATOR = 0;
+    ARCHIVE_ITERATOR = 1;
+};
+
+/// The server end will disconnect after all the suite runs have finished and
+/// the events are drained.
+/// If the client disconnects, the tests will be terminated immediately and all
+/// results discarded.
+@discoverable
+protocol RunController {
+    /// Stop the run gracefully. RunController will disconnect after all
+    /// resources are released and all the events in this controller are drained.
+    /// This method is used to allow the run to complete tests that are in progress,
+    /// but will prevent starting new tests.
+    Stop();
+
+    /// Immediately terminate the run. RunController will disconnect after all
+    /// resources are released. This method will terminate tests even if they
+    /// are in progress.
+    Kill();
+
+    /// Iterator over events for the run. This method is a hanging get; it
+    /// returns an empty vector only when there will be no further events
+    /// (the run completed).
+    GetEvents() -> (resource struct {
+        events vector<RunEvent>:MAX;
+    });
+};
+
+type RunEvent = resource table {
+    // The monotonic timestamp for the event.
+    1: timestamp zx.time;
+    2: payload RunEventPayload;
+};
+
+/// Various events for run execution. The first event for a test run will
+/// always be `run_started`. `run_stopped` fires when the test run stops
+/// and will always fire after `run_started`.
+type RunEventPayload = flexible resource union {
+    /// The test run started execution.
+    1: run_started RunStarted;
+    /// The test run stopped executing.
+    2: run_stopped RunStopped;
+    /// The test run produced an artifact.
+    3: artifact Artifact;
+};
+
+type RunStarted = struct {};
+
+type RunStopped = struct {
+        // possibly include result in the future
+        };
+
+/// The server end will disconnect after all the suite run has finished and
+/// all events are drained. If the client disconnects, the suite will be
+/// terminated immediately and all results discarded.
+@discoverable
+protocol SuiteController {
+    /// Stop the suite run gracefully. SuiteController will disconnect after
+    /// all resources are released and all the events in this controller are drained.
+    Stop();
+
+    /// Immediately terminate the run. SuiteController will disconnect after
+    /// all resources are released. This method will terminate tests even if
+    /// they are in progress.
+    Kill();
+
+    /// Iterator over events for the run. This method is a hanging get; it
+    /// returns an empty vector only when there will be no further events
+    /// (the run completed).
+    GetEvents() -> (resource struct {
+        events vector<SuiteEvent>:MAX;
+    }) error LaunchError;
+};
+
+type SuiteEvent = resource table {
+    // The monotonic timestamp for the event.
+    1: timestamp zx.time;
+    2: payload SuiteEventPayload;
+};
+
+/// Various events for test execution.
+///
+/// First event for a test case will always be `case_found` and last will be
+/// `case_finished`. Events `case_started` and `case_artifact` can come in any
+/// order. There can be some `case_artifact` between `case_stopped` and
+/// `case_finished`. `suite_stopped` event will always fire when the whole
+/// suite has finished executing. Note `suite_artifact` may fire at any time.
+type SuiteEventPayload = flexible resource union {
+    /// A case was found.
+    1: case_found CaseFound;
+
+    /// A case started execution
+    2: case_started CaseStarted;
+
+    /// A case stopped executing, includes the pass/fail/skipped result of
+    /// the case. The client might still get artifacts pertaining to this test
+    /// after this event.
+    3: case_stopped CaseStopped;
+
+    /// A case has finished and all artifact events have been dispatched to the
+    /// client.
+    4: case_finished CaseFinished;
+
+    /// Artifact from a case
+    5: case_artifact CaseArtifact;
+
+    /// Artifact from a suite.
+    6: suite_artifact SuiteArtifact;
+
+    /// Suite started execution
+    7: suite_started SuiteStarted;
+
+    /// Suite run stopped executing, includes the result of the suite. The
+    /// client might still get artifacts pertaining to this suite after this
+    /// event.
+    8: suite_stopped SuiteStopped;
+};
+
+/// Test case identifier. Unique in a suite run.
+alias TestCaseId = uint32;
+
+type CaseFound = struct {
+    /// Name of this test case.
+    test_case_name CaseName;
+
+    /// Used to identify this test case in subsequent payloads
+    identifier TestCaseId;
+};
+
+type CaseStarted = struct {
+    identifier TestCaseId;
+};
+
+/// Represent status of a test case run execution.
+type CaseStatus = flexible enum {
+    /// The test case passed.
+    PASSED = 0;
+
+    /// Test case failed.
+    FAILED = 1;
+
+    /// Test case timed out.
+    TIMED_OUT = 2;
+
+    /// Test case was skipped.
+    SKIPPED = 3;
+
+    /// Suite implementation did not return status.
+    ERROR = 4;
+};
+
+/// Represents status of a suite run. This ordering is the explicit ordering of
+/// preference, from lowest priority to highest priority.
+/// for example, if all Cases PASSED except one that FAILED, the status for the
+/// whole suite will be FAILED.
+type SuiteStatus = flexible enum {
+    /// All tests cases passed/skipped.
+    PASSED = 0;
+
+    /// At least one test case in the suite failed.
+    FAILED = 1;
+
+    /// Suite implementation crashed or did not send `Finish` event.
+    DID_NOT_FINISH = 3;
+
+    /// At least one test case in the suite timed out.
+    TIMED_OUT = 4;
+
+    /// The test suite was stopped.
+    STOPPED = 5;
+
+    // Some internal error occurred, please file bug.
+    INTERNAL_ERROR = 6;
+};
+
+type CaseStopped = struct {
+    identifier TestCaseId;
+    status CaseStatus;
+};
+
+type CaseFinished = struct {
+    identifier TestCaseId;
+};
+
+type SuiteStarted = struct {};
+
+type SuiteStopped = struct {
+    status SuiteStatus;
+};
+
+type Artifact = flexible resource union {
+    1: stdout zx.handle:SOCKET;
+    2: stderr zx.handle:SOCKET;
+    3: log Syslog;
+    4: custom CustomArtifact;
+    5: debug_data client_end:DebugDataIterator;
+};
+
+type Stdout = resource struct {
+    socket zx.handle:SOCKET;
+};
+
+type Stderr = resource struct {
+    socket zx.handle:SOCKET;
+};
+
+type Syslog = flexible resource union {
+    /// Client end of the iterator, when this protocol is used by host-side clients.
+    1: archive client_end:fuchsia.developer.remotecontrol.ArchiveIterator;
+    /// Client end of the iterator, when this protocol is used by Fuchsia clients.
+    2: batch client_end:fuchsia.diagnostics.BatchIterator;
+};
+
+/// Arbitrary artifacts produced by a test.
+type CustomArtifact = resource table {
+    /// The moniker of the component that produced the directory, relative to
+    /// the root of the test realm.
+    1: component_moniker string:fuchsia.component.MAX_MONIKER_LENGTH;
+
+    /// A handle to a directory containing arbitrary artifacts produced by a test.
+    2: directory_and_token DirectoryAndToken;
+};
+
+/// A handle to a directory and a token used to indicate when the client has
+/// completed inspecting the directory. The server end will retain all resources,
+/// such as subdirectories and files, within |directory| while |token| is open.
+/// |token| is used instead of observing the |directory| channel directly as it
+/// is possible to clone and open new channels to the same directory.
+type DirectoryAndToken = resource struct {
+    directory client_end:fuchsia.io.Directory;
+    token zx.handle:EVENTPAIR;
+};
+
+type CaseArtifact = resource struct {
+    identifier TestCaseId;
+    artifact Artifact;
+};
+
+type SuiteArtifact = resource struct {
+    artifact Artifact;
+};
+
+/// An iterator protocol over which a client may retrieve debug data information.
+protocol DebugDataIterator {
+    /// Retrieve the next batch of debug data. This is a hanging get; if no data is
+    /// immediately available, the call hangs until data is available. After all data has
+    /// been returned, the call returns an empty vector.
+    GetNext() -> (resource struct {
+        data vector<DebugData>:MAX;
+    });
+};
+
+type DebugData = resource table {
+    /// Name of the file. Must be unique per DebugDataIterator.
+    1: name string:512;
+    /// Read-only channel over which the file may be accessed.
+    2: file client_end:fuchsia.io.File;
+};

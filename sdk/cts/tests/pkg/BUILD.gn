@@ -1,0 +1,31 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//sdk/cts/build/cts.gni")
+
+group("tests") {
+  deps = [
+    "fdio:tests",
+    "fidl/cpp:tests",
+    "memfs:tests",
+  ]
+
+  testonly = true
+}
+
+cts_copy_to_sdk("build") {
+  sources = [ "BUILD.gn" ]
+  testonly = true
+}
+
+sdk_molecule("test_sdks") {
+  deps = [
+    ":build_sdk",
+    "fdio:test_sdks",
+    "fidl/cpp:test_sdks",
+    "memfs:test_sdks",
+  ]
+
+  testonly = true
+}

@@ -1,0 +1,15 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.component;
+
+const MAX_NAME_LENGTH uint32 = 100;
+const MAX_PATH_LENGTH uint32 = 1024;
+const MAX_MONIKER_LENGTH uint32 = 4096;
+const MAX_URL_SCHEME_LENGTH uint32 = 100;
+
+/// The maximum number of requests per event subscription.
+const MAX_SUBSCRIPTION_REQUESTS uint32 = 2;
+
+/// The maximum number of events that a receiver can listen to.
+const MAX_NUM_EVENTS_RECEIVED uint64 = 100;

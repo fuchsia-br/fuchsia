@@ -1,0 +1,150 @@
+{{/*
+  // Copyright 2022 The Fuchsia Authors. All rights reserved.
+  // Use of this source code is governed by a BSD-style license that can be
+  // found in the LICENSE file.
+  */}}
+
+  {{- define "Method:Event:WireMessagingHeader" }}
+  {{- EnsureNamespace "" }}
+  {{- if .Response.IsResource }}
+  {{- IfdefFuchsia -}}
+  {{- end }}
+
+  template<>
+  struct {{ .WireEvent }} final {
+  {{- range .ResponseAnonymousChildren }}
+    using {{ .ScopedName }} = {{ .FlattenedName }};
+  {{- end }}
+
+    {{ if .ResponseArgs }}
+    FIDL_ALIGNDECL
+      {{- range $index, $param := .ResponseArgs }}
+    {{ $param.Type }} {{ $param.Name }};
+      {{- end }}
+
+    explicit {{ .WireEvent.Self }}({{ RenderParams .ResponseArgs }})
+    {{ RenderInitMessage .ResponseArgs }} {}
+    {{- end }}
+    {{ .WireEvent.Self }}() = default;
+
+    {{- if .Response.IsResource }}
+    void _CloseHandles();
+    {{- end }}
+  };
+
+  template<>
+  struct {{ .WireTransactionalEvent }} final {
+    FIDL_ALIGNDECL
+    fidl_message_header_t header;
+    {{ if .ResponseArgs }}
+    {{ .WireEvent }} body;
+    explicit {{ .WireTransactionalEvent.Self }}({{ RenderParams .ResponseArgs }})
+    : body({{ .WireEvent }}({{ RenderForwardParams .ResponseArgs }})) {
+      _InitHeader();
+    }
+    {{- end }}
+    {{ .WireTransactionalEvent.Self }}() {
+    _InitHeader();
+    }
+
+    {{- if .Response.IsResource }}
+    void _CloseHandles() {
+      {{- if .ResponseArgs }}
+      body._CloseHandles();
+      {{- end }}
+    }
+    {{- end }}
+
+   private:
+    void _InitHeader();
+  };
+
+  {{- if .Response.IsResource }}
+  {{- EndifFuchsia -}}
+  {{- end }}
+  {{- end }}
+
+
+
+
+  {{- define "Method:Event:WireMessagingSource" }}
+    {{- EnsureNamespace "" }}
+  {{- if .Response.IsResource }}
+  {{- IfdefFuchsia -}}
+  {{- end }}
+    void {{ .WireTransactionalEvent }}::_InitHeader() {
+      fidl_init_txn_header(&header, 0, {{ .OrdinalName }});
+    }
+
+    {{ if .Response.IsResource }}
+      void {{ .WireEvent }}::_CloseHandles() {
+        {{- range .ResponseArgs }}
+          {{- CloseHandles . false false }}
+        {{- end }}
+      }
+    {{- end }}
+
+  {{- if .Response.IsResource }}
+  {{- EndifFuchsia -}}
+  {{- end }}
+  {{- end }}
+
+
+{{- define "Method:Event:NaturalMessagingHeader" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+
+template <>
+class {{ .NaturalEvent }} final : public {{ .EventMessageBase }} {
+ public:
+  {{- with .NaturalEvent }}
+  {{ .Self }}() = default;
+  ~{{ .Self }}() = default;
+  {{ .Self }}({{ .Self }}&&) noexcept = default;
+  {{ .Self }}& operator=({{ .Self }}&&) noexcept = default;
+  {{- end }}
+
+  {{- if .HasResponsePayload }}
+  {{ .NaturalEvent.Self }}({{ .ResponsePayload }} payload) : payload_(std::move(payload)) {}
+  {{- end }}
+
+  {{- if .Response.IsResource }}
+    {{- with .NaturalEvent }}
+  {{ .Self }}(const {{ .Self }}&) noexcept = delete;
+  {{ .Self }}& operator=(const {{ .Self }}&) noexcept = delete;
+    {{- end }}
+  {{- else }}
+    {{- /* TODO(fxbug.dev/82189): Generate copy constructors */}}
+  {{- end }}
+
+  {{- if .HasResponsePayload }}
+  {{ .ResponsePayload }}* operator->() { return &payload_; }
+  const {{ .ResponsePayload }}* operator->() const { return &payload_; }
+  {{ .ResponsePayload }}& operator*() { return payload_; }
+  const {{ .ResponsePayload }}& operator*() const { return payload_; }
+  {{- end }}
+
+ private:
+  {{- if .HasResponsePayload }}
+  {{ .ResponsePayload }} payload_;
+  {{- end }}
+};
+
+template <>
+struct {{ .EventMessageTraits }} final {
+ public:
+  static constexpr bool kHasPayload = {{ .HasResponsePayload }};
+  {{- if .HasResponsePayload }}
+  using Payload = {{ .ResponsePayload }};
+  {{- end }}
+};
+
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Method:Event:NaturalMessagingSource" }}
+
+{{- end }}

@@ -1,0 +1,28 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("inspect") {
+  testonly = true
+  deps = [
+    "codelab",
+    "cpp",
+
+    # "dart/inspect_mod",
+    "rust",
+    "rust-ergonomic",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "codelab:tests",
+    "cpp:tests",
+
+    # TODO(fxb/38305): Re-enable test when unblocked and inspect paths are corrected
+    # "dart/inspect_mod:inspect-mod-test",
+    "rust:tests",
+    "rust-ergonomic:tests",
+  ]
+}

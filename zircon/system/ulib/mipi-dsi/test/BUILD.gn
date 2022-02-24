@@ -1,0 +1,41 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+group("test") {
+  testonly = true
+  deps = [ ":mipidsi" ]
+}
+
+test("mipidsi") {
+  output_name = "mipidsi-test"
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  sources = [ "mipi-dsi-test.cc" ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.dsiimpl:fuchsia.hardware.dsiimpl_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.dsi:fuchsia.hardware.dsi_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/mipi-dsi",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("mipidsi-test-pkg") {
+  package_name = "mipidsi-test"
+  deps = [ ":mipidsi" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":mipidsi-test-pkg" ]
+}

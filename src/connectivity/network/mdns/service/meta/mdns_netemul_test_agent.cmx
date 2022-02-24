@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/mdns_netemul_test_agent"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.device.NameProvider",
+            "fuchsia.net.mdns.Publisher",
+            "fuchsia.net.mdns.Resolver",
+            "fuchsia.net.mdns.Subscriber"
+        ]
+    }
+}

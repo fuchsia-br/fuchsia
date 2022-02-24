@@ -1,0 +1,31 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+zx_library("scsi") {
+  sdk = "source"
+  sdk_headers = [
+    "lib/scsi/scsilib.h",
+    "lib/scsi/scsilib_controller.h",
+  ]
+  sources = [ "scsilib.cc" ]
+  deps = [
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+  ]
+  public_deps = [
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+  ]
+}

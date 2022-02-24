@@ -1,0 +1,88 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("instrumentation") {
+  sources = []
+  if (is_kernel) {
+    sources += [ "vmo.cc" ]
+    deps = [
+      ":private",
+      ":profile",
+      ":sancov",
+      "asan",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/version",
+      "//zircon/kernel/object",
+      "//zircon/system/ulib/fbl",
+    ]
+  }
+}
+
+if (is_kernel) {
+  source_set("private") {
+    visibility = [ ":*" ]
+    public = [
+      "kernel-mapped-vmo.h",
+      "private.h",
+    ]
+    sources = [
+      "kernel-mapped-vmo.cc",
+      "phys.cc",
+    ]
+    public_deps = [ "//zircon/kernel/vm:headers" ]
+    deps = [
+      "//src/lib/llvm-profdata",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/object",
+      "//zircon/kernel/phys:handoff",
+    ]
+  }
+
+  source_set("profile") {
+    sources = [ "profile.cc" ]
+    deps = [
+      ":private",
+      "//src/lib/llvm-profdata",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/version",
+      "//zircon/kernel/object",
+      "//zircon/kernel/vm:headers",
+    ]
+
+    if (current_os == "win") {
+      # The LLVM header file describing the instrumentation data tests this.
+      defines += [ "_WIN32" ]
+    }
+  }
+
+  source_set("sancov") {
+    _sancov_config = [ "//build/config/sanitizers:sancov" ]
+    if (configs + _sancov_config - _sancov_config != configs) {
+      have_sancov = 1
+    } else {
+      have_sancov = 0
+    }
+    defines = [ "HAVE_SANCOV=$have_sancov" ]
+
+    sources = [ "sancov.cc" ]
+    deps = [
+      ":private",
+      "//zircon/kernel/lib/init",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/vm:headers",
+    ]
+
+    # sancov code shouldn't make asan checks.
+    # Annotating the functions with NO_ASAN is not enough, as it doesn't
+    # allow for ktl::atomic operations to be inlined.
+    _asan_config = [ "//build/config/sanitizers:asan" ]
+    if (configs + _asan_config - _asan_config != configs) {
+      configs -= _asan_config
+    }
+  }
+}

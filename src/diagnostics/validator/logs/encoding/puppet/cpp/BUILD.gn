@@ -1,0 +1,32 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("puppet") {
+  output_name = "log_validator_cpp_puppet"
+  testonly = true
+  sources = [ "puppet.cc" ]
+
+  deps = [
+    "../../fidl:validate",
+    "//sdk/fidl/fuchsia.diagnostics.stream:fuchsia.diagnostics.stream",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp:backend",
+    "//sdk/lib/syslog/cpp:cpp",
+    "//sdk/lib/syslog/streams/cpp:streams",
+    "//sdk/lib/syslog/streams/cpp:streams-encoder",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl",
+  ]
+}
+
+fuchsia_component("component") {
+  component_name = "log-validator-cpp-puppet"
+  testonly = true
+  manifest = "meta/puppet.cmx"
+  deps = [ ":puppet" ]
+}

@@ -1,0 +1,32 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("identity") {
+  testonly = true
+  deps = [
+    ":tests",
+    "bin",
+    "lib",
+    "tools",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "bin:tests",
+    "lib:tests",
+    "tests/account_manager_integration",
+    "tests/password_authenticator_integration",
+    "tests/token_manager_integration",
+    "tools:tests",
+  ]
+}
+
+group("tools") {
+  testonly = true
+
+  deps = [ "tools/accountctl" ]
+}

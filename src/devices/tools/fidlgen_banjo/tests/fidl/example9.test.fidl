@@ -1,0 +1,53 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library banjo.examples.example9;
+
+using zx;
+
+type EchoMe = strict enum {
+    zero = 0;
+    one = 1;
+};
+
+type EchoMore = struct {
+    first uint32;
+    second uint64;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Echo {
+    Echo32(struct {
+        uint32 uint32;
+    }) -> (struct {
+        response uint32;
+    });
+    Echo64(struct {
+        uint64 uint64;
+    }) -> (struct {
+        response uint64;
+    });
+    EchoEnum(struct {
+        req EchoMe;
+    }) -> (struct {
+        response EchoMe;
+    });
+    EchoHandle(resource struct {
+        req zx.handle;
+    }) -> (resource struct {
+        response zx.handle;
+    });
+    EchoChannel(resource struct {
+        req zx.handle:CHANNEL;
+    }) -> (resource struct {
+        response zx.handle:CHANNEL;
+    });
+    EchoStruct(struct {
+        req EchoMore;
+    }) -> (struct {
+        response EchoMore;
+    });
+};
+
+const favorite_echo EchoMe = EchoMe.zero;

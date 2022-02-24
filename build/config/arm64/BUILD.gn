@@ -1,0 +1,48 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Platform baseline.
+# This tracks the minimum hardware requirements for Fuchsia on x86-64.
+config("arm64") {
+  cflags = [
+    "-march=armv8-a+simd+crc+crypto",
+    "-mtune=generic",
+  ]
+  ldflags = cflags
+  asmflags = cflags
+  configs = [ ":no-outline-atomics" ]
+
+  # For supported target features see:
+  # rustc --target=aarch64-fuchsia --print target-features
+  # `armv8a` and `simd` features are assumed by the target triple
+  # `aarch64-fuchsia`.
+  rustflags = [ "-Ctarget-feature=+crc,+crypto" ]
+}
+
+config("cortex-a53") {
+  cflags = [ "-mcpu=cortex-a53" ]
+  ldflags = cflags
+  asmflags = cflags
+  configs = [ ":no-outline-atomics" ]
+
+  # Mitigate Cortex-A53 erratum.
+  ldflags += [ "-Wl,--fix-cortex-a53-843419" ]
+
+  # TODO(fxbug.dev/87243): consider the below.
+  #rustflags = [ "-Ctarget-cpu=cortex-a53" ]
+
+  rustflags = [ "-Ctarget-feature=+crc,+crypto,+neon" ]
+}
+
+config("no-outline-atomics") {
+  if (is_gcc) {
+    # By default GCC 10 will generate outcalls to libgcc functions that can
+    # do runtime switching between old and new atomic insns.  We want just
+    # old atomic insns inline instead.  Eventually we'll have builds using
+    # -march=armv8.1-a or better, which should get new atomic insns inline
+    # regardless of this switch.
+    # TODO(fxbug.dev/87242): reconsider this.
+    cflags = [ "-mno-outline-atomics" ]
+  }
+}

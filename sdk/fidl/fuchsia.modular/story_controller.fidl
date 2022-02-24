@@ -1,0 +1,69 @@
+// Copyright 2016 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.modular;
+
+/// Used by the clients of StoryProvider (SessionShell) to interact with a single
+/// story. Created by StoryProvider.
+///
+/// If `StoryController` is closed, the `StoryState` associated with this story
+/// does not change.
+protocol StoryController {
+    /// Gets information associated with the story.
+    @transitional("Use GetInfo2 instead")
+    GetInfo() -> (struct {
+        info StoryInfo;
+        state StoryState;
+    });
+    /// For transition purposes only.
+    @transitional("Only use while GetInfo2 is transitional")
+    GetInfo2() -> (resource struct {
+        info StoryInfo2;
+        state StoryState;
+    });
+
+    /// Requests to run the story controlled by this `StoryController` instance.
+    /// When the story starts, if not yet running, the view of the newly started
+    /// story shell will be passed in a call to SessionShell.AttachView().
+    RequestStart();
+
+    /// Requests to stop the story controlled by this `StoryController`. If Start()
+    /// requests are pending when this request is issued, the request is queued
+    /// until the Start() requests complete. Before stopping the story, a snapshot
+    /// of the story will be taken and saved. Returns when the story is stopped.
+    Stop() -> ();
+
+    /// Registers a watcher for changes of the story state.
+    ///
+    /// Note that stories can stop themselves at any time and it is advisable
+    /// for the holder of a StoryController to provide a watcher.
+    Watch(resource struct {
+        watcher client_end:StoryWatcher;
+    });
+
+    /// Attach the `annotations` to the story.
+    ///
+    /// Existing annotations with the same key will be overwritten.
+    Annotate(resource struct {
+        annotations vector<Annotation>:MAX_ANNOTATIONS_PER_UPDATE;
+    }) -> (struct {}) error AnnotationError;
+};
+
+/// Implemented by the client calling StoryController.Watch().
+protocol StoryWatcher {
+    /// Called with the current state right after registration, and subsequently
+    /// when the state changes.
+    OnStateChange(struct {
+        new_state StoryState;
+    });
+
+    /// DEPRECATED
+    OnModuleAdded(resource struct {
+        module_data ModuleData;
+    });
+
+    /// DEPRECATED
+    OnModuleFocused(struct {
+        module_path vector<string:MAX>:MAX;
+    });
+};

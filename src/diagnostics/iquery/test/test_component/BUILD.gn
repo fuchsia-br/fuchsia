@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  name = "iquery_test_component"
+  edition = "2018"
+  source_root = "main.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.inspect.deprecated:fuchsia.inspect.deprecated-rustc",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:derivative",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:structopt",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "deprecated_fidl_server.rs",
+    "main.rs",
+    "table.rs",
+  ]
+}
+
+fuchsia_component("test_component_v1") {
+  component_name = "test_component"
+  testonly = true
+  manifest = "meta/test_component.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("test_component") {
+  testonly = true
+  manifest = "meta/test_component.cml"
+  deps = [ ":bin" ]
+}

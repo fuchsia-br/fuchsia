@@ -1,0 +1,47 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Please, read https://fuchsia.dev/fuchsia-src/contribute/docs/documentation-navigation-toc
+# before making changes to this file, and add a member of the fuchsia.dev
+# team as reviewer.
+toc:
+- title: "Inspect"
+  section:
+  - title: "Overview"
+    path: /docs/development/diagnostics/inspect
+  - title: "Quickstart"
+    path: /docs/development/diagnostics/inspect/quickstart.md
+  # TODO(fxbug.dev/60767)
+  # - title: "Overview"
+  #   path: /docs/development/diagnostics/inspect/README.md
+
+  # TODO(fxbug.dev/60764)
+  # - title: "Principles"
+  #   path: /docs/development/diagnostics/inspect/principles.md
+  - title: "Health"
+    path: /docs/development/diagnostics/inspect/health.md
+  - title: "Rust libraries"
+    path: /docs/development/diagnostics/inspect/rust.md
+  - title: "Inspect codelab"
+    section:
+    - title: "Overview"
+      path: /docs/development/diagnostics/inspect/codelab/README.md
+    - title: "Codelab"
+      path: /docs/development/diagnostics/inspect/codelab/codelab.md
+  - title: "Using Inspect for drivers"
+    path: /docs/development/drivers/diagnostics/inspect.md
+- title: "Log"
+  section:
+  - title: "Overview"
+    path: /docs/development/diagnostics/logs/README.md
+  - title: "Record"
+    path: /docs/development/diagnostics/logs/recording.md
+  - title: "Choose severity"
+    path: /docs/development/diagnostics/logs/severity.md
+  - title: "View"
+    path: /docs/development/diagnostics/logs/viewing.md
+  - title: "Logging and tests"
+    path: /docs/development/diagnostics/logs.md
+- title: "Analyze with Triage"
+  path: /docs/development/diagnostics/triage/codelab.md

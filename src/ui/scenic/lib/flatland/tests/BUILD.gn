@@ -1,0 +1,45 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+
+  public_deps = [ ":unittests" ]
+}
+
+executable("unittests") {
+  output_name = "flatland_unittests"
+  testonly = true
+  sources = [
+    "default_flatland_presenter_unittest.cc",
+    "flatland_manager_unittest.cc",
+    "flatland_unittest.cc",
+    "global_topology_data_unittest.cc",
+    "global_transform_data_unittest.cc",
+    "hanging_get_helper_unittest.cc",
+    "link_system_unittest.cc",
+    "mock_flatland_presenter.h",
+    "transform_graph_unittest.cc",
+    "uber_struct_system_unittest.cc",
+  ]
+
+  deps = [
+    "//sdk/lib/fit",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/ui/scenic/cpp:cpp",
+    "//src/lib/fsl:fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/lib/testing/loop_fixture:gtest",
+    "//src/ui/scenic/lib/flatland",
+    "//src/ui/scenic/lib/scenic/util",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler",
+    "//src/ui/scenic/lib/scheduling/tests/mocks:frame_scheduler_mocks",
+    "//src/ui/scenic/lib/utils",
+    "//third_party/googletest:gmock",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

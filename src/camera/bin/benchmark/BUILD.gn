@@ -1,0 +1,44 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("benchmark") {
+  public_deps = [ ":camera_benchmark" ]
+}
+
+source_set("lib") {
+  sources = [ "bandwidth.cc" ]
+  public = [ "bandwidth.h" ]
+  deps = [
+    "//sdk/lib/stdcompat",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.camera3",
+    "//sdk/fidl/fuchsia.hardware.ram.metrics",
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//src/devices/lib/amlogic",
+  ]
+}
+
+executable("camera_benchmark_bin") {
+  sources = [ "main.cc" ]
+  deps = [
+    ":lib",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_package_with_single_component("camera_benchmark") {
+  manifest = "camera_benchmark.cmx"
+  deps = [ ":camera_benchmark_bin" ]
+}

@@ -1,0 +1,105 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+// These are all aliases that will be subsumed by the future implementation of
+// templating, constraints, etc. in fidlc.
+//
+// The right hand side is completely ignored by kazoo, that is, only the name of
+// the alias is significant. Generally the right hand side is set so that if
+// there were no handling of the alias (and the alias was "expanded" as is the
+// default behaviour), it would result in something sensible.
+
+// TODO(fidlc): (mutable) char*
+alias charptr = uint64;
+
+// TODO(fidl)
+alias const_futexptr = int32;
+
+// TODO(fidlc): const void*
+alias const_voidptr = uint64;
+
+// TODO(fidlc): mutable<string>
+alias mutable_string = string;
+
+// TODO(fidlc): mutable<uint32>
+alias mutable_uint32 = uint32;
+
+// TODO(fidlc): mutable<usize>
+alias mutable_usize = usize;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): mutable<vector<HandleDisposition>
+alias mutable_vector_HandleDisposition_u32size = vector<HandleDisposition>;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): vector<HandleInfo>
+alias mutable_vector_HandleInfo_u32size = vector<HandleInfo>;
+
+// TODO(fidlc): mutable<ChannelCallEtcArgs>
+alias mutable_ChannelCallEtcArgs = ChannelCallEtcArgs;
+
+// TODO(fidlc): mutable<vector<WaitItem>>
+alias mutable_vector_WaitItem = vector<WaitItem>;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): mutable<vector<handle>
+alias mutable_vector_handle_u32size = vector<handle>;
+
+// TODO(fidlc): mutable<vector<void>>
+alias mutable_vector_void = vector<byte>;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): mutable<vector<void>>
+alias mutable_vector_void_u32size = vector<byte>;
+
+// TODO(fidlc): optional<PciBar>
+alias optional_PciBar = PciBar;
+
+// TODO(fidlc): optional<PortPacket>
+alias optional_PortPacket = PortPacket;
+
+// TODO(fidlc): optional<koid>
+alias optional_koid = koid;
+
+// TODO(fidlc): optional<signals>
+alias optional_signals = signals;
+
+// TODO(fidlc): optional<time>
+alias optional_time = time;
+
+// TODO(fidlc): optional<uint32>
+alias optional_uint32 = uint32;
+
+// TODO(fidlc): optional<usize>
+alias optional_usize = usize;
+
+// TODO(fidlc): optional<usize>
+alias optional_off = off;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): vector<HandleInfo>
+alias vector_HandleInfo_u32size = vector<HandleInfo>;
+
+// TODO(fidlc): vector<handle> uint32 size
+alias vector_handle_u32size = vector<handle>;
+
+// TODO(fidlc): vector<paddr>>
+alias vector_paddr = vector<paddr>;
+
+// TODO(fidlc): vector<void>
+alias vector_void = vector<byte>;
+
+// TODO(fidlc): vector<iovec>
+alias vector_iovec = vector<byte>;
+
+// TODO(fidlc): uint32 size
+// TODO(fidlc): vector<void>
+alias vector_void_u32size = vector<byte>;
+
+// TODO(fidlc): (mutable) void*
+alias voidptr = uint64;
+
+// This is <zircon/string_view.h>'s zx_string_view_t in C/C++.
+alias string_view = uint64;

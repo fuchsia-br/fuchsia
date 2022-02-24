@@ -1,0 +1,156 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fuzzing/fuzzer.gni")
+import("//build/test.gni")
+import("//src/storage/testing/decompressor_wrapper.gni")
+
+group("test") {
+  testonly = true
+  deps = [
+    ":blobfs-unittest-package",
+    ":blobfs_host($host_toolchain)",
+    "integration:tests",
+  ]
+}
+
+executable("test_binary") {
+  testonly = true
+  sources = [ "test_binary_main.cc" ]
+  visibility = [ ":*" ]
+}
+
+resource("test_binary_resource") {
+  testonly = true
+  data_deps = [ ":test_binary" ]
+  sources = [ "$root_out_dir/test_binary" ]
+  outputs = [ "data/test_binary" ]
+  visibility = [ ":*" ]
+}
+
+source_set("test_utils") {
+  testonly = true
+  sources = [
+    "blob_utils.cc",
+    "blob_utils.h",
+    "blobfs_test_setup.cc",
+    "blobfs_test_setup.h",
+    "test_scoped_vnode_open.h",
+    "unit/utils.cc",
+    "unit/utils.h",
+  ]
+  deps = [
+    ":test_binary_resource",
+    "//sdk/lib/fdio",
+    "//src/lib/digest",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+    "//zircon/third_party/ulib/safemath",
+  ]
+  public_deps = [
+    "//src/lib/storage/block_client/cpp:fake_device",
+    "//src/storage/blobfs",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/id_allocator",
+  ]
+}
+
+test("blobfs_unittest") {
+  sources = [
+    "unit/allocated_extent_iterator_test.cc",
+    "unit/allocator_test.cc",
+    "unit/base_allocator_test.cc",
+    "unit/blob_cache_test.cc",
+    "unit/blob_layout_test.cc",
+    "unit/blob_loader_test.cc",
+    "unit/blob_test.cc",
+    "unit/blob_verifier_test.cc",
+    "unit/blobfs_checker_test.cc",
+    "unit/blobfs_inspector_test.cc",
+    "unit/blobfs_revision_test.cc",
+    "unit/blobfs_test.cc",
+    "unit/common_test.cc",
+    "unit/compression_settings_test.cc",
+    "unit/compressor_test.cc",
+    "unit/create_tests.cc",
+    "unit/decompressor_sandbox_test.cc",
+    "unit/extent_reserver_test.cc",
+    "unit/format_test.cc",
+    "unit/fsck_test.cc",
+    "unit/get_allocated_regions_test.cc",
+    "unit/health_check_test.cc",
+    "unit/metrics_test.cc",
+    "unit/node_populator_test.cc",
+    "unit/node_reserver_test.cc",
+    "unit/parser_test.cc",
+    "unit/seekable_compressor_test.cc",
+    "unit/streaming_writes_test.cc",
+    "unit/vector_extent_iterator_test.cc",
+  ]
+  deps = [
+    ":test_utils",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/chunked-compression",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/storage/block_client/cpp:fake_device",
+    "//src/lib/storage/fs_management",
+    "//src/lib/testing/predicates",
+    "//src/storage/blobfs",
+    "//src/storage/blobfs:decompressor_impl",
+    "//src/storage/blobfs:fuchsia.blobfs.internal",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/cobalt-client:in-memory-logger",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/storage/buffer",
+    "//zircon/system/ulib/storage/operation",
+    "//zircon/system/ulib/sync",
+    "//zircon/third_party/ulib/cksum",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+fuchsia_unittest_component("blobfs-unittest-worker") {
+  manifest = "meta/blobfs_unittest_worker.cml"
+  deps = [
+    ":blobfs_unittest",
+    ":test_binary_resource",
+  ]
+}
+
+wrap_with_decompressor("blobfs-unittest") {
+  test_url =
+      "fuchsia-pkg://fuchsia.com/blobfs-unittest#meta/blobfs-unittest-worker.cm"
+  forwarded_protocols = [
+    "fuchsia.logger.LogSink",
+    "fuchsia.process.Launcher",
+  ]
+}
+
+fuchsia_test_package("blobfs-unittest-package") {
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+  package_name = "blobfs-unittest"
+  test_components = [ ":blobfs-unittest" ]
+
+  deps = [
+    ":blobfs-unittest-worker",
+    "//src/storage/blobfs:decompressor-sandbox",
+  ]
+}
+
+test("blobfs_host") {
+  sources = [ "host/host_test.cc" ]
+  deps = [
+    "//src/lib/fxl/test:gtest_main",
+    "//src/storage/blobfs",
+    "//third_party/googletest:gtest",
+  ]
+}

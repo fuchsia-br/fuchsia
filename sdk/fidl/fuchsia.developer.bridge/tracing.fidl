@@ -1,0 +1,157 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.bridge;
+
+using fuchsia.tracing.controller;
+
+/// This covers erorr from using the `Tracing` protocol below (specifically
+/// trace recording errors).
+type RecordingError = strict enum {
+    /// Error encountered when opening the proxy to the target.
+    TARGET_PROXY_OPEN = 0;
+
+    /// This is a general error when starting a trace.
+    RECORDING_START = 1;
+
+    /// An error encountered if a trace recording has already been started
+    /// for a given Fuchsia target.
+    RECORDING_ALREADY_STARTED = 2;
+
+    /// An error encountered when attempting to stop a trace. This causes an
+    /// immediate termination of the client channel, so the user should not
+    /// attempt to run `StopRecording` again.
+    RECORDING_STOP = 3;
+
+    /// Error for when a trace file is already being written to by the tracing
+    /// service.
+    DUPLICATE_TRACE_FILE = 4;
+
+    /// When attempting to stop a trace, there were no active traces found for
+    /// the given lookup name.
+    NO_SUCH_TRACE_FILE = 5;
+
+    /// No targets were found matching the query.
+    NO_SUCH_TARGET = 6;
+
+    /// The query matched a target that is not connected to the Daemon's FIDL
+    /// channels.
+    DISCONNECTED_TARGET = 7;
+};
+
+/// An action to be preformed on this trace. Used as part of a Trigger.
+type Action = strict enum {
+    /// Terminates the active trace.
+    TERMINATE = 1;
+};
+
+/// A trigger is an action that is done when a certain alert has been raised in the
+/// fuchsia tracing system.
+type Trigger = table {
+    /// The name of the alert being watched.
+    /// See fuchsia.tracing.controller.Controller.WatchAlert for more info.
+    1: alert string:fuchsia.tracing.controller.MAX_ALERT_NAME_LENGTH;
+
+    /// The action to run when this alert has been witnessed.
+    2: action Action;
+};
+
+/// Covers how a trace will be run when invoking `StartRecording`.
+type TraceOptions = table {
+    /// Determines how long a trace recording will run before terminating in
+    /// fractional seconds. This is an "at-least" duration, with the actual
+    /// runtime terminating likely a few dozen milliseconds longer.
+    ///
+    /// If this is not set, a trace will run indefinitely and must be stopped
+    /// using `StopRecording`. Or by cleanly shutting down the daemon via
+    /// `ffx daemon stop` or by using the Deamon proxy itself.
+    1: duration float64;
+
+    /// The triggers to run against this trace.
+    2: triggers vector<Trigger>:MAX;
+};
+
+@discoverable
+protocol Tracing {
+    /// Starts a trace recording. If the target behind the query is already
+    /// running a trace, or some trace is actively writing to the output file,
+    /// this will return a [RecordingAlreadyStarted] error.
+    ///
+    /// On success, returns the target on which the trace is running.
+    StartRecording(struct {
+        target_query TargetQuery;
+        output_file string:255;
+        options TraceOptions;
+        target_config fuchsia.tracing.controller.TraceConfig;
+    }) -> (struct {
+        target TargetInfo;
+    }) error RecordingError;
+
+    /// Stops the trace recording, flushing the remaining contents to the output
+    /// file.
+    ///
+    /// Parameters:
+    /// - name: A string that is first used to look up a target under which the
+    ///         trace is running. It is used the same way as
+    ///         `TargetQuery.string_matcher`. If no target can be found
+    ///         associated with a trace, this will fall back to being
+    ///         interpreted as a file name.
+    ///
+    /// Returns:
+    /// - the resolved target for which the trace was running.
+    ///
+    /// Examples:
+    ///
+    /// ```
+    /// proxy.start_recording(
+    ///     target_query: TargetQuery { string_matcher: "foo"},
+    ///     output_file: "output_file.fxt",
+    ///     ...
+    /// );
+    ///
+    /// // Can be stopped via this invocation (preferred).
+    /// proxy.stop_recording("foo");
+    ///
+    /// // Can also be stopped via this invocation.
+    /// proxy.stop_recording("output_file.fxt");
+    /// ```
+    StopRecording(struct {
+        name string:255;
+    }) -> (struct {
+        target TargetInfo;
+    }) error RecordingError;
+
+    /// Reports the current status of all running traces.
+    Status(resource struct {
+        iterator server_end:TracingStatusIterator;
+    }) -> ();
+};
+
+type TraceInfo = table {
+    /// The target on which the trace is running.
+    1: target TargetInfo;
+
+    /// Path to the output file.
+    2: output_file string:255;
+
+    /// The total duration of the command in fractional seconds. This will not
+    /// be set if the command is supposed to run indefinitely.
+    3: duration float64;
+
+    /// The amount of time remaining before the trace terminates. This will not
+    /// be set if the command is supposed to run indefinitely.
+    4: remaining_runtime float64;
+
+    /// The original config sent to the `StartRecording` command.
+    5: config fuchsia.tracing.controller.TraceConfig;
+
+    /// A list of triggers active for this trace. See [Trigger] for more info.
+    6: triggers vector<Trigger>:MAX;
+};
+
+protocol TracingStatusIterator {
+    /// Gets the next block of trace info entries.
+    GetNext() -> (struct {
+        entries vector<TraceInfo>:MAX;
+    });
+};

@@ -1,0 +1,141 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+###############################################################################
+# GROUPS
+###############################################################################
+group("tests") {
+  testonly = true
+  deps = [ ":feedback-migration-utils-tests" ]
+}
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("stubs") {
+  sources = [ "directory_migrator_stubs.h" ]
+
+  public_deps = [
+    "//src/developer/forensics/feedback/fidl:fuchsia.feedback.internal",
+    "//src/developer/forensics/feedback/migration/utils",
+  ]
+}
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+executable("directory_migrator_ptr_unittest_exe") {
+  testonly = true
+  sources = [ "directory_migrator_ptr_unittest.cc" ]
+
+  deps = [
+    ":stubs",
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback/migration/utils",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+executable("file_utils_unittest_exe") {
+  testonly = true
+  sources = [ "file_utils_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback/migration/utils",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("log_unittest_exe") {
+  testonly = true
+  sources = [ "log_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback/migration/utils",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("migrate_unittest_exe") {
+  testonly = true
+  sources = [ "migrate_unittest.cc" ]
+
+  deps = [
+    ":stubs",
+    "//src/developer/forensics/feedback/fidl:fuchsia.feedback.internal",
+    "//src/developer/forensics/feedback/migration/utils",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_component("directory_migrator_ptr_unittest") {
+  testonly = true
+
+  manifest = "meta/directory_migrator_ptr_unittest.cmx"
+
+  deps = [ ":directory_migrator_ptr_unittest_exe" ]
+}
+
+fuchsia_component("file_utils_unittest") {
+  testonly = true
+
+  manifest = "meta/file_utils_unittest.cmx"
+
+  deps = [ ":file_utils_unittest_exe" ]
+}
+
+fuchsia_component("log_unittest") {
+  testonly = true
+
+  manifest = "meta/log_unittest.cmx"
+
+  deps = [ ":log_unittest_exe" ]
+}
+
+fuchsia_component("migrate_unittest") {
+  testonly = true
+
+  manifest = "meta/migrate_unittest.cmx"
+
+  deps = [ ":migrate_unittest_exe" ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("feedback-migration-utils-tests") {
+  test_components = [
+    ":directory_migrator_ptr_unittest",
+    ":file_utils_unittest",
+    ":log_unittest",
+    ":migrate_unittest",
+  ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

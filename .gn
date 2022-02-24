@@ -1,0 +1,39 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file directs GN to all the other key files.
+
+# The location of the build configuration file.
+buildconfig = "//build/config/BUILDCONFIG.gn"
+
+# The secondary source root is a parallel directory tree where
+# GN build files are placed when they can not be placed directly
+# in the source tree, e.g. for third party source trees.
+secondary_source = "//build/secondary/"
+
+# The executable used to execute scripts in action and exec_script.
+# This is often an interpreter for projects that use a primary scripting
+# language. In this project, we use several different kinds of programs
+# including scripts in different languages and native binaries. An empty
+# script_executable string tells GN to directly run the "script".
+script_executable = ""
+
+# Require Ninja 1.10.0 to support multiple outputs from a rule with a depfile.
+ninja_required_version = "1.10.0"
+
+# Enable checking for all source code we control.
+no_check_targets = [ "//third_party/*" ]
+
+# Use of `exec_script()` is discouraged for performance reasons.
+# https://fuchsia.dev/fuchsia-src/concepts/build_system/best_practices#exec-script
+exec_script_whitelist = [
+  "//build/config/clang/clang.gni",
+  "//build/config/mac/mac_sdk.gni",
+  "//build/config/sanitizers/BUILD.gn",
+  "//build/toolchain/concurrent_jobs.gni",
+  "//build/toolchain/zircon/zircon_toolchain.gni",
+  "//zircon/kernel/arch/x86/phys/BUILD.gn",
+]
+
+check_system_includes = true

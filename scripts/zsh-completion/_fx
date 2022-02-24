@@ -1,0 +1,142 @@
+#compdef fx
+
+__fx_nodename() {
+  # TODO: allow configuration of node names with zstyle
+  local -a nodenames=( $(${fuchsia_dir}/${fuchsia_build_dir}.zircon/tools/netls | awk '/device/ { print $2; }') )
+  _describe 'nodename' nodenames
+}
+
+__fx_amber_package() {
+  # packages are directories in the build dir under amber-files/repository/targets
+  _values $(cd ${fuchsia_dir}/${fuchsia_build_dir}/amber-files/repository/targets >/dev/null 2>&1 && echo *(/))
+}
+
+__fx_build_dir() {
+  # build dirs are directories under out/ with an args.gn
+  compadd $(cd ${fuchsia_dir} >/dev/null 2>&1; echo out/^*.zircon/args.gn(N:h))
+}
+
+__fx_gn_target() {
+  # use a cache of "gn ls" that's updated when build.ninja changes.
+  local -r absolute_build_dir="${fuchsia_dir}/${fuchsia_build_dir}"
+  local -r targets_file="${absolute_build_dir}/.gn_ls"
+  local -r ninja_file="${absolute_build_dir}/build.ninja"
+  if [ ! -e "${targets_file}" -o ${ninja_file} -nt ${targets_file} ]; then
+    local -r tmp_targets_file="$(mktemp -p "${absolute_build_dir}")"
+    "${fuchsia_dir}/prebuilt/third_party/gn/${prebuilt_os}/gn" ls "${absolute_build_dir}" > "${tmp_targets_file}"
+    mv "${tmp_targets_file}" "${targets_file}"
+  fi
+  _values $(cat ${absolute_build_dir}/.gn_ls)
+}
+
+_fx() {
+  typeset -A opt_args
+
+  function find_tree_root {
+    local parent="$1"
+    if [[ ! -d "$parent" ]]; then
+      return 1
+    fi
+    while [[ ! -d "${parent}/.jiri_root" ]]; do
+      parent="$(dirname "${parent}")"
+      if [[ "$parent" == "/" ]]; then
+        return 1
+      fi
+    done
+    echo "$parent"
+  }
+
+  # We walk the parent directories looking for .jiri_root rather than using
+  # BASH_SOURCE so that we find the fuchsia_dir enclosing the current working
+  # directory instead of the one containing this file in case the user has
+  # multiple source trees and is picking up this file from another one.
+  #
+  # NOTE: The FUCHSIA_DIR environment variable is ignored here because it
+  # could point to a different Fuchsia checkout in some developer setups.
+  #
+  # This logic is replicated in //scripts/fx, //scripts/hermetic_env,
+  # //scripts/zsh_completion/_fx, and //src/developer/ffx/scripts. For
+  # consistency, copy any changes here to those files as well.
+  if ! fuchsia_dir="$(find_tree_root "$(pwd)")"; then
+    echo >&2 "ERROR: Cannot find the Platform Source Tree in a parent of the current directory: $(pwd)"
+    exit 1
+  fi
+
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+  if [[ "${script_dir}" != "${fuchsia_dir}"* ]]; then
+    echo >&2 "ERROR: You are executing fx from outside of the current source tree"
+    echo >&2 "ERROR: This is not supported as fx does not have a stable internal API"
+    echo >&2
+    echo >&2 "    'fx' was executed from: ${BASH_SOURCE[0]}"
+    echo >&2 "    'fuchsia directory' resolved to: ${fuchsia_dir}"
+    echo >&2
+    echo >&2 "To run a command in the current Fuchsia directory, run fx from:"
+    echo >&2 "  ${fuchsia_dir}/scripts/fx"
+    echo >&2 "Or, if you use fx-env.sh, source fx-env from the current fuchsia dir:"
+    echo >&2 "  source ${fuchsia_dir}/scripts/fx-env.sh"
+    exit 1
+  fi
+
+  # list of commands based on //tools/devshell/
+  # each file is read to find the description line (starts with "### ").
+  local -a commands lines
+  local -a command_dirs=(
+    "${fuchsia_dir}/tools/devshell"
+    "${fuchsia_dir}/tools/devshell/contrib"
+    ${fuchsia_dir}/vendor/*/scripts/devshell(/N)
+  )
+  local desc command dir
+  for dir in ${command_dirs[*]}; do
+    for command in ${dir}/*(*); do
+      lines=("${(f)$(<${command})}")
+      desc=${${lines[${lines[(i)\#\#\# *]}]}#????}
+      commands+=("${command#*${dir}/}:${desc}")
+    done
+  done
+  commands+=("gn:invoke the gn command")
+  commands+=("ninja:invoke the ninja command")
+
+  _arguments \
+    "--dir[build directory]:directory:__fx_build_dir" \
+    "-d[target device]:device:__fx_nodename" \
+    "-i[iterative mode]" \
+    "-x[print commands]" \
+    "1: :{_describe 'command' commands}" \
+    "*:: :->args"
+
+  if [[ $state != "args" ]]; then
+    return
+  fi
+
+  # get the config file location from --dir or ${fuchsia_dir}/.fx-build-dir
+  typeset -l fuchsia_build_dir="${opt_args[--dir]}"
+  if [[ -z "$fuchsia_build_dir" && -f "${fuchsia_dir}/.fx-build-dir" ]]; then
+    fuchsia_build_dir="$(<"${fuchsia_dir}/.fx-build-dir")"
+  fi
+
+  # the host os id for prebuilts
+  case "$(uname -s)" in
+    Linux)
+      local prebuilt_os=linux-x64
+      ;;
+    Darwin)
+      local prebuilt_os=mac-x64
+      ;;
+    *)
+      # Unknown OS, don't complete
+      exit
+      ;;
+  esac
+
+  # look for a completion function
+  local f
+  f=_fx_$words[1]
+  if [[ -e ${fuchsia_dir}/scripts/zsh-completion/$f ]]; then
+    autoload $f; $f
+  else
+    _normal
+  fi
+}
+
+_fx

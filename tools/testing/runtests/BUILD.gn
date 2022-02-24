@@ -1,0 +1,31 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("runtests") {
+  sources = [
+    "data_sinks.go",
+    "data_sinks_test.go",
+    "output.go",
+    "runtests.go",
+  ]
+  deps = [
+    "//third_party/golibs:github.com/pkg/sftp",
+    "//tools/botanist:botanist_lib",
+    "//tools/lib/iomisc",
+    "//tools/lib/logger",
+    "//tools/lib/osmisc",
+    "//tools/lib/retry",
+    "//tools/net/sshutil",
+    "//tools/net/tftp",
+  ]
+}
+
+go_test("tests") {
+  output_name = "runtests_tests"
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/testing/runtests" ]
+  deps = [ ":runtests" ]
+}

@@ -1,0 +1,56 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+import("//build/fidl/fidl.gni")
+
+driver_bind_rules("mock-device-bind") {
+  rules = "mock-device.bind"
+  header_output = "mock-device-bind.h"
+  deps = [ "//src/devices/bind/fuchsia.test" ]
+  disable_autobind = true
+}
+
+fuchsia_driver("mock-device-driver") {
+  output_name = "mock-device"
+  testonly = true
+  sources = [
+    "device.cc",
+    "fidl.cc",
+  ]
+  deps = [
+    ":fuchsia.device.mock_llcpp",
+    ":mock-device-bind",
+    "//sdk/banjo/fuchsia.hardware.test:fuchsia.hardware.test_banjo_cpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fidl/cpp:cpp_base",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_driver_component("mock-device") {
+  testonly = true
+  component_name = "mock-device"
+  deps = [ ":mock-device-driver" ]
+  info = "mock-device-info.json"
+  colocate = true
+}
+
+fidl("fuchsia.device.mock") {
+  testonly = true
+  sources = [ "mock-device.test.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}

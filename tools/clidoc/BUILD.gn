@@ -1,0 +1,64 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/host_test_data.gni")
+
+if (is_host) {
+  common_sources = [ "src/main.rs" ]
+
+  rustc_binary("clidoc_bin") {
+    name = "clidoc"
+    sources = common_sources
+    deps = [ ":rust_crates" ]
+  }
+
+  rustc_test("clidoc_bin_test") {
+    source_root = "src/main.rs"
+    deps = [
+      ":clidoc_bin",
+      ":rust_crates",
+    ]
+    non_rust_deps = [ ":clidoc_test_scripts($host_toolchain)" ]
+    sources = common_sources
+  }
+
+  group("rust_crates") {
+    deps = [
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:flate2",
+      "//third_party/rust_crates:lazy_static",
+      "//third_party/rust_crates:log",
+      "//third_party/rust_crates:simplelog",
+      "//third_party/rust_crates:tar",
+      "//third_party/rust_crates:tempfile",
+    ]
+  }
+
+  # Test data for generating reference docs.
+  # The shell script is the tool that has --help output,
+  # the markdown file is the expected output.
+  host_test_data("clidoc_test_scripts") {
+    sources = [
+      "src/testdata/tool_with_subcommands.md",
+      "src/testdata/tool_with_subcommands.sh",
+    ]
+    outputs = [ "${root_out_dir}/clidoc_test_data/{{source_file_part}}" ]
+  }
+}
+
+install_host_tools("clidoc") {
+  deps = [ ":clidoc_bin($host_toolchain)" ]
+
+  outputs = [ "clidoc" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":clidoc_bin_test($host_toolchain)" ]
+}

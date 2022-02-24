@@ -1,0 +1,131 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # Enforce every allocation in a ssr manner [for test]
+  f2fs_force_ssr = true
+
+  # Enable f2fs_roll_forward
+  f2fs_roll_fwd = false
+}
+
+static_library("f2fs") {
+  friend = [ "test:*" ]
+  sources = [
+    "admin.cc",
+    "bcache.cc",
+    "checkpoint.cc",
+    "data.cc",
+    "dir.cc",
+    "dir_entry_cache.cc",
+    "dir_hash.cc",
+    "f2fs.cc",
+    "file.cc",
+    "file_cache.cc",
+    "fsck.cc",
+    "gc.cc",
+    "inline.cc",
+    "inspect.cc",
+    "mkfs.cc",
+    "mount.cc",
+    "namei.cc",
+    "node.cc",
+    "recovery.cc",
+    "segment.cc",
+    "super.cc",
+    "third_party/ext2_hash/hash.cc",
+    "third_party/ext2_hash/hash.h",
+    "vnode.cc",
+    "vnode_cache.cc",
+    "writeback.cc",
+  ]
+
+  public = [
+    "admin.h",
+    "bcache.h",
+    "dir.h",
+    "dir_entry_cache.h",
+    "f2fs.h",
+    "f2fs_internal.h",
+    "f2fs_layout.h",
+    "f2fs_lib.h",
+    "f2fs_types.h",
+    "file.h",
+    "file_cache.h",
+    "fsck.h",
+    "inspect.h",
+    "mkfs.h",
+    "mount.h",
+    "node.h",
+    "segment.h",
+    "vnode.h",
+    "vnode_cache.h",
+    "writeback.h",
+  ]
+
+  public_deps = [
+    "//src/lib/storage/vfs/cpp",
+    "//src/lib/storage/vfs/cpp/inspect",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//src/lib/storage/vfs/cpp/transaction",
+    "//src/lib/uuid",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/storage/buffer",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zxc",
+    "//zircon/third_party/ulib/safemath",
+  ]
+
+  defines = []
+
+  if (f2fs_force_ssr) {
+    defines += [ "F2FS_FORCE_SSR" ]
+  }
+
+  if (f2fs_roll_fwd) {
+    defines += [ "F2FS_ROLL_FORWARD" ]
+  }
+
+  if (is_fuchsia) {
+    public_deps += [
+      "//src/lib/storage/block_client/cpp",
+      "//zircon/system/ulib/zircon-internal",
+    ]
+
+    deps += [
+      "//sdk/fidl/fuchsia.fs:fuchsia.fs_llcpp",
+      "//sdk/fidl/fuchsia.io",
+      "//sdk/lib/fdio",
+      "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+      "//zircon/system/ulib/async",
+      "//zircon/system/ulib/async:async-cpp",
+      "//zircon/system/ulib/async-default",
+      "//zircon/system/ulib/async-loop",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/fdio-caller",
+      "//zircon/system/ulib/fidl",
+      "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+      "//zircon/system/ulib/fidl-utils",
+      "//zircon/system/ulib/storage-metrics",
+      "//zircon/system/ulib/trace",
+      "//zircon/system/ulib/trace-engine",
+      "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+      "//zircon/system/ulib/zx",
+    ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "test:f2fs-fs-tests",
+    "test:f2fs-slow-fs-tests",
+  ]
+}

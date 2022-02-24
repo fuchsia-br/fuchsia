@@ -1,0 +1,45 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/go/toolchain.gni")
+
+go_library("battery_manager_lib") {
+  name = "battery_manager"
+
+  deps = [
+    "//sdk/fidl/fuchsia.power($go_toolchain)",
+    "//sdk/fidl/fuchsia.sys($go_toolchain)",
+    "//src/lib/component",
+    "//src/lib/syslog/go",
+  ]
+
+  sources = [ "battery_manager_test.go" ]
+}
+
+go_test("battery_manager_go_test") {
+  gopackages = [ "battery_manager" ]
+  deps = [ ":battery_manager_lib" ]
+}
+
+fuchsia_component("battery_manager_test_driver") {
+  testonly = true
+  manifest = "meta/battery_manager_test_driver.cml"
+  deps = [ ":battery_manager_go_test" ]
+}
+
+fuchsia_component("battery_manager_test") {
+  testonly = true
+  component_name = "battery_manager_test"
+  manifest = "meta/battery_manager_test.cml"
+}
+
+fuchsia_test_package("battery-manager-gotests") {
+  package_deps_for_infra_only =
+      [ "//src/power/battery-manager:battery-manager" ]
+  test_components = [ ":battery_manager_test" ]
+  deps = [ ":battery_manager_test_driver" ]
+}

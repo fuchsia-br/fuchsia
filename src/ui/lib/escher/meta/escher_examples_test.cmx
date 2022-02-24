@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/vulkan/test-application.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/escher_examples_test"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.process.Launcher"
+        ]
+    }
+}

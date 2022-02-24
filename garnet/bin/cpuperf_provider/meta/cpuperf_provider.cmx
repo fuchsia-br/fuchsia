@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/cpuperf_provider"
+    },
+    "sandbox": {
+        "dev": [
+            "sys/cpu-trace"
+        ],
+        "services": [
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

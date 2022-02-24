@@ -1,0 +1,114 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/profile/config.gni")
+import("//build/toolchain/variant.gni")
+
+# Common flags for all coverage-based variants defined below.
+# IMPORTANT: This should not include any rust or linker flags!
+_coverage_common_flags = [
+  "-fprofile-instr-generate",
+  "-fcoverage-mapping",
+]
+
+if (profile_source_files != []) {
+  _profile_source_files_lines = []
+  foreach(file, profile_source_files) {
+    _profile_source_files_lines +=
+        [ "src:" + rebase_path(file, root_build_dir) ]
+  }
+
+  # This can't use a generated_file() target because there's no way to
+  # express the deps to make GN accept the file in the inputs list if it's
+  # the output of some target.
+  _profile_source_files_file = "$root_out_dir/profile-source-files.list"
+  write_file(_profile_source_files_file,
+             _profile_source_files_lines,
+             "list lines")
+  profile_source_files_list_files += [ _profile_source_files_file ]
+}
+
+_coverage_inputs = profile_source_files_list_files
+foreach(file, profile_source_files_list_files) {
+  _coverage_common_flags +=
+      [ "-fprofile-list=" + rebase_path(file, root_build_dir) ]
+}
+
+variant("coverage") {
+  common_flags = _coverage_common_flags
+  inputs = _coverage_inputs
+
+  if (!is_kernel && is_fuchsia) {
+    # The statically-linked profiling runtime depends on libzircon.
+    # TODO(fxbug.dev/61522): Ensure this works with shared_library() instances too!
+    deps = [ "//src/zircon/lib/zircon" ]
+
+    dynamic_linker_flags = "-dynamic-linker=coverage/ld.so.1"
+    ldflags = [ "-Wl,$dynamic_linker_flags" ]
+    rustflags = [ "-Clink-arg=$dynamic_linker_flags" ]
+
+    # TODO(fxbug.dev/83653): Remove this workaround after we diagnose and address
+    # the compiler issue, see the bug for more details.
+    libs = [ "./llvm_profile_counter_bias.ld" ]
+  }
+}
+
+# This variant is similar to `coverage` but only instruments sources that are
+# interesting for measuring CTS coverage.
+variant("coverage-cts") {
+  common_flags = _coverage_common_flags
+  inputs = _coverage_inputs
+
+  common_flags +=
+      [ "-fprofile-list=" + rebase_path("profile-cts.list", root_build_dir) ]
+  inputs += [ "profile-cts.list" ]
+
+  if (!is_kernel && is_fuchsia) {
+    # The statically-linked profiling runtime depends on libzircon.
+    # TODO(fxbug.dev/61522): Ensure this works with shared_library() instances too!
+    deps = [ "//src/zircon/lib/zircon" ]
+
+    dynamic_linker_flags = "-dynamic-linker=coverage-cts/ld.so.1"
+    ldflags = [ "-Wl,$dynamic_linker_flags" ]
+    rustflags = [ "-Clink-arg=$dynamic_linker_flags" ]
+
+    # TODO(fxbug.dev/83653): Remove this workaround after we diagnose and address
+    # the compiler issue, see the bug for more details.
+    libs = [ "./llvm_profile_counter_bias.ld" ]
+  }
+}
+
+variant("profile") {
+  common_flags = _coverage_common_flags
+  inputs = _coverage_inputs
+
+  if (!is_kernel && is_fuchsia) {
+    # The statically-linked profiling runtime depends on libzircon.
+    # TODO(fxbug.dev/61522): Ensure this works with shared_library() instances too!
+    deps = [ "//src/zircon/lib/zircon" ]
+
+    dynamic_linker_flags = "-dynamic-linker=profile/ld.so.1"
+    ldflags = [ "-Wl,$dynamic_linker_flags" ]
+    rustflags = [ "-Clink-arg=$dynamic_linker_flags" ]
+  }
+}
+
+# Only enable either "coverage-rust" or clang coverage (variant("profile") or variant("coverage")),
+# not both.
+#
+# DO NOT NAME THIS WITH PREFIX `rust-`. The prefix will be stripped in some cases, and fail to
+# work with other cases that do not expect the stripped prefix.
+variant("coverage-rust") {
+  rustflags = [ "-Cinstrument-coverage" ]
+
+  if (!is_kernel && is_fuchsia) {
+    # The statically-linked profiling runtime depends on libzircon.
+    # TODO(fxbug.dev/61522): Ensure this works with shared_library() instances too!
+    deps = [ "//src/zircon/lib/zircon" ]
+
+    dynamic_linker_flags = "-dynamic-linker=coverage-rust/ld.so.1"
+    ldflags = [ "-Wl,$dynamic_linker_flags" ]
+    rustflags += [ "-Clink-arg=$dynamic_linker_flags" ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+    capabilities: [
+        { protocol: "fuchsia.appmgr.Startup" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.appmgr.Startup",
+            from: "self",
+        },
+    ],
+}

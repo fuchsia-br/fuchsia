@@ -1,0 +1,134 @@
+{
+    include: [
+        "//sdk/lib/driver_test_realm/meta/client.shard.cml",
+        "//sdk/lib/driver_test_realm/simple/meta/client.shard.cml",
+    ],
+    children: [
+        {
+            name: "stash",
+            url: "#meta/stash_secure.cm",
+        },
+        {
+            name: "wlancfg",
+            url: "#meta/wlancfg.cm",
+        },
+        {
+            name: "wlandevicemonitor",
+            url: "#meta/wlandevicemonitor.cm",
+        },
+        {
+            name: "regulatory_region",
+            url: "#meta/regulatory_region.cm",
+        },
+        {
+            name: "emergency_location",
+            url: "#meta/emergency.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: [
+                "#emergency_location",
+                "#regulatory_region",
+                "#stash",
+                "#test_driver",
+                "#wlancfg",
+                "#wlandevicemonitor",
+                "#wlanstack",
+            ],
+        },
+        {
+            protocol: "fuchsia.stash.SecureStore",
+            from: "#stash",
+            to: "#wlancfg",
+        },
+        {
+            protocol: "fuchsia.location.namedplace.RegulatoryRegionWatcher",
+            from: "#regulatory_region",
+            to: "#wlancfg",
+        },
+        {
+            protocol: "fuchsia.location.sensor.WlanBaseStationWatcher",
+            from: "#emergency_location",
+            to: "#wlancfg",
+        },
+        {
+            protocol: "fuchsia.wlan.device.service.DeviceMonitor",
+            from: "#wlandevicemonitor",
+            to: [
+                "#test_driver",
+                "#wlancfg",
+                "#wlanstack",
+            ],
+            dependency: "weak",
+        },
+        {
+            protocol: "fuchsia.wlan.device.service.DeviceService",
+            from: "#wlanstack",
+            to: [
+                "#test_driver",
+                "#wlancfg",
+                "#wlandevicemonitor",
+            ],
+            dependency: "weak",
+        },
+        {
+            protocol: "fuchsia.io.Directory",
+            from: "#driver_test_realm",
+            to: "#wlandevicemonitor",
+        },
+        {
+            directory: "dev",
+            from: "#driver_test_realm",
+            as: "dev",
+            to: "#test_driver",
+        },
+        {
+            directory: "dev",
+            from: "#driver_test_realm",
+            as: "dev-wlanphy",
+            to: "#wlandevicemonitor",
+            subdir: "class/wlanphy",
+        },
+        {
+            protocol: [
+                "fuchsia.wlan.policy.AccessPointProvider",
+                "fuchsia.wlan.policy.ClientProvider",
+            ],
+            from: "#wlancfg",
+            to: "#test_driver",
+        },
+        {
+            storage: "data",
+            from: "parent",
+            to: [
+                "#stash",
+                "#wlancfg",
+            ],
+        },
+        {
+            storage: "cache",
+            from: "parent",
+            to: "#regulatory_region",
+        },
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#emergency_location",
+            subdir: "emergency",
+        },
+        {
+            protocol: "fuchsia.diagnostics.ArchiveAccessor",
+            from: "parent",
+            to: "#test_driver",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#test_driver",
+        },
+    ],
+}

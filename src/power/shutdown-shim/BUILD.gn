@@ -1,0 +1,42 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dist/component_manifest_resources.gni")
+
+executable("shutdown-shim") {
+  sources = [ "main.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_llcpp",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_llcpp",
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_llcpp",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2_llcpp",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//src/lib/storage/vfs/cpp",
+    "//src/sys/lib/stdout-to-debuglog/cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+component_manifest_resources("meta") {
+  sources = [ "meta/shutdown-shim.cml" ]
+}
+
+group("bootfs") {
+  deps = [
+    ":meta",
+    ":shutdown-shim",
+  ]
+}

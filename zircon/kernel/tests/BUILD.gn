@@ -1,0 +1,137 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+group("tests") {
+  deps = [
+    ":phys",
+    "//zircon/kernel/lib/libc:tests",
+  ]
+  if (toolchain_environment == "kernel") {
+    deps += [ ":kernel" ]
+  } else {  # TODO(fxbug.dev/67010): testonly in kernel proper
+    testonly = true
+  }
+}
+
+# This is the subset that's compatible with the kernel.phys environment.
+source_set("phys") {
+  # TODO(fxbug.dev/67010): testonly = true
+  testonly = toolchain_environment != "kernel"
+  cflags = [ "-fno-builtin" ]
+  sources = [
+    "popcount.cc",
+    "printf_tests.cc",
+    "relocation_tests.cc",
+    "string_view_tests.cc",
+    "unittest_tests.cc",
+  ]
+  deps = [
+    ":zbitl",
+    "//zircon/kernel/lib/boot-options/tests:kernel-tests",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/libc",
+    "//zircon/kernel/lib/unittest",
+    "//zircon/system/ulib/fbl",
+  ]
+
+  if (toolchain_environment == "kernel") {
+    deps += [ "//zircon/kernel/lib/console" ]
+  }
+}
+
+source_set("zbitl") {
+  # TODO(fxbug.dev/67010): testonly = true
+  testonly = toolchain_environment != "kernel"
+  sources = [ "zbitl_tests.cc" ]
+
+  deps = [
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/libc",
+    "//zircon/kernel/lib/unittest",
+    "//zircon/system/ulib/zbitl",
+  ]
+
+  if (toolchain_environment == "kernel") {
+    deps += [ "//zircon/kernel/lib/console" ]
+  }
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+if (toolchain_environment == "kernel") {
+  # These are only for the kernel proper.
+  source_set("kernel") {
+    # TODO(fxbug.dev/67010): testonly = true
+    cflags = [ "-fno-builtin" ]
+    sources = [
+      "alloc_checker_tests.cc",
+      "benchmarks.cc",
+      "brwlock_tests.cc",
+      "cache_tests.cc",
+      "clock_tests.cc",
+      "cpu_search_tests.cc",
+      "cpu_tests.cc",
+      "dpc_tests.cc",
+      "event_tests.cc",
+      "fibo.cc",
+      "heap_tests.cc",
+      "interrupt_disable_tests.cc",
+      "job_tests.cc",
+      "kstack_tests.cc",
+      "lock_dep_tests.cc",
+      "loop_limiter_tests.cc",
+      "mem_tests.cc",
+      "mmu_tests.cc",
+      "mp_hotplug_tests.cc",
+      "mutex_spin_time_tests.cc",
+      "pi_tests.cc",
+      "pow2_tests.cc",
+      "preempt_disable_tests.cc",
+      "range_check_tests.cc",
+      "relaxed_atomic_tests.cc",
+      "relocation_tests.cc",
+      "resource_tests.cc",
+      "sleep_tests.cc",
+      "string_file_tests.cc",
+      "string_tests.cc",
+      "sync_ipi_tests.cc",
+      "tests.cc",
+      "thread_dispatcher_tests.cc",
+      "thread_tests.cc",
+      "timer_tests.cc",
+      "uart_tests.cc",
+      "userboot_tests.cc",
+      "variant_tests.cc",
+    ]
+    deps = [
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/arch/test:kernel-tests",
+      "//zircon/kernel/lib/boot-options",
+      "//zircon/kernel/lib/console",
+      "//zircon/kernel/lib/crypto",
+      "//zircon/kernel/lib/debuglog",
+      "//zircon/kernel/lib/fbl",
+      "//zircon/kernel/lib/instrumentation/test:tests",
+      "//zircon/kernel/lib/io",
+      "//zircon/kernel/lib/jtrace/tests",
+      "//zircon/kernel/lib/kconcurrent/tests",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/ktrace/tests",
+      "//zircon/kernel/lib/persistent-debuglog/tests",
+      "//zircon/kernel/lib/root_resource_filter",
+      "//zircon/kernel/lib/unittest",
+      "//zircon/kernel/lib/userabi",
+      "//zircon/kernel/lib/zxc",
+      "//zircon/kernel/object",
+      "//zircon/system/ulib/affine",
+      "//zircon/system/ulib/pretty",
+    ]
+    public_deps = [ "//zircon/system/ulib/zx:headers" ]
+  }
+}

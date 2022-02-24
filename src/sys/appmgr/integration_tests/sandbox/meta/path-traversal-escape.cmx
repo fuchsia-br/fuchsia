@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/path-traversal-escape"
+    },
+    "sandbox": {
+        "pkgfs": [
+            "../boot"
+        ],
+        "services": [
+            "fuchsia.sys.Environment"
+        ]
+    }
+}

@@ -1,0 +1,25 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/sessionmgr"
+    },
+    "sandbox": {
+        "features": [
+            "config-data"
+        ],
+        "services": [
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.intl.PropertyProvider",
+            "fuchsia.net.name.Lookup",
+            "fuchsia.posix.socket.Provider",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Launcher",
+            "fuchsia.sys.Loader",
+            "fuchsia.tracing.provider.Registry",
+            "fuchsia.ui.scenic.Scenic",
+            "fuchsia.ui.scenic.Snapshot"
+        ]
+    }
+}

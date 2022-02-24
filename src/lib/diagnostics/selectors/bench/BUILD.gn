@@ -1,0 +1,31 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  output_name = "selectors_benchmarks"
+  edition = "2018"
+
+  deps = [
+    "//src/developer/fuchsia-criterion",
+    "//src/lib/diagnostics/selectors",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_package_with_single_component("selectors-benchmarks") {
+  deps = [ ":bin" ]
+  manifest = "meta/selectors-benchmarks.cmx"
+}
+
+group("bench") {
+  testonly = true
+  deps = [
+    ":bin",
+    ":selectors-benchmarks",
+  ]
+}

@@ -1,0 +1,62 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO(turnage): low_layer part needs to not be test-only.
+group("sw") {
+  testonly = true
+  deps = [
+    ":codec_adapter_sw",
+    ":codec_runner_sw",
+    "aac",
+    "ffmpeg",
+    "low_layer",
+    "sbc",
+  ]
+}
+
+config("codec_runner_sw_include_config") {
+  include_dirs = [ "." ]
+}
+
+source_set("codec_runner_sw") {
+  sources = [ "local_single_codec_factory.h" ]
+
+  public = [ "codec_runner_app.h" ]
+
+  deps = [ "//src/media/lib/codec_impl" ]
+
+  public_deps = [
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+config("codec_adapter_sw_include_config") {
+  include_dirs = [ "." ]
+}
+
+source_set("codec_adapter_sw") {
+  sources = [ "buffer_pool.cc" ]
+
+  public = [
+    "buffer_pool.h",
+    "codec_adapter_sw.h",
+  ]
+
+  public_configs = [ ":codec_adapter_sw_include_config" ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.mediacodec",
+    "//src/lib/fxl",
+    "//src/media/lib/codec_impl",
+    "//src/media/lib/mpsc_queue",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

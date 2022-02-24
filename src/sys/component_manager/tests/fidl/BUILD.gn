@@ -1,0 +1,36 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("components") {
+  name = "fidl.test.components"
+
+  sources = [ "components.fidl" ]
+}
+
+fidl("hub") {
+  name = "fuchsia.test.hub"
+  sdk_category = "internal"
+
+  sources = [ "hub.fidl" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.io" ]
+}
+
+fidl("echofactory") {
+  name = "fuchsia.test.echofactory"
+
+  sources = [ "echo_factory.fidl" ]
+
+  public_deps = [ "//examples/components/routing/fidl:echo" ]
+}
+
+fidl("fuchsia.test.workscheduler") {
+  sdk_category = "internal"
+
+  sources = [ "fuchsia.test.workscheduler.fidl" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.sys2" ]
+}

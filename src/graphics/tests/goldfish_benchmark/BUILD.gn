@@ -1,0 +1,41 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("goldfish_benchmark_bin") {
+  testonly = true
+
+  output_name = "goldfish_benchmark"
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.goldfish:fuchsia.hardware.goldfish_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_component("goldfish_benchmark_cmp") {
+  testonly = true
+  component_name = "goldfish_benchmark"
+  deps = [ ":goldfish_benchmark_bin" ]
+  manifest = "meta/goldfish_benchmark.cmx"
+}
+
+fuchsia_test_package("goldfish_benchmark") {
+  package_name = "goldfish-benchmark"
+  test_components = [ ":goldfish_benchmark_cmp" ]
+  test_specs = {
+    environments = [ aemu_env ]
+  }
+}

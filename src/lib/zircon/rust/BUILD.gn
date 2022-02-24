@@ -1,0 +1,228 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+common_sources = [
+  "src/bti.rs",
+  "src/channel.rs",
+  "src/clock.rs",
+  "src/clock_update.rs",
+  "src/cprng.rs",
+  "src/debuglog.rs",
+  "src/event.rs",
+  "src/eventpair.rs",
+  "src/exception.rs",
+  "src/fifo.rs",
+  "src/guest.rs",
+  "src/handle.rs",
+  "src/info.rs",
+  "src/interrupt.rs",
+  "src/iommu.rs",
+  "src/job.rs",
+  "src/lib.rs",
+  "src/pager.rs",
+  "src/pmt.rs",
+  "src/port.rs",
+  "src/process.rs",
+  "src/profile.rs",
+  "src/property.rs",
+  "src/resource.rs",
+  "src/rights.rs",
+  "src/signals.rs",
+  "src/socket.rs",
+  "src/stream.rs",
+  "src/task.rs",
+  "src/thread.rs",
+  "src/time.rs",
+  "src/version.rs",
+  "src/vmar.rs",
+  "src/vmo.rs",
+]
+
+if (is_fuchsia) {
+  rustc_library("fuchsia-zircon") {
+    version = "0.3.3"
+    edition = "2018"
+    deps = [
+      ":fuchsia-zircon-status",
+      ":fuchsia-zircon-sys",
+      "//third_party/rust_crates:bitflags",
+    ]
+
+    sources = common_sources
+  }
+}
+
+# Generate Zircon rust bindings using the GN version of the Kazoo tool.
+# The source is still the .json file generated during the ZN build.
+compiled_action("generate-rust-zircon-syscalls-definitions") {
+  _zx_json_target = "//zircon/vdso:zx($default_toolchain)"
+
+  # TODO(fxbug.dev/69011): output timestamp is not refreshed by tool
+
+  tool = "//zircon/tools/kazoo"
+  sources =
+      [ get_label_info(_zx_json_target, "target_gen_dir") + "/zx.fidl.json" ]
+  outputs = [ "$root_gen_dir/zircon/rust/syscalls/definitions.rs" ]
+  args = [
+    "--rust=" + rebase_path(outputs[0], root_build_dir),
+    rebase_path(sources[0], root_build_dir),
+  ]
+  deps = [ _zx_json_target ]
+}
+
+rustc_library("fuchsia-cprng") {
+  version = "0.1.1"
+  edition = "2018"
+  with_unit_tests = true
+  visibility = [ ":*" ]
+  source_root = "fuchsia-cprng/src/lib.rs"
+
+  sources = [ "fuchsia-cprng/src/lib.rs" ]
+}
+
+if (is_fuchsia) {
+  rustc_library("fuchsia-zircon-sys") {
+    version = "0.3.3"
+    edition = "2018"
+    _outputs = get_target_outputs(":generate-rust-zircon-syscalls-definitions")
+    source_root = _outputs[0]
+    deps = [
+      ":fuchsia-zircon-types",
+      ":generate-rust-zircon-syscalls-definitions",
+    ]
+
+    # Callers should use the re-export at fuchsia_zircon::sys instead
+    visibility = [ ":*" ]
+
+    sources = [ _outputs[0] ]
+  }
+}
+
+rustc_library("fuchsia-zircon-types") {
+  version = "0.1.0"
+  edition = "2018"
+  source_root = "fuchsia-zircon-types/src/lib.rs"
+  deps = [ "//third_party/rust_crates:static_assertions" ]
+  sources = [ "fuchsia-zircon-types/src/lib.rs" ]
+}
+
+rustc_test("fuchsia-zircon-types-tests") {
+  name = "fuchsia_zircon_types_tests"
+  edition = "2018"
+  source_root = "fuchsia-zircon-types/src/lib.rs"
+  deps = [ "//third_party/rust_crates:static_assertions" ]
+  sources = [ "fuchsia-zircon-types/src/lib.rs" ]
+}
+
+rustc_library("fuchsia-zircon-status") {
+  version = "0.1.0"
+  edition = "2018"
+  source_root = "fuchsia-zircon-status/src/lib.rs"
+  deps = [ ":fuchsia-zircon-types" ]
+
+  sources = [ "fuchsia-zircon-status/src/lib.rs" ]
+}
+
+rustc_test("fuchsia-zircon-status-tests") {
+  name = "fuchsia_zircon_status_tests"
+  edition = "2018"
+  source_root = "fuchsia-zircon-status/src/lib.rs"
+
+  deps = [ "//src/lib/zircon/rust:fuchsia-zircon-types" ]
+
+  sources = [ "fuchsia-zircon-status/src/lib.rs" ]
+}
+
+# Certain tests written as unit tests of fuchsia-zircon make use of other
+# crates which themselves depend on fuchsia-zircon. This causes
+# fuchsia_zircon::foo to be a different type from crate::foo in the context of
+# those unit tests when fuchsia-zircon is built with `with_unit_tests = true`.
+#
+# Since those tests are really integration tests, we should either move them
+# into the "other" crates so that the dependency graph flows in only one
+# direction, or simply move those tests into a dedicated target and redesignate
+# them as integration tests, which they appear to be.
+#
+# TODO(https://fxbug.dev/91562): untangle this web.
+rustc_test("fuchsia-zircon-unittests") {
+  edition = "2018"
+  output_name = "fuchsia_zircon_tests"
+  deps = [
+    ":fuchsia-zircon-status",
+    ":fuchsia-zircon-sys",
+    "//third_party/rust_crates:bitflags",
+
+    # Test-only deps
+    ":fuchsia-zircon",
+    "//sdk/fidl/fuchsia.boot:fuchsia.boot-rustc",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//third_party/rust_crates:assert_matches",
+  ]
+
+  sources = common_sources
+}
+
+rustc_binary("exit_with_code_util") {
+  edition = "2018"
+  source_root = "test_util/exit_with_code_util.rs"
+  deps = [ ":fuchsia-zircon" ]
+
+  sources = [ "test_util/exit_with_code_util.rs" ]
+}
+
+rustc_binary("sleep_forever_util") {
+  edition = "2018"
+  source_root = "test_util/sleep_forever_util.rs"
+  deps = [ ":fuchsia-zircon" ]
+
+  sources = [ "test_util/sleep_forever_util.rs" ]
+}
+
+fuchsia_unittest_component("fuchsia-cprng_test-component") {
+  component_name = "fuchsia-cprng"
+  deps = [ ":fuchsia-cprng_test" ]
+}
+
+fuchsia_unittest_component("fuchsia-zircon-status-component") {
+  component_name = "fuchsia-zircon-status"
+  deps = [ ":fuchsia-zircon-status-tests" ]
+}
+
+fuchsia_unittest_component("fuchsia-zircon-tests-component") {
+  component_name = "fuchsia-zircon-tests"
+  manifest = "meta/fuchsia_zircon_tests.cmx"
+  deps = [ ":fuchsia-zircon-unittests" ]
+}
+
+fuchsia_unittest_component("fuchsia-zircon-types-tests-component") {
+  component_name = "fuchsia-zircon-types-tests"
+  deps = [ ":fuchsia-zircon-types-tests" ]
+}
+
+fuchsia_test_package("fuchsia-zircon-tests") {
+  test_components = [
+    ":fuchsia-cprng_test-component",
+    ":fuchsia-zircon-status-component",
+    ":fuchsia-zircon-tests-component",
+    ":fuchsia-zircon-types-tests-component",
+  ]
+  deps = [
+    ":exit_with_code_util",
+    ":sleep_forever_util",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fuchsia-zircon-tests" ]
+}

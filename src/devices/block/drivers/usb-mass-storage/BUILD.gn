@@ -1,0 +1,164 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("usb_mass_storage_bind") {
+  rules = "usb_mass_storage.bind"
+  header_output = "usb_mass_storage_bind.h"
+  bind_output = "usb-mass-storage.bindbc"
+  tests = "bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.usb",
+    "//src/devices/bind/fuchsia.usb.massstorage",
+  ]
+}
+
+fuchsia_driver("usb-mass-storage-driver") {
+  output_name = "usb-mass-storage"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "usb-mass-storage.cc" ]
+  deps = [
+    ":block",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+  ]
+}
+
+fuchsia_driver_component("usb-mass-storage") {
+  component_name = "usb-mass-storage"
+  deps = [ ":usb-mass-storage-driver" ]
+  info = "usb-mass-storage-info.json"
+  colocate = true
+}
+
+source_set("block") {
+  visibility = [ ":*" ]
+  sources = [ "block.cc" ]
+  public_deps = [
+    ":usb_mass_storage_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.composite:fuchsia.hardware.usb.composite_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+test("ums-block") {
+  output_name = "ums-block-test"
+  sources = [ "tests/block.cc" ]
+  deps = [
+    ":block",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("ums-block-test") {
+  deps = [ ":ums-block" ]
+}
+
+test("ums") {
+  output_name = "ums-test"
+  sources = [
+    "tests/usb-mass-storage.cc",
+    "usb-mass-storage.cc",
+  ]
+  defines = [ "UNITTEST" ]
+  deps = [
+    ":block",
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//src/devices/testing/fake-bti",
+    "//src/devices/testing/fake_ddk",
+    "//src/devices/usb/lib/usb",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("ums-test") {
+  deps = [ ":ums" ]
+}
+
+fuchsia_test_component("ums-integration-component") {
+  component_name = "ums-integration-test"
+  manifest = "tests/meta/ums_integration_test.cml"
+  deps = [ ":ums-integration" ]
+}
+
+test("ums-integration") {
+  output_name = "ums-integration-test"
+  sources = [ "tests/ums-test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral.block:fuchsia.hardware.usb.peripheral.block_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.virtual.bus:fuchsia.hardware.usb.virtual.bus_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fidl-async",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/usb-virtual-bus-launcher",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # Other components/binaries we depend on.
+  deps += [
+    "//src/devices/block/bin/blktest",
+    "//src/devices/block/drivers/core",
+    "//src/devices/block/drivers/ums-function",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/usb/drivers/usb-bus",
+    "//src/devices/usb/drivers/usb-composite",
+    "//src/devices/usb/drivers/usb-peripheral",
+    "//src/devices/usb/drivers/usb-virtual-bus",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_test_package("ums-integration-test") {
+  test_components = [ ":ums-integration-component" ]
+  deps = [ ":usb-mass-storage" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ums-block-test",
+    ":ums-integration-test",
+    ":ums-test",
+    ":usb_mass_storage_bind_test",
+  ]
+}

@@ -1,0 +1,129 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fuzzing/fuzzer.gni")
+import("//build/test.gni")
+
+driver_bind_rules("ethernet_usb_cdc_ecm_bind") {
+  rules = "ethernet_usb_cdc_ecm.bind"
+  header_output = "ethernet_usb_cdc_ecm-bind.h"
+  bind_output = "usb-cdc-ecm.bindbc"
+  tests = "bind-tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.usb",
+    "//src/devices/bind/fuchsia.usb.comm",
+  ]
+}
+
+fuchsia_driver("usb-cdc-ecm-driver") {
+  output_name = "usb-cdc-ecm"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "usb-cdc-ecm.c" ]
+  deps = [
+    ":ethernet_usb_cdc_ecm_bind",
+    ":usb-cdc-ecm-lib",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//src/lib/listnode",
+    "//zircon/system/ulib/pretty",
+  ]
+}
+
+fuchsia_driver_component("usb-cdc-ecm") {
+  component_name = "usb-cdc-ecm"
+  deps = [ ":usb-cdc-ecm-driver" ]
+  info = "usb-cdc-ecm-info.json"
+  colocate = true
+}
+
+source_set("usb-cdc-ecm-lib") {
+  sources = [ "usb-cdc-ecm-lib.c" ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.composite:fuchsia.hardware.usb.composite_banjo_cpp",
+    "//src/devices/usb/lib/usb",
+    "//zircon/system/ulib/sync",
+  ]
+}
+
+test("usb-cdc-ecm-unittest") {
+  sources = [ "usb-cdc-ecm-unittest.cc" ]
+  deps = [
+    ":usb-cdc-ecm-lib",
+    "//sdk/lib/fdio",
+    "//src/devices/testing/no_ddk",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("usb-cdc-ecm-unittest-package") {
+  package_name = "usb-cdc-ecm-unittest"
+  deps = [ ":usb-cdc-ecm-unittest" ]
+}
+
+fuzzer("usb-cdc-ecm-descriptor-fuzzer") {
+  sources = [ "usb-cdc-ecm-descriptor-fuzzer.cc" ]
+  deps = [
+    ":usb-cdc-ecm-lib",
+    "//sdk/lib/fdio",
+    "//src/devices/testing/no_ddk",
+  ]
+}
+
+fuzzers_package("usb-cdc-ecm-fuzzers") {
+  fuzzers = [ ":usb-cdc-ecm-descriptor-fuzzer" ]
+}
+
+test("usb-cdc-ecm-integration") {
+  output_name = "usb-cdc-ecm-integration-test"
+  sources = [ "usb-cdc-ecm-test.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.ethernet:fuchsia.hardware.ethernet_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_llcpp",
+    "//sdk/fidl/fuchsia.hardware.usb.virtual.bus:fuchsia.hardware.usb.virtual.bus_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/usb-virtual-bus-launcher",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("usb-cdc-ecm-integration-test") {
+  deps = [
+    ":usb-cdc-ecm",
+    ":usb-cdc-ecm-integration",
+    "//src/connectivity/ethernet/drivers/ethernet",
+    "//src/connectivity/ethernet/drivers/usb-cdc-function",
+    "//src/devices/board/drivers/integration-test",
+    "//src/devices/bus/drivers/platform",
+    "//src/devices/usb/drivers/usb-bus",
+    "//src/devices/usb/drivers/usb-composite",
+    "//src/devices/usb/drivers/usb-peripheral",
+    "//src/devices/usb/drivers/usb-virtual-bus",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":ethernet_usb_cdc_ecm_bind_test",
+    ":usb-cdc-ecm-fuzzers",
+    ":usb-cdc-ecm-integration-test",
+    ":usb-cdc-ecm-unittest-package",
+  ]
+}

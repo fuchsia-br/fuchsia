@@ -1,0 +1,88 @@
+#!/bin/bash
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Run, inspect and debug
+### listen for logs from the on-device log_listener
+
+## usage: fx log [-h | --help] [--raw] [-r | --remote-symbols] LOG_LISTENER_FLAGS
+##
+##    --raw                   do not attempt to symbolize the log
+##
+##    --remote-symbols|-r     attempt to resolve symbols using predefined remote
+##                            symbol servers for symbols that cannot be resolved
+##                            locally. See `fx help symbolize` for more
+##                            information on remote symbol servers.
+##
+##    --help|-h               show this help and attempt to also show the
+##                            on-device log_listener help
+##
+##    LOG_LISTENER_FLAGS      flags (e.g., severity) to pass to the on-device
+##                            log_listener; supported flags are listed at
+##                            https://fuchsia.dev/fuchsia-src/reference/diagnostics/consumers/log_listener.
+##
+## Creates an SSH connection with a device and starts listening for logs.
+## It will listen to the device specified with `fx -d DEVICE log` or
+## `fx set-device`, otherwise it will try to find a connected device.
+##
+## If the command hangs without printing anything, first check to make sure `fx shell`
+## works on its own.
+##
+## For more information on flags supported by the on-device log_listener, see
+## https://fuchsia.dev/fuchsia-src/reference/diagnostics/consumers/log_listener.
+
+set -o pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh || exit $?
+
+function listen {
+  while true; do
+    fx-command-run wait || return
+    fx-command-run shell log_listener "$@"
+    local error_code=$?
+    if [[ "${error_code}" -eq 0 ]]; then
+      # this is necessary, so that "--dump_logs yes" works as expected.
+      break
+    fi
+    echo "$(date '+%Y-%m-%d %H:%M:%S %Z'): Connection lost (status ${error_code}), reconnecting..."
+  done
+}
+
+declare is_raw=0
+declare is_remote=0
+declare symbolizer=( "fx-command-run" "symbolize" )
+
+while [[ $# -ne 0 ]]; do
+  case "$1" in
+  -h|--help)
+    fx-command-help
+    echo
+    echo "[Attempting to shell into a connected device to provide help for the on-device log_listener]"
+    fx-command-exec shell log_listener -h
+    exit 0
+    ;;
+  --raw)
+    is_raw=1
+    ;;
+  --remote-symbols|-r)
+    is_remote=1
+    symbolizer+=("-r")
+    ;;
+  *)
+    break
+  esac
+  shift
+done
+
+if (( is_raw )) && (( is_remote )); then
+  fx-error "Invalid syntax: --raw and -r cannot be used together"
+  fx-command-help
+  exit 1
+fi
+
+if (( is_raw )); then
+  listen "$@"
+else
+  listen "$@" | "${symbolizer[@]}"
+fi

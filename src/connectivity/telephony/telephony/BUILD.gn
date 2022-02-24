@@ -1,0 +1,70 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  name = "telephony"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.telephony.manager:fuchsia.telephony.manager-rustc",
+    "//sdk/fidl/fuchsia.telephony.ril:fuchsia.telephony.ril-rustc",
+    "//src/connectivity/telephony/lib/qmi",
+    "//src/connectivity/telephony/tests/tel-dev:tel_dev",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/storage/fuchsia-vfs-watcher",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+fuchsia_package_with_single_component("telephony") {
+  manifest = "meta/telephony.cmx"
+  deps = [ ":bin" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [ ":telephony-tests-package" ]
+}
+
+fuchsia_component("telephony-tests") {
+  testonly = true
+  manifest = "meta/telephony_bin_test.cmx"
+  deps = [
+    ":bin_test",
+    "//src/connectivity/telephony/lib/tel-devmgr:tel-devmgr-qmi",
+  ]
+}
+
+fuchsia_test_package("telephony-tests-package") {
+  package_deps_for_infra_only = [
+    "//src/connectivity/telephony/ril-qmi:ril-qmi",
+    "//src/connectivity/telephony/telephony-snooper:telephony-snooper",
+  ]
+  test_components = [ ":telephony-tests" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

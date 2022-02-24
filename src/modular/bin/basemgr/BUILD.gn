@@ -1,0 +1,349 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("basemgr_bin") {
+  output_name = "basemgr"
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":basemgr_impl",
+    ":lib",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/files",
+    "//src/lib/fxl",
+    "//src/modular/bin/basemgr/cobalt",
+    "//src/modular/lib/modular_config",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+source_set("basemgr_impl") {
+  sources = [
+    "basemgr_impl.cc",
+    "basemgr_impl.h",
+  ]
+
+  public_deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/fidl/fuchsia.modular.session",
+    "//sdk/fidl/fuchsia.process.lifecycle",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//src/modular/lib/async/cpp:future",
+    "//src/modular/lib/common:teardown",
+    "//src/modular/lib/modular_config:modular_config_accessor",
+  ]
+
+  deps = [
+    "//src/modular/bin/basemgr/cobalt",
+    "//src/modular/lib/fidl:clone",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_config:modular_config_constants",
+  ]
+}
+
+fuchsia_component("component_v1") {
+  component_name = "basemgr"
+  manifest = "meta/basemgr.cmx"
+  deps = [ ":basemgr_bin" ]
+}
+
+fuchsia_component("component_v2") {
+  component_name = "basemgr"
+  manifest = "meta/basemgr.cml"
+  deps = [ ":basemgr_bin" ]
+}
+
+fuchsia_component("basemgr-for-testing-v1-to-v2") {
+  manifest = "meta/basemgr-for-testing-v1-to-v2.cml"
+  deps = [ ":basemgr_bin" ]
+}
+
+fuchsia_package("basemgr") {
+  deps = [
+    ":component_v1",
+    ":component_v2",
+  ]
+}
+
+source_set("bounded_inspect_list_node") {
+  sources = [
+    "bounded_inspect_list_node.cc",
+    "bounded_inspect_list_node.h",
+  ]
+
+  deps = [ "//src/lib/fxl" ]
+
+  public_deps = [ "//sdk/lib/sys/inspect/cpp" ]
+}
+
+source_set("lib") {
+  sources = [
+    "child_listener.cc",
+    "child_listener.h",
+    "inspector.cc",
+    "inspector.h",
+    "presentation_container.cc",
+    "presentation_container.h",
+    "session_context_impl.cc",
+    "session_context_impl.h",
+    "session_provider.cc",
+    "session_provider.h",
+    "sessions.cc",
+    "sessions.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/modular/bin/basemgr/cobalt",
+    "//src/modular/lib/common:async_holder",
+    "//src/modular/lib/common:teardown",
+    "//src/modular/lib/fidl:clone",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_config:modular_config_accessor",
+    "//src/modular/lib/pseudo_dir:pseudo_dir_utils",
+  ]
+
+  public_deps = [
+    ":bounded_inspect_list_node",
+    "//sdk/fidl/fuchsia.component",
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/fidl/fuchsia.modular.session",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/modular/lib/async/cpp:future",
+    "//src/modular/lib/fidl:app_client",
+    "//src/modular/lib/fidl:environment",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("session_context_impl_unittest") {
+  testonly = true
+
+  sources = [ "session_context_impl_unittest.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_config:modular_config_accessor",
+  ]
+}
+
+fuchsia_unittest_component("session-context-impl-unittest") {
+  manifest = "meta/session_context_impl_unittest.cmx"
+  deps = [ ":session_context_impl_unittest" ]
+}
+
+source_set("basemgr_impl_test_fixture") {
+  testonly = true
+  sources = [
+    "basemgr_impl_test_fixture.cc",
+    "basemgr_impl_test_fixture.h",
+  ]
+  public_deps = [
+    ":basemgr_impl",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/modular/lib/modular_config",
+    "//src/modular/lib/modular_config:modular_config_accessor",
+    "//src/modular/lib/pseudo_dir:pseudo_dir",
+    "//src/modular/tests:fuchsia.testing.modular",
+  ]
+}
+
+executable("basemgr_impl_unittest") {
+  testonly = true
+  sources = [ "basemgr_impl_unittest.cc" ]
+  deps = [
+    ":basemgr_impl_test_fixture",
+    "//src/lib/files",
+  ]
+}
+
+executable("basemgr_v2_to_v1_unittest") {
+  testonly = true
+  sources = [ "basemgr_v2_to_v1_unittest.cc" ]
+  deps = [
+    ":basemgr_impl_test_fixture",
+    "//examples/fidl/fuchsia.examples",
+  ]
+}
+
+fuchsia_unittest_component("basemgr-impl-unittest") {
+  manifest = "meta/basemgr-impl-unittest.cml"
+  deps = [ ":basemgr_impl_unittest" ]
+}
+
+fuchsia_unittest_component("basemgr-v2-to-v1-unittest") {
+  manifest = "meta/basemgr-v2-to-v1-unittest.cml"
+  deps = [ ":basemgr_v2_to_v1_unittest" ]
+}
+
+rustc_test("basemgr_v1_to_v2_test_realm_bin") {
+  name = "basemgr_v1_to_v2_test_realm"
+  source_root = "basemgr_v1_to_v2_test_realm.rs"
+  deps = [
+    "//examples/fidl/fuchsia.examples:fuchsia.examples-rustc",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//sdk/fidl/fuchsia.modular:fuchsia.modular-rustc",
+    "//sdk/fidl/fuchsia.modular.internal:fuchsia.modular.internal-rustc",
+    "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//sdk/fidl/fuchsia.tracing.provider:fuchsia.tracing.provider-rustc",
+    "//sdk/fidl/fuchsia.ui.policy:fuchsia.ui.policy-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/sys/lib/component-events",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+  sources = [ "basemgr_v1_to_v2_test_realm.rs" ]
+}
+
+fuchsia_component("basemgr-v1-to-v2-test-realm") {
+  testonly = true
+  manifest = "meta/basemgr_v1_to_v2_test_realm.cml"
+  deps = [ ":basemgr_v1_to_v2_test_realm_bin" ]
+}
+
+executable("basemgr_non_hermetic_test") {
+  testonly = true
+
+  sources = [ "basemgr_non_hermetic_test.cc" ]
+
+  deps = [
+    ":basemgr_bin",
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.modular.session",
+    "//sdk/fidl/fuchsia.process.lifecycle",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/modular/lib/modular_config",
+    "//src/ui/scenic/lib/scenic:scenic",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_component("basemgr-non-hermetic-test") {
+  manifest = "meta/basemgr_non_hermetic_test.cmx"
+  deps = [ ":basemgr_non_hermetic_test" ]
+}
+
+executable("bounded_inspect_list_node_unittest") {
+  testonly = true
+
+  sources = [ "bounded_inspect_list_node_unittest.cc" ]
+
+  deps = [
+    ":bounded_inspect_list_node",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_component("bounded-inspect-list-node-unittest") {
+  deps = [ ":bounded_inspect_list_node_unittest" ]
+}
+
+executable("inspector_unittest") {
+  testonly = true
+
+  sources = [ "inspector_unittest.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+  ]
+}
+
+fuchsia_component("v1_echo_server_component") {
+  component_name = "v1-echo-server"
+  testonly = true
+  manifest = "meta/v1-echo-server.cmx"
+  deps = [ "//examples/fidl/rust/server:bin" ]
+}
+
+group("v2_echo_server_component") {
+  testonly = true
+  deps = [ "//examples/fidl/rust/server:echo-server" ]
+}
+
+fuchsia_unittest_component("basemgr-inspector-unittest") {
+  deps = [ ":inspector_unittest" ]
+}
+
+fuchsia_test_package("basemgr_unittests") {
+  package_deps_for_infra_only = [ "//src/modular/bin/basemgr" ]
+  test_components = [
+    ":basemgr-impl-unittest",
+    ":basemgr-v1-to-v2-test-realm",
+    ":basemgr-v2-to-v1-unittest",
+    ":basemgr-non-hermetic-test",
+    ":session-context-impl-unittest",
+    ":bounded-inspect-list-node-unittest",
+    ":basemgr-inspector-unittest",
+  ]
+  deps = [
+    ":v1_echo_server_component",
+    ":v2_echo_server_component",
+    "//src/cobalt/bin/testing/mock_cobalt:component_v2",
+    "//src/modular/bin/basemgr:basemgr-for-testing-v1-to-v2",
+    "//src/modular/bin/sessionmgr",
+    "//src/modular/bin/sessionmgr:dev_session_shell_component",
+  ]
+  test_specs = {
+    # session_context_impl_unittest exercises crash handling that logs an ERROR.
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}

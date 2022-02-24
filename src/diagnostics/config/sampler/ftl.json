@@ -1,0 +1,242 @@
+{
+    "metrics": [
+        {
+            "event_codes": [
+                1
+            ],
+            "metric_id": 2001,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.read.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                2
+            ],
+            "metric_id": 2001,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.write.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                3
+            ],
+            "metric_id": 2001,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.flush.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                4
+            ],
+            "metric_id": 2001,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.trim.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                1,
+                1
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.read.issued_page_read.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                2,
+                1
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.read.issued_page_write.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                3,
+                1
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.read.issued_block_erase.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                1,
+                2
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.write.issued_page_read.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                2,
+                2
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.write.issued_page_write.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                3,
+                2
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.write.issued_block_erase.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                1,
+                3
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.flush.issued_page_read.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                2,
+                3
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.flush.issued_page_write.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                3,
+                3
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.flush.issued_block_erase.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                1,
+                4
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.trim.issued_page_read.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                2,
+                4
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.trim.issued_page_write.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [
+                3,
+                4
+            ],
+            "metric_id": 2002,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:block.trim.issued_block_erase.count",
+            "use_legacy_cobalt": true
+        },
+        {
+            "event_codes": [],
+            "metric_id": 2006,
+            "metric_type": "IntHistogram",
+            "selector": "bootstrap/driver_manager:root/nand:read_ecc_bit_flips"
+        },
+        {
+            "event_codes": [],
+            "metric_id": 2007,
+            "metric_type": "IntHistogram",
+            "selector": "bootstrap/driver_manager:root/nand:read_attempts"
+        },
+        {
+            "event_codes": [],
+            "metric_id": 2008,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/nand:read_internal_failure"
+        },
+        {
+            "event_codes": [],
+            "metric_id": 2009,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/nand:read_failure"
+        },
+        {
+            "event_codes": [
+                1
+            ],
+            "metric_id": 2010,
+            "metric_type": "Integer",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.initial_bad_blocks"
+        },
+        {
+            "event_codes": [
+                2
+            ],
+            "metric_id": 2010,
+            "metric_type": "Integer",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.running_bad_blocks"
+        },
+        {
+            "event_codes": [
+                0
+            ],
+            "metric_id": 2011,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.map_block_end_page_failure_reason.0"
+        },
+        {
+            "event_codes": [
+                1
+            ],
+            "metric_id": 2011,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.map_block_end_page_failure_reason.1"
+        },
+        {
+            "event_codes": [
+                2
+            ],
+            "metric_id": 2011,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.map_block_end_page_failure_reason.2"
+        },
+        {
+            "event_codes": [
+                3
+            ],
+            "metric_id": 2011,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.map_block_end_page_failure_reason.3"
+        },
+        {
+            "event_codes": [
+                4
+            ],
+            "metric_id": 2011,
+            "metric_type": "Occurrence",
+            "selector": "bootstrap/driver_manager:root/ftl:nand.map_block_end_page_failure_reason.4"
+        }
+    ],
+    "poll_rate_sec": 600,
+    "project_id": 3676913920
+}

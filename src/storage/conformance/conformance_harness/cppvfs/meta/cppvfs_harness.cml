@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/io_conformance_harness_cppvfs",
+    },
+    capabilities: [
+        { protocol: "fuchsia.io.test.Io1Harness" },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.io.test.Io1Harness",
+            from: "self",
+        },
+    ],
+}

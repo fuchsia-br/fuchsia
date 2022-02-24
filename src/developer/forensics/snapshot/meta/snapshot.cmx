@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/snapshot"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.feedback.DataProvider"
+        ]
+    }
+}

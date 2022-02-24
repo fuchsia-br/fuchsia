@@ -1,0 +1,16 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/startup",
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.appmgr.Startup",
+                "fuchsia.component.CoreBinder",
+                "fuchsia.sessionmanager.Startup",
+            ],
+        },
+    ],
+}

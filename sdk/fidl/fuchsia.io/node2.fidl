@@ -1,0 +1,216 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.io;
+
+using zx;
+
+/// Objective information about a filesystem node.
+/// See [`Node.GetAttributes`] and [`Node.UpdateAttributes`].
+///
+/// The attributes of a node should be stable, independent of the
+/// specific protocol used to access it.
+///
+/// If a particular attribute is not applicable or not supported,
+/// filesystems should leave the corresponding field absent.
+type NodeAttributes2 = table {
+    /// Describes the kinds of representations supported by the node.
+    /// Note: This is not the result of the connection-time negotiation,
+    /// which is conveyed via `representation`.
+    ///
+    /// This attribute is read-only.
+    1: protocols NodeProtocols;
+
+    /// Describes the kinds of operations supported by the node.
+    /// Note: This is distinct from the rights used at connection time.
+    ///
+    /// This attribute is read-only.
+    2: abilities Abilities;
+
+    /// Node size, in bytes.
+    ///
+    /// This attribute is read-only.
+    3: content_size uint64;
+
+    /// Space needed to store the node (possibly larger than size), in bytes.
+    ///
+    /// This attribute is read-only.
+    4: storage_size uint64;
+
+    /// Number of hard links to the node. It must be at least one.
+    ///
+    /// This attribute is read-only.
+    5: link_count uint64;
+
+    /// Time of creation in nanoseconds since the Unix epoch, UTC.
+    /// It may be updated manually after creation.
+    6: creation_time uint64;
+
+    /// Time of last modification in nanoseconds since the Unix epoch, UTC.
+    7: modification_time uint64;
+
+    /// An ID for the node. See [`Id`].
+    /// This `id` should be unique among all entries of a directory.
+    ///
+    /// This attribute is read-only.
+    8: id Id;
+};
+
+/// Node defines the minimal protocol for entities which can be accessed
+/// in a filesystem.
+protocol Node2 {
+    /// Creates another connection to the same node.
+    ///
+    /// + `options` options applicable to both `Open` and `Reopen`,
+    ///   including negotiating protocol and restricting rights.
+    ///   See [`ConnectionOptions`].
+    /// + `object_request` is the server end of a channel created for the new
+    ///   connection. The caller may proceed to send messages on the
+    ///   corresponding client end right away.
+    ///
+    /// For files, the cloned connection and the original connection have
+    /// independent seek offsets.
+    @transitional
+    @selector("fuchsia.io/Node.Reopen")
+    Reopen(resource struct {
+        options ConnectionOptions;
+        object_request zx.handle:CHANNEL;
+    });
+
+    /// Terminates the connection to the node.
+    ///
+    /// After calling `Close`, the client must not send any other requests.
+    /// The result of `Close` arrives as an epitaph, where the channel is closed
+    /// by the server upon processing this operation.
+    ///
+    /// Closing the client end of the channel should be semantically equivalent
+    /// to calling `Close` without monitoring the status epitaph.
+    ///
+    /// This method does not require any rights.
+    @selector("fuchsia.io/Node.Close")
+    Close() -> (struct {}) error zx.status;
+
+    /// Returns extra connection information and auxiliary handles.
+    ///
+    /// + `query` specifies the fields in `ConnectionInfo` that the caller is
+    ///   interested in.
+    /// - `info` see [`ConnectionInfo`] for details on the fields.
+    ///
+    /// When all known bits in `query` are set, the return value matches
+    /// the one from [`OnConnectionInfo`], as if the caller requested that event
+    /// using [`ConnectionFlags.GET_CONNECTION_INFO`].
+    ///
+    /// If the `Describe` operation fails, the connection is closed with the
+    /// associated error.
+    ///
+    /// This method does not require any rights.
+    @selector("fuchsia.io/Node.Describe")
+    Describe2(struct {
+        query @generated_name("ConnectionInfoQuery") strict bits : uint64 {
+            /// Requests [`ConnectionInfo.representation`].
+            REPRESENTATION = 0x1;
+
+            /// Requests [`ConnectionInfo.rights`].
+            RIGHTS = 0x2;
+
+            /// Requests [`ConnectionInfo.available_operations`].
+            AVAILABLE_OPERATIONS = 0x4;
+        };
+    }) -> (resource struct {
+        info ConnectionInfo;
+    });
+
+    /// An event produced eagerly by the server if requested by
+    /// [`ConnectionFlags.GET_CONNECTION_INFO`]. This event will be the
+    /// first message from the server, and is sent exactly once.
+    ///
+    /// - `info` See [`ConnectionInfo`] for details on the fields.
+    ///   All members should be present.
+    ///
+    /// Different from [`fuchsia.io/OnOpen`], an error during open/reopen is
+    /// always manifested as an epitaph.
+    @selector("fuchsia.io/Node.OnConnectionInfo")
+    -> OnConnectionInfo(resource struct {
+        info ConnectionInfo;
+    });
+
+    // TODO(https://fxbug.dev/77623): uncomment and implement.
+    // /// Acquires a token which can be used to identify this connection at
+    // /// a later point in time.
+    // ///
+    // /// This method does not require any rights. Note that the token identifies
+    // /// the connection, hence carries the rights information on this connection.
+    // @selector("fuchsia.io/Node.GetToken")
+    // GetToken2() -> (resource struct {
+    //     token Token;
+    // }) error zx.status;
+
+    /// Acquires information about the node.
+    ///
+    /// The attributes of a node should be stable, independent of the
+    /// specific protocol used to access it.
+    ///
+    /// + `query` a bit-mask specifying which attributes to fetch. The server
+    ///   should not return more than necessary.
+    /// - `attributes` the returned attributes.
+    ///
+    /// This method requires the [`Rights.GET_ATTRIBUTES`] right.
+    @transitional
+    @selector("fuchsia.io/Node.GetAttributes")
+    GetAttributes(struct {
+        /// Set the corresponding bit to one to query that particular attribute.
+        ///
+        /// The elements here correspond one-to-one with [`NodeAttributes`].
+        query @generated_name("NodeAttributesQuery") strict bits : uint64 {
+            /// Requests [`NodeAttributes.protocols`].
+            PROTOCOLS = 0x1;
+
+            /// Requests [`NodeAttributes.abilities`].
+            ABILITIES = 0x2;
+
+            /// Requests [`NodeAttributes.content_size`].
+            CONTENT_SIZE = 0x4;
+
+            /// Requests [`NodeAttributes.storage_size`].
+            STORAGE_SIZE = 0x8;
+
+            /// Requests [`NodeAttributes.link_count`].
+            LINK_COUNT = 0x10;
+
+            /// Requests [`NodeAttributes.creation_time`].
+            CREATION_TIME = 0x20;
+
+            /// Requests [`NodeAttributes.modification_time`].
+            MODIFICATION_TIME = 0x40;
+
+            /// Requests [`NodeAttributes.id`].
+            ID = 0x80;
+        };
+    }) -> (struct {
+        attributes NodeAttributes2;
+    }) error zx.status;
+
+    /// Updates information about the node.
+    ///
+    /// + `attributes` the presence of a table field in `attributes` indicates
+    /// the intent to update the corresponding attribute.
+    ///
+    /// This method requires the [`Rights.UPDATE_ATTRIBUTES`] right.
+    @transitional
+    @selector("fuchsia.io/Node.UpdateAttributes")
+    UpdateAttributes(struct {
+        attributes NodeAttributes2;
+    }) -> (struct {}) error zx.status;
+
+    /// Synchronizes updates to the node to the underlying media, if it exists.
+    ///
+    /// This method will return when the filesystem server has flushed the
+    /// relevant updates to the underlying media, but does not guarantee the
+    /// underlying media has persisted the information, nor that any information
+    /// is committed to hardware. Clients may use `Sync` to ensure ordering
+    /// between operations.
+    ///
+    /// This method does not require any rights.
+    @selector("fuchsia.io/Node.Sync")
+    Sync() -> (struct {}) error zx.status;
+};

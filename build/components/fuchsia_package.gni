@@ -1,0 +1,246 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dist/fini_manifest.gni")
+import("//build/dist/verify_manifest_elf_binaries.gni")
+import("//build/images/args.gni")
+import("//build/packages/package_metadata.gni")
+import("//src/sys/pkg/bin/pm/pm.gni")
+import("//tools/cmc/build/cmc.gni")
+
+# Defines a Fuchsia package.
+# See: https://fuchsia.dev/fuchsia-src/development/components/build
+#
+# Fuchsia packages are a collection of any number of files (or resources), each
+# with a unique path that is relative to the package's root.
+# Package targets collect resources via their dependencies. These dependencies
+# are typically fuchsia_component() targets, which provide their component
+# manifest and other files that the component needs (such as an executable).
+#
+# Packages can be defined as a collection of pairs each representing a file in
+# the package. Each pair consists of the path in the package that is assigned
+# to the file, and a path relative to the build system's output directory where
+# the contents of the file will be sourced from.
+# This mapping is generated at build time, and is known as the package
+# manifest.
+#
+# To view the package manifest, For instance assume you have defined
+# a package at `path/to/project:my_package` and built it:
+# ```
+# $ fx build path/to/project:my_package
+# ```
+# You can then find the path to the generated manifest:
+# ```
+# $ fx gn outputs out/default path/to/project:my_package_manifest
+# ```
+#
+# The package name is defined by the target name.
+# Some rules apply to package names.
+# See: https://fuchsia.dev/fuchsia-src/concepts/packages/package_url#package-name
+#
+# It's recommended for a package to depend on one or more `fuchsia_component()`
+# targets. Typically no other dependencies are required.
+#
+# Example:
+# ```
+# fuchsia_package("my-package") {
+#   deps = [
+#     ":first_component",
+#     ":second_component",
+#   ]
+# }
+# ```
+#
+# Parameters
+#
+#   package_name (optional)
+#     The name of the package.
+#     Type: string
+#     Default: target_name
+#
+#   disable_elf_binaries_checks (optional)
+#     Set to true to disable ELF binaries verification checks. Useful
+#     if your package includes non-Fuchsia ELF binaries, or if some
+#     of them are unstripped.
+#     Type: boolean
+#     Default: false
+#
+#   system_image_package_allowed_in_extra_deps (optional)
+#     Used internally to implement fuchsia_system_package(), do not use!
+#     If defined, this is a fuchsia_system_package(), and the argument value
+#     determines whether it is allowed in extra dependency trees beside
+#     the one from //build/input:system_image.
+#     Type: boolean
+#
+#   is_driver_package (optional)
+#     Used internally to implement fuchsia_driver_package(), do not use!
+#     If defined, this is a fuchsia_driver_package(). The only behavior
+#     difference is a fuchsia_driver_package can be added as a dependency
+#     to the boot image, and its contents will appear in the boot image.
+#     This flag will be removed eventually as fuchsia_driver_packages
+#     are included in the build in the correct way.
+#     Type: boolean
+#
+#   repository (optional)
+#     The repository host name part of the package URL. Defaults to "fuchsia.com".
+#     See https://fuchsia.dev/fuchsia-src/concepts/packages/package_url#repository
+#     for more details.
+#     Type: string
+#     Default: fuchsia.com
+#
+#   deps
+#   testonly
+#   visibility
+template("fuchsia_package") {
+  repository = "fuchsia.com"
+  if (defined(invoker.repository)) {
+    repository = invoker.repository
+  }
+
+  if (current_toolchain == target_toolchain) {
+    package_name = target_name
+    if (defined(invoker.package_name)) {
+      package_name = invoker.package_name
+    }
+
+    # Generate the "meta/package" file
+    meta_package_target = "${target_name}_meta_package"
+    generate_meta_package(meta_package_target) {
+      forward_variables_from(invoker, [ "testonly" ])
+      visibility = [ ":*" ]
+      package_name = package_name
+    }
+
+    # Generate package manifest
+    package_manifest_target = "${target_name}_manifest"
+    package_manifest_file = "$target_out_dir/${target_name}_manifest"
+    fini_manifest(package_manifest_target) {
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "testonly",
+                             ])
+      if (!defined(deps)) {
+        deps = []
+      }
+      deps += [ ":$meta_package_target" ]
+      visibility = [ ":*" ]
+      outputs = [ package_manifest_file ]
+    }
+
+    # Verify ELF binaries
+    verify_elf = !(defined(invoker.disable_elf_binaries_checks) &&
+                   invoker.disable_elf_binaries_checks)
+    if (verify_elf) {
+      package_manifest_verify_target = "${target_name}.verify"
+      verify_manifest_elf_binaries(package_manifest_verify_target) {
+        forward_variables_from(invoker, [ "testonly" ])
+        manifest = package_manifest_file
+        check_unstripped_files = true
+        deps = [ ":$package_manifest_target" ]
+      }
+    }
+
+    _is_driver_package =
+        defined(invoker.is_driver_package) && invoker.is_driver_package
+    not_needed([ "_is_driver_package" ])
+
+    _is_system_package = false
+    if (defined(invoker.system_image_package_allowed_in_extra_deps)) {
+      _is_system_package = true
+      _is_system_package_allowed_in_extra_deps =
+          invoker.system_image_package_allowed_in_extra_deps
+    }
+
+    # Build package
+    pm_build(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "testonly",
+                               "visibility",
+                             ])
+      manifest = ":$package_manifest_target"
+      metadata = {
+        if (defined(invoker.metadata)) {
+          forward_variables_from(invoker.metadata, "*")
+        }
+        if (!_is_system_package && !_is_driver_package) {
+          # Installing a Fuchsia package into another one should not also install
+          # its content to the root install location, which is why this metadata key
+          # is set to an empty list.
+          # An exception to this rule is fuchsia_system_package() instances whose
+          # content must end up in either the system image (handled by
+          # system_image_package_info below) or the boot filesystem (handled through
+          # distribution_manifest()).
+          # Another exception is fuchsia_driver_package(), whose content
+          # has to end up in the boot filesystem if the boot filesystem depends on it.
+          distribution_entries_barrier = []
+        }
+
+        # Used by system_image_fuchsia_packages_list() to allow embedding
+        # the content of this package into the system image, if necessary.
+        #
+        # The schema is the following:
+        #
+        #   label: GN label of this target (used for debugging only).
+        #   fini_manifest: path to FINI manifest listing this package's content.
+        #   system_image_packaged_allowed_in_extra_deps: (optional)
+        #     If defined, this is a fuchsia_system_package() instance, and its
+        #     value determines whether it is allowed in extra dependency trees
+        #     (see fuchsia_system_package() description for details). If undefined,
+        #     this is a regular fuchsia_package().
+        #
+        system_image_package_info = [
+          {
+            label = get_label_info(":$target_name", "label_with_toolchain")
+            fini_manifest = rebase_path(package_manifest_file, root_build_dir)
+            if (_is_system_package) {
+              system_image_package_allowed_in_extra_deps =
+                  _is_system_package_allowed_in_extra_deps
+            }
+          },
+        ]
+        system_image_package_barrier = []
+
+        # Used by image assembly to locate the package_manifest json file for
+        # this package, if it's allowed in the extra deps.
+        if (_is_system_package) {
+          if (_is_system_package_allowed_in_extra_deps) {
+            # This is the path that the pm_build() template will create in the
+            # `package_output_manifest` metadata key.
+            system_image_extra_package_manifest = [
+              {
+                package_manifest = rebase_path(
+                        "${target_out_dir}/${target_name}/package_manifest.json",
+                        root_build_dir)
+                label = get_label_info(":$target_name", "label_with_toolchain")
+              },
+            ]
+          }
+        }
+        system_image_extra_package_manifest_barrier = []
+        test_component_manifest_barrier = []
+        test_component_manifest_program_barrier = []
+      }
+      repository = repository
+      if (!defined(deps)) {
+        deps = []
+      }
+      if (verify_elf) {
+        deps += [ ":$package_manifest_verify_target" ]
+      }
+    }
+  } else {
+    # Fuchsia packages should only be built with target_toolchain. However, it
+    # is possible for package targets to be expanded in other toolchains (host,
+    # variant, etc.). In these cases, make fuchsia_package expand to nothing.
+    group(target_name) {
+    }
+
+    # Suppress unused variable warnings.
+    not_needed(invoker, "*")
+    not_needed([ "repository" ])
+  }
+}

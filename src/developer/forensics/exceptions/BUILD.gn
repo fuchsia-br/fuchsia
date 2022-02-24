@@ -1,0 +1,62 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+visibility = [ "//src/developer/forensics/exceptions/*" ]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("constants") {
+  sources = [ "constants.h" ]
+}
+
+source_set("lib") {
+  sources = [
+    "crash_counter.cc",
+    "crash_counter.h",
+    "exception_broker.cc",
+    "exception_broker.h",
+    "handler_manager.cc",
+    "handler_manager.h",
+    "json_utils.cc",
+    "json_utils.h",
+    "pending_exception.cc",
+    "pending_exception.h",
+    "process_handler.cc",
+    "process_handler.h",
+    "process_limbo_manager.cc",
+    "process_limbo_manager.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.exception",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/exceptions/fidl:fuchsia.exception.internal",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("main") {
+  sources = [
+    "main.cc",
+    "main.h",
+  ]
+
+  deps = [
+    ":lib",
+    "//src/developer/forensics/exceptions:constants",
+    "//src/developer/forensics/utils/component",
+  ]
+
+  visibility += [ "//src/developer/forensics:*" ]
+}

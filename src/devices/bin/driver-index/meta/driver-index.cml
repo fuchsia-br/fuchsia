@@ -1,0 +1,41 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [ "syslog/client.shard.cml" ],
+
+    // The binary to run for this component.
+    program: {
+        runner: "elf",
+        binary: "bin/driver_index",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.driver.development.DriverIndex",
+                "fuchsia.driver.framework.DriverIndex",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "pkgfs-packages-delayed",
+            rights: [ "r*" ],
+            path: "/pkgfs/packages",
+        },
+        {
+            directory: "boot",
+            rights: [ "r*" ],
+            path: "/boot",
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.driver.development.DriverIndex",
+                "fuchsia.driver.framework.DriverIndex",
+            ],
+            from: "self",
+        },
+    ],
+}

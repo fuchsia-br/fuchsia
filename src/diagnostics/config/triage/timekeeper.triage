@@ -1,0 +1,302 @@
+{
+    select: {
+        backstop: "INSPECT:timekeeper.cmx:root:backstop",
+        current_mono: "INSPECT:timekeeper.cmx:root/current:monotonic",
+        current_utc: "INSPECT:timekeeper.cmx:root/current:clock_utc",
+        kernel_utc: "INSPECT:timekeeper.cmx:root/current:kernel_utc",
+        primary_source_status: "INSPECT:timekeeper.cmx:root/primary_time_source:status",
+        primary_estimate_0_counter: "INSPECT:timekeeper.cmx:root/primary_track/estimate_0:counter",
+        primary_filter_state_0_counter: "INSPECT:timekeeper.cmx:root/primary_track/filter_state_0:counter",
+        rtc_initialization: "INSPECT:timekeeper.cmx:root/real_time_clock:initialization",
+        rtc_write_failure_count: "INSPECT:timekeeper.cmx:root/real_time_clock:write_failures",
+        last_update_mono: "INSPECT:timekeeper.cmx:root/primary_track/last_update:retrieval_monotonic",
+        last_update_error: "INSPECT:timekeeper.cmx:root/primary_track/last_update:error_bounds",
+    },
+    eval: {
+        primary_source_initializing: "Or(primary_source_status == \"Launched\", primary_source_status == \"Initializing\")",
+        primary_source_unhealthy: "And(primary_source_status != \"Launched\", primary_source_status != \"Ok\", primary_source_status != \"Initializing\")",
+        primary_filter_ok: "Option(primary_filter_state_0_counter, primary_estimate_0_counter) > 0",
+        clock_started: "current_utc > backstop",
+
+        // On devices that no longer report kernel UTC report a difference of 0.
+        clock_difference: "current_utc - Option(kernel_utc, current_utc)",
+        rtc_present: "And(rtc_initialization != \"NoDevices\", rtc_initialization != \"InvalidBeforeBackstop\")",
+        rtc_read_ok: "rtc_initialization == \"Succeeded\"",
+
+        // Error bound is set to UINT64_MAX when the error is unknown but triage
+        // tests fail to parse a value this large, use INT64_MAX instead.
+        error_available: "And(Not(Missing(last_update_error)), last_update_error <  9223372036854775807)",
+    },
+    act: {
+        not_started_source_initializing: {
+            type: "Warning",
+            trigger: "And(Not(clock_started), primary_source_initializing)",
+            print: "UTC time not yet available, the primary source is not ready. See timekeeper.cmx/primary_time_source",
+        },
+        not_started_source_unhealthy: {
+            type: "Warning",
+            trigger: "And(Not(clock_started), primary_source_unhealthy)",
+            print: "UTC time not yet available, the primary source is unhealthy. See timekeeper.cmx/primary_time_source",
+        },
+        rtc_time_only: {
+            type: "Warning",
+            trigger: "And(clock_started, Not(primary_filter_ok))",
+            print: "Time is available from RTC but not network, network may have never been connected",
+        },
+        started_but_source_unhealthy: {
+            type: "Warning",
+            trigger: "And(clock_started, primary_source_unhealthy)",
+            print: "Time is available but time source is reporting unhealthy. See timekeeper.cmx/primary_time_source",
+        },
+        clock_inconsistency: {
+            type: "Warning",
+            trigger: "And(clock_started, Or(clock_difference > Seconds(2), clock_difference < Seconds(-2)))",
+            print: "Kernel and Userspace UTC clocks differ by more than 2 seconds",
+            file_bug: "Time",
+        },
+        rtc_could_not_be_read: {
+            type: "Warning",
+            trigger: "And(rtc_present, Not(rtc_read_ok))",
+            print: "Real time clock present but could not be read. See timekeeper.cmx:root/real_time_clock",
+            file_bug: "Time",
+        },
+        rtc_write_failures: {
+            type: "Warning",
+            trigger: "And(rtc_present, rtc_write_failure_count > 0)",
+            print: "Failures while writing to real time clock. See timekeeper.cmx:root/real_time_clock",
+            file_bug: "Time",
+        },
+        last_update_stale: {
+            type: "Warning",
+            trigger: "And(Not(Missing(last_update_mono)), (current_mono - last_update_mono) > Hours(1))",
+            print: "Most recent update to the UTC clock was over a hour ago",
+            file_bug: "Time",
+        },
+        error_too_high: {
+            type: "Warning",
+            trigger: "And(error_available, last_update_error > Seconds(5))",
+            print: "UTC error bound was over 5 seconds, may indicate network problems. See timekeeper.cmx:primary_track/last_update",
+        },
+        utc_error_bound_ms: {
+            type: "Gauge",
+            value: "Option(last_update_error // Millis(1), \"unknown\")",
+        },
+    },
+    test: {
+        status_ok: {
+            yes: [],
+            no: [
+                "not_started_source_unhealthy",
+                "started_but_source_unhealthy",
+                "rtc_time_only",
+            ],
+            values: {
+                backstop: 33333,
+                current_utc: 123456789,
+                network_available_monotonic: 4444444,
+                primary_source_status: "Ok",
+                primary_filter_state_0_counter: 1,
+            },
+        },
+        status_ok_old_filter_state_name: {
+            yes: [],
+            no: [
+                "not_started_source_unhealthy",
+                "started_but_source_unhealthy",
+                "rtc_time_only",
+            ],
+            values: {
+                backstop: 33333,
+                current_utc: 123456789,
+                network_available_monotonic: 4444444,
+                primary_source_status: "Ok",
+                primary_estimate_0_counter: 1,
+            },
+        },
+        no_time_source_not_ready: {
+            yes: [
+                "not_started_source_initializing",
+            ],
+            no: [
+                "not_started_source_unhealthy",
+                "started_but_source_unhealthy",
+                "rtc_time_only",
+            ],
+            values: {
+                backstop: 33333,
+                current_utc: 33333,
+                primary_source_status: "Initializing",
+                primary_filter_state_0_counter: 0,
+            },
+        },
+        no_time_source_problem: {
+            yes: [
+                "not_started_source_unhealthy",
+            ],
+            no: [
+                "started_but_source_unhealthy",
+                "rtc_time_only",
+            ],
+            values: {
+                backstop: 33333,
+                current_utc: 33333,
+                primary_source_status: "Network",
+                primary_filter_state_0_counter: 0,
+            },
+        },
+        rtc_time_only: {
+            yes: [
+                "rtc_time_only",
+            ],
+            no: [
+                "not_started_source_unhealthy",
+                "started_but_source_unhealthy",
+            ],
+            values: {
+                backstop: 33333,
+                current_utc: 12345789,
+                primary_source_status: "Ok",
+                primary_filter_state_0_counter: 0,
+            },
+        },
+        clocks_consistent: {
+            yes: [],
+            no: [
+                "clock_inconsistency",
+            ],
+            values: {
+                backstop: 3333,
+                current_utc: 4000000000,
+                kernel_utc: 5000000000,
+            },
+        },
+        kernel_clock_exceeds_userspace_clock: {
+            yes: [
+                "clock_inconsistency",
+            ],
+            no: [],
+            values: {
+                backstop: 3333,
+                current_utc: 4000000000,
+                kernel_utc: 7000000000,
+            },
+        },
+        userspace_clock_exceeds_kernel_clock: {
+            yes: [
+                "clock_inconsistency",
+            ],
+            no: [],
+            values: {
+                backstop: 3333,
+                current_utc: 9000000000,
+                kernel_utc: 6000000000,
+            },
+        },
+        kernel_clock_missing: {
+            yes: [],
+            no: [
+                "clock_inconsistency",
+            ],
+            values: {
+                backstop: 3333,
+                current_utc: 4000000000,
+            },
+        },
+        rtc_ok: {
+            yes: [],
+            no: [
+                "rtc_could_not_be_read",
+                "rtc_write_failures",
+            ],
+            values: {
+                rtc_initialization: "InvalidBeforeBackstop",
+                rtc_write_failure_count: 0,
+            },
+        },
+        rtc_read_failure: {
+            yes: [
+                "rtc_could_not_be_read",
+            ],
+            no: [
+                "rtc_write_failures",
+            ],
+            values: {
+                rtc_initialization: "ConnectionFailed",
+                rtc_write_failure_count: 0,
+            },
+        },
+        rtc_write_failure: {
+            yes: [
+                "rtc_write_failures",
+            ],
+            no: [
+                "rtc_could_not_be_read",
+            ],
+            values: {
+                rtc_initialization: "Succeeded",
+                rtc_write_failure_count: 2,
+            },
+        },
+        last_update_missing: {
+            // Clock content warnings should not fire due to lack of time sync.
+            yes: [],
+            no: [
+                "last_update_stale",
+                "error_too_high",
+            ],
+            values: {
+                current_mono: 40000000000,
+            },
+        },
+        last_update_valid: {
+            yes: [],
+            no: [
+                "last_update_stale",
+                "error_too_high",
+            ],
+            values: {
+                current_mono: 40000000000,
+                last_update_mono: 2000000000,
+                last_update_error: 99000000,
+            },
+        },
+        last_update_valid_but_error_unknown: {
+            yes: [],
+            no: [
+                "last_update_stale",
+                "error_too_high",
+            ],
+            values: {
+                current_mono: 40000000000,
+                last_update_mono: 2000000000,
+                last_update_error: 9223372036854775807,
+            },
+        },
+        last_update_error_too_high: {
+            yes: [
+                "error_too_high",
+            ],
+            no: [
+                "last_update_stale",
+            ],
+            values: {
+                current_mono: 40000000000,
+                last_update_mono: 2000000000,
+                last_update_error: 999999999999999,
+            },
+        },
+        last_update_stale: {
+            yes: [
+                "last_update_stale",
+            ],
+            no: [
+                "error_too_high",
+            ],
+            values: {
+                current_mono: 72000000000000,
+                last_update_mono: 2000000000,
+                last_update_error: 99000000,
+            },
+        },
+    },
+}

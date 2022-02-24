@@ -1,0 +1,16 @@
+{
+    include: [
+        "//sdk/lib/driver_test_realm/meta/realm_builder.shard.cml",
+        "//sdk/lib/syslog/client.shard.cml",
+        "//src/sys/test_runners/elf/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+    ],
+    program: {
+        binary: "test/netsvc-stress-test",
+    },
+    use: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+        },
+    ],
+}

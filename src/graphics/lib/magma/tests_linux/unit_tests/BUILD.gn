@@ -1,0 +1,72 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+
+executable("virtmagma_vulkan_unit_tests") {
+  testonly = true
+
+  deps = [
+    ":basic_compute",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/vulkan:vulkan_headers_and_loader",
+  ]
+
+  sources = [ "virtmagma_vulkan_unit_tests.cc" ]
+}
+
+compiled_action("basic_compute") {
+  tool = "//third_party/glslang:glslang_validator"
+  inputs = [ "${target_name}.glsl" ]
+  outputs = [ "$target_gen_dir/${target_name}.h" ]
+  args = [
+    rebase_path("${target_name}.glsl", root_build_dir),
+    "-s",
+    "-S",
+    "comp",
+    "-V",
+    "-o",
+    rebase_path("$target_gen_dir/${target_name}.h", root_build_dir),
+    "--vn",
+    "${target_name}_spirv",
+  ]
+}
+
+group("drm_unit_tests_linux_arm64") {
+  testonly = true
+  deps = [ ":drm_unit_tests(//build/toolchain:linux_arm64)" ]
+}
+
+executable("drm_unit_tests") {
+  testonly = true
+
+  deps = [
+    "..:drm_test_runner",
+    "//src/graphics/lib/magma/tests/unit_tests:magma_platform_hardware_tests",
+  ]
+}
+
+executable("virtmagma_image_tests") {
+  testonly = true
+
+  sources = [ "virtmagma_image_tests.cc" ]
+
+  deps = [
+    "//src/graphics/lib/magma/src/libmagma_linux",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/mesa/include:drm-uapi",
+  ]
+}
+
+executable("virtmagma_unit_tests") {
+  testonly = true
+
+  sources = [ "virtmagma_unit_tests.cc" ]
+
+  deps = [
+    "//src/graphics/lib/magma/include/virtio",
+    "//src/graphics/lib/magma/src/libmagma_linux:virtmagma_headers",
+    "//src/lib/fxl/test:gtest_main",
+  ]
+}

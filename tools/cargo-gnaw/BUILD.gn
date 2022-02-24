@@ -1,0 +1,109 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+if (is_host) {
+  rustc_binary("cargo-gnaw-bin") {
+    output_name = "gnaw"
+
+    deps = [
+      ":cargo-gnaw-lib",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:camino",
+    ]
+
+    sources = [ "src/main.rs" ]
+  }
+
+  rustc_library("cargo-gnaw-lib") {
+    name = "gnaw_lib"
+
+    deps = [
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:camino",
+      "//third_party/rust_crates:cargo_metadata",
+      "//third_party/rust_crates:serde",
+      "//third_party/rust_crates:serde_derive",
+      "//third_party/rust_crates:serde_json",
+      "//third_party/rust_crates:tempfile",
+      "//third_party/rust_crates:toml",
+    ]
+
+    sources = [
+      "src/build.rs",
+      "src/cfg.rs",
+      "src/gn.rs",
+      "src/graph.rs",
+      "src/lib.rs",
+      "src/target.rs",
+      "src/types.rs",
+    ]
+
+    inputs = [
+      "templates/gn_header.template",
+      "templates/gn_rule.template",
+      "templates/top_level_binary_gn_rule.template",
+      "templates/top_level_gn_rule.template",
+    ]
+  }
+
+  rustc_test("cargo-gnaw-tests") {
+    source_root = "src/lib.rs"
+    deps = [
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:camino",
+      "//third_party/rust_crates:cargo_metadata",
+      "//third_party/rust_crates:serde",
+      "//third_party/rust_crates:serde_derive",
+      "//third_party/rust_crates:serde_json",
+      "//third_party/rust_crates:tempfile",
+      "//third_party/rust_crates:toml",
+    ]
+
+    sources = [
+      "src/build.rs",
+      "src/cfg.rs",
+      "src/gn.rs",
+      "src/graph.rs",
+      "src/lib.rs",
+      "src/target.rs",
+      "src/types.rs",
+    ]
+
+    inputs = [
+      "templates/gn_header.template",
+      "templates/gn_rule.template",
+      "templates/top_level_binary_gn_rule.template",
+      "templates/top_level_gn_rule.template",
+    ]
+  }
+}
+
+install_host_tools("install-cargo-gnaw") {
+  deps = [ ":cargo-gnaw-bin" ]
+  outputs = [ "gnaw" ]
+}
+
+group("cargo-gnaw") {
+  testonly = true
+  deps = [
+    ":cargo-gnaw-bin($host_toolchain)",
+    ":install-cargo-gnaw",
+    ":tests",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":cargo-gnaw-tests($host_toolchain)",
+    "tests",
+  ]
+}

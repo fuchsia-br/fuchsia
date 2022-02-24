@@ -1,0 +1,80 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+group("rust") {
+  testonly = true
+  deps = [ ":tests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":rust_logs_example_tests" ]
+}
+
+rustc_binary("bin") {
+  output_name = "rust_logs_example"
+
+  deps = [
+    "//src/lib/diagnostics/log/rust",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+rustc_test("test") {
+  name = "rust_logs_example_tests"
+  source_root = "tests/lib.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.logger:fuchsia.logger-rustc",
+    "//src/lib/diagnostics/hierarchy",
+    "//src/lib/diagnostics/reader",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/syslog/rust:syslog-listener",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:pin-utils",
+  ]
+
+  sources = [ "tests/lib.rs" ]
+}
+
+fuchsia_component("component") {
+  component_name = "rust_logs_example"
+  manifest = "meta/rust_logs_example.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("test_component") {
+  testonly = true
+  component_name = "rust_logs_example_tests_root"
+  manifest = "meta/rust_logs_example_tests_root.cml"
+}
+
+fuchsia_component("test_driver") {
+  testonly = true
+  component_name = "rust_logs_example_tests"
+  manifest = "meta/rust_logs_example_tests.cml"
+  deps = [ ":test" ]
+}
+
+# Run with `fx test rust_logs_example_tests`.
+fuchsia_test_package("rust_logs_example_tests") {
+  test_components = [ ":test_component" ]
+  deps = [
+    ":component",
+    ":test_driver",
+  ]
+}

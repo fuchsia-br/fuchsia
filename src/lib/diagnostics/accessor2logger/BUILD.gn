@@ -1,0 +1,20 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("accessor2logger") {
+  sources = [
+    "log_message.cc",
+    "log_message.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.diagnostics",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/lib/fit-promise",
+  ]
+  deps = [
+    "//src/lib/fsl",
+    "//third_party/rapidjson",
+  ]
+}

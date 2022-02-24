@@ -1,0 +1,94 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+# Basic target with protocol definitions and no logic, suitable for test
+# emulation.
+source_set("definitions") {
+  sources = [
+    "data_element.cc",
+    "data_element.h",
+    "error.cc",
+    "error.h",
+    "sdp.h",
+    "service_record.cc",
+    "service_record.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//src/lib/uuid",
+  ]
+}
+
+static_library("sdp") {
+  sources = [
+    "client.cc",
+    "client.h",
+    "pdu.cc",
+    "pdu.h",
+    "server.cc",
+    "server.h",
+    "service_discoverer.cc",
+    "service_discoverer.h",
+  ]
+
+  public_deps = [
+    ":definitions",
+    "//sdk/lib/stdcompat",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap",
+    "//src/lib/fxl",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("tests") {
+  testonly = true
+
+  sources = [
+    "client_unittest.cc",
+    "data_element_unittest.cc",
+    "pdu_unittest.cc",
+    "server_unittest.cc",
+    "service_discoverer_unittest.cc",
+    "service_record_unittest.cc",
+  ]
+
+  deps = [
+    ":sdp",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/connectivity/bluetooth/core/bt-host/common",
+    "//src/connectivity/bluetooth/core/bt-host/l2cap:testing",
+    "//src/connectivity/bluetooth/core/bt-host/testing",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+bt_gtest_package("bt-host-sdp-tests") {
+  deps = [ ":tests" ]
+}
+
+fuzzer("data_element_fuzzer") {
+  sources = [ "data_element_fuzztest.cc" ]
+  deps = [
+    ":definitions",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzztest_driver",
+  ]
+}
+
+fuzzer("pdu_fuzzer") {
+  sources = [ "pdu_fuzztest.cc" ]
+  deps = [
+    ":sdp",
+    "//src/connectivity/bluetooth/core/bt-host/testing:fuzztest_driver",
+  ]
+}

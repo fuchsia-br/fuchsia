@@ -1,0 +1,74 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/rust/config.gni")
+
+# Run a command that verifies that the ELF binaries listed in a given
+# FINI manifest. More specifically, this checks that:
+#
+#  - ELF binaries are all unstripped.
+#  - ELF executables have their dependencies available from the same
+#    manifest.
+#
+# On success, this target simply writes a stamp file. On error, it will
+# print an error message explaining the issue.
+#
+# Arguments:
+#   manifest (required)
+#     [file path] Path to input manifest to verify.
+#
+#
+#
+#   check_unstripped_files (optional)
+#     [boolean] Set to true to verify that all binaries have proper
+#     unstripped files.
+#
+#   deps (required)
+#     [list of GN labels] List of dependencies this target depends on.
+#     It should at the very least list the target that generates
+#     the manifest.
+#
+template("verify_manifest_elf_binaries") {
+  if (defined(invoker.manifest)) {
+    input_manifest = invoker.manifest
+  } else if (defined(invoker.partial_manifest)) {
+    input_manifest = invoker.partial_manifest
+  } else {
+    assert(defined(invoker.manifest) || defined(invoker.partial_manifest),
+           "Missing 'manifest' or 'partial_manifest' argument!")
+  }
+  action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "testonly",
+                             "visibility",
+                           ])
+    script = "//build/dist/verify_manifest_elf_binaries.py"
+    inputs = [ "//build/images/elfinfo.py" ]
+    sources = [ input_manifest ]
+    outputs = [ "$target_gen_dir/${target_name}" ]
+    depfile = outputs[0] + ".d"
+    args = [
+      "--check-stripped",
+      "--depfile=" + rebase_path(depfile, root_build_dir),
+      "--stamp=" + rebase_path(outputs[0], root_build_dir),
+    ]
+    if (defined(invoker.manifest)) {
+      args += [ "--fini-manifest=" + rebase_path(sources[0], root_build_dir) ]
+    } else {
+      args +=
+          [ "--partial-manifest=" + rebase_path(sources[0], root_build_dir) ]
+    }
+    if (defined(invoker.check_unstripped_files) &&
+        invoker.check_unstripped_files) {
+      args += [
+        "--check-unstripped-files",
+        "--toolchain-lib-dir=${rebased_clang_prefix}/../lib",
+        "--toolchain-lib-dir=${rebased_rustc_prefix}/../lib",
+      ]
+    }
+    deps = invoker.deps
+  }
+}

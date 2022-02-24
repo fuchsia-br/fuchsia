@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/ip_forward"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.name.Lookup",
+            "fuchsia.net.stack.Stack",
+            "fuchsia.netemul.sync.SyncManager",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

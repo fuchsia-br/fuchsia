@@ -1,0 +1,27 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/testing/host_test_data.gni")
+
+go_library("gopkg") {
+  sources = [
+    "fidlmerge.go",
+    "flags.go",
+  ]
+
+  deps = [ "//tools/fidl/lib/fidlgen" ]
+}
+
+go_binary("fidlmerge") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/fidl/fidlmerge"
+
+  deps = [ ":gopkg" ]
+}
+
+install_host_tools("host") {
+  deps = [ ":fidlmerge" ]
+  outputs = [ "fidlmerge" ]
+}

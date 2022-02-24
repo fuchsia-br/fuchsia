@@ -1,0 +1,191 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.sdio;
+
+using fuchsia.hardware.sdmmc;
+using zx;
+
+const SDIO_FN_1 uint8 = 1;
+const SDIO_FN_2 uint8 = 2;
+/// Including func 0
+const SDIO_MAX_FUNCS uint8 = 8;
+
+type SdioFuncHwInfo = struct {
+    manufacturer_id uint32;
+    product_id uint32;
+    max_blk_size uint32;
+    max_tran_speed uint32;
+    fn_intf_code uint8;
+};
+
+type SdioCard = strict enum : uint32 {
+    MULTI_BLOCK = 0x1;
+    SRW = 0x2;
+    DIRECT_COMMAND = 0x4;
+    SUSPEND_RESUME = 0x8;
+    LOW_SPEED = 0x10;
+    HIGH_SPEED = 0x20;
+    HIGH_POWER = 0x40;
+    FOUR_BIT_BUS = 0x80;
+    HS_SDR12 = 0x100;
+    HS_SDR25 = 0x200;
+    UHS_SDR50 = 0x400;
+    UHS_SDR104 = 0x800;
+    UHS_DDR50 = 0x1000;
+    TYPE_A = 0x2000;
+    TYPE_B = 0x4000;
+    TYPE_C = 0x8000;
+    TYPE_D = 0x10000;
+};
+
+type SdioDeviceHwInfo = struct {
+    /// number of sdio funcs including func 0
+    num_funcs uint32;
+    sdio_vsn uint32;
+    cccr_vsn uint32;
+    caps uint32;
+};
+
+type SdioHwInfo = struct {
+    dev_hw_info SdioDeviceHwInfo;
+    funcs_hw_info array<SdioFuncHwInfo, SDIO_MAX_FUNCS>;
+    host_max_transfer_size uint32;
+};
+
+type SdioRwTxnNew = resource struct {
+    addr uint32;
+    incr bool;
+    write bool;
+
+    buffers vector<fuchsia.hardware.sdmmc.SdmmcBufferRegion>:MAX;
+};
+
+type SdioRwTxn = resource struct {
+    addr uint32;
+    data_size uint32;
+    incr bool;
+    write bool;
+    use_dma bool;
+    /// Used if use_dma is true
+    dma_vmo zx.handle:VMO;
+    /// Used if use_dma is false
+    @mutable
+    @buffer
+    virt vector<uint8>:MAX;
+    /// offset into dma_vmo or virt
+    buf_offset uint64;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol Sdio {
+    GetDevHwInfo() -> (struct {
+        s zx.status;
+        hw_info SdioHwInfo;
+    });
+    EnableFn() -> (struct {
+        s zx.status;
+    });
+    DisableFn() -> (struct {
+        s zx.status;
+    });
+    EnableFnIntr() -> (struct {
+        s zx.status;
+    });
+    DisableFnIntr() -> (struct {
+        s zx.status;
+    });
+    UpdateBlockSize(struct {
+        blk_sz uint16;
+        deflt bool;
+    }) -> (struct {
+        s zx.status;
+    });
+    GetBlockSize() -> (struct {
+        s zx.status;
+        cur_blk_size uint16;
+    });
+    DoRwTxn(resource struct {
+        @in_out
+        txn SdioRwTxn;
+    }) -> (struct {
+        s zx.status;
+    });
+    DoRwByte(struct {
+        write bool;
+        addr uint32;
+        write_byte uint8;
+    }) -> (struct {
+        s zx.status;
+        read_byte uint8;
+    });
+    GetInBandIntr() -> (resource struct {
+        s zx.status;
+        irq zx.handle:INTERRUPT;
+    });
+    /// The following functions access the card common control registers (CCCR) on function 0.
+    /// Aborts an I/O operation occurring on the specified function.
+    IoAbort() -> (struct {
+        s zx.status;
+    });
+    /// Returns true if an interrupt is pending for function fn_idx, false otherwise.
+    IntrPending() -> (struct {
+        s zx.status;
+        pending bool;
+    });
+    /// Reads or writes to a vendor CCCR register. addr must be in [0xF0, 0xFF].
+    DoVendorControlRwByte(struct {
+        write bool;
+        addr uint8;
+        write_byte uint8;
+    }) -> (struct {
+        s zx.status;
+        read_byte uint8;
+    });
+
+    // See fuchsia.hardware.sdmmc.
+    RegisterVmo(resource struct {
+        vmo_id uint32;
+        vmo zx.handle:VMO;
+        offset uint64;
+        size uint64;
+        vmo_rights uint32;
+    }) -> (struct {
+        status zx.status;
+    });
+    UnregisterVmo(struct {
+        vmo_id uint32;
+    }) -> (resource struct {
+        status zx.status;
+        vmo zx.handle:VMO;
+    });
+
+    /// Clients are responsible for performing the following cache operations:
+    ///
+    /// After read requests:
+    /// - Call zx_cache_flush with ZX_CACHE_FLUSH_DATA | ZX_CACHE_FLUSH_INVALIDATE on buffers that
+    ///   have been mapped by the client.
+    /// - Call zx_vmo_op_range with ZX_VMO_OP_CACHE_CLEAN_INVALIDATE on all other buffers.
+    ///
+    /// Note that writing to any portion of a buffer before DoRwTxnNew has returned can corrupt the
+    /// received data.
+    ///
+    /// Before write requests:
+    /// - Call zx_cache_flush with ZX_CACHE_FLUSH_DATA on buffers that have been mapped by the
+    ///   client.
+    /// - Call zx_vmo_op_range with ZX_VMO_OP_CACHE_CLEAN on all other buffers.
+    DoRwTxnNew(resource struct {
+        txn SdioRwTxnNew;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Runs tests and logs the results in order to diagnose issues with the bus. Clients should
+    /// call this before shutting down due to unrecoverable errors. This method may block for some
+    /// time to send commands to the card, so it should be the last call made by the client.
+    /// Note: SDIO devices may have different drivers bound to different functions. Clients must not
+    /// call RunDiagnostics in these cases, since doing so could interfere with other clients.
+    /// TODO(fxbug.dev/64166): Remove this when the SDIO issues have been investigated.
+    RunDiagnostics();
+};

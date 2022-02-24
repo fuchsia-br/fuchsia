@@ -1,0 +1,46 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("storage") {
+  deps = [ "ext4" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "bin:tests",
+    "blobfs:tests",
+    "conformance:tests",
+    "ext4:tests",
+    "extractor:tests",
+    "f2fs:tests",
+    "factory:tests",
+    "fshost:tests",
+    "fshost-rust:tests",
+    "fuchsia-fatfs:tests",
+    "fuzzers:tests",
+    "fvm:tests",
+    "fxfs:tests",
+    "gpt:tests",
+    "host_fs_test:tests",
+    "lib:tests",
+    "memfs:tests",
+    "minfs:tests",
+    "stress-tests",
+    "tools:tests",
+    "volume_image:tests",
+  ]
+}
+
+# a set of storage tools useful for development and debugging
+group("tools") {
+  deps = [
+    "extractor:tools",
+    "factory/export_ffs:export-ffs",
+    "fxfs/tools",
+    "tools",
+    "volume_image/ftl:ftl-volume-extractor-host",
+    "volume_image/ftl:nandoob-converter-host",
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/unresponsive_component",
+        lifecycle: { stop_event: "notify" },
+    },
+    capabilities: [
+        { protocol: "test.placeholders.Echo" },
+    ],
+    expose: [
+        {
+            protocol: "test.placeholders.Echo",
+            from: "self",
+        },
+    ],
+}

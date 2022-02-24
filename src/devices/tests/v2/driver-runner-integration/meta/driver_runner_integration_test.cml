@@ -1,0 +1,23 @@
+{
+    include: [
+        "//sdk/lib/driver_test_realm/meta/realm_builder.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/driver_runner_integration_test",
+    },
+    use: [
+        {
+            protocol: [ "fuchsia.sys2.EventSource" ],
+            from: "parent",
+        },
+        {
+            event: "started",
+            from: "framework",
+            modes: [ "async" ],
+        },
+        { protocol: "fuchsia.diagnostics.ArchiveAccessor" },
+    ],
+}

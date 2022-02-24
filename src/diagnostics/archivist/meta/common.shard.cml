@@ -1,0 +1,82 @@
+// This shard is meant to contain stuff that is meant to be shared across all flavors of the
+// archivist.
+{
+    include: [ "inspect/client.shard.cml" ],
+    program: {
+        runner: "elf",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.LogSettings",
+                "fuchsia.logger.Log",
+                "fuchsia.logger.LogSink",
+            ],
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.sys2.EventSource" ],
+        },
+        {
+            event: [
+                "running",
+                "started",
+                "stopped",
+            ],
+            from: "parent",
+            modes: [ "async" ],
+        },
+        {
+            event: "directory_ready",
+            from: "parent",
+            as: "diagnostics_ready",
+            filter: { name: "diagnostics" },
+            modes: [ "async" ],
+        },
+        {
+            event: "capability_requested",
+            from: "parent",
+            as: "log_sink_requested",
+            filter: { name: "fuchsia.logger.LogSink" },
+            modes: [ "async" ],
+        },
+        {
+            event_stream_deprecated: "EventStream",
+            subscriptions: [
+                {
+                    event: "diagnostics_ready",
+                    mode: "async",
+                },
+                {
+                    event: "log_sink_requested",
+                    mode: "async",
+                },
+                {
+                    event: "running",
+                    mode: "async",
+                },
+                {
+                    event: "started",
+                    mode: "async",
+                },
+                {
+                    event: "stopped",
+                    mode: "async",
+                },
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.diagnostics.LogSettings",
+                "fuchsia.logger.Log",
+                "fuchsia.logger.LogSink",
+            ],
+            from: "self",
+        },
+    ],
+}

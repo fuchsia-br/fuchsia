@@ -1,0 +1,42 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "inspect/client.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/inspect_runtime_lib_test",
+    },
+    collections: [
+        {
+            name: "coll",
+            durability: "transient",
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.ArchiveAccessor",
+                "fuchsia.sys2.EventSource",
+            ],
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "connect" ],
+            path: "/hub",
+        },
+        {
+            event: [ "started" ],
+            from: "framework",
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: "#coll",
+        },
+    ],
+}

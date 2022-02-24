@@ -1,0 +1,7 @@
+library test.structdefaultvalueenumlibraryreference;
+
+using test.dependent;
+
+type Foo = struct {
+    field test.dependent.MyEnum = test.dependent.MyEnum.A;
+};

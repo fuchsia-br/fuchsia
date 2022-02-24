@@ -1,0 +1,88 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This library is shared between the client and agent code. You should depend
+# on it via one of those targets.
+group("ipc") {
+  testonly = true
+  deps = [
+    ":agent",
+    ":client",
+    ":shared",
+    ":tests",
+  ]
+}
+
+static_library("shared") {
+  visibility = [ ":*" ]
+  sources = [
+    "automation_instruction.cc",
+    "automation_instruction.h",
+    "decode_exception.cc",
+    "decode_exception.h",
+    "message_reader.cc",
+    "message_reader.h",
+    "message_writer.cc",
+    "message_writer.h",
+    "protocol.cc",
+    "protocol.h",
+    "protocol_helpers.cc",
+    "protocol_helpers.h",
+    "records.cc",
+    "records.h",
+    "unwinder_support.cc",
+    "unwinder_support.h",
+  ]
+
+  deps = [
+    "//src/developer/debug/shared",
+    "//zircon/system/public",
+  ]
+
+  public_deps = [
+    "//src/developer/debug/unwinder",
+    "//src/lib/fxl",
+  ]
+}
+
+static_library("agent") {
+  sources = [
+    "agent_protocol.cc",
+    "agent_protocol.h",
+  ]
+
+  public_deps = [ ":shared" ]
+}
+
+static_library("client") {
+  sources = [
+    "client_protocol.cc",
+    "client_protocol.h",
+  ]
+
+  public_deps = [ ":shared" ]
+}
+
+# Unit tests for this directory. These are intended to be referenced by unit
+# test targets for the consumers of this library.
+source_set("tests") {
+  testonly = true
+  sources = [
+    "automation_instruction_unittests.cc",
+    "decode_exception_unittests.cc",
+    "message_unittests.cc",
+    "protocol_unittests.cc",
+  ]
+
+  deps = [
+    "//src/developer/debug/shared",
+    "//src/developer/debug/shared:test_support",
+    "//third_party/googletest:gtest",
+  ]
+
+  public_deps = [
+    ":agent",
+    ":client",
+  ]
+}

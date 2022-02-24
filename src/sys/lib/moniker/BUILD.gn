@@ -1,0 +1,58 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_library("moniker") {
+  with_unit_tests = true
+  edition = "2018"
+
+  visibility = [
+    "//src/developer/ffx/plugins/component/*",
+    "//src/lib/component_hub/*",
+    "//src/security/scrutiny/*",
+    "//src/sys/component_manager/*",
+    "//src/sys/lib/cm_moniker/*",
+    "//src/sys/lib/component_id_index/*",
+    "//src/sys/lib/moniker/*",
+    "//src/sys/lib/routing/*",
+    "//src/sys/test_manager/*",
+    "//tools/component_id_index/*",
+    "//tools/lib/cm_fidl_analyzer/*",
+  ]
+
+  deps = [
+    "//src/sys/lib/cm_types",
+    "//third_party/rust_crates:itertools",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  # Some host tools use serde to serialize/deserialize moniker types. This
+  # dependency is guarded in code via #[cfg(feature = "serde")] and
+  # #[cfg_attr(feature = "serde", ...)] to prevent serde dependencies in
+  # non-host builds.
+  features = []
+  if (is_host) {
+    features += [ "serde" ]
+    deps += [ "//third_party/rust_crates:serde" ]
+  }
+
+  test_deps = [ "//third_party/rust_crates:anyhow" ]
+
+  sources = [
+    "src/abs_moniker.rs",
+    "src/child_moniker.rs",
+    "src/error.rs",
+    "src/extended_moniker.rs",
+    "src/lib.rs",
+    "src/relative_moniker.rs",
+  ]
+}
+
+fuchsia_unittest_package("moniker-tests") {
+  deps = [ ":moniker_test" ]
+}

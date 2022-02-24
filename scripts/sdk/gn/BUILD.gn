@@ -1,0 +1,91 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Tests for the GN SDK contents.
+
+import("//build/go/go_test.gni")
+
+# Generates a GN SDK tarball.
+#
+# Parameters
+#
+#   input_archive
+#     Path to IDK/core SDK tar archive to be used as a base for the GN SDK.
+#     Defaults to ${root_out_dir}/sdk/archive/core.tar.gz
+#
+#   output_archive
+#     Path to the file where a tarball of the GN SDK will be written.
+#     Defaults to not write/generate a GN SDK tarball.
+#
+# Outputs
+#
+#   GN SDK tarball
+#     Writes the contents of a GN SDK to a tarball to the path specified in
+#     the output_archive parameter above.
+#
+# This template is for local building only and will not work in CQ
+template("gn_sdk") {
+  testonly = true
+
+  assert(defined(invoker.input_archive), "Error: input_archive is required.")
+  assert(defined(invoker.output_archive), "Error: output_archive is required.")
+
+  action("${target_name}") {
+    forward_variables_from(invoker, [ "deps" ])
+
+    # TODO(fxbug.dev/69444): This reads SDK files that are not declared as inputs.
+    # Fix this and delete this line.
+    hermetic_deps = false
+
+    script = "//scripts/sdk/gn/generate.py"
+    outputs = [ invoker.output_archive ]
+    args = [
+      "--archive",
+      rebase_path(invoker.input_archive),
+      "--output-archive",
+      rebase_path(invoker.output_archive),
+      "--output-archive-only=true",
+      "--output",
+
+      # note: --output-archive-only deletes this at the end of the build.
+      rebase_path("$target_gen_dir/sdk"),
+    ]
+  }
+}
+
+# Produces the modular GN SDK archive.
+#
+# Requires the `build_sdk_archives` GN arg to be set to `true` which will create
+# the input core.modular.tar.gz archive.
+#
+# To build this rule, run:
+#   fx set core.x64 --with //scripts/sdk/gn:gn.modular.tar.gz --args="build_sdk_archives=true"
+#   fx build
+gn_sdk("gn.modular.tar.gz") {
+  input_archive = "${root_out_dir}/sdk/archive/core.modular.tar.gz"
+  output_archive = "${root_out_dir}/gn.modular.tar.gz"
+  deps = [ "//sdk:core.modular($target_toolchain)" ]
+}
+
+# Only build this for host targets
+if (is_linux || is_mac) {
+  # Wrapper for running the Python unit tests
+  go_test("host_gn_sdk_test") {
+    gopackages = [ "gnsdktest" ]
+    deps = [ "test:host_gnsdk_test_lib" ]
+    args = [ "-testscript=" + rebase_path("test_generate.py") ]
+  }
+}
+
+# This group is included as part of CQ
+group("tests") {
+  testonly = true
+  public_deps = [ "bash_tests:tests" ]
+}
+
+# This group is tests that can be run locally by a developer
+group("local_tests") {
+  testonly = true
+  public_deps = [ ":host_gn_sdk_test($host_toolchain)" ]
+}

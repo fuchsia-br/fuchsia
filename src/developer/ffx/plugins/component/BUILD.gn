@@ -1,0 +1,49 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//src/developer/ffx/build/ffx_plugin.gni")
+
+ffx_plugin("ffx_component") {
+  version = "0.1.0"
+  edition = "2018"
+  plugin_deps = [
+    "create:ffx_component_create",
+    "data:ffx_component_data",
+    "destroy:ffx_component_destroy",
+    "graph:ffx_component_graph",
+    "knock:ffx_knock",
+    "list:ffx_component_list",
+    "resolve:ffx_component_resolve",
+    "run:ffx_component_run",
+    "run-legacy:ffx_component_run_legacy",
+    "select:ffx_component_select",
+    "show:ffx_component_show",
+    "start:ffx_component_start",
+    "stop:ffx_component_stop",
+    "storage:ffx_component_storage",
+  ]
+
+  args_sources = [ "src/args.rs" ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":ffx_component_tests",
+    "create:ffx_component_create_tests",
+    "destroy:ffx_component_destroy_tests",
+    "graph:ffx_component_graph_tests",
+    "knock:ffx_knock_tests",
+    "list:ffx_component_list_tests",
+    "resolve:ffx_component_resolve_tests",
+    "run:ffx_component_run_tests",
+    "run-legacy:ffx_component_run_legacy_tests",
+    "select:ffx_component_select_tests",
+    "show:ffx_component_show_tests",
+    "start:ffx_component_start_tests",
+    "stop:ffx_component_stop_tests",
+    "storage:ffx_component_storage_tests",
+  ]
+}

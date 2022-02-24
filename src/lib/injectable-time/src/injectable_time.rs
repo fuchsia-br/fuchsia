@@ -1,0 +1,160 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#[cfg(target_os = "fuchsia")]
+use fuchsia_zircon as zx;
+use parking_lot::Mutex;
+use std::sync::Arc;
+
+/// TimeSource provides the current time in nanoseconds since the Unix epoch.
+/// A `&'a dyn TimeSource` can be injected into a data structure.
+/// TimeSource is implemented by UtcTime for wall-clock system time, and
+/// FakeTime for a clock that is explicitly set by testing code.
+pub trait TimeSource {
+    fn now(&self) -> i64;
+}
+
+/// FakeTime instances return the last value that was configured by testing code via `set_ticks()`
+///  or `add_ticks()`. Upon initialization, they return 0.
+#[derive(Clone)]
+pub struct FakeTime {
+    time: Arc<Mutex<i64>>,
+}
+
+impl TimeSource for FakeTime {
+    fn now(&self) -> i64 {
+        *self.time.lock()
+    }
+}
+
+impl FakeTime {
+    pub fn new() -> FakeTime {
+        FakeTime { time: Arc::new(Mutex::new(0)) }
+    }
+
+    pub fn set_ticks(&self, now: i64) {
+        *self.time.lock() = now;
+    }
+
+    pub fn add_ticks(&self, ticks: i64) {
+        *self.time.lock() += ticks;
+    }
+}
+
+/// UtcTime instances return the Rust system clock value each time now() is called.
+pub struct UtcTime {}
+
+impl UtcTime {
+    pub fn new() -> UtcTime {
+        UtcTime {}
+    }
+}
+
+impl TimeSource for UtcTime {
+    fn now(&self) -> i64 {
+        if cfg!(target_arch = "wasm32") {
+            // TODO(fxbug.dev/64995): Remove this when WASM avoids calling this method.
+            0i64
+        } else {
+            let now_utc = chrono::prelude::Utc::now(); // Consider using SystemTime::now()?
+            now_utc.timestamp() * 1_000_000_000 + now_utc.timestamp_subsec_nanos() as i64
+        }
+    }
+}
+
+/// MonotonicTime instances provide a monotonic clock.
+/// On Fuchsia, MonotonicTime uses fuchsia_zircon::Time::get_monotonic().
+pub struct MonotonicTime {
+    #[cfg(not(target_os = "fuchsia"))]
+    starting_time: std::time::Instant,
+}
+
+impl MonotonicTime {
+    pub fn new() -> MonotonicTime {
+        #[cfg(target_os = "fuchsia")]
+        let time = MonotonicTime {};
+        #[cfg(not(target_os = "fuchsia"))]
+        let time = MonotonicTime { starting_time: std::time::Instant::now() };
+
+        time
+    }
+}
+
+impl TimeSource for MonotonicTime {
+    fn now(&self) -> i64 {
+        #[cfg(target_os = "fuchsia")]
+        let now = zx::Time::get_monotonic().into_nanos();
+        #[cfg(not(target_os = "fuchsia"))]
+        let now = (std::time::Instant::now() - self.starting_time).as_nanos() as i64;
+
+        now
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    struct TimeHolder<'a> {
+        time_source: &'a dyn TimeSource,
+    }
+
+    impl<'a> TimeHolder<'a> {
+        fn new(time_source: &'a dyn TimeSource) -> TimeHolder<'_> {
+            TimeHolder { time_source }
+        }
+
+        fn now(&self) -> i64 {
+            self.time_source.now()
+        }
+    }
+
+    #[test]
+    fn test_system_time() {
+        let time_source = UtcTime::new();
+        let time_holder = TimeHolder::new(&time_source);
+        let first_time = time_holder.now();
+        // Make sure the system time is ticking. If not, this will hang until the test times out.
+        while time_holder.now() == first_time {}
+    }
+
+    #[test]
+    fn test_monotonic_time() {
+        let time_source = MonotonicTime::new();
+        let time_holder = TimeHolder::new(&time_source);
+        let first_time = time_holder.now();
+        // Make sure the monotonic time is ticking. If not, this will hang until the test times out.
+        while time_holder.now() == first_time {}
+    }
+
+    #[test]
+    fn test_fake_time() {
+        let time_source = FakeTime::new();
+        let time_holder = TimeHolder::new(&time_source);
+
+        // Fake time is 0 on initialization.
+        let time_0 = time_holder.now();
+        time_source.set_ticks(1000);
+        let time_1000 = time_holder.now();
+        // Fake time does not auto-increment.
+        let time_1000_2 = time_holder.now();
+        // Fake time can go backward.
+        time_source.set_ticks(500);
+        let time_500 = time_holder.now();
+        // add_ticks() works.
+        time_source.add_ticks(123);
+        let time_623 = time_holder.now();
+        // add_ticks() can take a negative value
+        time_source.add_ticks(-23);
+        let time_600 = time_holder.now();
+
+        assert_eq!(time_0, 0);
+        assert_eq!(time_1000, 1000);
+        assert_eq!(time_1000_2, 1000);
+        assert_eq!(time_500, 500);
+        assert_eq!(time_623, 623);
+        assert_eq!(time_600, 600);
+    }
+}

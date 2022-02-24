@@ -1,0 +1,35 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+
+if (is_host) {
+  import("//build/rust/rustc_binary.gni")
+
+  rustc_binary("bin") {
+    name = "ascendd"
+    edition = "2018"
+
+    deps = [
+      "//src/connectivity/overnet/lib/ascendd",
+      "//src/connectivity/overnet/lib/hoist",
+      "//src/lib/fuchsia",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:blocking",
+      "//third_party/rust_crates:futures",
+      "//third_party/rust_crates:log",
+    ]
+
+    non_rust_deps = [ "//third_party/boringssl" ]
+
+    sources = [ "src/main.rs" ]
+  }
+}
+
+install_host_tools("host") {
+  deps = [ ":bin" ]
+
+  outputs = [ "ascendd" ]
+}

@@ -1,0 +1,108 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("fvm_bind") {
+  disable_autobind = true
+  rules = "fvm.bind"
+  header_output = "fvm_bind.h"
+  bind_output = "fvm.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.hardware.block" ]
+}
+
+fuchsia_driver("fuchsia_driver") {
+  output_name = "fvm"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  deps = [
+    ":fvm_bind",
+    ":shared",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("driver") {
+  info = "driver-info.json"
+  component_name = "fvm"
+  deps = [ ":fuchsia_driver" ]
+  colocate = true
+}
+
+# Also used by test/.
+source_set("shared") {
+  visibility = [ "./*" ]
+
+  sources = [
+    "diagnostics.cc",
+    "diagnostics.h",
+    "slice_extent.cc",
+    "slice_extent.h",
+    "vpartition.cc",
+    "vpartition.h",
+    "vpartition_manager.cc",
+    "vpartition_manager.h",
+  ]
+
+  public_deps = [
+    ":fvm_bind",
+    "//sdk/banjo/fuchsia.hardware.block:fuchsia.hardware.block_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//src/lib/digest",
+    "//src/lib/storage/vfs/cpp",
+    "//src/lib/uuid",
+    "//src/storage/fvm",
+    "//src/storage/gpt",
+    "//third_party/boringssl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-utils",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/third_party/ulib/safemath",
+  ]
+
+  configs += [ "//build/config:all_source" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":fvm-driver-unittests-package",
+    ":fvm_bind_test",
+    "//src/storage/fvm/driver/test:fvm-driver-integration-test",
+  ]
+}
+
+test("fvm-driver-unittests") {
+  output_name = "fvm-driver-unittests-test"
+  sources = [
+    "slice_extent_test.cc",
+    "vpartition_manager_test.cc",
+  ]
+  deps = [
+    ":shared",
+    "//src/devices/testing/no_ddk",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("fvm-driver-unittests-package") {
+  package_name = "fvm-driver-unittests"
+  deps = [ ":fvm-driver-unittests" ]
+}

@@ -1,0 +1,35 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    children: [
+        {
+            name: "sandbox",
+            url: "#meta/netemul-sandbox-v2.cm",
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.netemul.Sandbox" ],
+            from: "#sandbox",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.process.Launcher",
+            ],
+            from: "parent",
+            to: [ "#sandbox" ],
+        },
+        {
+            storage: [
+                "cache",
+                "data",
+            ],
+            from: "parent",
+            to: [ "#sandbox" ],
+        },
+    ],
+}

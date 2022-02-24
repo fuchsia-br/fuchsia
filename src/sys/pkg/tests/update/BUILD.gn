@@ -1,0 +1,63 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/renamed_binary.gni")
+import("//build/rust/rustc_test.gni")
+
+rustc_test("driver") {
+  name = "update_integration_test"
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.paver:fuchsia.paver-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//sdk/fidl/fuchsia.update:fuchsia.update-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/pkg/fidl/fuchsia.update.installer:fuchsia.update.installer-rustc",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-ext",
+    "//src/sys/pkg/lib/fidl-fuchsia-update-installer-ext",
+    "//src/sys/pkg/testing/mock-installer",
+    "//src/sys/pkg/testing/mock-paver",
+    "//src/sys/pkg/testing/mock-reboot",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:pretty_assertions",
+  ]
+
+  sources = [ "src/lib.rs" ]
+}
+
+fuchsia_test_component("update-integration-test-component") {
+  component_name = "update-integration-test"
+  manifest = "meta/update-integration-test.cmx"
+  deps = [ ":driver" ]
+}
+
+renamed_binary("update-binary") {
+  source = "$root_out_dir/multi_universal_tool"
+  source_deps = [ "//src/sys/pkg/bin/multi-universal-tool" ]
+  dest = "bin/update"
+}
+
+fuchsia_component("update-component") {
+  component_name = "update"
+  manifest = "//src/sys/pkg/bin/update/meta/update.cmx"
+  deps = [ ":update-binary" ]
+}
+
+fuchsia_test_package("update-integration-tests") {
+  test_components = [ ":update-integration-test-component" ]
+  deps = [ ":update-component" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":update-integration-tests" ]
+}

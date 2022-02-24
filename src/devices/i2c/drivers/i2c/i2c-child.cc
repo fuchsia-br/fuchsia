@@ -1,0 +1,99 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "i2c-child.h"
+
+#include <lib/ddk/debug.h>
+#include <lib/ddk/device.h>
+#include <lib/ddk/metadata.h>
+#include <lib/sync/completion.h>
+#include <threads.h>
+#include <zircon/types.h>
+
+#include <fbl/alloc_checker.h>
+#include <fbl/mutex.h>
+
+namespace i2c {
+
+void I2cChild::Transfer(TransferRequestView request, TransferCompleter::Sync& completer) {
+  if (request->segments_is_write.count() < 1) {
+    completer.ReplyError(ZX_ERR_INVALID_ARGS);
+    return;
+  }
+
+  auto op_list = std::make_unique<i2c_op_t[]>(request->segments_is_write.count());
+  size_t write_cnt = 0;
+  size_t read_cnt = 0;
+  for (size_t i = 0; i < request->segments_is_write.count(); ++i) {
+    if (request->segments_is_write[i]) {
+      if (write_cnt >= request->write_segments_data.count()) {
+        completer.ReplyError(ZX_ERR_INVALID_ARGS);
+        return;
+      }
+      op_list[i].data_buffer = request->write_segments_data[write_cnt].data();
+      op_list[i].data_size = request->write_segments_data[write_cnt].count();
+      op_list[i].is_read = false;
+      op_list[i].stop = false;
+      write_cnt++;
+    } else {
+      if (read_cnt >= request->read_segments_length.count()) {
+        completer.ReplyError(ZX_ERR_INVALID_ARGS);
+        return;
+      }
+      op_list[i].data_buffer = nullptr;  // unused.
+      op_list[i].data_size = request->read_segments_length[read_cnt];
+      op_list[i].is_read = true;
+      op_list[i].stop = false;
+      read_cnt++;
+    }
+  }
+  op_list[request->segments_is_write.count() - 1].stop = true;
+
+  if (request->write_segments_data.count() != write_cnt) {
+    completer.ReplyError(ZX_ERR_INVALID_ARGS);
+    return;
+  }
+  if (request->read_segments_length.count() != read_cnt) {
+    completer.ReplyError(ZX_ERR_INVALID_ARGS);
+    return;
+  }
+
+  struct Ctx {
+    sync_completion_t done = {};
+    TransferCompleter::Sync* completer;
+  } ctx;
+  ctx.completer = &completer;
+  auto callback = [](void* ctx, zx_status_t status, const i2c_op_t* op_list, size_t op_count) {
+    auto ctx2 = static_cast<Ctx*>(ctx);
+    if (status == ZX_OK) {
+      auto reads = std::make_unique<fidl::VectorView<uint8_t>[]>(op_count);
+      for (size_t i = 0; i < op_count; ++i) {
+        reads[i] = fidl::VectorView<uint8_t>::FromExternal(
+            const_cast<uint8_t*>(op_list[i].data_buffer), op_list[i].data_size);
+      }
+      auto all_reads =
+          fidl::VectorView<fidl::VectorView<uint8_t>>::FromExternal(reads.get(), op_count);
+      ctx2->completer->ReplySuccess(std::move(all_reads));
+    } else {
+      ctx2->completer->ReplyError(status);
+    }
+    sync_completion_signal(&ctx2->done);
+  };
+  bus_->Transact(address_, op_list.get(), request->segments_is_write.count(), callback, &ctx);
+  sync_completion_wait(&ctx.done, zx::duration::infinite().get());
+}
+
+void I2cChild::I2cTransact(const i2c_op_t* op_list, size_t op_count, i2c_transact_callback callback,
+                           void* cookie) {
+  bus_->Transact(address_, op_list, op_count, callback, cookie);
+}
+
+zx_status_t I2cChild::I2cGetMaxTransferSize(size_t* out_size) {
+  *out_size = bus_->max_transfer();
+  return ZX_OK;
+}
+
+void I2cChild::DdkRelease() { delete this; }
+
+}  // namespace i2c

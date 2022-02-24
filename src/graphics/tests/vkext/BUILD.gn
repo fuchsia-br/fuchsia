@@ -1,0 +1,151 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+executable("vkext_bin") {
+  testonly = true
+  output_name = "vkext"
+
+  sources = [
+    "main.cc",
+    "vk_ext_buffer_collection_x.cc",
+    "vk_fuchsia_external_memory.cc",
+    "vk_fuchsia_external_semaphore.cc",
+    "vk_fuchsia_memory_control.cc",
+  ]
+
+  deps = [
+    "../vkreadback:src",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_c",
+    "//sdk/lib/fdio",
+    "//src/graphics/lib/magma/src/magma_util/platform:logger_impl",
+    "//src/graphics/lib/magma/src/magma_util/platform:semaphore",
+    "//src/graphics/tests/common",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:test_settings",
+    "//src/lib/vulkan",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+executable("vkext_linux") {
+  testonly = true
+
+  sources = [ "test_vk_ext_fd.cc" ]
+
+  deps = [
+    "//src/graphics/tests/common",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+group("vkext_linux_x64") {
+  testonly = true
+  public_deps = [ ":vkext_linux(//build/toolchain:linux_x64)" ]
+}
+
+fuchsia_component("vkext_unprotected_cmp") {
+  testonly = true
+  component_name = "vkext_unprotected"
+  deps = [
+    ":vkext_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+  manifest = "meta/vkext_unprotected.cmx"
+}
+
+fuchsia_test_package("vkext-unprotected-pkg") {
+  package_name = "vkext_unprotected"
+  test_components = [ ":vkext_unprotected_cmp" ]
+  test_specs = {
+    environments = magma_libvulkan_hardware_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+# TODO(fxbug.dev/91062): Currently the test is separated from other vkext
+# tests since they can only run on platforms with graphics driver that supports
+# the new upstream FUCHSIA_buffer_collection extension. Once we have completed
+# the driver coverage, we should merge the test binary and package into vkext.
+executable("vkext_buffer_collection_bin") {
+  testonly = true
+  output_name = "vkext_buffer_collection"
+
+  sources = [
+    "main.cc",
+    "vk_ext_buffer_collection.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/lib/fdio",
+    "//src/graphics/tests/common",
+    "//src/lib/fsl",
+    "//src/lib/fxl/test:test_settings",
+    "//src/lib/vulkan",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_package("vkext_buffer_collection") {
+  manifest = "meta/vkext_buffer_collection.cml"
+  deps = [
+    ":vkext_buffer_collection_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+  test_specs = {
+    # TODO(fxbug.dev/91062): Add other environments once their driver supports
+    # the new upstream FUCHSIA_buffer_collection extension.
+    environments = intel_gpu_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+protected_libvulkan_envs = []
+
+# Filter out everything that's not astro or sherlock.
+foreach(env, magma_libvulkan_hardware_envs) {
+  if (env == sherlock_env || env == astro_env) {
+    protected_libvulkan_envs += [ env ]
+  }
+}
+
+fuchsia_component("vkext_protected_cmp") {
+  testonly = true
+  component_name = "vkext_protected"
+  deps = [
+    ":vkext_bin",
+    "//src/lib/vulkan/validation_layers",
+  ]
+  manifest = "meta/vkext_protected.cmx"
+}
+
+fuchsia_test_package("vkext-protected-pkg") {
+  package_name = "vkext_protected"
+  test_components = [ ":vkext_protected_cmp" ]
+  test_specs = {
+    environments = protected_libvulkan_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("vkext") {
+  testonly = true
+  deps = [
+    ":vkext-protected-pkg",
+    ":vkext-unprotected-pkg",
+    ":vkext_buffer_collection",
+  ]
+}

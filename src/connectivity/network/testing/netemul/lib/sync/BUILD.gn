@@ -1,0 +1,45 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("sync_service") {
+  sources = [
+    "bus.cc",
+    "bus.h",
+    "callback_watch.h",
+    "counter_barrier.cc",
+    "counter_barrier.h",
+    "sync_manager.cc",
+    "sync_manager.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fdio",
+    "//src/connectivity/network/testing/netemul/lib/fidl:sync",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("sync_test_bin") {
+  testonly = true
+
+  output_name = "sync_test"
+
+  sources = [
+    "barrier_unittest.cc",
+    "bus_unittest.cc",
+  ]
+
+  deps = [
+    ":sync_service",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/lib/testing/predicates",
+    "//zircon/system/ulib/fzl",
+  ]
+}

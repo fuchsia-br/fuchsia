@@ -1,0 +1,98 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//sdk/cts/build/cts_element.gni")
+import("//sdk/cts/build/cts_source_library.gni")
+import("//sdk/cts/build/cts_version.gni")
+import("//sdk/cts/build/write_cts_file.gni")
+
+# An executable that can be used in CTS.
+#
+# An equivalent to the built-in executable, but ensures dependencies are allowed
+# in CTS. Creates an SDK atom so that this target can be released in the CTS SDK.
+#
+# Example:
+# ```
+# cts_executable("my-test") {
+#   deps = [ "//zircon/system/ulib/zxtest" ]
+#   sources = [ "//sdk/cts/tests/my_test/my_test.cc" ]
+#   testonly = true
+# }
+# ```
+#
+# Parameters
+#   dest (optional)
+#     Location to copy this target to in the CTS archive.
+#     Dest should only be specified if the target is not in //sdk/cts. If the
+#     target is in //sdk/cts, it will be placed in the same path in the CTS
+#     archive.
+#     Type: string
+template("cts_executable") {
+  invoker_deps = []
+  if (defined(invoker.deps)) {
+    invoker_deps += invoker.deps
+  }
+  if (defined(invoker.public_deps)) {
+    invoker_deps += invoker.public_deps
+  }
+
+  if (invoker_deps != [] && cts_version == "") {
+    verify_target = target_name + "_verify_deps"
+  }
+  write_file_target = target_name + "_cts_file"
+
+  if (defined(verify_target)) {
+    cts_element(verify_target) {
+      deps = invoker_deps
+      invoker_label = get_label_info(invoker.target_name, "label_no_toolchain")
+    }
+  }
+
+  write_cts_file(write_file_target) {
+  }
+
+  current_dir = get_label_info(":${target_name}", "dir")
+  is_prebuilt_cts =
+      string_replace(current_dir, "//prebuilt/cts", "") != current_dir
+
+  executable(target_name) {
+    forward_variables_from(invoker, "*", [ "dest" ])
+    if (is_prebuilt_cts) {
+      output_dir = "${root_out_dir}/host_${current_cpu}/prebuilt/cts/"
+    }
+    if (!defined(deps)) {
+      deps = []
+    }
+    if (defined(non_cts_deps)) {
+      deps += non_cts_deps
+    }
+
+    if (defined(verify_target)) {
+      deps += [ ":$verify_target" ]
+    }
+    deps += [ ":$write_file_target" ]
+  }
+
+  if (!is_prebuilt_cts) {
+    # TODO(75000): Remove non_cts_deps
+    # non_cts_deps should only be used as a stopgap to moving existing CTS tests
+    # into the CTS archive.
+    cts_source_library(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "deps",
+                               "dest",
+                               "non_cts_deps",
+                               "public",
+                               "public_deps",
+                               "sources",
+                               "testonly",
+                             ])
+    }
+  }
+}
+
+set_defaults("cts_executable") {
+  configs = default_executable_configs
+}

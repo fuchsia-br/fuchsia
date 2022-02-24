@@ -1,0 +1,94 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/compiled_action.gni")
+import("//build/toolchain/toolchain_environment.gni")
+import("//build/zircon/migrated_targets.gni")
+
+if (current_toolchain == default_toolchain) {
+  compiled_action("json") {
+    outputs = [ "$root_build_dir/boot-options.json" ]
+    tool = ":boot-options-tool"
+    args = [ "--json" ] + rebase_path(outputs, root_build_dir)
+  }
+
+  action("markdown") {
+    script = "markdown.py"
+    outputs = [ "$root_build_dir/boot-options.md" ]
+    deps = [ ":json" ]
+    sources = get_target_outputs(":json") + [
+                "preamble.md",
+                "postamble.md",
+              ]
+    args = rebase_path(outputs + sources, root_build_dir)
+  }
+
+  action("check-markdown") {
+    script = "check-markdown.sh"
+    deps = [ ":markdown" ]
+    outputs = [ "$target_out_dir/$target_name.txt" ]
+    sources = get_target_outputs(":markdown") +
+              [ "//zircon/../docs/gen/boot-options.md" ]
+    args = rebase_path(sources + outputs)
+  }
+}
+
+zx_library("boot-options") {
+  sources = [
+    "boot-options.cc",
+    "word-view.cc",
+  ]
+  deps = [ "//zircon/system/ulib/uart" ]
+  public_deps = [ "//zircon/system/ulib/uart:headers" ]
+
+  if (is_kernel) {
+    deps += [
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/libc",
+    ]
+    public_deps += [ "//zircon/kernel/lib/ktl:headers" ]
+  }
+
+  # TODO: revisit the following three specifications after the zircon-to-fuchsia
+  # build migration. They seem currently required in order to export the host
+  # compilation of this library to the fuchsia build.
+
+  sdk = "source"
+  sdk_headers = []
+}
+
+if (toolchain_environment == "kernel") {
+  source_set("boot-options-cli") {
+    sources = [ "console.cc" ]
+    deps = [
+      ":boot-options",
+      "//zircon/kernel/lib/console",
+      "//zircon/kernel/lib/ktl",
+    ]
+  }
+}
+
+if (is_host) {
+  zx_host_tool("boot-options-tool") {
+    # This recompiles the library's source file rather than using the library
+    # directly because the #if logic includes details for all machines when
+    # building for the generator tool but not in the library.
+    defines = [
+      "BOOT_OPTIONS_GENERATOR=1",
+      "UART_ALL_DRIVERS=1",
+    ]
+    include_dirs = [ "include" ]
+    sources = [
+      "boot-options.cc",
+      "tool.cc",
+      "word-view.cc",
+    ]
+    deps = [
+      "//third_party/rapidjson",
+      "//zircon/system/ulib/uart",
+    ]
+  }
+}

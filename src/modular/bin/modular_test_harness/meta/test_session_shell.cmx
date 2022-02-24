@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/test_session_shell_bin"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.modular.SessionShellContext",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

@@ -1,0 +1,214 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/dist/resource.gni")
+import("//build/rust/rustc_binary.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+rustc_binary("bin") {
+  name = "bt_hfp_audio_gateway"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.bluetooth.bredr:fuchsia.bluetooth.bredr-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.hfp:fuchsia.bluetooth.hfp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.hfp.test:fuchsia.bluetooth.hfp.test-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.internal.a2dp:fuchsia.bluetooth.internal.a2dp-rustc",
+    "//sdk/fidl/fuchsia.hardware.audio:fuchsia.hardware.audio-rustc",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//src/connectivity/bluetooth/lib/async-helpers",
+    "//src/connectivity/bluetooth/lib/battery-client",
+    "//src/connectivity/bluetooth/lib/bt-rfcomm",
+    "//src/connectivity/bluetooth/lib/fuchsia-audio-dai",
+    "//src/connectivity/bluetooth/lib/fuchsia-bluetooth",
+    "//src/connectivity/bluetooth/lib/profile-client",
+    "//src/connectivity/bluetooth/lib/vigil",
+    "//src/connectivity/lib/at-commands",
+    "//src/lib/async-utils",
+    "//src/lib/diagnostics/inspect/contrib/rust",
+    "//src/lib/diagnostics/inspect/derive",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:bitflags",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:num-traits",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.bluetooth:fuchsia.bluetooth-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power-rustc",
+    "//src/connectivity/bluetooth/lib/async-helpers:async-test-helpers",
+    "//src/connectivity/bluetooth/testing/test-battery-manager",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:proptest",
+  ]
+
+  sources = [
+    "src/a2dp.rs",
+    "src/audio.rs",
+    "src/config.rs",
+    "src/error.rs",
+    "src/features.rs",
+    "src/fidl_service.rs",
+    "src/hfp.rs",
+    "src/inspect.rs",
+    "src/main.rs",
+    "src/peer.rs",
+    "src/peer/calls.rs",
+    "src/peer/calls/call_list.rs",
+    "src/peer/calls/number.rs",
+    "src/peer/calls/pending.rs",
+    "src/peer/calls/types.rs",
+    "src/peer/gain_control.rs",
+    "src/peer/indicators.rs",
+    "src/peer/procedure.rs",
+    "src/peer/procedure/answer.rs",
+    "src/peer/procedure/call_line_ident_notifications.rs",
+    "src/peer/procedure/call_waiting_notifications.rs",
+    "src/peer/procedure/codec_connection_setup.rs",
+    "src/peer/procedure/codec_support.rs",
+    "src/peer/procedure/dtmf.rs",
+    "src/peer/procedure/extended_errors.rs",
+    "src/peer/procedure/hang_up.rs",
+    "src/peer/procedure/hf_indicator_status.rs",
+    "src/peer/procedure/hold.rs",
+    "src/peer/procedure/indicator_status.rs",
+    "src/peer/procedure/indicators_activation.rs",
+    "src/peer/procedure/initiate_call.rs",
+    "src/peer/procedure/nrec.rs",
+    "src/peer/procedure/phone_status.rs",
+    "src/peer/procedure/query_current_calls.rs",
+    "src/peer/procedure/query_operator_selection.rs",
+    "src/peer/procedure/ring.rs",
+    "src/peer/procedure/slc_initialization.rs",
+    "src/peer/procedure/subscriber_number_information.rs",
+    "src/peer/procedure/transfer_hf_indicator.rs",
+    "src/peer/procedure/volume_control.rs",
+    "src/peer/procedure/volume_synchronization.rs",
+    "src/peer/ringer.rs",
+    "src/peer/sco_state.rs",
+    "src/peer/service_level_connection.rs",
+    "src/peer/slc_request.rs",
+    "src/peer/task.rs",
+    "src/peer/update.rs",
+    "src/profile.rs",
+    "src/sco_connector.rs",
+    "src/service_definitions.rs",
+  ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+# A default configuration for bt-hfp-audio-gateway. There is no stability guarantee
+# provided with the default config. It should only be used for local development and testing
+# purposes. A product integrator should always define a product specific configuration.
+resource("default_config") {
+  sources = [ "config/default_supported_features.config" ]
+  outputs = [ "data/supported_features.config" ]
+}
+
+# A test configuration that can be used to check that configuration
+# parsing is wired up correctly and that the config file is in the
+# expected format.
+resource("test_config") {
+  sources = [ "config/default_supported_features.config" ]
+  outputs = [ "data/supported_features.config" ]
+}
+
+fuchsia_component("component") {
+  component_name = "bt-hfp-audio-gateway"
+  deps = [ ":bin" ]
+  manifest = "meta/bt-hfp-audio-gateway.cml"
+}
+
+fuchsia_package("bt-hfp-audio-gateway-default") {
+  deps = [
+    ":component",
+    ":default_config",
+  ]
+}
+
+# The core realm shard to be used by product integrators.
+# This shard should be included in configurations in which only HFP-AG support is desired (no A2DP
+# support).
+core_shard("bt-hfp-audio-gateway-core-shard") {
+  shard_file = "meta/bt-hfp-audio-gateway.core_shard.cml"
+}
+
+# The core realm shard to be used by product integrators.
+# This shard should be included in configurations that require both A2DP and HFP Audio Gateway
+# support.
+core_shard("bt-headset-core-shard") {
+  shard_file = "meta/bt-headset.core_shard.cml"
+}
+
+group("bt-hfp-audio-gateway") {
+  deps = [ ":bt-hfp-audio-gateway-default" ]
+}
+
+fuchsia_test_component("test-component") {
+  manifest = "meta/bt-hfp-audio-gateway-tests.cml"
+  deps = [ ":bin_test" ]
+}
+
+fuchsia_test_package("bt-hfp-audio-gateway-tests") {
+  test_components = [ ":test-component" ]
+  deps = [
+    ":test_config",
+
+    # The component mock for the `fuchsia.bluetooth.internal.a2dp.Controller` capability.
+    "//src/connectivity/bluetooth/testing/mock-a2dp-controller:mock-a2dp-controller",
+  ]
+}
+
+rustc_test("bt_hfp_a2dp_controller_bin") {
+  output_name = "bt_hfp_a2dp_controller_tests"
+  features = [ "test_a2dp_controller" ]
+  source_root = "src/a2dp.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.bluetooth.internal.a2dp:fuchsia.bluetooth.internal.a2dp-rustc",
+    "//src/connectivity/bluetooth/lib/fuchsia-bluetooth",
+    "//src/lib/async-utils",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "src/a2dp.rs" ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+fuchsia_unittest_package("bt-hfp-a2dp-controller-tests") {
+  deps = [ ":bt_hfp_a2dp_controller_bin" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":bt-hfp-a2dp-controller-tests",
+    ":bt-hfp-audio-gateway-tests",
+  ]
+}

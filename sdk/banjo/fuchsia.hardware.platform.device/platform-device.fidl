@@ -1,0 +1,77 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.platform.device;
+
+using zx;
+
+type PdevDeviceInfo = struct {
+    vid uint32;
+    pid uint32;
+    did uint32;
+    mmio_count uint32;
+    irq_count uint32;
+    bti_count uint32;
+    smc_count uint32;
+    metadata_count uint32;
+    reserved array<uint32, 8>;
+    name string:32;
+};
+
+type PdevBoardInfo = struct {
+    /// Vendor ID for the board.
+    vid uint32;
+    /// Product ID for the board.
+    pid uint32;
+    /// Board name from the boot image platform ID record,
+    /// (or from the BIOS on x86 platforms).
+    board_name string:32;
+    /// Board specific revision number.
+    board_revision uint32;
+};
+
+type PdevMmio = resource struct {
+    /// Offset from beginning of VMO where the mmio region begins.
+    offset zx.off;
+    /// Size of mmio region.
+    size uint64;
+    vmo zx.handle:VMO;
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol PDev {
+    GetMmio(struct {
+        index uint32;
+    }) -> (resource struct {
+        s zx.status;
+        mmio PdevMmio;
+    });
+    GetInterrupt(struct {
+        index uint32;
+        flags uint32;
+    }) -> (resource struct {
+        s zx.status;
+        irq zx.handle:INTERRUPT;
+    });
+    GetBti(struct {
+        index uint32;
+    }) -> (resource struct {
+        s zx.status;
+        bti zx.handle:BTI;
+    });
+    GetSmc(struct {
+        index uint32;
+    }) -> (resource struct {
+        s zx.status;
+        smc zx.handle:RESOURCE;
+    });
+    GetDeviceInfo() -> (struct {
+        s zx.status;
+        info PdevDeviceInfo;
+    });
+    GetBoardInfo() -> (struct {
+        s zx.status;
+        info PdevBoardInfo;
+    });
+};

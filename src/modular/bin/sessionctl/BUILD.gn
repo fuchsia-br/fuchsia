@@ -1,0 +1,79 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("sessionctl_bin") {
+  output_name = "sessionctl"
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/modular/lib/async/cpp:future",
+    "//src/modular/lib/session",
+    "//third_party/re2",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_shell_package("sessionctl") {
+  manifest = "meta/sessionctl.cmx"
+  deps = [ ":sessionctl_bin" ]
+}
+
+source_set("lib") {
+  sources = [
+    "logger.cc",
+    "logger.h",
+    "session_ctl_app.cc",
+    "session_ctl_app.h",
+    "session_ctl_constants.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.modular",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/syslog/cpp",
+    "//src/modular/lib/async/cpp:future",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.modular.internal",
+    "//src/lib/json_parser",
+    "//third_party/re2",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+executable("sessionctl_unittest") {
+  testonly = true
+
+  sources = [ "session_ctl_app_unittest.cc" ]
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.modular",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/modular/bin/sessionmgr/puppet_master:puppet_master_impl",
+    "//src/modular/lib/testing:test_story_command_executor",
+    "//src/modular/lib/testing:test_with_session_storage",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_unittest_package("sessionctl_unittests") {
+  manifest = "meta/sessionctl_unittest.cmx"
+  deps = [ ":sessionctl_unittest" ]
+}

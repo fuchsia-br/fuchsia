@@ -1,0 +1,91 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_binary("artifactory") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/artifactory/cmd"
+
+  deps = [ ":main" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":artifactory_lib_tests($host_toolchain)",
+    ":artifactory_main_tests($host_toolchain)",
+  ]
+}
+
+go_library("main") {
+  source_dir = "cmd"
+
+  sources = [
+    "main.go",
+    "up.go",
+    "up_test.go",
+  ]
+
+  deps = [
+    ":lib",
+    "//third_party/golibs:cloud.google.com/go/storage",
+    "//third_party/golibs:github.com/google/subcommands",
+    "//tools/build",
+    "//tools/lib/color",
+    "//tools/lib/gcsutil",
+    "//tools/lib/iomisc",
+    "//tools/lib/jsonutil",
+    "//tools/lib/logger",
+  ]
+}
+
+go_library("lib") {
+  sources = [
+    "assembly_input_archives.go",
+    "assembly_input_archives_test.go",
+    "binaries.go",
+    "binaries_test.go",
+    "blobs.go",
+    "blobs_test.go",
+    "checkout_artifacts.go",
+    "host_tests.go",
+    "host_tests_test.go",
+    "images.go",
+    "images_test.go",
+    "modules.go",
+    "modules_test.go",
+    "package_manifest.go",
+    "package_manifest_test.go",
+    "product_bundle.go",
+    "product_bundle_test.go",
+    "sdk_archives.go",
+    "sdk_archives_test.go",
+    "sign.go",
+    "sign_test.go",
+    "tools.go",
+    "tools_test.go",
+    "upload.go",
+  ]
+  deps = [
+    "//src/sys/pkg/bin/pm:pm_lib",
+    "//tools/build",
+    "//tools/lib/logger",
+    "//tools/lib/osmisc",
+  ]
+}
+
+go_test("artifactory_lib_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/artifactory" ]
+  deps = [
+    ":lib",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}
+
+go_test("artifactory_main_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/artifactory/cmd" ]
+  deps = [ ":main" ]
+}

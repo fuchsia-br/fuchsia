@@ -1,0 +1,59 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("bin") {
+  output_name = "dotmatrix_display"
+
+  sources = [
+    "fuchsia_logo.cc",
+    "main.cc",
+    "space_invaders.cc",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.dotmatrixdisplay:fuchsia.hardware.dotmatrixdisplay_c",
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_c",
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_llcpp",
+    "//sdk/lib/fdio",
+  ]
+}
+
+executable("bin2") {
+  output_name = "create_ssd1306"
+
+  sources = [ "create_ssd1306.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_c",
+    "//sdk/fidl/fuchsia.hardware.ftdi:fuchsia.hardware.ftdi_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_component("dotmatrix_display_component") {
+  component_name = "dotmatrix_display"
+  manifest = "meta/dotmatrix_display.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("create_ssd1306_component") {
+  component_name = "create_ssd1306"
+  manifest = "meta/create_ssd1306.cmx"
+  deps = [ ":bin2" ]
+}
+
+fuchsia_shell_package("dotmatrix_display") {
+  deps = [
+    ":create_ssd1306_component",
+    ":dotmatrix_display_component",
+  ]
+}

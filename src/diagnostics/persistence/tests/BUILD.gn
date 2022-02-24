@@ -1,0 +1,63 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_library.gni")
+
+# Integration test binary for Diagnostics Persistence service.
+rustc_test("test-bin") {
+  testonly = true
+  name = "canonical-diagnostics-persistence-test-bin"
+  deps = [
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/diagnostics/lib/inspect-fetcher",
+    "//src/diagnostics/persistence/fidl:persist-rustc",
+    "//src/diagnostics/sampler/tests/fidl:fuchsia.samplertestcontroller-rustc",
+    "//src/lib/diagnostics/data/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  data_deps = [ "//src/diagnostics/persistence:lib" ]
+
+  source_root = "integration.rs"
+  sources = [ "integration.rs" ]
+}
+
+# Test component for diagnostics-persistence service integration test.
+fuchsia_component("canonical-diagnostics-persistence-test") {
+  testonly = true
+  manifest = "meta/canonical-diagnostics-persistence-test.cmx"
+  deps = [
+    ":test-bin",
+    "//src/diagnostics/iquery/test/test_component:test_component_v1",
+    "//src/diagnostics/lib/inspect-fetcher",
+    "//src/diagnostics/persistence:diagnostics-persistence-v1",
+  ]
+}
+
+# Config-data for the integration test. Whatever is in this file should map to the
+# test component you are using to perturbe inspect state.
+config_data("test-config") {
+  for_pkg = "diagnostics-persistence-integration-tests"
+  sources = [ "configs/test_config.persist" ]
+
+  # You need to map this config to whereever/whatever diagnostics-persistence is expecting it as.
+  outputs = [ "test_config.persist" ]
+}
+
+fuchsia_test_package("diagnostics-persistence-integration-tests") {
+  package_deps_for_infra_only =
+      [ "//src/diagnostics/archivist:archivist-for-embedding" ]
+  test_components = [ ":canonical-diagnostics-persistence-test" ]
+  deps = [ ":test-config" ]
+}

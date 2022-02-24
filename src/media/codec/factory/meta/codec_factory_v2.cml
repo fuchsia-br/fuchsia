@@ -1,0 +1,79 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "syslog/client.shard.cml",
+        "syslog/elf_stdio.shard.cml",
+    ],
+    program: {
+        binary: "bin/codec_factory",
+    },
+    collections: [
+        {
+            name: "sw-codecs",
+
+            // every component started in this collection will self-destruct when
+            // it exits
+            durability: "single_run",
+        },
+        {
+            name: "magma-codecs",
+
+            // every component started in this collection will self-destruct when
+            // it exits
+            durability: "single_run",
+        },
+    ],
+    capabilities: [
+        { protocol: "fuchsia.mediacodec.CodecFactory" },
+    ],
+    use: [
+        {
+            directory: "dev-mediacodec",
+            rights: [ "rw*" ],
+            path: "/dev/class/media-codec",
+        },
+        {
+            directory: "dev-gpu",
+            rights: [ "rw*" ],
+            path: "/dev/class/gpu",
+        },
+        {
+            protocol: [
+                "fuchsia.cobalt.LoggerFactory",
+                "fuchsia.sysinfo.SysInfo",
+                "fuchsia.tracing.provider.Registry",
+            ],
+        },
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+    ],
+    offer: [
+        {
+            protocol: [
+                "fuchsia.logger.LogSink",
+                "fuchsia.sysmem.Allocator",
+                "fuchsia.tracing.provider.Registry",
+            ],
+            from: "parent",
+            to: [
+                "#magma-codecs",
+                "#sw-codecs",
+            ],
+        },
+        {
+            directory: "dev-gpu",
+            from: "parent",
+            to: "#magma-codecs",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.mediacodec.CodecFactory",
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,236 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Targets meant for helping zxdb development. See README.md
+
+# Test .so ---------------------------------------------------------------------
+
+group("debug_so") {
+  testonly = true
+
+  public_deps = [
+    ":debug_agent_test_loadable_module",
+    ":debug_agent_test_so",
+  ]
+}
+
+source_set("debug_agent_test_so_lib") {
+  testonly = true
+
+  public = [ "test_so_symbols.h" ]
+
+  sources = [ "breakpoint_test_so.cc" ]
+
+  if (current_cpu == "x64") {
+    sources += [ "x64_write_register_test_so.cc" ]
+  }
+}
+
+shared_library("debug_agent_test_so") {
+  testonly = true
+
+  public_deps = [ ":debug_agent_test_so_lib" ]
+}
+
+loadable_module("debug_agent_test_loadable_module") {
+  testonly = true
+  output_name = "debug_agent_test_so"
+
+  deps = [ ":debug_agent_test_so_lib" ]
+}
+
+# Text Executables -------------------------------------------------------------
+
+group("test_executables") {
+  testonly = true
+
+  public_deps = [
+    ":breakpoint_test_exe",
+    ":load_so_exe",
+    ":multithreaded_breakpoint_test_exe",
+    ":watchpoint_test_exe",
+  ]
+
+  if (current_cpu == "x64") {
+    public_deps += [
+      # TODO(donosoc): This test should suport both archs inherently.
+      ":write_register_test_exe",
+    ]
+  }
+}
+
+executable("breakpoint_test_exe") {
+  testonly = true
+  output_name = "breakpoint_test_exe"
+  sources = [ "breakpoint_test_exe.cc" ]
+  deps = [ ":debug_agent_test_so" ]
+}
+
+executable("load_so_exe") {
+  testonly = true
+  sources = [ "load_so.cc" ]
+
+  # This must use the loadable module because it's loaded dynamically.
+  deps = [ ":debug_agent_test_loadable_module" ]
+}
+
+executable("multithreaded_breakpoint_test_exe") {
+  testonly = true
+  output_name = "multithreaded_breakpoint_test_exe"
+
+  sources = [ "multithreaded_breakpoint_test_exe.cc" ]
+
+  deps = [ ":debug_agent_test_so" ]
+}
+
+executable("watchpoint_test_exe") {
+  testonly = true
+  output_name = "watchpoint_test_exe"
+
+  sources = [ "watchpoint_test_exe.cc" ]
+}
+
+if (current_cpu == "x64") {
+  executable("write_register_test_exe") {
+    testonly = true
+    output_name = "write_register_test_exe"
+
+    sources = [ "x64_write_register_test_exe.cc" ]
+
+    public_deps = [ ":debug_agent_test_so" ]
+  }
+}
+
+# Helper Executables -----------------------------------------------------------
+
+group("helper_executables") {
+  testonly = true
+
+  public_deps = [
+    ":backtrace_request",
+    ":debug_test_false",
+    ":debug_test_true",
+    ":hw_watchpointer",
+    ":limbo_caller",
+    ":multi_threaded",
+    ":printer",
+    ":process_loop",
+    ":process_spawner",
+    ":test_suite",
+    ":thread_signals",
+  ]
+}
+
+executable("backtrace_request") {
+  sources = [ "backtrace_request.cc" ]
+
+  deps = [
+    "//zircon/system/ulib/backtrace-request",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("debug_test_true") {
+  sources = [ "true.c" ]
+}
+
+executable("debug_test_false") {
+  sources = [ "false.c" ]
+}
+
+executable("test_suite") {
+  testonly = true
+  output_name = "test_suite"
+
+  sources = [
+    "test_suite.cc",
+    "test_suite_helpers.cc",
+    "test_suite_helpers.h",
+  ]
+
+  deps = [
+    "//sdk/lib/fit",
+    "//src/developer/debug/shared",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("hw_watchpointer") {
+  testonly = true
+  output_name = "hw_watchpointer"
+
+  sources = [ "hw_watchpointer.cc" ]
+
+  deps = [
+    "//src/developer/debug/shared",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("multi_threaded") {
+  testonly = true
+
+  sources = [ "multi_threaded.cc" ]
+
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("printer") {
+  sources = [ "printer.cc" ]
+}
+
+executable("process_loop") {
+  testonly = true
+  output_name = "process_loop"
+
+  sources = [ "process_loop.cc" ]
+}
+
+executable("process_spawner") {
+  testonly = true
+  output_name = "process_spawner"
+
+  sources = [ "process_spawner.cc" ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("thread_signals") {
+  testonly = true
+  output_name = "thread_signals"
+
+  sources = [ "thread_signals.cc" ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("limbo_caller") {
+  testonly = true
+  output_name = "limbo_caller"
+
+  sources = [ "limbo_caller.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.exception",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zx",
+  ]
+}

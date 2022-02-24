@@ -1,0 +1,109 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+_common_deps = [
+  "dhcp:component",
+  "dhcpv6/client:component",
+  "dns:component",
+  "http-client:component",
+  "reachability:component",
+]
+
+fuchsia_component("component") {
+  component_name = "network"
+  manifest = "meta/network-default.cml"
+  deps = _common_deps + [
+           "netstack:component",
+           "netcfg:component-advanced",
+         ]
+}
+
+# TODO(https://fxbug.dev/85450): use subassembly-based product assembly to
+# assemble the network realm from shards depending on the product, rather than
+# creating two separate component manifests and relying on include shards to
+# reduce duplication.
+fuchsia_component("component-basic") {
+  component_name = "network"
+  manifest = "meta/network-basic.cml"
+  deps = _common_deps + [
+           "netstack:component",
+           "netcfg:component-basic",
+         ]
+}
+
+# TODO(https://fxbug.dev/85450): use subassembly-based product assembly to
+# create this variant.
+fuchsia_component("component-with-tracing") {
+  component_name = "network"
+  manifest = "meta/network-default.cml"
+  deps = _common_deps + [
+           "netstack:component-with-tracing",
+           "netcfg:component-advanced",
+         ]
+}
+
+fuchsia_package("network") {
+  deps = [ ":component" ]
+}
+
+fuchsia_package("network-basic") {
+  package_name = "network"
+  deps = [ ":component-basic" ]
+}
+
+fuchsia_package("network-with-tracing") {
+  package_name = "network"
+  deps = [ ":component-with-tracing" ]
+}
+
+core_shard("virtualization-core-shard") {
+  shard_file = "meta/virtualization.core_shard.cml"
+}
+
+# TODO(https://fxbug.dev/85821): Remove once out-of-tree users no longer
+# reference v1 components.
+fuchsia_package("network-legacy-deprecated") {
+  deps = [
+    "dns:component-legacy",
+    "netstack:component-legacy",
+  ]
+}
+
+# TODO(https://fxbug.dev/85742): Remove this target once out-of-tree
+# integration tests inject components from network-legacy-deprecated.
+group("integration-test-deps") {
+  deps = [ "netstack" ]
+}
+
+group("drivers") {
+  deps = [ "drivers/network-device" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    # Ensure this target doesn't rot. This dependency can be removed if the
+    # target becomes load bearing elsewhere.
+    ":component-with-tracing",
+    "dhcp:tests",
+    "dhcpv6:tests",
+    "dns:tests",
+    "drivers:tests",
+    "http-client:tests",
+    "lib:tests",
+    "mdns:tests",
+    "net-cli:tests",
+    "netcfg:tests",
+    "netstack:tests",
+    "netstack3:tests",
+    "reachability:tests",
+    "testing:tests",
+    "tests",
+    "tools:tests",
+    "tun:tests",
+  ]
+}

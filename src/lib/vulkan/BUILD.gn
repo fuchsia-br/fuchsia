@@ -1,0 +1,367 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/resource.gni")
+import("//build/sdk/sdk_atom.gni")
+import("//build/testing/host_test_data.gni")
+import("//src/lib/vulkan/build/config.gni")
+import("//src/lib/vulkan/layers.gni")
+
+# Centralizing the GN points of entry into Vulkan ecosystem repositories here is helpful
+# for grasping the full scope.  Note, there are also entry points in //sdk/BUILD.gn.
+
+# Provides the Vulkan headers and entry points via the Vulkan loader.
+group("vulkan") {
+  public_configs = [ ":vulkan_hpp" ]
+
+  # Targets always use in-tree Vulkan implementation.
+  if (!is_host) {
+    public_deps = [
+      ":headers",
+      "//third_party/Vulkan-Loader:libvulkan",
+    ]
+  }
+
+  # Host target with "null" Vulkan should use Vulkan headers and
+  # link the null Vulkan implementation statically.
+  if (is_host && use_null_vulkan_on_host) {
+    public_deps = [
+      ":headers",
+      "//src/lib/vulkan/third_party/null_vulkan",
+    ]
+  }
+
+  # Host target with non-null Vulkan should link against prebuilt
+  # Vulkan SDK.
+  if (is_host && !use_null_vulkan_on_host) {
+    public_configs += [ ":vulkan_host_config" ]
+    public_deps = [ ":copy_vulkan_runtime" ]
+  }
+}
+
+group("vulkan_headers_and_loader") {
+  public_deps = [
+    ":headers",
+    "//third_party/Vulkan-Loader:libvulkan",
+  ]
+}
+
+# Provides only the Vulkan headers without the loader.
+group("headers") {
+  public_deps = [ "//third_party/Vulkan-Headers:vulkan_headers" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":loader_and_validation_tests",
+    "tests",
+  ]
+
+  # Ensure loader builds for Linux x64
+  deps += [ ":vulkan_headers_and_loader(//build/toolchain:linux_x64-shared)" ]
+}
+
+# Tests for the Vulkan loader and validation layers.
+group("loader_and_validation_tests") {
+  testonly = true
+  public_deps = [
+    "//third_party/Vulkan-Loader:tests",
+    "//third_party/Vulkan-ValidationLayers:tests",
+  ]
+}
+
+# The vulkaninfo application.
+group("vulkaninfo") {
+  public_deps = [ "//third_party/Vulkan-Tools:vulkaninfo" ]
+}
+
+config("vulkan_hpp") {
+  defines = [ "VULKAN_HPP_NO_EXCEPTIONS" ]
+  if (is_debug) {
+    defines += [ "VULKAN_HPP_ASSERT(expr)=((void)(expr))" ]
+  } else {
+    defines += [ "VULKAN_HPP_ASSERT(expr)=do {} while(0)" ]
+  }
+}
+
+import("//src/lib/vulkan/compact_image/sdk_atom_info.gni")
+import("//src/lib/vulkan/swapchain/sdk_atom_info.gni")
+import("//src/lib/vulkan/validation_layers/sdk_atom_info.gni")
+
+# A list of scopes describing the Vulkan layers to add to the SDK.
+# Each item is a scope describing a given layer, which consists
+# in a loadable module and a JSON configuration file.
+#
+# The expected schema is the following:
+#
+#   module_name (optional)
+#     [string] Name of the loadable module (e.g. 'VkLayer_khrnos_validation.so).
+#     If not specified, then 'module_file' is required and will be used to
+#     determine the name.
+#
+#   module_label (required)
+#     [GN label] Label of the target generating the module, if it is not a
+#     prebuilt one.
+#
+#   module_file (optional)
+#     [GN path] Path to the loadable module. Required if 'module_name' is not
+#     defined. Otherwise, if 'module_label' is defined, this defaults to
+#     '$root_out_dir/$module_name'.
+#
+#   config_name (optional)
+#     [string] Name of the configuration file (e.g. 'VkLayer_khronos_validation.json').
+#     If not specified, then 'config_file' is required and will be used to
+#     determine the name.
+#
+#   config_label (optional)
+#     [GN label] Label of the target generating the config file, if it is not
+#     a prebuilt one.
+#
+#   config_file (required)
+#     [GN path] Path to the configuration file.
+#
+vulkan_layers_sdk_atom_infos = vulkan_validation_layers_sdk_atom_infos
+vulkan_layers_sdk_atom_infos += [
+  vulkan_image_pipe_swapchain_sdk_atom_info,
+  vulkan_compact_image_sdk_atom_info,
+]
+
+sdk_atom("vulkan_layers") {
+  id = "sdk://pkg/vulkan_layers"
+
+  category = "partner"
+
+  files = []
+  non_sdk_deps = []
+
+  _sdk_binaries = []
+  _sdk_resources = []
+
+  foreach(info, vulkan_layers_sdk_atom_infos) {
+    # Add loadable module to metadata and file list
+    if (defined(info.module_name)) {
+      _module_name = info.module_name
+    } else {
+      assert(defined(info.module_file),
+             "module_file is required if module_name is not defined: $info")
+      _module_name = get_path_info(info.module_file, "file")
+    }
+    if (defined(info.module_file)) {
+      _module_file = info.module_file
+    } else {
+      assert(defined(info.module_name),
+             "module_name is required if module_file is not defined: $info")
+      _module_file = "$root_out_dir/${_module_name}"
+    }
+    _destination = "arch/$target_cpu/dist/" + _module_name
+    _sdk_binaries += [ _destination ]
+    files += [
+      {
+        source = _module_file
+        dest = _destination
+      },
+    ]
+    if (defined(info.module_label)) {
+      non_sdk_deps += [ info.module_label ]
+    }
+
+    # Add config file to metadata and file list
+    if (defined(info.config_name)) {
+      _config_name = info.config_name
+    } else {
+      assert(defined(info.config_file),
+             "config_file is required if config_name is not defined: $info")
+      _config_name = get_path_info(info.config_file, "file")
+    }
+    assert(defined(info.config_file), "config_file is required: $info")
+    _config_file = info.config_file
+    _destination =
+        "pkg/vulkan_layers/data/vulkan/explicit_layer.d/${_config_name}"
+    _sdk_resources += [ _destination ]
+    files += [
+      {
+        source = _config_file
+        dest = _destination
+      },
+    ]
+    if (defined(info.config_label)) {
+      non_sdk_deps += [ info.config_label ]
+    }
+  }
+
+  meta = {
+    dest = "pkg/vulkan_layers/meta.json"
+    schema = "loadable_module"
+    value = {
+      type = "loadable_module"
+      name = "vulkan_layers"
+      root = "pkg/vulkan_layers"
+      resources = []
+      resources = _sdk_resources
+      binaries = {
+      }
+      if (target_cpu == "arm64") {
+        binaries.arm64 = _sdk_binaries
+      } else if (target_cpu == "x64") {
+        binaries.x64 = _sdk_binaries
+      } else {
+        assert(false, "Unknown CPU type: %target_cpu")
+      }
+    }
+  }
+}
+
+#
+# Copy Vulkan runtime (loader, validation layers library and layers descriptor)
+# to test_data directory.
+#
+if (is_host) {
+  copy("copy_vulkan_libs") {
+    assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+    _lib_dir = vulkan_host_runtime_sub_dirs.lib
+    if (is_linux) {
+      sources = [
+        "$vulkan_host_runtime_dir/$_lib_dir/libVkLayer_khronos_validation.so",
+        "$vulkan_host_runtime_dir/$_lib_dir/libvulkan.so.1",
+      ]
+      if (use_swiftshader_vulkan_icd_on_host) {
+        sources += [
+          "$vulkan_host_runtime_dir/$_lib_dir/libvk_swiftshader.so",
+          "$vulkan_host_runtime_dir/$_lib_dir/vk_swiftshader_icd.json",
+        ]
+      }
+    }
+    if (is_mac) {
+      sources = [
+        "$vulkan_host_runtime_dir/$_lib_dir/MoltenVK_icd.json",
+        "$vulkan_host_runtime_dir/$_lib_dir/libMoltenVK.dylib",
+        "$vulkan_host_runtime_dir/$_lib_dir/libVkLayer_khronos_validation.dylib",
+
+        # Note also libvulkan.1.dylib below which has to be treated specially
+        # because of its symlink to libvulkan.dylib.
+      ]
+      if (use_swiftshader_vulkan_icd_on_host) {
+        sources += [
+          "$vulkan_host_runtime_dir/$_lib_dir/libvk_swiftshader.dylib",
+          "$vulkan_host_runtime_dir/$_lib_dir/vk_swiftshader_icd.json",
+        ]
+      }
+    }
+    outputs = [ "${root_out_dir}/${vulkan_host_runtime_out_root}/${_lib_dir}/{{source_file_part}}" ]
+  }
+
+  # On Linux, libvulkan.so is a symbolic link to libvulkan.so.1. For symbolic
+  # links, ninja records the modification time of the linked file into its log,
+  # so we need to ensure that the original library file is copied before the
+  # symbolic link. We do this by adding "copy_vulkan_libs" as its dependency.
+  if (is_linux) {
+    copy("vulkan_lib_links") {
+      assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+      _lib_dir = vulkan_host_runtime_sub_dirs.lib
+      sources = [ "$vulkan_host_runtime_dir/$_lib_dir/libvulkan.so" ]
+      outputs = [ "${root_out_dir}/${vulkan_host_runtime_out_root}/${_lib_dir}/{{source_file_part}}" ]
+      deps = [ ":copy_vulkan_libs" ]
+    }
+  }
+
+  # On macOS, copy target will makes copies of all symlinks instead of keeping
+  # the links. Having two separated libvulkan.1.dylib and libvulkan.dylib will
+  # cause Vulkan loader crash, thus we set the symlink after the actual dylib
+  # libvulkan.dylib is copied to build out directory. Additionally, because
+  # ninja looks at the timestamp of the linked-to target, and a copy() will
+  # hardlink, we do a real copy here of libvulkan.1.dylib to update its
+  # timestamp before softlinking, otherwise the timestamp of the link (an
+  # output of this rule) will never be newer than the .stamp file, so this rule
+  # will always be dirty. https://fxbug.dev/65872.
+  if (is_mac) {
+    action("vulkan_lib_links") {
+      assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+      script = "//src/lib/vulkan/build/copy_and_symlink.py"
+      _lib_dir = vulkan_host_runtime_sub_dirs.lib
+      sources = [ "$vulkan_host_runtime_dir/$_lib_dir/libvulkan.1.dylib" ]
+      outputs = [
+        "${root_out_dir}/${vulkan_host_runtime_out_root}/${_lib_dir}/libvulkan.1.dylib",
+        "${root_out_dir}/${vulkan_host_runtime_out_root}/${_lib_dir}/libvulkan.dylib",
+      ]
+      args = [
+        rebase_path(sources[0], root_build_dir),  # source.
+        rebase_path(outputs[0], root_build_dir),  # copy_to.
+        rebase_path(outputs[1], root_build_dir),  # link_to.
+      ]
+      deps = [ ":copy_vulkan_libs" ]
+    }
+  }
+
+  copy("copy_vulkan_etc") {
+    assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+    _layers_dir = vulkan_host_runtime_sub_dirs.layers
+    sources = [
+      "$vulkan_host_runtime_dir/$_layers_dir/VkLayer_khronos_validation.json",
+    ]
+    outputs = [ "${root_out_dir}/${vulkan_host_runtime_out_root}/${_layers_dir}/{{source_file_part}}" ]
+  }
+
+  host_test_data("vulkan_test_data") {
+    assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+    _lib_dir = vulkan_host_runtime_sub_dirs.lib
+    _layers_dir = vulkan_host_runtime_sub_dirs.layers
+    _data_dir = "${root_out_dir}/${vulkan_host_runtime_out_root}"
+    sources = [
+      "${_data_dir}/${_layers_dir}",
+      "${_data_dir}/${_lib_dir}",
+    ]
+    deps = [
+      ":copy_vulkan_etc",
+      ":copy_vulkan_libs",
+      ":vulkan_lib_links",
+    ]
+  }
+
+  group("copy_vulkan_runtime") {
+    assert(has_prebuilt_vulkan_runtime, "Prebuilt Vulkan runtime not found.")
+    deps = [
+      ":copy_vulkan_etc",
+      ":copy_vulkan_libs",
+      ":vulkan_lib_links",
+    ]
+  }
+}
+
+#
+# Vulkan dependencies required for Vulkan executables / tests / source sets.
+# This includes headers, loader linkage, and copying of runtime files for host
+# executables.
+#
+config("vulkan_host_config") {
+  if (current_cpu == "x64" && is_host) {
+    include_dirs = [ "$vulkan_host_sdk_dir/include" ]
+    lib_dirs = [ "$vulkan_host_sdk_dir/lib" ]
+    configs = [ "//build/config:Wno-defaulted-function-deleted" ]
+
+    # Link Vulkan loader to host executables.
+    libs = [ "vulkan" ]
+
+    if (is_mac) {
+      defines = [
+        "VK_USE_PLATFORM_MACOS_MVK",
+        "VK_USE_PLATFORM_METAL_EXT",
+      ]
+    }
+  }
+}
+
+group("vulkan_validation_layers") {
+  deps = [
+    ":vklayer_khronos_validation_json",
+    "//third_party/Vulkan-ValidationLayers:vulkan_validation_layers",
+  ]
+}
+
+resource("vklayer_khronos_validation_json") {
+  sources = [ "$vulkan_data_dir/VkLayer_khronos_validation.json" ]
+  outputs = [ "data/vulkan/explicit_layer.d/VkLayer_khronos_validation.json" ]
+  deps = [ "//third_party/Vulkan-ValidationLayers:vulkan_gen_json_files" ]
+}

@@ -1,0 +1,44 @@
+{
+    "include": [
+        "//src/lib/vulkan/application.shard.cmx",
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/terminal"
+    },
+    "sandbox": {
+        "boot": [
+            "bin"
+        ],
+        "dev": [
+            "class/display-controller",
+            "class/input",
+            "class/input-report"
+        ],
+        "features": [
+            "hub",
+            "shell-commands"
+        ],
+        "pkgfs": [
+            "packages"
+        ],
+        "services": [
+            "fuchsia.hardware.pty.Device",
+            "fuchsia.logger.Log",
+            "fuchsia.net.name.Lookup",
+            "fuchsia.pkg.PackageResolverAdmin",
+            "fuchsia.pkg.RepositoryManager",
+            "fuchsia.pkg.rewrite.Engine",
+            "fuchsia.posix.socket.Provider",
+            "fuchsia.process.Launcher",
+            "fuchsia.process.Resolver",
+            "fuchsia.space.Manager",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Launcher",
+            "fuchsia.sys.Loader",
+            "fuchsia.sys.index.FuzzySearch",
+            "fuchsia.tracing.provider.Registry",
+            "fuchsia.update.Manager"
+        ]
+    }
+}

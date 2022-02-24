@@ -1,0 +1,24 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.block;
+
+using zx;
+
+/// It is treated as a separate protocol for extension if necessary.
+protocol InspectVmoProvider {
+    /// Requests the inspect vmo from the entity.
+    ///  - |vmo| has |ZX_RIGHTS_DUPLICATE|, |ZX_RIGHTS_TRANSFER|, |ZX_RIGHTS_READ|
+    GetVmo() -> (resource struct {
+        vmo zx.handle:VMO;
+    }) error zx.status;
+};
+
+protocol Ftl {
+    compose InspectVmoProvider;
+
+    /// Discards previous contents and reinitializes the device.
+    Format() -> (struct {
+        status zx.status;
+    });
+};

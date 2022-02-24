@@ -1,0 +1,45 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config.gni")
+import("//src/virtualization/packages/guest_package.gni")
+
+config_data("services_config") {
+  # This package must be part of the system image (of the guest) so that it
+  # exists before sysmgr comes up.
+  for_pkg = "sysmgr"
+  sources = [ "services.config" ]
+}
+
+guest_image_label = "//build/images/guest"
+guest_image_dir = get_label_info(guest_image_label, "target_out_dir")
+
+guest_package("zircon_guest") {
+  # This guest package needs to be marked as testonly becuase it contains tests
+  # within the guest image.
+  testonly = true
+  deps = [ "//build/images/guest" ]
+  zircon = guest_image_dir + "/guest/guest.zbi"
+
+  cmdline = "console.path=/dev/class/console/virtio-console"
+  cmdline += " console.is_virtio=true"
+  cmdline += " console.shell=true"
+
+  disk_filename = "filesystem.fvm"
+  fvm = guest_image_dir + "/guest/fvm.blk"
+  resources = [
+    {
+      path = rebase_path(fvm)
+      dest = "${disk_filename}"
+    },
+  ]
+  block_devices = [ "data/${disk_filename},ro,volatile" ]
+
+  # We insert a config package barrier because the _dependencies of_ this
+  # target shouldn't leak to targets that _depend on_ this target.
+  metadata = {
+    package_barrier = []
+    config_package_barrier = []
+  }
+}

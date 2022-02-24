@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/httpget_rust"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.http.Loader"
+        ]
+    }
+}

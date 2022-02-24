@@ -1,0 +1,37 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  edition = "2018"
+  name = "iquery_basic_component"
+  source_root = "main.rs"
+
+  deps = [
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "main.rs" ]
+}
+
+fuchsia_component("basic_component") {
+  testonly = true
+  manifest = "meta/basic_component.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("basic_component_with_logs") {
+  testonly = true
+  manifest = "meta/basic_component_with_logs.cml"
+  deps = [ ":bin" ]
+}

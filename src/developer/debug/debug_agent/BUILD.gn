@@ -1,0 +1,340 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+# Set manually to true to compile the zxdb_test_app.cc file for manual debugger
+# testing of various conditions.
+include_test_app = false
+
+static_library("lib") {
+  sources = [
+    "agent_configuration.cc",
+    "agent_configuration.h",
+    "align.cc",
+    "align.h",
+    "arch.cc",
+    "arch.h",
+    "automation_handler.cc",
+    "automation_handler.h",
+    "automation_instruction_executor.cc",
+    "automation_instruction_executor.h",
+    "binary_launcher.h",
+    "breakpoint.cc",
+    "breakpoint.h",
+    "component_manager.h",
+    "debug_agent.cc",
+    "debug_agent.h",
+    "debug_registers.h",
+    "debugged_job.cc",
+    "debugged_job.h",
+    "debugged_process.cc",
+    "debugged_process.h",
+    "debugged_thread.cc",
+    "debugged_thread.h",
+    "elf_utils.cc",
+    "elf_utils.h",
+    "exception_handle.h",
+    "general_registers.cc",
+    "general_registers.h",
+    "hardware_breakpoint.cc",
+    "hardware_breakpoint.h",
+    "job_handle.cc",
+    "job_handle.h",
+    "limbo_provider.h",
+    "module_list.cc",
+    "module_list.h",
+    "process_breakpoint.cc",
+    "process_breakpoint.h",
+    "process_handle.h",
+    "process_handle_observer.h",
+    "remote_api.h",
+    "remote_api_adapter.cc",
+    "remote_api_adapter.h",
+    "socket_connection.cc",
+    "socket_connection.h",
+    "software_breakpoint.cc",
+    "software_breakpoint.h",
+    "stdio_handles.h",
+    "system_interface.cc",
+    "system_interface.h",
+    "thread_handle.h",
+    "time.h",
+    "unwind.cc",
+    "unwind.h",
+    "watchpoint.cc",
+    "watchpoint.h",
+    "zircon_binary_launcher.cc",
+    "zircon_binary_launcher.h",
+    "zircon_component_manager.cc",
+    "zircon_component_manager.h",
+    "zircon_exception_handle.cc",
+    "zircon_exception_handle.h",
+    "zircon_job_handle.cc",
+    "zircon_job_handle.h",
+    "zircon_limbo_provider.cc",
+    "zircon_limbo_provider.h",
+    "zircon_process_handle.cc",
+    "zircon_process_handle.h",
+    "zircon_suspend_handle.cc",
+    "zircon_suspend_handle.h",
+    "zircon_system_interface.cc",
+    "zircon_system_interface.h",
+    "zircon_thread_handle.cc",
+    "zircon_thread_handle.h",
+    "zircon_utils.cc",
+    "zircon_utils.h",
+  ]
+
+  if (current_cpu == "x64") {
+    sources += [
+      "arch_x64.cc",
+      "debug_registers_x64.cc",
+    ]
+  } else if (current_cpu == "arm64") {
+    sources += [
+      "arch_arm64.cc",
+      "debug_registers_arm64.cc",
+    ]
+  } else {
+    assert(false, "Un-supported CPU: ${current_cpu}")
+  }
+
+  deps = [
+    "//src/developer/debug/third_party/libunwindstack",
+    "//src/developer/debug/unwinder",
+    "//src/lib/elflib",
+    "//zircon/third_party/ulib/ngunwind",
+  ]
+
+  public_deps = [
+    "//garnet/lib/process",
+    "//sdk/fidl/fuchsia.exception",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/lib/fit",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/debug/ipc:agent",
+    "//src/developer/debug/ipc:client",
+    "//src/developer/debug/shared",
+    "//src/lib/containers/cpp",
+    "//src/lib/fxl",
+    "//third_party/googletest:gtest_prod",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/zxc",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+if (include_test_app) {
+  executable("zxdb_test_app") {
+    if (is_debug) {
+      # Force no optimization in debug builds.
+      configs -= [ "//build/config:default_optimize" ]
+      configs += [ "//build/config:optimize_none" ]
+    }
+
+    sources = [ "zxdb_test_app.cc" ]
+    deps = [ "//zircon/system/ulib/zx" ]
+  }
+}
+
+executable("bin") {
+  output_name = "debug_agent"
+  sources = [
+    "fidl_server.cc",
+    "main.cc",
+  ]
+
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.debugger",
+    "//sdk/lib/sys/cpp",
+    "//zircon/system/ulib/cmdline",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_component("debug_agent-component") {
+  component_name = "debug_agent"
+  manifest = "meta/debug_agent.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("debug_agent_channel-component") {
+  component_name = "debug_agent_channel"
+  manifest = "meta/debug_agent_channel.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("debug_agent") {
+  deps = [
+    ":debug_agent-component",
+    ":debug_agent_channel-component",
+  ]
+}
+
+# Common functionality used by tests.
+source_set("test_lib") {
+  testonly = true
+  sources = [
+    "local_stream_backend.cc",
+    "local_stream_backend.h",
+    "mock_component_manager.cc",
+    "mock_component_manager.h",
+    "mock_debug_agent_harness.cc",
+    "mock_debug_agent_harness.h",
+    "mock_exception_handle.h",
+    "mock_job_handle.cc",
+    "mock_job_handle.h",
+    "mock_job_tree.cc",
+    "mock_job_tree.h",
+    "mock_limbo_provider.cc",
+    "mock_limbo_provider.h",
+    "mock_process.cc",
+    "mock_process.h",
+    "mock_process_handle.cc",
+    "mock_process_handle.h",
+    "mock_stream_backend.h",
+    "mock_system_interface.cc",
+    "mock_system_interface.h",
+    "mock_thread.cc",
+    "mock_thread.h",
+    "mock_thread_handle.cc",
+    "mock_thread_handle.h",
+  ]
+
+  public_deps = [
+    ":lib",
+    "//src/developer/debug/shared:test_support",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("unit_tests") {
+  output_name = "debug_agent_unit_tests"
+
+  sources = [
+    "align_unittest.cc",
+    "automation_instruction_executor_unittest.cc",
+    "breakpoint_unittest.cc",
+    "debug_agent_unittest.cc",
+    "debugged_job_unittest.cc",
+    "debugged_process_unittest.cc",
+    "debugged_thread_breakpoint_unittest.cc",
+    "debugged_thread_unittest.cc",
+    "hardware_breakpoint_unittest.cc",
+    "software_breakpoint_unittest.cc",
+    "time_zircon_unittest.cc",
+    "unwind_unittest.cc",
+    "watchpoint_unittest.cc",
+    "zircon_limbo_provider_unittest.cc",
+    "zircon_system_interface_unittest.cc",
+  ]
+
+  if (current_cpu == "x64") {
+    sources += [
+      "arch_x64_unittest.cc",
+      "debug_registers_x64_unittest.cc",
+    ]
+  } else if (current_cpu == "arm64") {
+    sources += [
+      "arch_arm64_unittest.cc",
+      "debug_registers_arm64_unittest.cc",
+    ]
+  } else {
+    assert(false, "Un-supported CPU: ${current_cpu}")
+  }
+
+  deps = [
+    ":test_lib",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/developer/debug/ipc:tests",
+    "//src/developer/debug/shared:tests",
+    "//src/developer/debug/unwinder:tests",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_unittest_package("debug_agent_unit_tests") {
+  component_name = "debug_agent_unit_tests"
+  manifest = "meta/debug_agent_unit_tests.cmx"
+  deps = [ ":unit_tests" ]
+}
+
+fuchsia_unittest_package("debug_agent_integration_tests") {
+  manifest = "meta/debug_agent_integration_tests.cmx"
+  deps = [
+    "integration_tests",
+    "test_data:debug_agent_test_loadable_module",
+
+    # These are executables that integration tests will need in order to test
+    # actual behaviour against zircon.
+    "test_data:test_executables",
+  ]
+
+  # TODO(https://fxbug.dev/47485): Get this test passing on arm64 and remove.
+  if (target_cpu == "arm64") {
+    test_specs = {
+      environments = []
+    }
+  }
+}
+
+# Helper Executables ---------------------------------------------------------
+#
+# These executables are not used by tests or the agent, but are useful for
+# replicating behaviour in development.
+
+fuchsia_component("limbo_caller") {
+  testonly = true
+  manifest = "meta/limbo_caller.cmx"
+  deps = [ "test_data:limbo_caller" ]
+}
+
+fuchsia_component("test_suite") {
+  testonly = true
+  component_name = "debug_agent_test_suite"
+  manifest = "meta/test_suite.cmx"
+
+  # NOTE: The 'test_suite' executable will launch '/pkg/bin/hw_watchpointer' at runtime!
+  deps = [
+    "test_data:hw_watchpointer",
+    "test_data:test_suite",
+  ]
+}
+
+fuchsia_package("debug_agent_helpers") {
+  testonly = true
+  deps = [
+    ":limbo_caller",
+    ":test_suite",
+    "//src/developer/debug/debug_agent/test_data:helper_executables",
+  ]
+  if (include_test_app) {
+    deps += [ ":zxdb_test_app" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":debug_agent_helpers",
+    ":debug_agent_integration_tests",
+    ":debug_agent_unit_tests",
+  ]
+}

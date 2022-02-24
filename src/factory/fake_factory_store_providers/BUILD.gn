@@ -1,0 +1,108 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_test.gni")
+import("//build/testing/environments.gni")
+
+rustc_binary("bin") {
+  name = "fake_factory_store_provider"
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.factory:fuchsia.factory-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/storage/vfs/rust:vfs",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:lazy_static",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:structopt",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+components = [
+  "alpha",
+  "cast",
+  "misc",
+  "playready",
+  "weave",
+  "widevine",
+]
+component_deps = []
+foreach(comp, components) {
+  comp_target_name = "${comp}_comp"
+  component_deps += [ ":$comp_target_name" ]
+  fuchsia_component(comp_target_name) {
+    component_name = comp
+    manifest = "meta/${comp}.cmx"
+    deps = [ ":bin" ]
+  }
+}
+
+fuchsia_package("fake_factory_store_providers") {
+  deps = component_deps
+}
+
+rustc_test("fake_factory_store_providers_test") {
+  edition = "2018"
+  source_root = "tests/fake_factory_store_providers_test.rs"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.factory:fuchsia.factory-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "tests/fake_factory_store_providers_test.rs" ]
+}
+
+fuchsia_unittest_package("fake_factory_store_providers_tests") {
+  package_deps_for_infra_only = [
+    "//src/factory/fake_factory_store_providers:fake_factory_store_providers",
+  ]
+  manifest = "meta/fake_factory_store_providers_test.cmx"
+  deps = [ ":fake_factory_store_providers_test" ]
+}
+
+config_data("test_fake_factory_store_providers_config") {
+  for_pkg = "fake_factory_store_providers"
+
+  sources = [
+    "testdata/test_alpha.config",
+    "testdata/test_cast.config",
+    "testdata/test_misc.config",
+    "testdata/test_playready.config",
+    "testdata/test_weave.config",
+    "testdata/test_widevine.config",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":fake_factory_store_providers",
+    ":fake_factory_store_providers_tests",
+    ":test_fake_factory_store_providers_config",
+  ]
+}

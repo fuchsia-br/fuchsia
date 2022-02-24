@@ -1,0 +1,325 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/config/sanitizers/sanitizer_default_options.gni")
+import("//build/toolchain/variant.gni")
+
+variant("asan") {
+  common_flags = [ "-fsanitize=address" ]
+  cflags = [
+    # See https://fxbug.dev/66129 and
+    # https://github.com/google/sanitizers/issues/1017.
+    "-mllvm",
+    "-asan-use-private-alias=1",
+  ]
+
+  # TODO(phosek): use runtime.json instead of invoking Clang.
+  if (is_fuchsia) {
+    extension = ".so"
+  } else if (is_mac) {
+    extension = "_osx_dynamic.dylib"
+  } else {
+    extension = ".a"
+  }
+
+  # For dynamic linking (Fuchsia and macOS), there is just one combined DSO.
+  # For static linking (other platforms), there are separate libraries for the
+  # generic (C) and C++-specific runtime support.
+  needed_asan_libs = [ "asan" ]
+  if (extension == ".a") {
+    needed_asan_libs += [ "asan_cxx" ]
+  }
+  rustflags = []
+  foreach(asan, needed_asan_libs) {
+    libclang_rt_asan = rebase_path(
+            exec_script("/usr/bin/env",
+                        [
+                          "${rebased_clang_prefix}/clang",
+                          "--target=${current_target_tuple}",
+                          "-print-file-name=libclang_rt.${asan}${extension}",
+                        ],
+                        "trim string"),
+            root_build_dir)
+    rustflags += [ "-Clink-arg=${libclang_rt_asan}" ]
+  }
+  if (is_fuchsia) {
+    rustflags += [ "-Clink-arg=-dynamic-linker=asan/ld.so.1" ]
+  }
+
+  # ASan wants frame pointers because it captures stack traces
+  # on allocations and such, not just on errors.
+  configs = [ "//build/config:frame_pointers" ]
+
+  if (is_kernel) {
+    configs += [ "//zircon/kernel/lib/instrumentation/asan:kasan" ]
+  }
+
+  deps = [ ":asan_default_options" ]
+
+  # Expose the presence of sanitizers as a compile-time condition.
+  # This allows conditional compilation of code for this variant,
+  # for instance in order to disable a specific test case.
+  # TODO(fxbug.dev/87239): use cfg_sanitize instead.
+  rustflags += [ "--cfg=feature=\"variant_asan\"" ]
+}
+
+sanitizer_default_options("asan_default_options") {
+  # The asan runtime includes the lsan and ubsan runtimes, which parse their
+  # own options.
+  deps = [
+    ":lsan_default_options",
+    ":ubsan_default_options",
+  ]
+}
+
+sanitizer_default_options("lsan_default_options") {
+}
+
+# TODO(fxbug.dev/45047): Temporary while leaks are plugged.
+# As leak bugs are found, file a bug #nnnnn for the leaky test/component,
+# and then add:
+# ```
+#   # TODO(nnnnn): Fix the leaks and remove this.
+#   deps += [ "//build/config/sanitizers:suppress-lsan.DO-NOT-USE-THIS" ]
+# ```
+# to the target that builds the leaky code.  When all leaky tests have been
+# marked that way, the asan_default_options default above will be removed.
+#
+# To trim this allowlist:
+# scripts/gn/trim_visibility.py --target="//build/config/sanitizers:suppress-lsan.DO-NOT-USE-THIS"
+sanitizer_extra_options("suppress-lsan.DO-NOT-USE-THIS") {
+  visibility = [
+    "//garnet/bin/setui/*",
+    "//src/cobalt/bin/system-metrics/*",
+    "//src/connectivity/bluetooth/hci/lib/*",
+    "//src/connectivity/wlan/lib/common/rust/*",
+    "//src/developer/ffx/plugins/scrutiny/verify/component_resolvers:*",
+    "//src/developer/shell/josh/*",
+    "//src/devices/usb/drivers/xhci/*",
+    "//src/graphics/drivers/msd-intel-gen/tests/unit_tests/*",
+    "//src/graphics/lib/compute/*",
+    "//src/graphics/lib/compute/mold/*",
+    "//src/graphics/lib/compute/surpass/*",
+    "//src/lib/scoped_task/*",
+    "//src/media/audio/drivers/intel-hda/controller/*",
+    "//src/ui/examples/escher/test/*",
+    "//third_party/alacritty/alacritty_terminal/*",
+    "//third_party/crashpad/*",
+    "//third_party/mesa/src/intel/vulkan/tests/*",
+  ]
+
+  args = [ "detect_leaks=0" ]
+  output_name = "lsan_default_options"
+  tags = [ "lsan" ]
+}
+
+sanitizer_extra_options("suppress-asan-stack-use-after-return") {
+  visibility = [
+    # These tests need to check actual stack behavior, not fake stack.
+    "//zircon/system/ulib/c/test/sanitizer:memory-snapshot-test",
+  ]
+
+  args = [ "detect_stack_use_after_return=0" ]
+  output_name = "asan_default_options"
+  tags = [ "asan" ]
+}
+
+# Disable the container overflow detection, which will create false positives
+# if a part of the application is built with asan and another part is not. See
+# https://github.com/google/sanitizers/wiki/AddressSanitizerContainerOverflow.
+sanitizer_extra_options("suppress-asan-container-overflow") {
+  visibility = [ "//src/lib/llvm:*" ]
+
+  args = [ "detect_container_overflow=0" ]
+  output_name = "asan_default_options"
+  tags = [ "asan" ]
+}
+
+config("suppress-tsan.DO-NOT-USE-THIS") {
+  cflags = [ "-fno-sanitize=thread" ]
+  visibility = []
+}
+
+config("suppress-ubsan.DO-NOT-USE-THIS") {
+  cflags = [ "-fno-sanitize=undefined" ]
+  visibility = [
+    "//build/config:temporarily_disable_ubsan_do_not_use",
+    "//zircon/third_party/uapp/dash/*",
+  ]
+}
+
+config("no-shadow-call-stack") {
+  if (current_cpu == "arm64" && !is_gcc) {
+    cflags = [ "-fno-sanitize=shadow-call-stack" ]
+  }
+}
+
+config("no_sanitizers") {
+  cflags = [ "-fno-sanitize=all" ]
+  if (!is_gcc) {
+    cflags += [ "-fsanitize-coverage=0" ]
+  }
+  configs = [ "//build/config:no_stack_protector" ]
+}
+
+# rustc flags for AddressSanitizer, primarily used for fuzzing Rust code.
+# TODO(fxbug.dev/45102): This is technically wrong; it will use clang's ASan.
+# rustc is built from a different fork of LLVM and should use a matching ASan.
+# However, Fuchsia's libc and dynamic linker cooperate to set up the shadow
+# memory and currently always link against clang's ASan. Using both rustc and
+# clang's ASan would also be infeasible, as symbol names and shadow memory
+# regions would conflict.
+#
+# Thus, variants using this config currently IGNORE the potential ABI
+# incompatibility and simply use clang's ASan. If/when this breaks, these
+# test-only variants should be disabled until a resolution can be found.
+#
+# Additionally, variants using this config CANNOT be used on binaries linked
+# by rustc, as it will fail to find its runtime. It CAN be used to build
+# libraries with rustc that are then linked into executables by clang, e.g.
+# fuzzers.
+variant("rust-asan") {
+  rustflags = [ "-Zsanitizer=address" ]
+}
+
+variant("ubsan") {
+  common_flags = [ "-fsanitize=undefined" ]
+
+  if (is_fuchsia) {
+    dynamic_linker_flags =
+        "-dynamic-linker=${toolchain_variant.libprefix}ld.so.1"
+    ldflags = [ "-Wl,$dynamic_linker_flags" ]
+    rustflags = [ "-Clink-arg=$dynamic_linker_flags" ]
+  }
+
+  if (is_host) {
+    # TODO(fxbug.dev/60446): remove this once LLVM prebuilts have variants
+    # Disable vptr checks on host binaries.
+    # This is a temporary hack around the facts that:
+    # 1) UBSan's vptr check requires RTTI, and mixing RTTI and no-RTTI TUs in
+    #    the same binary leads to spurious UBSan failures
+    # 2) we have non-variant prebuilts for LLVM, which lack RTTI
+    # 3) we have binaries that depend on both these LLVM prebuilts and other libraries
+    # Disabling this check on host tools for now allows us to enable UBSan on
+    # host tools, which is a net win.
+    common_flags += [ "-fno-sanitize=vptr" ]
+  }
+
+  # TODO(fxbug.dev/93804): Remove this once all instances of non-positive VLA
+  # sizes are fixed.
+  common_flags += [ "-fno-sanitize=vla-bound" ]
+
+  # If asan is also in use, it handles ubsan_default_options indirectly.
+  if (toolchain_variant.tags + [ "asan" ] - [ "asan" ] ==
+      toolchain_variant.tags) {
+    deps = [ ":ubsan_default_options" ]
+  }
+}
+
+sanitizer_default_options("ubsan_default_options") {
+}
+
+variant("sancov") {
+  common_flags = [ "-fsanitize-coverage=trace-pc-guard" ]
+}
+
+variant("tsan") {
+  common_flags = [ "-fsanitize=thread" ]
+
+  # TODO(phosek): use runtime.json instead of invoking Clang.
+  if (is_mac) {
+    extension = "_osx_dynamic.dylib"
+  } else {
+    extension = ".a"
+  }
+
+  # For dynamic linking (macOS), there is just one combined DSO.
+  # For static linking (other platforms), there are separate libraries for the
+  # generic (C) and C++-specific runtime support.
+  needed_tsan_libs = [ "tsan" ]
+  if (extension == ".a") {
+    needed_tsan_libs += [ "tsan_cxx" ]
+  }
+  rustflags = []
+  foreach(tsan, needed_tsan_libs) {
+    libclang_rt_tsan = rebase_path(
+            exec_script("/usr/bin/env",
+                        [
+                          "${rebased_clang_prefix}/clang",
+                          "--target=${current_target_tuple}",
+                          "-print-file-name=libclang_rt.${tsan}${extension}",
+                        ],
+                        "trim string"),
+            root_build_dir)
+    rustflags += [ "-Clink-arg=${libclang_rt_tsan}" ]
+  }
+
+  deps = [ ":tsan_default_options" ]
+
+  # Expose the presence of sanitizers as a compile-time condition.
+  # This allows conditional compilation of code for this variant,
+  # for instance in order to disable a specific test case.
+  # TODO(fxbug.dev/87239): use cfg_sanitize instead.
+  rustflags += [ "--cfg=feature=\"variant_tsan\"" ]
+}
+
+sanitizer_default_options("tsan_default_options") {
+}
+
+variant("hwasan") {
+  common_flags = [ "-fsanitize=hwaddress" ]
+
+  cflags = [
+    # TODO(fxbug.dev/57112): Temporarily disable instrumenting globals for now.
+    # Tagging on globals affects taking offsets of vtables in the relative-
+    # vtables ABI and results in a linker error. Once we finalize how we want
+    # to handle this case, we should come back and re-enable global
+    # instrumentation.
+    "-mllvm",
+    "-hwasan-globals=0",
+  ]
+
+  # TODO(phosek): use runtime.json instead of invoking Clang.
+  if (is_fuchsia) {
+    extension = ".so"
+  } else {
+    extension = ".a"
+  }
+
+  # For dynamic linking (Fuchsia and macOS), there is just one combined DSO.
+  # For static linking (other platforms), there are separate libraries for the
+  # generic (C) and C++-specific runtime support.
+  needed_hwasan_libs = [ "hwasan" ]
+  if (extension == ".a") {
+    needed_hwasan_libs += [ "hwasan_cxx" ]
+  }
+  rustflags = []
+  foreach(hwasan, needed_hwasan_libs) {
+    libclang_rt_hwasan = rebase_path(
+            exec_script("/usr/bin/env",
+                        [
+                          "${rebased_clang_prefix}/clang",
+                          "--target=${current_target_tuple}",
+                          "-print-file-name=libclang_rt.${hwasan}${extension}",
+                        ],
+                        "trim string"),
+            root_build_dir)
+    rustflags += [ "-Clink-arg=${libclang_rt_hwasan}" ]
+  }
+  if (is_fuchsia) {
+    rustflags += [ "-Clink-arg=-dynamic-linker=hwasan/ld.so.1" ]
+  }
+
+  deps = [ ":hwasan_default_options" ]
+
+  # Expose the presence of sanitizers as a compile-time condition.
+  # This allows conditional compilation of code for this variant,
+  # for instance in order to disable a specific test case.
+  # TODO(fxbug.dev/87239): use cfg_sanitize instead.
+  rustflags += [ "--cfg=feature=\"variant_hwasan\"" ]
+}
+
+sanitizer_default_options("hwasan_default_options") {
+}

@@ -1,0 +1,136 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/library_headers.gni")
+import("//build/cpp/sdk_static_library.gni")
+import("//build/zircon/zx_library.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ "tests" ]
+}
+
+config("include") {
+  include_dirs = [ "include" ]
+}
+
+# This needs to be static_library rather than source_set, as we need
+# Unix linking rules to apply. This is so that only the object files
+# corresponding to the used functions will be linked to the final binary.
+sdk_static_library("ddk") {
+  category = "partner"
+  sdk_name = "ddk"
+  public = [
+    "include/lib/ddk/binding_priv.h",
+    "include/lib/ddk/debug.h",
+    "include/lib/ddk/device.h",
+    "include/lib/ddk/driver.h",
+    "include/lib/ddk/fidl-protodefs.h",
+    "include/lib/ddk/fragment-device.h",
+    "include/lib/ddk/hw/arch_ops.h",
+    "include/lib/ddk/hw/inout.h",
+    "include/lib/ddk/hw/reg.h",
+    "include/lib/ddk/io-buffer.h",
+    "include/lib/ddk/metadata.h",
+    "include/lib/ddk/mmio-buffer.h",
+    "include/lib/ddk/phys-iter.h",
+    "include/lib/ddk/protodefs.h",
+    "include/lib/ddk/trace/event.h",
+  ]
+
+  # These headers will error out if included directly from user code.
+  private_headers = [
+    "include/lib/ddk/protodefs.h",
+    "include/lib/ddk/fidl-protodefs.h",
+  ]
+
+  sources = [
+    "io-buffer.c",
+    "macros.h",
+    "mmio-buffer.c",
+    "phys-iter.c",
+  ]
+
+  public_configs = [ ":include" ]
+
+  public_deps = [
+    # <ddk/io-buffer.h> has #include <zircon/syscalls.h>.
+
+    "//sdk/lib/driver_runtime",
+    "//zircon/system/ulib/async:async",
+    "//zircon/system/ulib/ddk-platform-defs",
+    "//zircon/system/ulib/mmio-ptr",
+    "//zircon/system/ulib/syslog:syslog-headers",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-engine",
+  ]
+
+  deps = [ "//zircon/system/ulib/sync" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+library_headers("ddk-metadata-headers") {
+  headers = [
+    "ddk/metadata/bad-block.h",
+    "ddk/metadata/buttons.h",
+    "ddk/metadata/camera.h",
+    "ddk/metadata/clock.h",
+    "ddk/metadata/display.h",
+    "ddk/metadata/gpio.h",
+    "ddk/metadata/gpt.h",
+    "ddk/metadata/init-step.h",
+    "ddk/metadata/lights.h",
+    "ddk/metadata/nand.h",
+    "ddk/metadata/power.h",
+    "ddk/metadata/pwm.h",
+    "ddk/metadata/test.h",
+    "ddk/usb-peripheral-config.h",
+  ]
+
+  public_deps = [
+    # <ddk/usb-peripheral-config.h> has #include <fuchsia/hardware/usb/peripheral/c/fidl.h>.
+    "//sdk/fidl/fuchsia.hardware.usb.peripheral:fuchsia.hardware.usb.peripheral_c",
+  ]
+}
+
+library_headers("ddk-deprecated-binding-headers") {
+  headers = [ "lib/ddk/binding.h" ]
+  public_deps = [ ":ddk" ]
+  visibility = [
+    "//src/connectivity/bluetooth/core/bt-host:*",
+    "//src/devices/bin/driver_host:*",
+    "//src/devices/bin/driver_manager:*",
+    "//src/devices/board/drivers/astro:*",
+    "//src/devices/board/drivers/c18:*",
+    "//src/devices/board/drivers/integration-test:*",
+    "//src/devices/board/drivers/machina:*",
+    "//src/devices/board/drivers/nelson:*",
+    "//src/devices/board/drivers/qemu-arm64:*",
+    "//src/devices/board/drivers/sherlock:*",
+    "//src/devices/board/drivers/vim3:*",
+    "//src/devices/board/drivers/x86/*",
+    "//src/devices/bus/drivers/pci:*",
+    "//src/devices/bus/drivers/platform:*",
+    "//src/devices/bus/drivers/platform/test:*",
+    "//src/devices/lib/driver-info:driver-info",
+    "//src/devices/nand/drivers/ram-nand:*",
+    "//src/devices/tests/bind-test:*",
+    "//src/devices/tests/bind-test-v2:*",
+    "//src/devices/tests/libdriver-integration-test:*",
+    "//src/devices/tests/string-bind-test:*",
+    "//src/devices/usb/drivers/usb-bus:*",
+    "//src/devices/usb/drivers/usb-peripheral:*",
+    "//src/devices/usb/drivers/usb-peripheral-test:*",
+    "//src/lib/ddk/tests:*",
+    "//src/media/audio/drivers/intel-hda/controller:*",
+    "//src/media/audio/lib/simple-codec:*",
+  ]
+}
+
+library_headers("ddk-device-headers") {
+  headers = [ "lib/ddk/device.h" ]
+  public_deps = [ "//sdk/lib/driver_runtime" ]
+}

@@ -1,0 +1,40 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("examples") {
+  public_deps = [
+    ":flatland-examples",
+    "bouncing_ball",
+    "embedder",
+    "frame-compression",
+    "lab/direct_input",
+    "lab/direct_input/child",
+    "lab/pose_buffer_presenter",
+    "lab/scenic_dev_app",
+    "shadertoy",
+    "simplest_app",
+    "simplest_embedder",
+    "spinning_square_view",
+    "standalone_app",
+    "tile_view",
+    "yuv_to_image_pipe",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps =
+      [ "flatland-view-provider:flatland-view-provider-example-tests" ]
+}
+
+fuchsia_package("flatland-examples") {
+  package_name = "flatland-examples"
+  deps = [
+    "flatland-display",
+    "flatland-display:flatland-display-rust",
+    "flatland-view-provider",
+  ]
+}

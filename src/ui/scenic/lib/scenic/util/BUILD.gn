@@ -1,0 +1,35 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("util") {
+  sources = [
+    "error_reporter.cc",
+    "error_reporter.h",
+    "print_event.cc",
+    "print_event.h",
+    "scheduler_profile.cc",
+    "scheduler_profile.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/fidl/fuchsia.ui.gfx",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [ "//src/lib/fxl" ]
+}
+
+source_set("rk4_spring_simulation") {
+  sources = [
+    "rk4_spring_simulation.cc",
+    "rk4_spring_simulation.h",
+  ]
+
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/fbl",
+  ]
+}

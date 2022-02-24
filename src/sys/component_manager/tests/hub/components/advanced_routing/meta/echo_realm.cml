@@ -1,0 +1,44 @@
+// Realm for integration test that provisions an Echo client and service and eagerly runs the
+// client. We don't use the routing examples's echo_realm.cml because we need the component URLs
+// to refer to the test package.
+{
+    // Two children: a server and client. "hub_client" has "eager" startup so it
+    // will be started along with the realm.
+    children: [
+        {
+            name: "echo_server",
+            url: "fuchsia-pkg://fuchsia.com/hub_integration_test#meta/echo_server.cm",
+            startup: "eager",
+        },
+        {
+            name: "reporter",
+            url: "fuchsia-pkg://fuchsia.com/hub_integration_test#meta/advanced_routing_reporter.cm",
+            startup: "eager",
+        },
+    ],
+
+    // Route Echo service from server to client.
+    offer: [
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "#echo_server",
+            to: "#reporter",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: "#reporter",
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            to: "#reporter",
+        },
+        {
+            directory: "hub",
+            from: "#echo_server",
+            as: "sibling_hub",
+            to: "#reporter",
+        },
+    ],
+}

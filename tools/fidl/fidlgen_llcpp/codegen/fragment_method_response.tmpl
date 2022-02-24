@@ -1,0 +1,150 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Method:Response:WireMessagingHeader" }}
+{{- EnsureNamespace "" }}
+{{- if .Response.IsResource }}
+{{- IfdefFuchsia -}}
+{{- end }}
+
+template<>
+struct {{ .WireResponse }} final {
+{{- range .ResponseAnonymousChildren }}
+  using {{ .ScopedName }} = {{ .FlattenedName }};
+{{- end }}
+
+  {{ if .ResponseArgs }}
+  FIDL_ALIGNDECL
+    {{- range $index, $param := .ResponseArgs }}
+  {{ $param.Type }} {{ $param.Name }};
+    {{- end }}
+
+  explicit {{ .WireResponse.Self }}({{ RenderParams .ResponseArgs }})
+  {{ RenderInitMessage .ResponseArgs }} {}
+  {{- end }}
+  {{ .WireResponse.Self }}() = default;
+
+  {{- if .Response.IsResource }}
+  void _CloseHandles();
+  {{- end }}
+};
+
+template<>
+struct {{ .WireTransactionalResponse }} final {
+  FIDL_ALIGNDECL
+  fidl_message_header_t header;
+  {{ if .ResponseArgs }}
+  {{ .WireResponse }} body;
+  explicit {{ .WireTransactionalResponse.Self }}({{ RenderParams .ResponseArgs }})
+  : body({{ .WireResponse }}({{ RenderForwardParams .ResponseArgs }})) {
+    _InitHeader();
+  }
+  {{- end }}
+  {{ .WireTransactionalResponse.Self }}() {
+    _InitHeader();
+  }
+
+  {{- if .Response.IsResource }}
+  void _CloseHandles() {
+    {{- if .ResponseArgs }}
+    body._CloseHandles();
+    {{- end }}
+  }
+  {{- end }}
+
+ private:
+  void _InitHeader();
+};
+
+{{- if .Response.IsResource }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+
+
+
+{{- define "Method:Response:WireMessagingSource" }}
+  {{- EnsureNamespace "" }}
+{{- if .Response.IsResource }}
+{{- IfdefFuchsia -}}
+{{- end }}
+  void {{ .WireTransactionalResponse }}::_InitHeader() {
+    fidl_init_txn_header(&header, 0, {{ .OrdinalName }});
+  }
+
+  {{ if .Response.IsResource }}
+    void {{ .WireResponse }}::_CloseHandles() {
+      {{- range .ResponseArgs }}
+        {{- CloseHandles . false false }}
+      {{- end }}
+    }
+  {{- end }}
+{{- if .Response.IsResource }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+
+
+{{- define "Method:Response:NaturalMessagingHeader" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+
+template <>
+class {{ .NaturalResponse }} final : public {{ .ResponseMessageBase }} {
+ public:
+  {{- with .NaturalResponse }}
+  {{ .Self }}() = default;
+  ~{{ .Self }}() = default;
+  {{ .Self }}({{ .Self }}&&) noexcept = default;
+  {{ .Self }}& operator=({{ .Self }}&&) noexcept = default;
+  {{- end }}
+
+  {{- if .HasResponsePayload }}
+  {{ .NaturalResponse.Self }}({{ .ResponsePayload }} payload) : payload_(std::move(payload)) {}
+  {{- end }}
+
+  {{- if .Response.IsResource }}
+    {{- with .NaturalResponse }}
+  {{ .Self }}(const {{ .Self }}&) noexcept = delete;
+  {{ .Self }}& operator=(const {{ .Self }}&) noexcept = delete;
+    {{- end }}
+  {{- else }}
+    {{- /* TODO(fxbug.dev/82189): Generate copy constructors */}}
+  {{- end }}
+
+  {{- if .HasResponsePayload }}
+  {{ .ResponsePayload }}* operator->() { return &payload_; }
+  const {{ .ResponsePayload }}* operator->() const { return &payload_; }
+  {{ .ResponsePayload }}& operator*() { return payload_; }
+  const {{ .ResponsePayload }}& operator*() const { return payload_; }
+  {{- end }}
+
+ private:
+  {{- if .HasResponsePayload }}
+  {{ .ResponsePayload }} payload_;
+  {{- end }}
+};
+
+template <>
+struct {{ .ResponseMessageTraits }} final {
+ public:
+  static constexpr bool kHasPayload = {{ .HasResponsePayload }};
+  {{- if .HasResponsePayload }}
+  using Payload = {{ .ResponsePayload }};
+  {{- end }}
+};
+
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Method:Response:NaturalMessagingSource" }}
+
+{{- end }}

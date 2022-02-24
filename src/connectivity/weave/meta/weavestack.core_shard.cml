@@ -1,0 +1,100 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// TODO(https://fxbug.dev/91735): Remove this comment once core_shard dependency can
+// be expressed. Until then this comment helps identify dependency.
+// This core_shard depends on
+// //src/connectivity/network/tun/network-tun/meta/network-tun.core_shard.cml.
+// So products using this core_shard must also include network-tun.core_shard
+// from build target:
+// //src/connectivity/network/tun/network-tun:network-tun-core-shard
+{
+    children: [
+        {
+            name: "weavestack",
+            url: "fuchsia-pkg://fuchsia.com/weavestack#meta/weavestack.cm",
+            environment: "#full-resolver-env",
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.weave.Bootstrap",
+                "fuchsia.weave.Stack",
+                "fuchsia.weave.StackProvider",
+            ],
+            from: "#weavestack",
+        },
+    ],
+    offer: [
+        {
+            directory: "config-data",
+            from: "parent",
+            to: "#weavestack",
+            subdir: "weavestack",
+        },
+        {
+            protocol: [
+                "fuchsia.bluetooth.gatt.Server",
+                "fuchsia.bluetooth.le.Peripheral",
+            ],
+            from: "#bluetooth-core",
+            to: [ "#weavestack" ],
+        },
+        {
+            storage: "data",
+            from: "self",
+            to: [ "#weavestack" ],
+        },
+        {
+            protocol: [
+                "fuchsia.factory.WeaveFactoryStoreProvider",
+                "fuchsia.lowpan.device.Lookup",
+                "fuchsia.weave.FactoryDataManager",
+                "fuchsia.weave.Signer",
+            ],
+            from: "self",
+            to: [ "#weavestack" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [
+                "fuchsia.hwinfo.Device",
+                "fuchsia.hwinfo.Product",
+            ],
+            from: "#hwinfo",
+            to: [ "#weavestack" ],
+        },
+        {
+            protocol: [
+                "fuchsia.net.interfaces.admin.Installer",
+                "fuchsia.net.interfaces.State",
+                "fuchsia.net.name.Lookup",
+                "fuchsia.net.routes.State",
+                "fuchsia.net.stack.Stack",
+                "fuchsia.netstack.Netstack",
+                "fuchsia.posix.socket.Provider",
+            ],
+            from: "#network",
+            to: [ "#weavestack" ],
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [ "#weavestack" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.buildinfo.Provider" ],
+            from: "#build-info",
+            to: [ "#weavestack" ],
+            dependency: "weak_for_migration",
+        },
+        {
+            protocol: [ "fuchsia.net.tun.Control" ],
+            from: "#network-tun",
+            to: [ "#weavestack" ],
+        },
+    ],
+}

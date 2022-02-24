@@ -1,0 +1,17 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("fs-mount") {
+  deps = [ ":mount" ]
+}
+
+executable("mount") {
+  sources = [ "main.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.fshost:fuchsia.fshost_llcpp",
+    "//src/storage/fshost:headers",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/service:service-llcpp",
+  ]
+}

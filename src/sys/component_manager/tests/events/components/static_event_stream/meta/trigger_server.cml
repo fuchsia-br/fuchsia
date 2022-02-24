@@ -1,0 +1,83 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/static_event_stream_trigger_server",
+    },
+    children: [
+        {
+            name: "stub",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/stub_component.cm",
+            startup: "eager",
+        },
+        {
+            name: "echo_server",
+            url: "fuchsia-pkg://fuchsia.com/events_integration_test#meta/echo_server.cm",
+            startup: "lazy",
+        },
+    ],
+    capabilities: [
+        { protocol: "fidl.test.components.Trigger" },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.sys2.EventSource" ],
+        },
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "framework",
+        },
+        {
+            event: [
+                "capability_routed",
+                "resolved",
+                "started",
+            ],
+            from: "framework",
+            modes: [ "sync" ],
+        },
+        {
+            event: [ "capability_requested" ],
+            from: "parent",
+            filter: { name: "fidl.test.components.Trigger" },
+            modes: [ "async" ],
+        },
+        {
+            event_stream_deprecated: "EventStream",
+            subscriptions: [
+                {
+                    event: "capability_requested",
+                    mode: "async",
+                },
+            ],
+        },
+        {
+            event_stream_deprecated: "second_stream",
+            subscriptions: [
+                {
+                    event: "capability_requested",
+                    mode: "async",
+                },
+            ],
+        },
+        {
+            event_stream_deprecated: "resolved_stream",
+            subscriptions: [
+                {
+                    event: "resolved",
+                    mode: "sync",
+                },
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fidl.test.components.Trigger",
+            from: "self",
+        },
+        {
+            protocol: "fidl.examples.routing.echo.Echo",
+            from: "#echo_server",
+        },
+    ],
+}

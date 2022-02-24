@@ -1,0 +1,172 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Union:ForwardDeclaration:NaturalTypesHeader" }}
+{{ EnsureNamespace . }}
+
+class {{ .Name }};
+{{- end }}
+
+{{- define "Union:NaturalTypesHeader" }}
+{{ EnsureNamespace . }}
+{{ if .IsResourceType }}
+{{- IfdefFuchsia -}}
+{{- end }}
+extern "C" const fidl_type_t {{ .CodingTableType.Name }};
+
+{{ .Docs }}
+class {{ .Name }} final {
+ private:
+  using Storage_ =
+    cpp17::variant<
+      cpp17::monostate
+      {{- range .Members }}
+        , {{- .Type }}
+      {{- end -}}
+    >;
+ public:
+  // TODO: share union tag types between wire & natural.
+  enum class {{ .TagEnum.Self }} : fidl_union_tag_t {
+  {{- range .Members }}
+    {{ .TagName.Self }} = {{ .Ordinal }},  // {{ .Ordinal | printf "%#x" }}
+  {{- end }}
+  {{- if .IsFlexible }}
+    {{ .TagUnknown.Self }} = ::std::numeric_limits<::fidl_union_tag_t>::max(),
+  {{- end }}
+  };
+
+  // Create an unknown value of this union.
+  {{ .Name }}() : storage_(std::make_shared<Storage_>()) {}
+
+  {{ .Name }}({{ .Name }}&&) noexcept = default;
+  {{ .Name }}& operator=({{ .Name }}&&) noexcept = default;
+  {{- if not .IsResourceType }}
+    {{ .Name }}(const {{ .Name }}& other) noexcept : {{ .Name }}(other.CloneStorage_()){}
+    {{ .Name }}& operator=(const {{ .Name }}& other) noexcept {
+      storage_ = other.CloneStorage_();
+      return *this;
+    }
+
+    bool operator==(const {{ .Name }}& other) const noexcept {
+      return *storage_ == *other.storage_;
+    }
+    bool operator!=(const {{ .Name }}& other) const noexcept {
+      return *storage_ != *other.storage_;
+    }
+  {{- end }}
+
+  constexpr {{ .TagEnum }} Which() const {
+    return {{ .Name }}::IndexToTag(storage_->index());
+  }
+
+  {{- range .Members }}
+    static {{ $.Name }} With{{ .UpperCamelCaseName }}({{ .Type }} val) {
+      return {{ $.Name }}(std::make_shared<Storage_>(
+        std::in_place_index_t<{{ .NaturalIndex }}>{},
+        std::move(val)));
+    }
+
+    const ::fidl::internal::UnionMemberView<{{ .NaturalIndex }}, Storage_>
+        {{ .Name }}() const {
+      return ::fidl::internal::UnionMemberView<{{ .NaturalIndex }}, Storage_>(storage_);
+    }
+    ::fidl::internal::UnionMemberView<{{ .NaturalIndex }}, Storage_> {{ .Name }}() {
+      return ::fidl::internal::UnionMemberView<{{ .NaturalIndex }}, Storage_>(storage_);
+    }
+  {{- end }}
+
+ private:
+  std::shared_ptr<Storage_> storage_;
+  {{- if not .IsResourceType }}
+    std::shared_ptr<Storage_> CloneStorage_() const;
+  {{- end }}
+  friend struct ::fidl::internal::NaturalUnionCodingTraits<{{ . }}>;
+  static constexpr std::array<std::optional<::fidl::internal::NaturalHandleInformation>, {{ Add 1 (len .Members) }}> kMembers = {
+    std::nullopt
+    {{- range .Members }}
+      ,
+      {{- if .HandleInformation -}}
+        std::make_optional<::fidl::internal::NaturalHandleInformation>({
+          .object_type = {{ .HandleInformation.ObjectType }},
+          .rights = {{ .HandleInformation.Rights }}
+        })
+      {{- else }}
+        std::nullopt
+      {{- end -}}
+    {{- end -}}
+  };
+
+
+  explicit {{ .Name }}(std::shared_ptr<Storage_> storage) : storage_(std::move(storage)) {}
+
+  static constexpr size_t TagToIndex({{ .TagEnum }} tag) {
+    switch (tag) {
+      {{- range .Members }}
+        case {{ .TagName }}: return {{ .NaturalIndex }};
+      {{- end }}
+      {{- if .IsFlexible }}
+        case {{ .TagUnknown }}: return 0;
+      {{- end }}
+    }
+  }
+
+  static constexpr {{ .TagEnum }} IndexToTag(size_t index) {
+    switch (index) {
+      {{- range  .Members }}
+        case {{ .NaturalIndex }}: return {{ .TagName }};
+      {{- end }}
+      {{- if .IsFlexible }}
+        default: return {{ .TagUnknown }};
+      {{- else }}
+        // TODO: what's the right thing to do here?
+        default: return {{ (index .Members 0).TagName }};
+      {{- end }}
+    }
+  }
+
+};
+
+{{ if .IsResourceType }}
+{{- EndifFuchsia -}}
+{{- end }}
+{{- end }}
+
+{{- define "Union:Traits:NaturalTypesHeader" }}
+  {{ if .IsResourceType }}
+  template <>
+  struct IsResource<{{ . }}> : public std::true_type {};
+  {{- end }}
+  template <>
+  struct IsFidlType<{{ . }}> : public std::true_type {};
+  template <>
+  struct IsUnion<{{ . }}> : public std::true_type {};
+
+  template <>
+  struct internal::NaturalCodingTraits<{{ . }}> final
+    : public ::fidl::internal::NaturalUnionCodingTraits<{{ . }}> {};
+
+{{- end }}
+
+
+{{- define "Union:NaturalTypesSource" }}
+{{- EnsureNamespace "" }}
+
+{{ if not .IsResourceType }}
+  std::shared_ptr<{{ . }}::Storage_> {{ .NoLeading }}::CloneStorage_() const {
+    const Storage_& storage = *storage_;
+    switch (storage_->index()) {
+      {{- range $i, $m := .Members }}
+        case {{ Add $i 1 }}:
+          return std::make_shared<Storage_>(
+            std::in_place_index<{{ Add $i 1 }}>,
+            ::fidl::internal::NaturalClone(std::get<{{ Add $i 1 }}>(storage)));
+      {{- end }}
+      default:
+        return std::make_shared<Storage_>();
+    }
+  }
+{{- end }}
+{{- end }}

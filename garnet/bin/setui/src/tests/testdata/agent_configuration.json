@@ -1,0 +1,11 @@
+{
+    "agent_types": [
+        "CameraWatcher",
+        "MediaButtons",
+        "Earcons",
+        "Restore",
+        "InspectPolicyValues",
+        "InspectSettingProxy",
+        "InspectSettingValues"
+    ]
+}

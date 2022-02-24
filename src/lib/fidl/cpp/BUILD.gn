@@ -1,0 +1,42 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+assert(is_fuchsia, "Unified C++ bindings only support Fuchsia for now.")
+
+source_set("cpp") {
+  public = [
+    "include/lib/fidl/cpp/channel.h",
+    "include/lib/fidl/cpp/client.h",
+    "include/lib/fidl/cpp/internal/client_details.h",
+    "include/lib/fidl/cpp/internal/make_response_context.h",
+    "include/lib/fidl/cpp/internal/message_extensions.h",
+    "include/lib/fidl/cpp/internal/natural_client_base.h",
+    "include/lib/fidl/cpp/internal/natural_client_messenger.h",
+    "include/lib/fidl/cpp/internal/natural_server_messenger.h",
+    "include/lib/fidl/cpp/natural_coding_traits.h",
+    "include/lib/fidl/cpp/natural_decoder.h",
+    "include/lib/fidl/cpp/natural_encoder.h",
+    "include/lib/fidl/cpp/natural_types.h",
+    "include/lib/fidl/cpp/unified_messaging.h",
+    "include/lib/fidl/cpp/unified_messaging_declarations.h",
+  ]
+  sources = [
+    "internal/message_extensions.cc",
+    "internal/natural_client_messenger.cc",
+    "internal/natural_server_messenger.cc",
+    "natural_decoder.cc",
+    "natural_encoder.cc",
+  ]
+  public_deps = [
+    "//sdk/lib/fidl/cpp:cpp_base",
+    "//sdk/lib/stdcompat",
+    "//zircon/system/ulib/fidl:fidl-llcpp",
+    "//zircon/system/ulib/zxc",
+  ]
+  public_configs = [ ":cpp.headers" ]
+}
+
+config("cpp.headers") {
+  include_dirs = [ "include" ]
+}

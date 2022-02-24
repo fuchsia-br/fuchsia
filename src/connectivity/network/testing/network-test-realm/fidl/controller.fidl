@@ -1,0 +1,204 @@
+// Copyright 2021 The Fuchsia Authors.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.net.test.realm;
+
+using fuchsia.net;
+using fuchsia.net.interfaces;
+using fuchsia.url;
+using zx;
+
+/// Standard error codes for the `Controller` protocol.
+type Error = strict enum {
+    /// The controller encountered an unspecified error while performing the
+    /// desired operation.
+    INTERNAL = 1;
+    /// A hermetic network realm was expected to exist, but no such realm was
+    /// found to be running.
+    HERMETIC_NETWORK_REALM_NOT_RUNNING = 2;
+    /// A network interface was expected to exist, but was not found.
+    INTERFACE_NOT_FOUND = 3;
+    /// A stub was expected to exist, but was not found.
+    STUB_NOT_RUNNING = 4;
+    /// At least one argument was not valid.
+    INVALID_ARGUMENTS = 5;
+    /// The relevant component was not found.
+    COMPONENT_NOT_FOUND = 6;
+    /// The operation could not be performed within the specified timeout.
+    TIMEOUT_EXCEEDED = 7;
+    /// A ping unexpectedly failed.
+    PING_FAILED = 8;
+    /// The requested address is not available.
+    ADDRESS_NOT_AVAILABLE = 9;
+    /// The requested address is in use.
+    ADDRESS_IN_USE = 10;
+};
+
+/// A controller for creating and manipulating the Network Test Realm.
+///
+/// The Network Test Realm corresponds to a hermetic network realm with a
+/// Netstack under test. The `Controller` protocol is responsible for:
+///
+///  * Configuring the Network Test Realm and its child components. This
+///    includes the Netstack under test and the other relevant network
+///    components (e.g. a DHCP server).
+///  * Coordinating interactions with the system's Netstack. This includes
+///    temporarily taking over and mutating system interfaces.
+@discoverable
+protocol Controller {
+    /// Starts a hermetic network realm corresponding to `netstack`.
+    ///
+    /// Any previously running hermetic network realm will be terminated before
+    /// the new realm is started. The configured realm will contain a subset of
+    /// the components in the standard network realm. In particular, it will
+    /// contain:
+    ///
+    ///  * A Netstack instance that corresponds to the provided `netstack`
+    ///  * A DHCP server
+    ///  * A DHCPv6 client
+    ///  * A DNS resolver
+    ///
+    /// + request `netstack` the type of Netstack that will be run.
+    /// * error `INTERNAL` for internal errors, including failure to start the
+    ///     specified `netstack`.
+    StartHermeticNetworkRealm(struct {
+        netstack strict enum {
+            /// Netstack2.
+            V2 = 1;
+        };
+    }) -> (struct {}) error Error;
+
+    /// Stops any running hermetic network realm.
+    ///
+    /// All components in the hermetic network realm will be stopped. Similarly,
+    /// any interfaces that were previously disabled on the system's Netstack
+    /// will be re-enabled on a best-effort basis. That is, a failure to
+    /// re-enable an interface will not result in this method returning an
+    /// error.
+    ///
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if a hermetic network realm
+    ///     is not running.
+    /// * error `INTERNAL` for internal errors, including failure to destroy the
+    ///     realm.
+    StopHermeticNetworkRealm() -> (struct {}) error Error;
+
+    /// Attaches an interface to the hermetic Netstack.
+    ///
+    /// The interface that corresponds to `mac_address` will disabled on the
+    /// system's Netstack, but enabled on the hermetic Netstack.
+    ///
+    /// + request `mac_address` address of the interface to be added to the
+    ///     hermetic Netstack.
+    /// + request `name` the name to assign to the new interface.
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `INTERFACE_NOT_FOUND` if an interface with `mac_address` could
+    ///     not be found on the system.
+    /// * error `INTERNAL` for internal errors, including failure to read the
+    ///     system's interfaces or configure an interface.
+    AddInterface(struct {
+        mac_address fuchsia.net.MacAddress;
+        name fuchsia.net.interfaces.name;
+    }) -> (struct {}) error Error;
+
+    /// Starts a test stub.
+    ///
+    /// Any previously running stub will be terminated before the provided
+    /// stub corresponding to `component_url` is started.
+    ///
+    /// + request `component_url` the URL of the component to run.
+    /// * error `COMPONENT_NOT_FOUND` if a component correspodning to
+    ///     `component_url` could not be resolved.
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `INTERNAL` for internal errors, including failure to add the
+    ///     desired stub within the hermetic network realm.
+    /// * error `INVALID_ARGUMENTS` if the `component_url` is malformed.
+    StartStub(struct {
+        component_url fuchsia.url.Url;
+    }) -> (struct {}) error Error;
+
+    /// Stops the currently running stub.
+    ///
+    /// Other existing hermetic network realm components will continue to be run
+    /// after this is invoked.
+    ///
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `STUB_NOT_RUNNING` if there is no running stub.
+    /// * error `INTERNAL` for internal errors, including failure to destroy the
+    ///     stub component.
+    StopStub() -> (struct {}) error Error;
+
+    /// Sends an ICMP echo request to the `target` using a socket provided by
+    /// the hermetic Netstack.
+    ///
+    /// + request `target` the address to ping.
+    /// + request `payload_length` the body size of the ICMP packet.
+    ///     Specifically, the packet body will be filled with zeros of
+    ///     `payload_length`.
+    /// + request `interface_name` an optional interface to bind the socket to.
+    /// + request `timeout` a timeout in nanoseconds to wait for a reply. If
+    ///     less than or equal to 0, then returns success immediately after the
+    ///     ping is sent.
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `INTERFACE_NOT_FOUND` if `interface_name` does not exist in the
+    ///     hermetic Netstack.
+    /// * error `INTERNAL` for internal errors, including failure to create a
+    ///     socket or generate the ping request and response.
+    /// * error `INVALID_ARGUMENTS` if `target` corresponds to a link-local
+    ///     address and an `interface_name` is not specified or the
+    ///     `payload_length` exceeds the maximum allowable size.
+    /// * error `PING_FAILED` if there was an error sending or receiving the
+    ///     ping.
+    /// * error `TIMEOUT_EXCEEDED` if the ping reply is not received before the
+    ///     specifed `timeout`.
+    Ping(struct {
+        target fuchsia.net.IpAddress;
+        payload_length uint16;
+        interface_name string:<fuchsia.net.interfaces.INTERFACE_NAME_LENGTH, optional>;
+        timeout zx.duration;
+    }) -> (struct {}) error Error;
+
+    /// Joins a multicast group.
+    ///
+    /// Membership will be maintained until `LeaveMulticastGroup` or
+    /// `StopHermeticNetworkRealm` is invoked.
+    ///
+    /// + request `address` the group address to join.
+    /// + request `interface_id` the interface that should be used to join the
+    ///     group. A value of 0 indicates that any interface may be used.
+    /// * error `ADDRESS_IN_USE` if the provided `address` was previously
+    ///     joined.
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `INTERNAL` for internal errors.
+    /// * error `INVALID_ARGUMENTS` if the specified `interface_id` does not
+    ///     exist or the `address` does not correspond to a valid multicast
+    ///     address.
+    JoinMulticastGroup(struct {
+        address fuchsia.net.IpAddress;
+        interface_id fuchsia.net.interface_id;
+    }) -> (struct {}) error Error;
+
+    /// Leaves a multicast group that was previously joined using the
+    /// `JoinMulticastGroup` method.
+    ///
+    /// + request `address` the group address to leave.
+    /// + request `interface_id` the interface that was previously used to join
+    ///     the multicast group.
+    /// * error `ADDRESS_NOT_AVAILABLE` if the provided `address` was not
+    ///     previously joined.
+    /// * error `HERMETIC_NETWORK_REALM_NOT_RUNNING` if there is no running
+    ///     hermetic network realm.
+    /// * error `INTERNAL` for internal errors, including failure to connect
+    ///     to hermetic network realm services.
+    /// * error `INVALID_ARGUMENTS` if the specified `interface_id` does not
+    ///     exist or the `address` does not correspond to a valid multicast
+    ///     address.
+    LeaveMulticastGroup(struct {
+        address fuchsia.net.IpAddress;
+        interface_id fuchsia.net.interface_id;
+    }) -> (struct {}) error Error;
+};

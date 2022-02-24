@@ -1,0 +1,46 @@
+{
+    include: [
+        // Depends on config_data which is a system capability.
+        "//src/sys/test_manager/system-test.shard.cml",
+    ],
+    children: [
+        {
+            name: "font_resolver",
+            url: "fuchsia-pkg://fuchsia.com/font_provider_integration_tests#meta/mock_font_resolver.cm",
+        },
+        {
+            name: "driver",
+            url: "fuchsia-pkg://fuchsia.com/font_provider_integration_tests#meta/test_driver.cm",
+        },
+    ],
+    offer: [
+        {
+            protocol: "fuchsia.pkg.FontResolver",
+            from: "#font_resolver",
+            to: "#driver",
+        },
+
+        // Some components run under test get fonts from /config/data.
+        {
+            directory: "config-data",
+            from: "parent",
+            as: "config-data",
+            to: "#driver",
+            subdir: "fonts",
+        },
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [
+                "#driver",
+                "#font_resolver",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.test.Suite",
+            from: "#driver",
+        },
+    ],
+}

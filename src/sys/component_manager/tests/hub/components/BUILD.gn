@@ -1,0 +1,110 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_binary("advanced_routing_reporter_bin") {
+  name = "advanced_routing_reporter"
+  edition = "2018"
+  source_root = "advanced_routing/reporter.rs"
+  testonly = true
+  deps = [
+    ":hub_report_lib",
+    "//src/lib/fuchsia",
+  ]
+
+  sources = [ "advanced_routing/reporter.rs" ]
+}
+
+rustc_binary("simple_component_bin") {
+  name = "simple"
+  edition = "2018"
+  source_root = "simple_component/main.rs"
+  testonly = true
+  deps = [
+    "//src/lib/fuchsia",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "simple_component/main.rs" ]
+}
+
+rustc_binary("dynamic_child_reporter_bin") {
+  name = "dynamic_child_reporter"
+  edition = "2018"
+  source_root = "dynamic_child/reporter.rs"
+  testonly = true
+  deps = [
+    ":hub_report_lib",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.component.decl:fuchsia.component.decl-rustc",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/sys/lib/component-events",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "dynamic_child/reporter.rs" ]
+}
+
+rustc_binary("visibility_reporter_bin") {
+  name = "visibility_reporter"
+  edition = "2018"
+  source_root = "visibility/reporter.rs"
+  testonly = true
+  deps = [
+    ":hub_report_lib",
+    "//src/lib/fuchsia",
+  ]
+
+  sources = [ "visibility/reporter.rs" ]
+}
+
+rustc_binary("resolver_bin") {
+  name = "resolver"
+  edition = "2018"
+  source_root = "resolver/main.rs"
+  testonly = true
+  deps = [
+    ":hub_report_lib",
+    "//src/lib/fuchsia",
+  ]
+
+  sources = [ "resolver/main.rs" ]
+}
+
+rustc_binary("structured_config_reporter_bin") {
+  name = "structured_config_reporter"
+  edition = "2018"
+  source_root = "structured_config/reporter.rs"
+  testonly = true
+  deps = [
+    ":hub_report_lib",
+    "//src/lib/fuchsia",
+  ]
+
+  sources = [ "structured_config/reporter.rs" ]
+}
+
+rustc_library("hub_report_lib") {
+  name = "hub_report"
+  edition = "2018"
+  source_root = "hub_report.rs"
+  testonly = true
+  deps = [
+    "//examples/components/routing/fidl:echo-rustc",
+    "//garnet/lib/rust/files_async",
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.sys2:fuchsia.sys2-rustc",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "hub_report.rs" ]
+}

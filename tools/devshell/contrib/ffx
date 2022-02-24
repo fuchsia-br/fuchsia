@@ -1,0 +1,91 @@
+#!/bin/bash
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Other
+### execute ffx - future fx
+## See fx ffx help for more information.
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/../lib/vars.sh || exit $?
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/../lib/updates.sh || exit $?
+fx-config-read
+
+if is-remote-workflow-device; then
+  fx-command-run host-tool ffx target add $(get-device-pair)
+fi
+
+# NOTE: this could be improved if it knew enough about ffx args to
+# short-circuit once it hits a command, but not all global flags take arguments
+# (e.g. -v, --help), so it would be hard to keep those in sync. For now we
+# accept the concession that something other than the global --target flag
+# being spelled exactly --target as an argument is highly unlikely.
+found_target=false
+args=(
+  --config "sdk.root=${FUCHSIA_BUILD_DIR}"
+  --config sdk.type=in-tree
+  --config "repository.default=$(ffx-default-repository-name)"
+)
+
+while [[ $# -gt 0 ]]; do
+  arg="$1"
+  args+=("$1")
+  shift
+
+  # Handle global flags explicitly, separating those which have parameters from
+  # those that do not, searching for --target. As soon as a non-known argument
+  # is discovered, pass all other flags as-is.
+  # This case should be kept in sync with the ffx global flags.
+  case "$arg" in
+    # target special case.
+    -t|--target)
+      found_target=true
+      args+=("$1")
+      shift
+      ;;
+
+    # ffx global flags that have parameters.
+    -c|--config|-e|--env|-T|--timeout)
+      args+=("$1")
+      shift
+      ;;
+
+    # ffx global flags that do not accept parameters.
+    -v|--verbose|-h|--help)
+      :
+      ;;
+
+    # Any other flag results in all flags being passed forward as-is and the
+    # loop is terminated.
+    *)
+      args+=("$@")
+      break
+      ;;
+  esac
+done
+
+if ! ${found_target}; then
+  # Note: the quotes around get-device-raw are critical, if no fx default
+  # device is set, we explicitly want to pass "" here.
+  args=(--target "$(get-device-raw)" "${args[@]}")
+fi
+
+if [[ "${args[*]}" =~ "repository default" ]]; then
+  fx-warn "Inside the Fuchsia tree, ffx has a repository specified by fx"
+  fx-warn "Using default repositories via ffx repository default may have undefined behavior"
+  fx-warn "See http://fxbug.dev/90067 for more information."
+  fx-warn "Prefer:"
+  fx-warn "   fx use"
+fi
+
+if [[ "${args[*]}" =~ "target default" ]]; then
+  fx-warn "Inside the Fuchsia tree, ffx has a target specified by fx"
+  fx-warn "Using default targets via ffx target default may have undefined behavior"
+  fx-warn "See https://fxbug.dev/74963 for more information."
+  fx-warn "Prefer:"
+  fx-warn "   fx set-device"
+  fx-warn "   fx get-device"
+  fx-warn "   fx unset-device"
+fi
+
+fx-command-exec host-tool ffx "${args[@]}"

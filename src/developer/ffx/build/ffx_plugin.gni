@@ -1,0 +1,337 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_library.gni")
+import("//build/tools/json_merge/json_merge.gni")
+import("command.gni")
+import("plugins.gni")
+
+# Defines a FFX plugin
+#
+# Parameters
+#
+#   name
+#     Name of the crate as defined in its manifest file. If not specified, it is
+#     assumed to be the same as the target name. All dashes will be replaced
+#     with underscores in the library name: <name_underscored>. This
+#     target creates two libraries: one for the plugin callback method
+#     and one for the argh command struct needed for CLI params. The
+#     libraries creates will be <target>_lib and <target>_args_lib.
+#     If the `with_unit_tests` flag is used, additional test libraries
+#     will be created for a total of four libraries: <target>_lib,
+#     <target>_lib_test, <target>_args_lib, <target>_args_lib_test.
+#
+#   version
+#     Semver version of the crate as seen on crates.io.
+#
+#   edition (optional)
+#     Edition of the Rust language to be used.
+#     Options are "2015" and "2018". Defaults to "2018".
+#
+#   configs (optional)
+#     A list of config labels applying to this target.
+#
+#   deps (optional)
+#     List of rust_library GN targets on which this crate depends.
+#     Third party crates can be included through paths like
+#     "//third_party/rust_crates:<cratename>",
+#
+#   args_deps (optional)
+#     List of rust_library GN targets on which the args library depends. Default
+#     location of the args library is at `./src/args.rs`, see
+#     `args_source_root` here for more details.
+#
+#   args_sources (required)
+#     List of source files for the args library.
+#
+#   test_deps (optional)
+#     List of rust_library GN targets on which this crate's tests depend.
+#
+#   with_unit_tests (optional)
+#     Builds unit tests associated with the library. This will create a
+#     `<name>_lib_test` test file in the output directory. Equivalent
+#     to adding a `rustc_test` target with that name and the same source_root.
+#
+#   args_with_unit_tests (optional)
+#     Builds unit tests associated with the args library. This will create a
+#     `<name>_args_lib_test` test file in the output directory. Equivalent
+#     to adding a `rustc_test` target with that name and the same source_root.
+#
+#   test_environments (optional)
+#     What environments unit tests, if provided, should target. Only used here
+#     for linux and mac tests, with a default value of a general linux/mac
+#     environment (as a function of $current_os).
+#     See environments parameter on //build/testing/test_spec.gni for more
+#     details.
+#
+#   source_root (optional)
+#     Location of the plugin root (e.g. `src/lib.rs`). This defaults to `./src/lib.rs`
+#     This should be the location of the method marked with the
+#     ffx_plugin attribute.
+#
+#   args_source_root (optional)
+#     Location of the plugin's argh command root (e.g. `src/args.rs`). This defaults
+#     to `./src/args.rs`. This should be the location of the struct marked with the
+#     ffx_command attribute. Due to internal dependencies this cannot
+#     be the same file as the source_root.
+#
+#   features (optional)
+#     A list of conditional compilation flags to enable. This can be used to set features for crates
+#     built in-tree which are also published to crates.io. This would be passed to rustc as
+#     '--cfg feature=XXX'
+#
+template("ffx_plugin") {
+  output_name = target_name
+  if (defined(invoker.name)) {
+    output_name = invoker.name
+  }
+
+  tests_deps = []
+  if (defined(invoker.test_deps)) {
+    tests_deps += invoker.test_deps
+  }
+
+  if (is_host) {
+    args_deps = []
+    if (defined(invoker.args_deps)) {
+      args_deps += invoker.args_deps
+    }
+
+    p_deps = []
+    json_deps = []
+    json_merge_deps = []
+    if (defined(invoker.plugin_deps)) {
+      foreach(d, invoker.plugin_deps) {
+        p_deps += [ d + "_suite" ]
+        args_deps += [ d + "_args" ]
+        json_deps += [ get_label_info(d, "target_out_dir") + "/config.json" ]
+        json_merge_deps += [ get_label_info(d, "dir") + ":config.json" ]
+      }
+
+      sub_cmd_gen = output_name + "_sub_command_gen"
+      command(sub_cmd_gen) {
+        output_name = "cmd_args.rs"
+        plugin_deps = invoker.plugin_deps
+      }
+
+      sub_cmd = output_name + "_sub_command"
+      rustc_library(sub_cmd) {
+        source_root = "$target_gen_dir/cmd_args.rs"
+        with_unit_tests = false
+
+        sources = [ "$target_gen_dir/cmd_args.rs" ]
+        deps = args_deps + [
+                 ":" + sub_cmd_gen,
+                 "//third_party/rust_crates:argh",
+               ]
+        forward_variables_from(invoker,
+                               "*",
+                               [
+                                 "name",
+                                 "deps",
+                                 "args_deps",
+                                 "config_data",
+                                 "args_source_root",
+                                 "source_root",
+                                 "sources",
+                                 "args_sources",
+                                 "enforce_source_listing",
+                                 "target_name",
+                                 "with_unit_tests",
+                               ])
+      }
+
+      args_deps += [ ":" + sub_cmd ]
+    }
+
+    args = output_name + "_args"
+    args_source_root = "src/args.rs"
+    if (defined(invoker.args_source_root)) {
+      args_source_root = invoker.args_source_root
+    }
+
+    if (defined(invoker.config_data)) {
+      json_deps += invoker.config_data
+    } else {
+      empty = "$target_out_dir/empty.json"
+      write_file(empty,
+                 {
+                 },
+                 "json")
+      json_deps += [ empty ]
+    }
+
+    json_merge("config.json") {
+      sources = json_deps
+      deps = json_merge_deps
+      minify = true
+    }
+
+    rustc_library(args) {
+      source_root = args_source_root
+      deps = args_deps + [
+               "//src/developer/ffx/core:lib",
+               "//third_party/rust_crates:argh",
+
+               # TODO: remove the implicit anyhow dependency, have args_deps declare it instead.
+               "//third_party/rust_crates:anyhow",
+             ]
+
+      assert(
+          defined(invoker.args_sources),
+          "args_sources is required to contain the sources files that provide argh structures for the plugin")
+      sources = invoker.args_sources
+
+      # If the args library has tests enabled, enable them in the library.
+      if (defined(invoker.args_with_unit_tests) &&
+          invoker.args_with_unit_tests == true) {
+        with_unit_tests = true
+
+        # And pass in the test_deps if they have been specified for the plugin.
+        if (defined(invoker.test_deps)) {
+          test_deps = invoker.test_deps
+        }
+      }
+      forward_variables_from(invoker,
+                             "*",
+                             [
+                               "name",
+                               "config_data",
+                               "deps",
+                               "source_root",
+                               "sources",
+                               "non_rust_deps",
+                               "target_name",
+                               "with_unit_tests",
+                               "test_deps",
+                             ])
+    }
+    if (defined(invoker.args_with_unit_tests) &&
+        invoker.args_with_unit_tests == true) {
+      tests_deps += [ ":" + args + "_test" ]
+    }
+
+    lib_deps = [
+      ":" + args,
+      "//sdk/fidl/fuchsia.developer.bridge:fuchsia.developer.bridge-rustc",
+      "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol-rustc",
+      "//src/connectivity/overnet/lib/hoist",
+      "//src/developer/ffx/config:lib",
+      "//src/developer/ffx/core:lib",
+      "//src/developer/ffx/lib/errors:lib",
+      "//src/developer/ffx/lib/timeout:lib",
+      "//src/lib/diagnostics/selectors",
+      "//src/lib/fidl/rust/fidl",
+      "//src/lib/fuchsia-async",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:argh",
+      "//third_party/rust_crates:futures",
+      "//third_party/rust_crates:log",
+    ]
+
+    if (defined(invoker.deps)) {
+      lib_deps += invoker.deps
+    }
+
+    plugins_name = output_name + "_plugins"
+    execution_lib = output_name
+
+    includes_execution = false
+    if (defined(invoker.sources)) {
+      plugin_source_root = "src/lib.rs"
+      if (defined(invoker.source_root)) {
+        plugin_source_root = invoker.source_root
+      }
+      foreach(i, invoker.sources) {
+        if (i == plugin_source_root) {
+          includes_execution = true
+        }
+      }
+    }
+
+    plugins(plugins_name) {
+      output_name = "plugins.rs"
+      args = args
+      if (defined(invoker.plugin_deps)) {
+        sub_command = sub_cmd
+      }
+      execution_lib = execution_lib
+      forward_variables_from(invoker,
+                             "*",
+                             [
+                               "name",
+                               "config_data",
+                               "output_name",
+                               "args",
+                             ])
+    }
+
+    suite_deps = lib_deps + p_deps
+    suite_deps += [
+      ":" + args,
+      ":" + plugins_name,
+    ]
+    if (defined(invoker.plugin_deps)) {
+      suite_deps += [ ":" + sub_cmd ]
+    }
+
+    if (includes_execution) {
+      rustc_library(output_name) {
+        deps = lib_deps
+        non_rust_deps = [ "//third_party/boringssl" ]
+        forward_variables_from(invoker,
+                               "*",
+                               [
+                                 "name",
+                                 "config_data",
+                                 "deps",
+                                 "non_rust_deps",
+                                 "target_name",
+                               ])
+      }
+      suite_deps += [ ":" + execution_lib ]
+
+      if (defined(invoker.with_unit_tests) && invoker.with_unit_tests == true) {
+        tests_deps += [ ":" + output_name + "_test" ]
+      }
+    }
+
+    suite_name = output_name + "_suite"
+    rustc_library(suite_name) {
+      source_root = "$target_gen_dir/plugins.rs"
+
+      with_unit_tests = false
+      sources = [ "$target_gen_dir/plugins.rs" ]
+      deps = suite_deps
+      non_rust_deps = [ "//third_party/boringssl" ]
+      forward_variables_from(invoker,
+                             "*",
+                             [
+                               "name",
+                               "config_data",
+                               "deps",
+                               "non_rust_deps",
+                               "target_name",
+                               "sources",
+                               "enforce_source_listing",
+                               "with_unit_tests",
+                             ])
+    }
+  } else {
+    not_needed(invoker, "*")
+  }
+
+  if (defined(invoker.plugin_deps)) {
+    foreach(d, invoker.plugin_deps) {
+      test = get_label_info(d, "dir")
+      test_name = get_label_info(d, "name")
+      tests_deps += [ test + ":" + test_name + "_tests" ]
+    }
+  }
+
+  group(output_name + "_tests") {
+    testonly = true
+    deps = tests_deps
+  }
+}

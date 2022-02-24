@@ -1,0 +1,33 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.update.verify;
+
+/// An abstract representation of an update verifier, to be used when
+/// verifying if an update should be committed. This is abstracted into a
+/// separate protocol because in the future, we may add more verifiers.
+///
+/// This is unrelated to the verification in verified execution.
+///
+/// TODO(fxbug.dev/55846) migrate to services design.
+protocol Verifier {
+    /// Verifies the update we just applied does not compromise an OTA dependency.
+    /// If the verification fails, the [`Verifier`] should log the reason why.
+    ///
+    /// The caller is responsible for setting any timeouts.
+    ///
+    /// + request `options` the configuration to use when verifying.
+    /// * error a value describing the cause of verification failure.
+    Verify(struct {
+        options @generated_name("VerifyOptions") table {};
+    }) -> (struct {}) error @generated_name("VerifyError") flexible enum {
+        /// A problem occured when doing update verification.
+        INTERNAL = 1;
+    };
+};
+
+/// An update verifier to determine if Blobfs is working as expected.
+@discoverable
+protocol BlobfsVerifier {
+    compose Verifier;
+};

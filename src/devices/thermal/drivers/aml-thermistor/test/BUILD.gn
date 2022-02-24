@@ -1,0 +1,44 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+executable("aml-thermistor-test-bin") {
+  configs += [ "//build/config:all_source" ]
+  testonly = true
+  sources = [
+    "../thermistor-channel.cc",
+    "../thermistor.cc",
+    "test.cc",
+  ]
+  deps = [
+    "../:aml-thermistor-bind",
+    "//sdk/fidl/fuchsia.hardware.adc:fuchsia.hardware.adc_llcpp",
+    "//sdk/fidl/fuchsia.hardware.temperature:fuchsia.hardware.temperature_llcpp",
+    "//src/devices/bus/lib/device-protocol-pdev",
+    "//src/devices/lib/amlogic",
+    "//src/devices/lib/mmio",
+    "//src/devices/lib/thermal",
+    "//src/devices/testing/fake_ddk",
+    "//src/devices/testing/mock-mmio-reg",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("test-package") {
+  package_name = "aml-thermistor-test"
+  deps = [ ":aml-thermistor-test-bin" ]
+  test_specs = {
+    environments = basic_envs
+  }
+}

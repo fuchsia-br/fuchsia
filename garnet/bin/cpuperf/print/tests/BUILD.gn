@@ -1,0 +1,55 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/testing/host_test_data.gni")
+
+group("tests") {
+  testonly = true
+  deps = [ ":cpuperf_raw_printer_test($host_toolchain)" ]
+}
+
+if (is_host) {
+  host_test_data("raw_printer_test_data") {
+    sources = [
+      "raw-expected-output.txt",
+      "raw-test.0.0.cpuperf",
+      "raw-test.0.1.cpuperf",
+      "raw-test.0.2.cpuperf",
+      "raw-test.0.3.cpuperf",
+      "raw-test.cpsession",
+    ]
+    outputs = [ "$root_out_dir/test_data/cpuperf/{{source_file_part}}" ]
+  }
+
+  host_test_data("cpuperf_print") {
+    sources = [ "$root_out_dir/cpuperf_print" ]
+    deps = [ "//garnet/bin/cpuperf/print:cpuperf_print" ]
+  }
+
+  go_library("raw_printer_test_lib") {
+    testonly = true
+    name = "cpuperf/printer/tests"
+    non_go_deps = [
+      ":cpuperf_print",
+      ":raw_printer_test_data",
+    ]
+    sources = [
+      "raw-expected-output.txt",
+      "raw-test.0.0.cpuperf",
+      "raw-test.0.1.cpuperf",
+      "raw-test.0.2.cpuperf",
+      "raw-test.0.3.cpuperf",
+      "raw-test.cpsession",
+      "raw_printer_test.go",
+      "util.go",
+    ]
+  }
+
+  go_test("cpuperf_raw_printer_test") {
+    gopackages = [ "cpuperf/printer/tests" ]
+    deps = [ ":raw_printer_test_lib" ]
+  }
+}

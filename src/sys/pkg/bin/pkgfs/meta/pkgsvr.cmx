@@ -1,0 +1,10 @@
+{
+    "program": {
+        "binary": "bin/pkgsvr"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.sys.Environment"
+        ]
+    }
+}

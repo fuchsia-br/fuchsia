@@ -1,0 +1,291 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fidl.test.dartbindingstest;
+
+using zx;
+
+type HandleStruct = resource struct {
+    foo string;
+    bar int32;
+    baz zx.handle;
+};
+
+type NoHandleStruct = struct {
+    foo string;
+    bar int32;
+    baz vector<uint8>;
+};
+
+type NumberHandleNumber = resource struct {
+    n1 uint32;
+    h zx.handle;
+    n2 uint32;
+};
+
+type ExampleStruct = struct {
+    foo string;
+    bar int32;
+    baz vector<uint8>:optional;
+};
+
+type ExampleTable = table {
+    1: foo string;
+    2: bar int32;
+    3: baz vector<uint8>;
+};
+
+type ExampleXunion = flexible resource union {
+    1: foo string;
+    2: bar int32;
+    3: baz vector<uint8>;
+    4: with_handle NumberHandleNumber;
+};
+
+type ExampleStrictXunion = strict resource union {
+    1: foo string;
+    2: bar int32;
+    3: baz vector<uint8>;
+    4: with_handle NumberHandleNumber;
+};
+
+type ExampleBits = strict bits {
+    MEMBER_A = 2;
+    MEMBER_B = 4;
+    MEMBER_C = 8;
+};
+
+type FlexibleBits = flexible bits {
+    ONE = 0b01;
+    TWO = 0b10;
+};
+
+@discoverable
+protocol TestServer {
+    OneWayNoArgs();
+    ReceivedOneWayNoArgs() -> (struct {
+        received bool;
+    });
+
+    OneWayStringArg(struct {
+        value string;
+    });
+    ReceivedOneWayString() -> (struct {
+        value string;
+    });
+
+    OneWayThreeArgs(struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    });
+    ReceivedOneWayThreeArgs() -> (struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    });
+
+    OneWayExampleTable(struct {
+        value ExampleTable;
+    });
+    ReceivedOneWayExampleTable() -> (struct {
+        received ExampleTable;
+    });
+
+    TwoWayNoArgs() -> ();
+    TwoWayStringArg(struct {
+        value string;
+    }) -> (struct {
+        value string;
+    });
+    TwoWayThreeArgs(struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    }) -> (struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    });
+    TwoWayOneHandleArg(resource struct {
+        h1 HandleStruct;
+    }) -> (resource struct {
+        h1 HandleStruct;
+    });
+    TwoWayTwoHandleArgs(resource struct {
+        h1 HandleStruct;
+        h2 HandleStruct;
+    }) -> (resource struct {
+        h1 HandleStruct;
+        h2 HandleStruct;
+    });
+
+    OneWayExampleXunion(resource struct {
+        value ExampleXunion;
+    });
+    ReceivedOneWayExampleXunion() -> (resource struct {
+        received ExampleXunion;
+    });
+
+    OneWayExampleBits(struct {
+        value ExampleBits;
+    });
+    ReceivedOneWayExampleBits() -> (struct {
+        received ExampleBits;
+    });
+
+    SendEmptyEvent();
+    -> EmptyEvent();
+
+    SendStringEvent(struct {
+        value string;
+    });
+    -> StringEvent(struct {
+        value string;
+    });
+
+    SendThreeArgEvent(struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    });
+    -> ThreeArgEvent(struct {
+        x int32;
+        y uint64;
+        z NoHandleStruct;
+    });
+
+    SendMultipleEvents(struct {
+        count int32;
+        intervalSeconds float64;
+    });
+    -> MultipleEvent(struct {
+        index int32;
+    });
+
+    ReplySlowly(struct {
+        value string;
+        delaySeconds float64;
+    }) -> (struct {
+        value string;
+    });
+
+    ReplyWithErrorZero(struct {
+        with_error bool;
+    }) -> (struct {}) error uint32;
+    ReplyWithErrorOne(struct {
+        with_error bool;
+        value string;
+    }) -> (struct {
+        value string;
+    }) error uint32;
+    ReplyWithErrorMore(struct {
+        with_error bool;
+        value string;
+        other_value bool;
+    }) -> (struct {
+        value string;
+        other_value bool;
+    }) error uint32;
+
+    ReplyWithErrorEnumZero(struct {
+        with_error bool;
+    }) -> (struct {}) error EnumOne;
+    ReplyWithErrorEnumOne(struct {
+        with_error bool;
+        value string;
+    }) -> (struct {
+        value string;
+    }) error EnumOne;
+    ReplyWithErrorEnumMore(struct {
+        with_error bool;
+        value string;
+        other_value bool;
+    }) -> (struct {
+        value string;
+        other_value bool;
+    }) error EnumOne;
+
+    CloseConnection(struct {
+        delaySeconds float64;
+    });
+    CloseConnectionWithEpitaph(struct {
+        status int32;
+        delaySeconds float64;
+    });
+
+    -> NeverEvent();
+
+    SendEvent(resource struct {
+        h zx.handle:EVENT;
+    });
+    EchoChannelAsEvent(resource struct {
+        h zx.handle:CHANNEL;
+    }) -> (resource struct {
+        h zx.handle:EVENT;
+    });
+    EventEvent(resource struct {
+        h zx.handle:EVENT;
+    });
+};
+
+protocol HandleRightsTestServer {
+    SendEvent(resource struct {
+        h zx.handle:EVENT;
+    });
+    SendChannel(resource struct {
+        h zx.handle:CHANNEL;
+    });
+};
+
+type EnumOne = strict enum {
+    ONE = 1;
+    TWO = 2;
+    THREE = 3;
+};
+
+type EnumTwo = strict enum {
+    ONE = 1;
+    TWO = 2;
+    THREE = 3;
+};
+
+type FlexibleEnumThree = flexible enum : uint64 {
+    ONE = 1;
+    TWO = 2;
+    THREE = 3;
+};
+
+type FlexibleEnumFour = flexible enum : int32 {
+    ONE = 1;
+    TWO = 2;
+    THREE = 3;
+    @unknown
+    CUSTOM_UNKNOWN = -123;
+};
+
+type EmptyFlexibleEnum = flexible enum : int32 {};
+
+type UnionOne = strict union {
+    1: foo string;
+    2: bar string;
+    3: baz uint32;
+};
+
+type UnionTwo = strict union {
+    1: foo string;
+    2: bar string;
+    3: baz uint32;
+};
+
+protocol SimpleServer {
+    Ping() -> ();
+};
+
+type ChannelWithDefaultRights = resource struct {
+    c zx.handle:<CHANNEL, zx.DEFAULT_CHANNEL_RIGHTS>;
+};
+
+type ChannelWithReducedRights = resource struct {
+    c zx.handle:<CHANNEL, zx.rights.TRANSFER>;
+};

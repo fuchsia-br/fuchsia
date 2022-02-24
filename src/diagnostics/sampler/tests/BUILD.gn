@@ -1,0 +1,147 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_library.gni")
+
+# Test binary responsible for readings
+# and validating all client configurations
+# listed in the "production sampler" sampler_configuration.
+rustc_test("config-validation") {
+  testonly = true
+  name = "config_validation_test"
+  deps = [
+    "//src/diagnostics/lib/sampler-config",
+    "//src/diagnostics/sampler:lib",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:glob",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  source_root = "config_validation.rs"
+  sources = [ "config_validation.rs" ]
+}
+
+# Test component for config validation.
+fuchsia_unittest_component("config-validation-test") {
+  deps = [ ":config-validation" ]
+}
+
+# Integration test binary for sampler service.
+rustc_test("integration-bin") {
+  testonly = true
+  name = "sampler_integration_test"
+  deps = [
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.cobalt.test:fuchsia.cobalt.test-rustc",
+    "//sdk/fidl/fuchsia.component:fuchsia.component-rustc",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol-rustc",
+    "//src/diagnostics/sampler/tests/fidl:fuchsia.mockrebootcontroller-rustc",
+    "//src/diagnostics/sampler/tests/fidl:fuchsia.samplertestcontroller-rustc",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-component-test",
+    "//src/sys/lib/cm_rust",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:serde_json",
+  ]
+
+  source_root = "lib.rs"
+
+  sources = [
+    "lib.rs",
+    "mocks.rs",
+    "test_topology.rs",
+    "utils.rs",
+  ]
+}
+
+fuchsia_unittest_component("sampler-integration-test") {
+  manifest = "meta/integration-test.cml"
+  deps = [ ":integration-bin" ]
+}
+
+# config-data sampler config that requires reboot
+# for the integration test.
+config_data("reboot-required-config") {
+  for_pkg = "sampler-integration-tests"
+  sources = [ "configs/reboot_required_config.json" ]
+  outputs = [ "metrics/any_name/reboot_required_config.json" ]
+}
+
+# Sampler config-data for the integration test.
+config_data("test-sampler-config") {
+  for_pkg = "sampler-integration-tests"
+  sources = [ "configs/test_config.json" ]
+  outputs = [ "metrics/any_name/test_config.json" ]
+}
+
+# FIRE component config-data for the integration test.
+config_data("test-fire-component-config") {
+  for_pkg = "sampler-integration-tests"
+  sources = [ "configs/components.json5" ]
+  outputs = [ "fire/any_name/components.json5" ]
+}
+
+# FIRE template config-data for the integration test.
+config_data("test-fire-project-config") {
+  for_pkg = "sampler-integration-tests"
+  sources = [
+    "configs/fire_1.json5",
+    "configs/fire_2.json5",
+  ]
+  outputs = [ "fire/any_name/projects/{{source_file_part}}" ]
+}
+
+resource("validation-sampler-resources") {
+  sources = [
+    "configs/reboot_required_config.json",
+    "configs/test_config.json",
+  ]
+  outputs = [ "config/metrics/any_name/{{source_file_part}}" ]
+}
+
+resource("validation-fire-components") {
+  sources = [ "configs/components.json5" ]
+  outputs = [ "config/fire/any_name/{{source_file_part}}" ]
+}
+
+resource("validation-fire-projects") {
+  sources = [
+    "configs/fire_1.json5",
+    "configs/fire_2.json5",
+  ]
+  outputs = [ "config/fire/any_name/projects/{{source_file_part}}" ]
+}
+
+fuchsia_test_package("sampler-integration-tests") {
+  test_components = [
+    ":config-validation-test",
+    ":sampler-integration-test",
+  ]
+  deps = [
+    ":reboot-required-config",
+    ":test-fire-component-config",
+    ":test-fire-project-config",
+    ":test-sampler-config",
+    ":validation-fire-components",
+    ":validation-fire-projects",
+    ":validation-sampler-resources",
+    "//src/cobalt/bin/testing/mock_cobalt:component_v2",
+    "//src/diagnostics/archivist:archivist-for-embedding-v2",
+    "//src/diagnostics/sampler:sampler-component",
+    "//src/diagnostics/sampler:sampler-test-config",
+    "//src/diagnostics/sampler/tests/test_component:single_counter_test_component",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":sampler-integration-tests" ]
+}

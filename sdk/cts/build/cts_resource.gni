@@ -1,0 +1,77 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dist/resource.gni")
+import("//sdk/cts/build/cts_copy_to_sdk.gni")
+import("//sdk/cts/build/write_cts_file.gni")
+
+# A resource that can be used in CTS.
+#
+# An equivalent to the in-tree `resource`, but ensures dependencies are allowed
+# in CTS. Creates an SDK atom so that this target can be released in the CTS SDK.
+#
+# Example:
+# ```
+# cts_resource("my-bin") {
+#  sources = [ "test_bins/my_bin" ]
+#  outputs = [ "bin/my_bin" ]
+# }
+# ```
+#
+# Parameters
+#   outputs
+#     Required: List of one runtime path.  This must be a relative path (no
+#     leading `/`).  It can use placeholders based on $sources; see copy()
+#     and `gn help source_expansion`.
+#     Type: list(path)
+#
+#   sources
+#     Required: List of files in the source tree or build that become $outputs.
+#     See copy() for details.
+#     Type: list(file)
+#
+#   dest (optional)
+#     Location to copy this target to in the CTS archive.
+#     Dest should only be specified if the target is not in //sdk/cts. If the
+#     target is in //sdk/cts, it will be placed in the same path in the CTS
+#     archive.
+#     Type: string
+#
+# See resource() for other parameters.
+#
+template("cts_resource") {
+  assert(defined(invoker.sources), "Sources must be defined.")
+
+  write_file_target = target_name + "_cts_file"
+  write_cts_file(write_file_target) {
+  }
+
+  resource(target_name) {
+    forward_variables_from(invoker, "*", [ "dest" ])
+
+    if (!defined(deps)) {
+      deps = []
+    }
+    deps += [ ":$write_file_target" ]
+  }
+
+  current_dir = get_label_info(":${target_name}", "dir")
+  is_prebuilt_cts =
+      string_replace(current_dir, "//prebuilt/cts", "") != current_dir
+  if (!is_prebuilt_cts) {
+    cts_copy_to_sdk(target_name) {
+      forward_variables_from(invoker,
+                             [
+                               "sources",
+                               "dest",
+                               "testonly",
+                             ])
+
+      # This should only be used for generated_file().
+      if (defined(invoker.deps)) {
+        non_sdk_deps = invoker.deps
+      }
+    }
+  }
+}

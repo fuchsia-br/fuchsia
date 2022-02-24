@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/lowpan_dummy_driver"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.factory.lowpan.FactoryRegister",
+            "fuchsia.lowpan.device.Register"
+        ]
+    }
+}

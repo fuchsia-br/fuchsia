@@ -1,0 +1,20 @@
+{
+    "include": [
+        "syslog/client.shard.cmx",
+        "//src/lib/fuchsia-hyper/hyper.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/httpsdate_time_source"
+    },
+    "sandbox": {
+        "features": [
+            "root-ssl-certificates"
+        ],
+        "services": [
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.net.interfaces.State",
+            "fuchsia.sys.Environment",
+            "fuchsia.sys.Loader"
+        ]
+    }
+}

@@ -1,0 +1,184 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("no_suite_service_bin") {
+  testonly = true
+  name = "no_suite_service"
+  edition = "2018"
+  source_root = "no_suite_service.rs"
+
+  deps = [
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "no_suite_service.rs" ]
+}
+
+rustc_test("hanging_test_bin") {
+  testonly = true
+  name = "hanging_test"
+  edition = "2018"
+  source_root = "hanging_test.rs"
+
+  sources = [ "hanging_test.rs" ]
+}
+
+rustc_test("v2_test_runs_v1_component_bin") {
+  testonly = true
+  name = "v2_test_runs_v1_component"
+  edition = "2018"
+  source_root = "v2_test_runs_v1_component.rs"
+
+  deps = [
+    "//examples/components/routing/fidl:echo-rustc",
+    "//garnet/lib/rust/files_async",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [ "v2_test_runs_v1_component.rs" ]
+}
+
+rustc_test("noop_test_bin") {
+  testonly = true
+  name = "noop_test"
+  edition = "2018"
+  source_root = "noop_test.rs"
+
+  sources = [ "noop_test.rs" ]
+}
+
+fuchsia_component("no_suite_service") {
+  testonly = true
+  deps = [ ":no_suite_service_bin" ]
+  manifest = "meta/no_suite_service.cml"
+}
+
+fuchsia_component("simple_system_realm_test") {
+  testonly = true
+  deps = [ ":noop_test_bin" ]
+  manifest = "meta/simple_system_realm_test.cml"
+}
+
+fuchsia_component("simple_chromium_realm_test") {
+  testonly = true
+  deps = [ ":noop_test_bin" ]
+  manifest = "meta/simple_chromium_realm_test.cml"
+}
+
+fuchsia_component("check_build_info_chromium_realm_test") {
+  testonly = true
+  deps = [ ":noop_test_bin" ]
+  manifest = "meta/check_build_info_chromium_realm_test.cml"
+}
+
+fuchsia_component("hanging_test") {
+  testonly = true
+  deps = [ ":hanging_test_bin" ]
+  manifest = "meta/hanging_test.cml"
+}
+
+fuchsia_component("v2_test_runs_v1_component") {
+  testonly = true
+  deps = [ ":v2_test_runs_v1_component_bin" ]
+  manifest = "meta/v2_test_runs_v1_component.cml"
+}
+
+fuchsia_component("custom_artifact_realm_test") {
+  testonly = true
+  manifest = "meta/custom_artifact_realm_test.cml"
+}
+
+rustc_test("debug_data_test_bin") {
+  testonly = true
+  name = "debug_data_test"
+  source_root = "debug_data_test.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.debugdata:fuchsia.debugdata-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon-status",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [ "debug_data_test.rs" ]
+}
+
+fuchsia_component("debug_data_test") {
+  testonly = true
+  manifest = "meta/debug_data_test.cml"
+  deps = [ ":debug_data_test_bin" ]
+}
+
+fuchsia_component("debug_data_test_v1") {
+  testonly = true
+  manifest = "meta/debug_data_test.cmx"
+  deps = [ ":debug_data_test_bin" ]
+}
+
+fuchsia_test_package("debug-data-test") {
+  test_components = [ ":debug_data_test" ]
+}
+
+rustc_test("debug_data_write_test_bin") {
+  testonly = true
+  name = "debug_data_write_test"
+  source_root = "debug_data_write_test.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.debugdata:fuchsia.debugdata-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-component",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+  ]
+
+  sources = [ "debug_data_write_test.rs" ]
+}
+
+fuchsia_component("debug_data_write_test") {
+  testonly = true
+  manifest = "meta/debug_data_write_test.cml"
+  deps = [ ":debug_data_write_test_bin" ]
+}
+
+group("test_data") {
+  testonly = true
+  public_deps = [
+    ":custom_artifact_realm_test",
+    ":debug-data-test",
+    ":debug_data_test_v1",
+    ":debug_data_write_test",
+    ":hanging_test",
+    ":no_suite_service",
+    ":simple_chromium_realm_test",
+    ":simple_system_realm_test",
+    ":v2_test_runs_v1_component",
+    "//examples/tests/rust:custom_artifact_user_cmp",
+    "//src/diagnostics/archivist/tests/logging-component:logging-component",
+    "//src/sys/test_manager/cmx_runner/tests:echo_legacy_server",
+  ]
+}

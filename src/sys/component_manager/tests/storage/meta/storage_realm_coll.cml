@@ -1,0 +1,85 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/storage_realm_coll",
+    },
+    children: [
+        {
+            name: "memfs",
+            url: "fuchsia-pkg://fuchsia.com/storage_integration_test#meta/memfs.cm",
+            startup: "eager",
+        },
+    ],
+    collections: [
+        {
+            name: "coll",
+            durability: "transient",
+        },
+    ],
+    capabilities: [
+        {
+            storage: "data",
+            from: "#memfs",
+            backing_dir: "memfs",
+            storage_id: "static_instance_id_or_moniker",
+        },
+    ],
+    use: [
+        {
+            protocol: "fuchsia.component.Realm",
+            from: "framework",
+        },
+        {
+            protocol: "fuchsia.sys2.EventSource",
+            from: "parent",
+        },
+        {
+            event: [
+                "purged",
+                "stopped",
+            ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+        {
+            event_stream_deprecated: "TestEventStream",
+            subscriptions: [
+                {
+                    event: "stopped",
+                    mode: "async",
+                },
+                {
+                    event: "purged",
+                    mode: "async",
+                },
+            ],
+        },
+        {
+            directory: "hub",
+            from: "framework",
+            rights: [ "r*" ],
+            path: "/hub",
+        },
+    ],
+    offer: [
+        {
+            storage: "data",
+            from: "self",
+            to: "#coll",
+        },
+        {
+            directory: "memfs",
+            from: "#memfs",
+            to: "#coll",
+        },
+        {
+            protocol: "fuchsia.logger.LogSink",
+            from: "parent",
+            to: [
+                "#coll",
+                "#memfs",
+            ],
+        },
+    ],
+}

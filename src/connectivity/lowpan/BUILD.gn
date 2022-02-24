@@ -1,0 +1,39 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("lowpan") {
+  deps = [
+    "config",
+    "drivers",
+    "lib",
+    "service",
+  ]
+}
+
+# This group is for components, since they cannot depend on source sets
+# and libraries, only on linked binaries (e.g. executables, shared libraries,
+# loadable modules which include drivers). See https://fxbug.dev/91860
+group("lowpan_for_components") {
+  deps = [
+    "config",
+    "drivers",
+    "service",
+  ]
+}
+
+group("tools") {
+  testonly = true
+  deps = [ "tools" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "drivers:tests",
+    "lib:tests",
+    "service:tests",
+    "tests",
+    "tools:tests",
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/mediaplayer_test_util"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.media.playback.Player",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

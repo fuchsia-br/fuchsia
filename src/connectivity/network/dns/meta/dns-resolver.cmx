@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/dns_resolver"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.routes.State",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

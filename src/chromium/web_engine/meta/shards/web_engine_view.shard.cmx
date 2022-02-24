@@ -1,0 +1,12 @@
+{
+    "sandbox": {
+        "services": [
+            "fuchsia.accessibility.semantics.SemanticsManager",
+            "fuchsia.input.virtualkeyboard.ControllerCreator",
+            "fuchsia.ui.composition.Allocator",
+            "fuchsia.ui.composition.Flatland",
+            "fuchsia.ui.input3.Keyboard",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

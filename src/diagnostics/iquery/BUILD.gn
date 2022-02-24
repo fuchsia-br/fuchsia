@@ -1,0 +1,207 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+iquery_deps = [
+  "//garnet/lib/rust/files_async",
+  "//garnet/lib/rust/io_util",
+  "//sdk/fidl/fuchsia.diagnostics:fuchsia.diagnostics-rustc",
+  "//sdk/fidl/fuchsia.inspect:fuchsia.inspect-rustc",
+  "//sdk/fidl/fuchsia.inspect.deprecated:fuchsia.inspect.deprecated-rustc",
+  "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+  "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+  "//src/lib/diagnostics/data/rust",
+  "//src/lib/diagnostics/hierarchy/rust",
+  "//src/lib/diagnostics/selectors",
+  "//src/lib/fidl/rust/fidl",
+  "//src/lib/fuchsia",
+  "//src/lib/fuchsia-async",
+  "//third_party/rust_crates:anyhow",
+  "//third_party/rust_crates:argh",
+  "//third_party/rust_crates:assert_matches",
+  "//third_party/rust_crates:async-trait",
+  "//third_party/rust_crates:derivative",
+  "//third_party/rust_crates:difference",
+  "//third_party/rust_crates:futures",
+  "//third_party/rust_crates:glob",
+  "//third_party/rust_crates:lazy_static",
+  "//third_party/rust_crates:nom",
+  "//third_party/rust_crates:num-traits",
+  "//third_party/rust_crates:pretty_assertions",
+  "//third_party/rust_crates:regex",
+  "//third_party/rust_crates:serde",
+  "//third_party/rust_crates:serde_json",
+  "//third_party/rust_crates:tempfile",
+  "//third_party/rust_crates:thiserror",
+]
+
+if (is_fuchsia) {
+  iquery_deps += [
+    "//src/diagnostics/lib/inspect-fidl-load",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/diagnostics/reader/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+  ]
+}
+
+iquery_sources = [
+  "src/commands/list.rs",
+  "src/commands/list_accessors.rs",
+  "src/commands/logs.rs",
+  "src/commands/mod.rs",
+  "src/commands/selectors.rs",
+  "src/commands/show.rs",
+  "src/commands/types.rs",
+  "src/commands/utils.rs",
+  "src/text_formatter.rs",
+  "src/types.rs",
+]
+
+if (is_fuchsia) {
+  iquery_sources += [
+    "src/command_line.rs",
+    "src/commands/list_files.rs",
+    "src/commands/show_file.rs",
+    "src/commands/target.rs",
+    "src/constants.rs",
+    "src/location.rs",
+  ]
+}
+
+rustc_library("lib") {
+  name = "iquery"
+  edition = "2018"
+  with_unit_tests = true
+  source_root = "src/lib.rs"
+
+  visibility = [
+    "//src/developer/ffx/plugins/inspect/*",
+    "//src/developer/remote-control/diagnostics-bridge/*",
+    "//src/diagnostics/iquery/*",
+
+    # TODO(fxbug.dev/82964): remove.
+    "//src/developer/ffx/plugins/flutter/tunnel/*",
+  ]
+
+  deps = iquery_deps
+
+  sources = iquery_sources
+  sources += [ "src/lib.rs" ]
+}
+
+rustc_binary("bin") {
+  output_name = "iquery"
+  edition = "2018"
+  source_root = "src/main.rs"
+
+  if (is_fuchsia) {
+    configs += [ "//build/config/rust:bootfs" ]
+  }
+
+  deps = [
+    ":lib",
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+  ]
+
+  sources = [ "src/main.rs" ]
+}
+
+rustc_test("iquery_test") {
+  output_name = "iquery_test"
+  source_root = "src/main.rs"
+
+  deps = iquery_deps
+  deps += [
+    ":lib",
+    "//src/lib/fuchsia-component-test",
+  ]
+
+  sources = [
+    "src/main.rs",
+    "src/tests/commands.rs",
+    "src/tests/mod.rs",
+    "src/tests/utils.rs",
+  ]
+
+  inputs = [
+    "test_data/list_accessors.json",
+    "test_data/list_accessors.text",
+    "test_data/list_archive.json",
+    "test_data/list_archive.text",
+    "test_data/list_filter_manifest.json",
+    "test_data/list_filter_manifest.text",
+    "test_data/list_no_dups.json",
+    "test_data/list_no_dups.text",
+    "test_data/list_test.json",
+    "test_data/list_test.text",
+    "test_data/list_with_url.json",
+    "test_data/list_with_url.text",
+    "test_data/list_files_test.json",
+    "test_data/list_files_test.text",
+    "test_data/list_files_cwd.json",
+    "test_data/list_files_cwd.text",
+    "test_data/show_file_test.text",
+    "test_data/show_file_test.json",
+    "test_data/show_file_vmo.json",
+    "test_data/show_file_vmo.text",
+    "test_data/selectors_archive.json",
+    "test_data/selectors_archive.text",
+    "test_data/selectors_filter_test.json",
+    "test_data/selectors_filter_test.text",
+    "test_data/selectors_test.json",
+    "test_data/selectors_test.text",
+    "test_data/show_all_test.json",
+    "test_data/show_all_test.text",
+    "test_data/show_archive.json",
+    "test_data/show_archive.text",
+    "test_data/show_filter_test.text",
+    "test_data/show_filter_test.json",
+    "test_data/show_filter_no_selectors_test.text",
+    "test_data/show_filter_no_selectors_test.json",
+    "test_data/show_test.json",
+    "test_data/show_test.text",
+    "test_data/log.json",
+    "test_data/log.text",
+  ]
+}
+
+fuchsia_component("iquery-test") {
+  testonly = true
+  manifest = "meta/iquery-test.cml"
+  deps = [ ":iquery_test" ]
+}
+
+fuchsia_test_package("iquery-tests") {
+  test_components = [ ":iquery-test" ]
+  deps = [
+    "test/basic_component",
+    "test/basic_component:basic_component_with_logs",
+    "test/test_component",
+    "test_data:goldens",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":iquery-tests",
+    ":lib_test($host_toolchain)",
+  ]
+}
+
+group("iquery") {
+  deps = [
+    ":bin",
+    "//build/validate:non_production_tag",
+  ]
+}

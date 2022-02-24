@@ -1,0 +1,24 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":tts_manager_tests" ]
+}
+
+executable("tts_manager_tests") {
+  testonly = true
+
+  sources = [ "tts_manager_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.accessibility.tts",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/ui/a11y/lib/tts",
+  ]
+}

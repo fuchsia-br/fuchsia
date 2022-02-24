@@ -1,0 +1,34 @@
+{
+    include: [
+        "//src/sys/component_manager/testing/meta/start_component_tree.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/lifecycle_integration_test",
+    },
+    collections: [
+        {
+            name: "test-collection",
+            durability: "transient",
+        },
+    ],
+    use: [
+        {
+            event: [
+                "started",
+                "stopped",
+            ],
+            from: "framework",
+            modes: [ "async" ],
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: "#test-collection",
+        },
+    ],
+}

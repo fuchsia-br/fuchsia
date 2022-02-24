@@ -1,0 +1,170 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("echo_gtest_client") {
+  testonly = true
+  sources = [ "echo_test.cc" ]
+
+  deps = [
+    "//examples/components/routing/fidl:echo",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_component("echo_gtest_client_component") {
+  testonly = true
+  manifest = "meta/echo_gtest_client.cml"
+  component_name = "echo_gtest_client"
+  deps = [ ":echo_gtest_client" ]
+}
+
+executable("gtest_runner_no_tests") {
+  testonly = true
+  sources = [ "empty_test_file.cc" ]
+
+  deps = [
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_component("empty_test_component") {
+  testonly = true
+  manifest = "meta/empty_test.cml"
+  component_name = "empty_test"
+  deps = [ ":gtest_runner_no_tests" ]
+}
+
+executable("gtest_runner_sample_tests") {
+  testonly = true
+  sources = [ "sample_tests.cc" ]
+
+  deps = [
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_component("gtest_runner_sample_tests_component") {
+  testonly = true
+  manifest = "meta/sample_tests.cml"
+  component_name = "sample_tests"
+  deps = [ ":gtest_runner_sample_tests" ]
+}
+
+executable("gtest_runner_test_with_custom_args") {
+  testonly = true
+  sources = [ "test_with_custom_args.cc" ]
+
+  deps = [ "//src/lib/testing/loop_fixture" ]
+}
+
+fuchsia_component("gtest_runner_test_with_custom_args_component") {
+  testonly = true
+  manifest = "meta/test_with_custom_args.cml"
+  component_name = "test_with_custom_args"
+  deps = [ ":gtest_runner_test_with_custom_args" ]
+}
+
+executable("gtest_runner_test_with_environ") {
+  testonly = true
+  sources = [ "test_with_environ.cc" ]
+
+  deps = [
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_component("gtest_runner_test_with_environ_component") {
+  testonly = true
+  manifest = "meta/test_with_environ.cml"
+  component_name = "test_with_environ"
+  deps = [ ":gtest_runner_test_with_environ" ]
+}
+
+executable("huge_gtest_runner_example") {
+  output_name = "huge_gtest_runner_example"
+  testonly = true
+  sources = [ "huge_gtest.cc" ]
+
+  deps = [ "//src/lib/fxl/test:gtest_main" ]
+}
+
+fuchsia_component("huge_gtest_component") {
+  testonly = true
+  manifest = "meta/huge_gtest.cml"
+  component_name = "huge_gtest"
+  deps = [ ":huge_gtest_runner_example" ]
+}
+
+executable("concurrency_test_driver_bin") {
+  output_name = "concurrency_test_driver_gtest"
+  testonly = true
+  sources = [ "concurrency_test_driver.cc" ]
+
+  deps = [
+    "//examples/components/routing/fidl:echo",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_component("concurrency_test_driver_component") {
+  testonly = true
+  manifest = "meta/concurrency-test-driver.cml"
+  component_name = "concurrency-test-driver"
+  deps = [ ":concurrency_test_driver_bin" ]
+}
+
+group("all_bins") {
+  testonly = true
+  deps = [
+    ":echo_gtest_client",
+    ":gtest_runner_no_tests",
+    ":gtest_runner_sample_tests",
+    ":gtest_runner_test_with_custom_args",
+    ":gtest_runner_test_with_environ",
+    ":huge_gtest_runner_example",
+  ]
+}
+
+fuchsia_component("echo_test_realm") {
+  testonly = true
+  manifest = "meta/echo_test_realm.cml"
+}
+
+fuchsia_component("concurrency_test_component") {
+  testonly = true
+  component_name = "concurrency-test"
+  manifest = "meta/concurrency-test.cml"
+}
+
+fuchsia_package("gtest-runner-example-tests") {
+  testonly = true
+  deps = [
+    ":concurrency_test_component",
+    ":concurrency_test_driver_component",
+    ":echo_gtest_client_component",
+    ":echo_test_realm",
+    ":empty_test_component",
+    ":gtest_runner_sample_tests_component",
+    ":gtest_runner_test_with_custom_args_component",
+    ":gtest_runner_test_with_environ_component",
+    ":huge_gtest_component",
+    "//examples/components/routing/echo_server:echo_server_component",
+    "//src/sys/test_runners:echo_server_for_concurrency_test",
+  ]
+}

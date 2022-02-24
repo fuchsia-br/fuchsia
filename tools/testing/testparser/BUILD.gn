@@ -1,0 +1,64 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("testparser") {
+  sources = [
+    "dartsystemtest.go",
+    "googletest.go",
+    "gotest.go",
+    "rusttest.go",
+    "testparser.go",
+    "testparser_test.go",
+    "trftest.go",
+    "vulkanctstest.go",
+    "zircon_utest.go",
+  ]
+
+  deps = [ "//tools/testing/runtests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":test($host_toolchain)",
+    ":testparser_cmd($host_toolchain)",
+    ":testparser_cmd_test",
+  ]
+}
+
+go_test("test") {
+  output_name = "testparser_tests"
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/testing/testparser" ]
+  deps = [
+    ":testparser",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}
+
+go_library("main") {
+  source_dir = "cmd"
+  sources = [
+    "main.go",
+    "main_test.go",
+  ]
+  deps = [ ":testparser" ]
+}
+
+go_binary("testparser_cmd") {
+  output_name = "testparser"
+  gopackage = "go.fuchsia.dev/fuchsia/tools/testing/testparser/cmd"
+  deps = [ ":main" ]
+}
+
+go_test("testparser_cmd_test") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/testing/testparser/cmd" ]
+  deps = [
+    ":main",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}

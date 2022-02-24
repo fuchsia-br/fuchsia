@@ -1,0 +1,83 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library llcpptest.protocol.test;
+
+using zx;
+
+type MyError = strict enum : int32 {
+    BAD_ERROR = 1;
+    REALLY_BAD_ERROR = 2;
+};
+
+type HandleStruct = resource struct {
+    h zx.handle:EVENT;
+};
+
+type VectorStruct = resource struct {
+    v vector<HandleStruct>;
+};
+
+type HandleUnion = strict resource union {
+    1: h zx.handle:EVENT;
+};
+
+type HandleUnionStruct = resource struct {
+    u HandleUnion;
+};
+
+/// Protocol for testing methods with error types.
+/// In the implementation, each method is hardcoded to return either the
+/// success or the error case. This should follow the naming of the method,
+/// e.g. ReturnPrimitiveError will always return the error case.
+protocol ErrorMethods {
+    NoArgsPrimitiveError(struct {
+        should_error bool;
+    }) -> (struct {}) error int32;
+    ManyArgsCustomError(struct {
+        should_error bool;
+    }) -> (struct {
+        a int32;
+        b int32;
+        c int32;
+    }) error MyError;
+};
+
+protocol Frobinator {
+    Frob(struct {
+        value string;
+    });
+    Grob(struct {
+        value string;
+    }) -> (struct {
+        value string;
+    });
+    -> Hrob(struct {
+        value string;
+    });
+};
+
+protocol HandleProvider {
+    GetHandle() -> (resource struct {
+        value HandleStruct;
+    });
+    GetHandleVector(struct {
+        count uint32;
+    }) -> (resource struct {
+        value vector<HandleStruct>;
+    });
+    GetHandleUnion() -> (resource struct {
+        value HandleUnionStruct;
+    });
+};
+
+protocol EnumMethods {
+    SendEnum(struct {
+        e MyError;
+    });
+    GetEnum() -> (struct {
+        e MyError;
+    });
+};
+
+protocol Empty {};

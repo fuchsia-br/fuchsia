@@ -1,0 +1,79 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//third_party/cobalt/metrics_registry.gni")
+
+group("testapp") {
+  testonly = true
+  public_deps = [ ":cobalt_testapp" ]
+}
+
+metrics_registry("testapp_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 657579885
+  namespace = "cobalt_registry"
+  features = [ "testing" ]
+  generate_cc = true
+}
+
+metrics_registry("prober_metrics_registry") {
+  # This must match the ID of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  project_id = 929352809
+  namespace = "cobalt_prober_registry"
+  generate_cc = true
+}
+
+metrics_registry("internal_metrics_registry") {
+  # This must match the IDs of our Cobalt project as specified in:
+  # third_party/cobalt_config/projects.yaml
+  customer_id = 2147483647
+  project_id = 205836624
+  namespace = "cobalt_internal_registry"
+  generate_cc = true
+}
+
+executable("cobalt_testapp") {
+  testonly = true
+  output_name = "cobalt_testapp"
+  sources = [
+    "cobalt_testapp.cc",
+    "cobalt_testapp.h",
+    "cobalt_testapp_logger.cc",
+    "cobalt_testapp_logger.h",
+    "cobalt_testapp_main.cc",
+    "tests.cc",
+    "tests.h",
+  ]
+
+  deps = [
+    ":internal_metrics_registry_cc",
+    ":prober_metrics_registry_cc",
+    ":testapp_metrics_registry_cc",
+    "//garnet/public/lib/svc/cpp",
+    "//sdk/fidl/fuchsia.cobalt",
+    "//sdk/fidl/fuchsia.diagnostics",
+    "//sdk/fidl/fuchsia.metrics",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/cobalt/bin/utils:base64",
+    "//src/cobalt/bin/utils:status_utils",
+    "//src/lib/cobalt/cpp:cobalt_event_builder",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//third_party/cobalt/src/lib/util:datetime_util",
+    "//third_party/cobalt/src/public/lib:clock_interfaces",
+    "//third_party/cobalt/src/registry:cobalt_registry_proto",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+
+  configs += [ "//third_party/cobalt:cobalt_config" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

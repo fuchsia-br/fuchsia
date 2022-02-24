@@ -1,0 +1,96 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("common/x64-common.gni")
+
+# userspace PCI migration flags (Chromebook needs more testing)
+# fxbug.dev/32978
+platform_enable_user_pci = false
+userspace_pci_enable_msi_x = false
+
+board_name = "chromebook-x64"
+
+update_kernels = [ "zbi.signed" ]
+
+use_vboot = true
+use_vbmeta = true
+avb_key =
+    "//third_party/android/platform/external/avb/test/data/testkey_atx_psk.pem"
+avb_atx_metadata =
+    "//third_party/android/platform/external/avb/test/data/atx_metadata.bin"
+
+# Bind the nand-broker to the NAND flash on the device, so the flashmap component can access it.
+fshost_watch_for_nand = true
+
+_common_bootfs_deps = [
+  "//boards/kernel_cmdline:chromebook-x64",
+  "//src/devices/mcu/drivers/chromiumos-ec-core",
+  "//src/devices/mcu/drivers/chromiumos-ec-lpc",
+  "//src/devices/misc/drivers/chromeos-acpi",
+  "//src/devices/nand/drivers/intel-spi-flash",
+  "//src/devices/tpm/drivers/cr50-spi",
+  "//src/firmware/bin/vboot-fwparam:bootfs",
+  "//src/firmware/bin/vboot-fwparam/client:cros-nvtool",
+  "//src/security/cr50_agent:bootfs",
+  "//src/storage/flashmap:bootfs",
+]
+
+board_bootfs_labels += _common_bootfs_deps
+
+board_zedboot_bootfs_labels += _common_bootfs_deps
+
+board_recovery_bootfs_labels += _common_bootfs_deps
+
+# Some users leave a USB key (containing zedboot) plugged into their
+# device at all times. To avoid unintentionally breaking remote workflows,
+# we permit multiple GPT devices.
+board_fshost_config += [ "gpt-all" ]
+board_zedboot_fshost_config += [ "gpt-all" ]
+
+board_bootfs_labels -= [ "//src/power/power-manager:base_config" ]
+board_bootfs_labels += [ "//src/power/power-manager:chromebook_config" ]
+
+board_package_labels += [
+  "//src/ui/scenic/config:chromebook",
+  "//src/chromium/web_engine/config:chromebook",
+  "//src/media/audio/config:chromebook",
+]
+
+# Partitions for fx flash to flash.
+zircon_a_partition = "zircon_a"
+zircon_b_partition = "zircon_b"
+zircon_r_partition = "zircon_r"
+vbmeta_a_partition = "vbmeta_a"
+vbmeta_b_partition = "vbmeta_b"
+vbmeta_r_partition = "vbmeta_r"
+fvm_partition = "fvm"
+
+# TODO(fxbug.dev/81718): don't hardcode slot d. We should instead hardcode
+# slot a and have the bootloader translate correctly into the underlying
+# chromebook partition.
+active_partition = "d"
+
+# TODO(fxbug.dev/78185): don't hardcode the expected size, we should instead
+# inflate to whatever the FVM partition size is at runtime.
+#
+# For now just hardcode 16GiB which is the minimum FVM partition size defined
+# in the chromebook-x64 paver:
+# http://cs/fuchsia/src/storage/lib/paver/chromebook-x64.cc?l=124
+#
+# This also assumes we are not using raw NAND but that's a safer assumption.
+# In this case "emmc" is a misnomer, it really just means "not raw NAND".
+fvm_emmc_partition_size = 17179869184
+
+# Depthcharge does not currently support FVM compression.
+fvm_fastboot_compression = "none"
+
+firmware_prebuilts = [
+  {
+    type = "ap"
+    path = "//prebuilt/third_party/firmware/atlas/fuchsia_image.dev.bin"
+
+    # TODO(fxbug.dev/83462): support flashing firmware over fastboot.
+    #partition = "bootloader"
+  },
+]

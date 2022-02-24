@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "test/transit_bench",
+        "env_vars": [
+            "CARGO_TARGET_DIR=/cache"
+        ]
+    },
+    "sandbox": {
+        "features": [
+            "isolated-cache-storage"
+        ]
+    }
+}

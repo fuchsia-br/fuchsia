@@ -1,0 +1,214 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+config("wlan_mlme_tests_config") {
+  include_dirs = [ "." ]
+}
+
+source_set("test_main") {
+  testonly = true
+
+  sources = [
+    "mlme_msg.h",
+    "mock_device.h",
+    "test_bss.cc",
+    "test_bss.h",
+    "test_data.cc",
+    "test_data.h",
+    "test_main.cc",
+    "test_utils.cc",
+    "test_utils.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//sdk/fidl/fuchsia.wlan.mlme",
+    "//src/connectivity/wlan/lib/mlme/cpp:mlme",
+    "//src/lib/timekeeper:testing",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.wlan.internal",
+    "//sdk/fidl/fuchsia.wlan.internal:fuchsia.wlan.internal_banjo_c",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [ "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config" ]
+}
+
+test("ap_mlme_tests") {
+  output_name = "wlan_ap_mlme_unittest"
+
+  sources = [ "ap_mlme_unittest.cc" ]
+
+  deps = [
+    ":test_main",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//sdk/fidl/fuchsia.wlan.mlme",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//src/connectivity/wlan/lib/mlme/cpp:mlme",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [
+    "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+}
+
+test("client_mlme_tests") {
+  output_name = "wlan_client_mlme_unittest"
+
+  sources = [ "client_mlme_unittest.cc" ]
+
+  deps = [
+    ":test_main",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//sdk/fidl/fuchsia.wlan.ieee80211",
+    "//sdk/fidl/fuchsia.wlan.mlme",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//src/connectivity/wlan/lib/mlme/cpp:mlme",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [
+    "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+}
+
+test("mac_tests") {
+  output_name = "wlan_mac_unittest"
+
+  sources = [
+    "channel_unittest.cc",
+    "element_splitter_unittest.cc",
+    "element_unittest.cc",
+    "energy_unittest.cc",
+    "frame_validation_unittest.cc",
+    "mac_frame_unittest.cc",
+    "macaddr_unittest.cc",
+    "mcs_unittest.cc",
+    "packet_unittest.cc",
+    "parse_element_unittest.cc",
+    "parse_mac_header_unittest.cc",
+    "perr_destination_parser_unittest.cc",
+    "rate_limiter_unittest.cc",
+    "tim_element_unittest.cc",
+    "tim_unittest.cc",
+    "tx_vector_unittest.cc",
+    "write_element_unittest.cc",
+  ]
+
+  deps = [
+    ":test_main",
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common_banjo_c",
+    "//src/connectivity/wlan/lib/mlme/cpp:mlme",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [ "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config" ]
+}
+
+test("buffer_utils_tests") {
+  output_name = "wlan_buffer_utils_unittest"
+
+  sources = [ "buffer_utils_unittest.cc" ]
+
+  deps = [
+    ":test_main",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [ "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config" ]
+}
+
+test("common_tests") {
+  output_name = "wlan_common_unittest"
+
+  sources = [
+    "moving_average_unittest.cc",
+    "rates_elements_unittest.cc",
+    "stats_unittest.cc",
+  ]
+
+  deps = [
+    ":test_main",
+    "//sdk/fidl/fuchsia.wlan.stats",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+
+  configs += [ "//src/connectivity/wlan/lib/mlme/cpp:wlan_mlme_config" ]
+}
+
+fuchsia_driver_package("wlanphy-testdev-driver") {
+  testonly = true
+
+  driver_components =
+      [ "//src/connectivity/wlan/drivers/testing:wlanphy-testdev" ]
+}
+
+tests = [
+  "ap_mlme",
+  "buffer_utils",
+  "client_mlme",
+  "common",
+  "mac",
+]
+
+foreach(test, tests) {
+  name = "${test}_test"
+  fuchsia_unittest_component("${name}_component") {
+    component_name = name
+    deps = [ ":${name}s" ]
+  }
+}
+
+fuchsia_test_package("wlan_tests") {
+  deps = [
+    ":wlanphy-testdev-driver",
+    "//src/connectivity/wlan/drivers/testing",
+  ]
+
+  test_components = []
+  foreach(test, tests) {
+    test_components += [ ":${test}_test_component" ]
+  }
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":wlan_tests" ]
+}

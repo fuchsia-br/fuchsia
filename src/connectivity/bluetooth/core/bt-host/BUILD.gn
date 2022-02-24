@@ -1,0 +1,152 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/fuzzing/fuzzer.gni")
+import("//src/connectivity/bluetooth/core/bt-host/build/bt_gtest_package.gni")
+
+driver_bind_rules("bt_host_bind") {
+  rules = "bt_host.bind"
+  header_output = "bt_host_bind.h"
+  tests = "tests.json"
+  deps = [ "//src/devices/bind/fuchsia.bluetooth" ]
+}
+
+fuchsia_driver("fuchsia_driver") {
+  output_name = "bt-host"
+
+  sources = [ "driver.cc" ]
+
+  deps = [
+    ":bt_host_bind",
+    ":sources",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+  ]
+}
+
+fuchsia_driver_component("driver") {
+  component_name = "bt-host"
+  deps = [ ":fuchsia_driver" ]
+  info = "driver-info.json"
+  colocate = true
+}
+
+source_set("sources") {
+  sources = [
+    "host.cc",
+    "host.h",
+    "host_device.cc",
+    "host_device.h",
+  ]
+
+  deps = [
+    "//src/devices/lib/driver",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  public_deps = [
+    ":stack",
+    "fidl",
+    "//sdk/banjo/fuchsia.hardware.bt.vendor:fuchsia.hardware.bt.vendor_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.bluetooth:fuchsia.hardware.bluetooth_llcpp",
+    "//src/connectivity/bluetooth/fidl:host",
+    "//src/connectivity/bluetooth/lib/fidl",
+    "//src/lib/ddk",
+
+    # TODO(fxb/38132): Migrate to the new bind rules and delete the below
+    "//sdk/lib/fit",
+    "//src/lib/ddk:ddk-deprecated-binding-headers",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/trace:trace-driver",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+group("stack") {
+  public_deps = [
+    "att",
+    "common",
+    "gap",
+    "gatt",
+    "hci",
+    "hci-spec",
+    "l2cap",
+    "sco",
+    "sdp",
+    "sm",
+    "socket",
+    "transport",
+  ]
+}
+
+# TODO(armansito): Enable debug assertions by default from here for all package
+# dependencies when there is a way for it.
+fuchsia_driver_package("bt-host") {
+  driver_components = [ ":driver" ]
+  # This package is reachable from //garnet/packages/prod:all
+}
+
+# See https://fuchsia.dev/fuchsia-src/development/testing/fuzzing/build-a-fuzzer?hl=en#fx-set
+# for instructions on building the fuzzers package.
+fuzzers_package("fuzzers") {
+  package_name = "bt-host-fuzzers"
+  fuzzers = [
+    "common:advertising_data_fuzzer",
+    "fidl:host_server_watch_peers_fuzzer",
+    "gap:peer_cache_fuzzer",
+    "transport:read_acl_data_packet_fuzzer",
+    "transport:read_command_event_packet_fuzzer",
+    "l2cap:l2cap_fuzzer",
+    "l2cap:basic_mode_rx_engine_fuzzer",
+    "l2cap:enhanced_retransmission_mode_engines_fuzzer",
+    "l2cap:bredr_dynamic_channel_registry_fuzzer",
+    "l2cap:channel_configuration_fuzzer",
+    "l2cap:common_handler_fuzzer",
+    "sdp:data_element_fuzzer",
+    "sdp:pdu_fuzzer",
+    "sm:valid_packet_reader_fuzzer",
+  ]
+}
+
+source_set("device_tests") {
+  testonly = true
+
+  sources = [ "host_unittest.cc" ]
+
+  deps = [
+    ":sources",
+    "//sdk/lib/inspect/testing/cpp",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+bt_gtest_package("bt-host-device-tests") {
+  deps = [ ":device_tests" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":bt-host-device-tests",
+    ":fuzzers",
+    "att:bt-host-att-tests",
+    "common:bt-host-common-tests",
+    "fidl:bt-host-fidl-tests",
+    "gap:bt-host-gap-tests",
+    "gatt:bt-host-gatt-tests",
+    "hci:bt-host-hci-tests",
+    "hci-spec:bt-host-hci-spec-tests",
+    "l2cap:bt-host-l2cap-tests",
+    "sco:bt-host-sco-tests",
+    "sdp:bt-host-sdp-tests",
+    "sm:bt-host-sm-tests",
+    "socket:bt-host-socket-tests",
+    "testing:bt-host-testing-tests",
+    "transport:bt-host-transport-tests",
+  ]
+}

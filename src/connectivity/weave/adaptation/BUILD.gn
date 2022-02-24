@@ -1,0 +1,89 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//third_party/openweave-core/device-layer.gni")
+
+openweave_adaptation_layer("adaptation") {
+  sources = [
+    "ble_manager_impl.cpp",
+    "ble_manager_impl.h",
+    "configuration_manager_delegate_impl.cpp",
+    "configuration_manager_delegate_impl.h",
+    "configuration_manager_impl.cpp",
+    "configuration_manager_impl.h",
+    "connectivity_manager_delegate_impl.cpp",
+    "connectivity_manager_delegate_impl.h",
+    "connectivity_manager_impl.cpp",
+    "connectivity_manager_impl.h",
+    "entropy.cpp",
+    "environment_config.cpp",
+    "environment_config.h",
+    "generic_platform_manager_impl_fuchsia.h",
+    "generic_platform_manager_impl_fuchsia.ipp",
+    "group_key_store_impl.cpp",
+    "group_key_store_impl.h",
+    "network_provisioning_server_delegate_impl.cpp",
+    "network_provisioning_server_delegate_impl.h",
+    "network_provisioning_server_impl.cpp",
+    "network_provisioning_server_impl.h",
+    "platform_auth_delegate.cpp",
+    "platform_auth_delegate.h",
+    "platform_manager_impl.cpp",
+    "platform_manager_impl.h",
+    "profile_support.cpp",
+    "thread_stack_manager_delegate_impl.cpp",
+    "thread_stack_manager_delegate_impl.h",
+    "thread_stack_manager_impl.cpp",
+    "thread_stack_manager_impl.h",
+    "utils.h",
+    "warm_platform_config.h",
+    "warm_support.cpp",
+    "weave_config_manager.cpp",
+    "weave_config_manager.h",
+    "weave_device_platform_config.h",
+    "weave_device_platform_error.h",
+    "weave_device_platform_event.h",
+    "weave_inspector.cpp",
+    "weave_inspector.h",
+  ]
+  deps = [ "//sdk/lib/syslog/cpp" ]
+  public_configs = [ ":adaptation_config" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.bluetooth.le",
+    "//sdk/fidl/fuchsia.buildinfo",
+    "//sdk/fidl/fuchsia.factory",
+    "//sdk/fidl/fuchsia.hwinfo",
+    "//sdk/fidl/fuchsia.lowpan",
+    "//sdk/fidl/fuchsia.lowpan.device",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.net.routes",
+    "//sdk/fidl/fuchsia.net.stack",
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/fidl/fuchsia.weave",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//sdk/lib/syslog/cpp:backend_legacy",
+    "//src/lib/backoff",
+    "//src/lib/files",
+    "//src/lib/fsl",
+    "//src/lib/json_parser",
+    "//third_party/modp_b64",
+    "//third_party/openweave-core",
+  ]
+}
+
+config("adaptation_config") {
+  include_dirs = [ "." ]
+  defines = [
+    # Defines for the third-party layer headers.
+    "EXTERNAL_BLEMANAGERIMPL_HEADER=\"ble_manager_impl.h\"",
+    "EXTERNAL_CONFIGURATIONMANAGERIMPL_HEADER=\"configuration_manager_impl.h\"",
+    "EXTERNAL_CONNECTIVITYMANAGERIMPL_HEADER=\"connectivity_manager_impl.h\"",
+    "EXTERNAL_NETWORKPROVISIONINGSERVERIMPL_HEADER=\"network_provisioning_server_impl.h\"",
+    "EXTERNAL_PLATFORMMANAGERIMPL_HEADER=\"platform_manager_impl.h\"",
+    "EXTERNAL_THREADSTACKMANAGERIMPL_HEADER=\"thread_stack_manager_impl.h\"",
+    "EXTERNAL_WEAVEDEVICEPLATFORMEVENT_HEADER=\"weave_device_platform_event.h\"",
+    "WEAVE_DEVICE_PLATFORM_CONFIG_INCLUDE=\"weave_device_platform_config.h\"",
+    "WARM_PLATFORM_CONFIG_INCLUDE=\"warm_platform_config.h\"",
+  ]
+}

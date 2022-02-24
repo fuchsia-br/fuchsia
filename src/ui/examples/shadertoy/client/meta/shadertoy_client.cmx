@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/shadertoy_client"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.examples.shadertoy.ShadertoyFactory",
+            "fuchsia.tracing.provider.Registry",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

@@ -1,0 +1,36 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/host.gni")
+import("//build/rust/rustc_library.gni")
+
+if (is_host) {
+  rustc_library("util") {
+    name = "assembly_util"
+    version = "0.1.0"
+    with_unit_tests = true
+    deps = [
+      "//src/sys/pkg/lib/far/rust:fuchsia-archive",
+      "//src/sys/pkg/lib/fuchsia-pkg",
+      "//src/sys/pkg/lib/version-history/rust:version-history",
+      "//third_party/rust_crates:anyhow",
+      "//third_party/rust_crates:camino",
+      "//third_party/rust_crates:serde_json",
+    ]
+    test_deps = [
+      "//src/sys/pkg/lib/fuchsia-merkle",
+      "//third_party/rust_crates:tempfile",
+    ]
+    sources = [
+      "src/insert_unique.rs",
+      "src/lib.rs",
+      "src/path_to_string.rs",
+    ]
+  }
+
+  group("host_tests") {
+    testonly = true
+    deps = [ ":util_test" ]
+  }
+}

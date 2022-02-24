@@ -1,0 +1,43 @@
+{
+    children: [
+        {
+            name: "custom-timeout-child",
+            url: "fuchsia-pkg://fuchsia.com/elf_runner_lifecycle_test#meta/lifecycle_timeout_node.cm",
+            startup: "eager",
+            environment: "#custom-timeout",
+        },
+        {
+            name: "inherited-timeout-child",
+            url: "fuchsia-pkg://fuchsia.com/elf_runner_lifecycle_test#meta/lifecycle_timeout_node.cm",
+            startup: "eager",
+        },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+        },
+    ],
+    offer: [
+        {
+            protocol: [ "fuchsia.logger.LogSink" ],
+            from: "parent",
+            to: [
+                "#custom-timeout-child",
+                "#inherited-timeout-child",
+            ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+    environments: [
+        {
+            name: "custom-timeout",
+            extends: "realm",
+            __stop_timeout_ms: 4000,
+        },
+    ],
+}

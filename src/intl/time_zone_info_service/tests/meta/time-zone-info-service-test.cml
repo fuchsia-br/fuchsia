@@ -1,0 +1,10 @@
+{
+    include: [
+        "//src/sys/test_runners/rust/tests/meta/common.shard.cml",
+        "sys/component/realm_builder.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/time_zone_info_service_test",
+    },
+}

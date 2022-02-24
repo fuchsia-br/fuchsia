@@ -1,0 +1,57 @@
+{
+    include: [ "//src/diagnostics/archivist/meta/common.shard.cml" ],
+    program: {
+        binary: "bin/archivist",
+        args: [
+            "--enable-component-event-provider",
+            "--enable-klog",
+            "--enable-event-source",
+            "--enable-log-connector",
+            "--log-to-debuglog",
+            "--listen-to-lifecycle",
+            "--config-path",
+            "/config/data/archivist_config.json",
+            "--service-config-path",
+            "/config/data/archivist_service_config.json",
+        ],
+        lifecycle: { stop_event: "notify" },
+        main_process_critical: "true",
+    },
+    capabilities: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+            ],
+        },
+    ],
+    use: [
+        {
+            protocol: [
+                "fuchsia.boot.ReadOnlyLog",
+                "fuchsia.boot.WriteOnlyLog",
+                "fuchsia.component.DetectBinder",
+                "fuchsia.component.KcounterBinder",
+                "fuchsia.component.LogStatsBinder",
+                "fuchsia.component.PersistenceBinder",
+                "fuchsia.component.SamplerBinder",
+                "fuchsia.sys.internal.ComponentEventProvider",
+                "fuchsia.sys.internal.LogConnector",
+            ],
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+    ],
+    expose: [
+        {
+            protocol: [
+                "fuchsia.diagnostics.FeedbackArchiveAccessor",
+                "fuchsia.diagnostics.LegacyMetricsArchiveAccessor",
+            ],
+            from: "self",
+        },
+    ],
+}

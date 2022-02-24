@@ -1,0 +1,226 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/fidl/fidl.gni")
+
+group("integration_tests") {
+  testonly = true
+  deps = [
+    ":appmgr_integration_tests",
+    "component_events",
+    "components",
+    "fidl",
+    "inspect",
+    "lifecycle",
+    "logs",
+    "mock_runner",
+    "outdir",
+    "policy",
+    "sandbox",
+    "util",
+
+    # External packages depended on by tests.
+    "//garnet/bin/glob",
+  ]
+}
+
+executable("full_tests") {
+  testonly = true
+
+  output_name = "appmgr_full_integration_tests"
+
+  sources = [ "full_integration_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("realm_tests") {
+  testonly = true
+
+  output_name = "appmgr_realm_integration_tests"
+
+  sources = [
+    "mock_runner_registry.cc",
+    "mock_runner_registry.h",
+    "realm_integration_test.cc",
+    "realm_runner_integration_test.cc",
+  ]
+
+  deps = [
+    "fidl:echo",
+    "fidl:test.component.mockrunner",
+    "fidl/fuchsia.testing.appmgr",
+    "util:data_file_reader_writer",
+    "util:data_file_reader_writer_util",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.sys.internal",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/sys/appmgr:lib",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("hub_tests") {
+  testonly = true
+
+  output_name = "appmgr_hub_integration_tests"
+
+  sources = [ "hub_integration_test.cc" ]
+
+  deps = [
+    "fidl:echo",
+    "//garnet/bin/sysmgr:lib",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/async:async-cpp",
+  ]
+}
+
+executable("echo_server_bin") {
+  testonly = true
+
+  output_name = "echo_server_for_test"
+
+  sources = [
+    "echo_server.cc",
+    "echo_server.h",
+  ]
+
+  deps = [
+    "fidl:echo",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("crashing_process") {
+  testonly = true
+
+  output_name = "crashing_process"
+
+  sources = [ "crashing_process.cc" ]
+}
+
+config_data("sysmgr_config") {
+  for_pkg = "appmgr_integration_tests"
+  sources = [ rebase_path("//src/sys/sysmgr/config/services.config") ]
+}
+
+executable("crashing_component_bin") {
+  testonly = true
+  output_name = "crashing_component"
+  sources = [ "crashing_component.cc" ]
+  deps = [
+    "fidl/fuchsia.testing.appmgr",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("failing_appmgr_bin") {
+  testonly = true
+  output_name = "failing_appmgr"
+  sources = [ "failing_appmgr.cc" ]
+  deps = [
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/sys/appmgr:appmgr_for_test",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+fuchsia_component("appmgr_integration_tests_inspect_test_app") {
+  testonly = true
+  deps = [ "//src/sys/appmgr/integration_tests/inspect:bin-vmo" ]
+  manifest = "inspect/meta/inspect_vmo_test_app.cmx"
+}
+
+fuchsia_component("appmgr_full_integration_tests") {
+  testonly = true
+  deps = [ ":full_tests" ]
+  manifest = "meta/appmgr_full_integration_tests.cmx"
+}
+
+fuchsia_component("appmgr_hub_integration_tests") {
+  testonly = true
+  deps = [ ":hub_tests" ]
+  manifest = "meta/appmgr_hub_integration_tests.cmx"
+}
+
+fuchsia_component("appmgr_realm_integration_tests") {
+  testonly = true
+  deps = [ ":realm_tests" ]
+  manifest = "meta/appmgr_realm_integration_tests.cmx"
+}
+
+fuchsia_component("echo_server") {
+  testonly = true
+  deps = [ ":echo_server_bin" ]
+  manifest = "meta/echo_server.cmx"
+}
+
+fuchsia_component("failing_appmgr") {
+  testonly = true
+  deps = [ ":failing_appmgr_bin" ]
+  manifest = "meta/failing_appmgr.cmx"
+}
+
+fuchsia_component("crashing_component") {
+  testonly = true
+  deps = [ ":crashing_component_bin" ]
+  manifest = "meta/crashing_component.cmx"
+}
+
+fuchsia_test_package("appmgr_integration_tests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/glob:glob",
+    "//src/sys/appmgr/integration_tests/mock_runner:appmgr_mock_runner",
+    "//src/sys/appmgr/integration_tests/mock_runner:fake_component_for_runner",
+    "//src/sys/appmgr/integration_tests/util:persistent_storage_test_util",
+    "//src/testing/sl4f:sl4f",
+  ]
+  test_components = [
+    ":appmgr_full_integration_tests",
+    ":appmgr_hub_integration_tests",
+    ":appmgr_realm_integration_tests",
+  ]
+  deps = [
+    ":appmgr_integration_tests_inspect_test_app",
+    ":crashing_component",
+    ":crashing_process",
+    ":echo_server",
+    ":failing_appmgr",
+    ":sysmgr_config",
+  ]
+  test_specs = {
+  }
+}

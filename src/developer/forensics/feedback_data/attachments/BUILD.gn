@@ -1,0 +1,79 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+visibility = [ "//src/developer/forensics/feedback_data/*" ]
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("attachment_providers") {
+  sources = [
+    "inspect.cc",
+    "inspect.h",
+    "kernel_log_ptr.cc",
+    "kernel_log_ptr.h",
+    "screenshot_ptr.cc",
+    "screenshot_ptr.h",
+    "system_log.cc",
+    "system_log.h",
+  ]
+
+  public_deps = [
+    ":types",
+    "//sdk/fidl/fuchsia.boot",
+    "//sdk/fidl/fuchsia.diagnostics",
+    "//sdk/fidl/fuchsia.images",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//src/developer/forensics/feedback_data:archive_accessor",
+    "//src/developer/forensics/feedback_data:inspect_budget",
+    "//src/developer/forensics/utils:archive",
+    "//src/developer/forensics/utils:errors",
+    "//src/developer/forensics/utils/fidl:oneshot_ptr",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/utils:errors",
+    "//src/developer/forensics/utils:logs",
+    "//src/developer/forensics/utils/fit",
+    "//src/lib/diagnostics/accessor2logger",
+    "//src/lib/fsl",
+  ]
+}
+
+source_set("static_attachments") {
+  sources = [
+    "static_attachments.cc",
+    "static_attachments.h",
+  ]
+
+  public_deps = [ ":types" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/utils:errors",
+    "//src/lib/files",
+    "//src/lib/fxl",
+  ]
+}
+
+source_set("types") {
+  sources = [ "types.h" ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/utils:errors",
+  ]
+
+  visibility += [ "//src/developer/forensics/testing:gpretty_printers" ]
+}

@@ -1,0 +1,67 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("core") {
+  deps = [
+    "bt-bredr-profile",
+    "bt-cli",
+    "bt-le-central",
+    "bt-le-peripheral",
+    "bt-pairing-tool",
+    "bt-snoop-cli",
+  ]
+}
+
+group("profile") {
+  deps = [
+    "bt-avdtp-tool",
+    "bt-avrcp-controller",
+  ]
+}
+
+group("hci") {
+  deps = [
+    "bt-hci-tool",
+    "bt-intel-tool",
+  ]
+}
+
+group("audio") {
+  deps = [ "dai-info" ]
+}
+
+group("fct") {
+  deps = [
+    "bt-fct-hci",
+    "bt-hci-tool",
+    "bt-snoop-cli",
+  ]
+}
+
+group("tools") {
+  deps = [
+    ":audio",
+    ":core",
+    ":fct",
+    ":hci",
+    ":profile",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "bt-avdtp-tool:tests",
+    "bt-avrcp-controller:tests",
+    "bt-bredr-profile:tests",
+    "bt-cli:tests",
+    "bt-fct-hci:tests",
+    "bt-hci-emulator",
+    "bt-le-central:tests",
+    "bt-le-peripheral:tests",
+    "bt-snoop:tests",
+    "tests",
+  ]
+}

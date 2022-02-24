@@ -1,0 +1,66 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+// This file is copies of some syscalls that were interesting for the kernel
+// header generator.
+
+alias mutable_vector_void = vector<handle>;
+alias optional_uint32 = uint32;
+alias vector_handle_u32size = vector<byte>;
+alias vector_paddr = vector<paddr>;
+alias vector_void_u32size = vector<byte>;
+
+@transport("Syscall")
+protocol KernelCases {
+    // Output vector to out_ptr, and vector<paddr> staying zx_paddr_t (not
+    // turning into uint64).
+    BtiPin(resource struct {
+        handle handle:BTI;
+        options uint32;
+        vmo handle:VMO;
+        offset uint64;
+        size uint64;
+    }) -> (resource struct {
+        status status;
+        addrs vector_paddr;
+        pmt handle:PMT;
+    });
+
+    // Still have NORETURN markup for kernel (but only this one).
+    @noreturn
+    ThreadExit();
+
+    // inout_ptr.
+    MtraceControl(resource struct {
+        handle handle:RESOURCE;
+        kind uint32;
+        action uint32;
+        options uint32;
+        ptr mutable_vector_void;
+    }) -> (struct {
+        status status;
+    });
+
+    // vector of handles isn't turned into user_out_handle*, rather stays as
+    // user_out_ptr<zx_handle_t>, because it's not just one.
+    Read(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+    }) -> (struct {
+        status status;
+        bytes vector_void_u32size;
+        handles vector_handle_u32size;
+        actual_bytes optional_uint32;
+        actual_handles optional_uint32;
+    });
+
+    @testonly
+    compiled_out_in_non_test(struct {
+        a int32;
+        b int32;
+    }) -> (struct {
+        status status;
+    });
+};

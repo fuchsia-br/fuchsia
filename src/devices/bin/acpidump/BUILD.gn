@@ -1,0 +1,49 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+source_set("src") {
+  sources = [
+    "acpidump.cc",
+    "acpidump.h",
+  ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.hardware.acpi:fuchsia.hardware.acpi_llcpp",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/cmdline",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+  ]
+  visibility = [ ":*" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+executable("acpidump") {
+  output_name = "acpidump"
+  output_dir = "$root_out_dir/zircon-migrated"
+  sources = [ "main.cc" ]
+  deps = [ ":src" ]
+}
+
+test("test") {
+  output_name = "acpidump-test"
+  sources = [ "acpidump_test.cc" ]
+  include_dirs = [ "." ]
+  deps = [
+    ":src",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+bootfs_test("acpidump-test-bootfs-test") {
+  name = "acpidump-test"
+  deps = [ ":test" ]
+}

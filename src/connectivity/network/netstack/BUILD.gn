@@ -1,0 +1,227 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/go/toolchain.gni")
+import("//src/go/grand_unified_binary/gub.gni")
+import("gentool/generated.gni")
+import("tracing/go_tracing_include_dirs.gni")
+
+grand_unified_binary("bin") {
+  output_name = "netstack"
+}
+
+fuchsia_component("component") {
+  component_name = "netstack"
+  manifest = "meta/netstack.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("component-legacy") {
+  component_name = "netstack"
+  manifest = "meta/netstack.cmx"
+  deps = [ ":bin" ]
+}
+
+go_binary("bin_with_deadlock_detection") {
+  gopackage = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack/stub"
+  output_name = string_replace(target_name, "bin", "netstack")
+
+  tags = [ "deadlock_detection" ]
+  deps = [ "stub" ]
+}
+
+fuchsia_component("component-debug") {
+  testonly = true
+  component_name = "netstack-debug"
+  manifest = "meta/netstack_debug.cml"
+  deps = [ ":bin_with_deadlock_detection" ]
+}
+
+fuchsia_component("component-debug-legacy") {
+  testonly = true
+  component_name = "netstack-debug"
+  manifest = "meta/netstack_debug.cmx"
+  deps = [ ":bin_with_deadlock_detection" ]
+}
+
+fuchsia_component("component-conformance") {
+  component_name = "netstack-conformance"
+  manifest = "meta/netstack_conformance.cml"
+  deps = [ ":bin_with_deadlock_detection" ]
+}
+
+# TODO(https://fxbug.dev/84248): rm once no longer used in network:config.
+fuchsia_package("netstack") {
+  deps = [ ":component-legacy" ]
+}
+
+go_binary("bin_with_tracing") {
+  gopackage = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack/stub"
+  output_name = string_replace(target_name, "bin", "netstack")
+
+  tags = [ "tracing" ]
+  deps = [ "stub" ]
+
+  include_dirs = go_tracing_include_dirs
+}
+
+fuchsia_component("component-with-tracing") {
+  component_name = "netstack"
+  manifest = "meta/netstack_with_tracing.cml"
+  deps = [ ":bin_with_tracing" ]
+}
+
+generated_go("gen/netstack/link/eth") {
+  definitions = [
+    {
+      src = "link/eth/handler.json"
+      template = "link/fifo/gen/handler.tmpl"
+      copy = [ "link/fifo/gen/fifo_entry.go" ]
+    },
+    {
+      src = "link/eth/entries.json"
+      template = "link/fifo/gen/entries.tmpl"
+    },
+  ]
+}
+
+generated_go("gen/netstack/link/netdevice") {
+  definitions = [
+    {
+      src = "link/netdevice/handler.json"
+      template = "link/fifo/gen/handler.tmpl"
+    },
+    {
+      src = "link/netdevice/entries.json"
+      template = "link/fifo/gen/entries.tmpl"
+    },
+  ]
+}
+
+go_library("pprof") {
+  name = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack/pprof"
+  source_dir = "pprof"
+  sources = [ "export.go" ]
+  deps = [
+    "inspect",
+    "sync",
+    "//src/lib/component",
+    "//src/lib/syslog/go",
+  ]
+}
+
+go_library("lib") {
+  name = "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack"
+
+  deps = [
+    ":pprof",
+    "dhcp",
+    "dns",
+    "fidlconv",
+    "fidlext/fuchsia/hardware/ethernet",
+    "filter",
+    "inspect",
+    "link",
+    "link/bridge",
+    "link/eth",
+    "link/netdevice",
+    "routes",
+    "sync",
+    "time",
+    "tracing",
+    "util",
+    "//sdk/fidl/fuchsia.hardware.ethernet($go_toolchain)",
+    "//sdk/fidl/fuchsia.hardware.network($go_toolchain)",
+    "//sdk/fidl/fuchsia.inspect.deprecated($go_toolchain)",
+    "//sdk/fidl/fuchsia.logger($go_toolchain)",
+    "//sdk/fidl/fuchsia.net($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.debug($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.dhcp($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.filter($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.interfaces($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.interfaces.admin($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.multicast.admin($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.name($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.neighbor($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.routes($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.stack($go_toolchain)",
+    "//sdk/fidl/fuchsia.net.tun($go_toolchain)",
+    "//sdk/fidl/fuchsia.netstack($go_toolchain)",
+    "//sdk/fidl/fuchsia.posix($go_toolchain)",
+    "//sdk/fidl/fuchsia.posix.socket($go_toolchain)",
+    "//sdk/fidl/fuchsia.posix.socket.packet($go_toolchain)",
+    "//sdk/fidl/fuchsia.posix.socket.raw($go_toolchain)",
+    "//sdk/fidl/fuchsia.stash($go_toolchain)",
+    "//sdk/fidl/fuchsia.sys($go_toolchain)",
+    "//src/lib/component",
+    "//src/lib/syslog/go",
+    "//third_party/golibs:github.com/google/go-cmp",
+    "//third_party/golibs:gvisor.dev/gvisor",
+  ]
+
+  sources = [
+    "errors.go",
+    "fuchsia_inspect_inspect.go",
+    "fuchsia_inspect_inspect_test.go",
+    "fuchsia_net_debug.go",
+    "fuchsia_net_dhcp.go",
+    "fuchsia_net_interfaces.go",
+    "fuchsia_net_interfaces_admin.go",
+    "fuchsia_net_interfaces_admin_test.go",
+    "fuchsia_net_interfaces_test.go",
+    "fuchsia_net_name_dns_server_watcher.go",
+    "fuchsia_net_name_dns_server_watcher_test.go",
+    "fuchsia_net_neighbor.go",
+    "fuchsia_net_neighbor_test.go",
+    "fuchsia_net_routes.go",
+    "fuchsia_net_stack.go",
+    "fuchsia_net_stack_test.go",
+    "fuchsia_posix_socket.go",
+    "main.go",
+    "ndp.go",
+    "ndp_test.go",
+    "netstack.go",
+    "netstack_service.go",
+    "netstack_service_impl_test.go",
+    "netstack_test.go",
+    "noop_endpoint_test.go",
+    "socket_conv.go",
+  ]
+}
+
+go_test("netstack_test") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/src/connectivity/network/netstack" ]
+  deps = [ ":lib" ]
+}
+
+fuchsia_unittest_package("netstack-gotests") {
+  deps = [ ":netstack_test" ]
+  manifest = "meta/netstack_test.cmx"
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":netstack-gotests",
+    "bench:tests",
+    "dhcp:tests",
+    "dns:tests",
+    "fidlconv:tests",
+    "filter:tests",
+    "inspect:tests",
+    "link/bridge:tests",
+    "link/eth:tests",
+    "link/fifo:tests",
+    "link/netdevice:tests",
+    "routes:tests",
+    "tests",
+    "time:tests",
+    "tracing:tests",
+    "util:tests",
+  ]
+}

@@ -1,0 +1,81 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/renamed_binary.gni")
+import("//build/rust/rustc_library.gni")
+
+# `pkgctl` is conceptually a binary, but it built as a lib here so it can be
+# aggregated into //src/sys/pkg/bin/multi-universal-tool to save disk space.
+rustc_library("lib") {
+  name = "pkgctl"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/files_async",
+    "//sdk/fidl/fuchsia.io:fuchsia.io-rustc",
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.net.http:fuchsia.net.http-rustc",
+    "//sdk/fidl/fuchsia.net.stack:fuchsia.net.stack-rustc",
+    "//sdk/fidl/fuchsia.pkg:fuchsia.pkg-rustc",
+    "//sdk/fidl/fuchsia.pkg.rewrite:fuchsia.pkg.rewrite-rustc",
+    "//sdk/fidl/fuchsia.space:fuchsia.space-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-url",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//src/sys/lib/fidl-fuchsia-pkg-ext",
+    "//src/sys/lib/fidl-fuchsia-pkg-rewrite-ext",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:regex",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  source_root = "src/main.rs"
+  sources = [
+    "src/args.rs",
+    "src/error.rs",
+    "src/main.rs",
+    "src/v1repoconf.rs",
+  ]
+
+  visibility = [
+    ":*",
+    "//src/sys/pkg/bin/multi-universal-tool:*",
+  ]
+}
+
+# Copy the multi_universal_tool as 'bin/pkgctl' as required
+# by the pkgctl package below. Note that the package must
+# still depend on //src/sys/pkg/bin/multi-universal-tool to
+# ensure its runtime dependencies are properly installed.
+renamed_binary("pkgctl-binary") {
+  source = "$root_out_dir/multi_universal_tool"
+  source_deps = [ "//src/sys/pkg/bin/multi-universal-tool" ]
+  dest = "bin/pkgctl"
+  fuchsia_shell_package_name = "pkgctl"
+}
+
+fuchsia_package_with_single_component("pkgctl-bin") {
+  package_name = "pkgctl"
+  manifest = "meta/pkgctl.cmx"
+  deps = [ ":pkgctl-binary" ]
+}
+
+fuchsia_unittest_package("pkgctl-tests") {
+  deps = [ ":lib_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":pkgctl-tests" ]
+}

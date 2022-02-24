@@ -1,0 +1,29 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("bin") {
+  deps = [
+    "brightness_manager",
+    "input-pipeline",
+    "root_presenter",
+    "scene_manager",
+    "shortcut",
+    "text:text_manager",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "brightness_manager:brightness_manager_tests",
+    "hardware_display_controller_provider:tests",
+    "input-pipeline:tests",
+    "root_presenter:tests",
+    "scene_manager:tests",
+    "shortcut:tests",
+    "terminal:tests",
+    "text:tests",
+  ]
+}

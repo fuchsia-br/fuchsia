@@ -1,0 +1,36 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_test("specialize-ip-macro_test") {
+  version = "0.1.0"
+  edition = "2018"
+
+  configs -= [ "//build/config/rust:no_features" ]
+  configs += [ "//build/config/rust:netstack3_only_specialization_feature" ]
+
+  deps = [
+    "//src/connectivity/lib/net-types",
+    "//src/connectivity/network/netstack3/core/specialize-ip-macro",
+  ]
+
+  sources = [ "src/lib.rs" ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+fuchsia_unittest_package("specialize-ip-macro-test-package") {
+  package_name = "specialize-ip-macro-test"
+  deps = [ ":specialize-ip-macro_test" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":specialize-ip-macro-test-package",
+    ":specialize-ip-macro_test($host_toolchain)",
+  ]
+}

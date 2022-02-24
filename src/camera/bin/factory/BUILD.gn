@@ -1,0 +1,68 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//src/camera/debug.gni")
+
+group("factory") {
+  deps = [ ":camera_factory" ]
+}
+
+source_set("lib") {
+  sources = [
+    "capture.cc",
+    "capture.h",
+    "factory_server.cc",
+    "factory_server.h",
+    "streamer.cc",
+    "streamer.h",
+    "web_ui.cc",
+    "web_ui.h",
+  ]
+
+  deps = [
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/files:files",
+  ]
+
+  public_deps = [
+    ":fuchsia.factory.camera",
+    "//sdk/fidl/fuchsia.camera3",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/fsl",
+    "//third_party/libpng",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fidl-utils",
+  ]
+}
+
+executable("camera_factory_bin") {
+  defines = [ camera_debug_define ]
+  sources = [ "main.cc" ]
+
+  deps = [ ":lib" ]
+}
+
+fidl("fuchsia.factory.camera") {
+  sdk_category = "internal"
+
+  sources = [ "factory.test.fidl" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.images" ]
+}
+
+fuchsia_package_with_single_component("camera_factory") {
+  manifest = "meta/camera_factory.cmx"
+  deps = [ ":camera_factory_bin" ]
+}

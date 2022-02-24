@@ -1,0 +1,90 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("android") {
+  deps = [ ":android_system_image" ]
+}
+
+group("tests") {
+  testonly = true
+  if (target_cpu == "x64") {
+    deps = [
+      ":test_android_distro",
+      "//src/proc/tests/android/benchmarks:starnix_benchmarks",
+      "//src/proc/tests/android/gvisor",
+      "//src/proc/tests/android/wayland",
+    ]
+  }
+}
+
+resource("android_system_image") {
+  sources = [ "//prebuilt/starnix/android-image-amd64/system.img" ]
+  outputs = [ "data/system.img" ]
+}
+
+fuchsia_component("init") {
+  manifest = "meta/init.cml"
+}
+
+fuchsia_component("sh") {
+  manifest = "meta/sh.cml"
+}
+
+resource("binder_smoke_test_bin") {
+  sources = [
+    "//prebuilt/starnix/tests/syscalls/linux-amd64/android/binder_smoke_test",
+  ]
+  outputs = [ "data/tests/binder_smoke_test" ]
+}
+
+fuchsia_test_component("binder_smoke_test") {
+  manifest = "meta/binder_smoke_test.cml"
+  deps = [ ":binder_smoke_test_bin" ]
+}
+
+fuchsia_test_component("java_hello_world") {
+  manifest = "meta/java_hello_world.cml"
+}
+
+fuchsia_component("sh_test") {
+  testonly = true
+  check_references = false
+  deps = [ ":android_system_image" ]
+  manifest = "meta/sh_test.cml"
+}
+
+fuchsia_component("boringssl_self_test64") {
+  testonly = true
+  check_references = false
+  deps = [ ":android_system_image" ]
+  manifest = "meta/boringssl_self_test64.cml"
+}
+
+resource("starnix_data_tmp_placeholder") {
+  sources = [ "placeholder" ]
+  outputs = [ "data/tmp/.placeholder" ]
+}
+
+fuchsia_test_package("test_android_distro") {
+  deps = [
+    ":android_system_image",
+    ":init",
+    ":sh",
+    ":starnix_data_tmp_placeholder",
+  ]
+
+  test_components = [
+    ":boringssl_self_test64",
+    ":java_hello_world",
+    ":sh_test",
+    ":binder_smoke_test",
+  ]
+
+  # This package intentionally contains many non-Fuchia ELF binaries that
+  # are not under /data/, and some of them are even unstripped, so disable
+  # theses checks to build successfully.
+  disable_elf_binaries_checks = true
+}

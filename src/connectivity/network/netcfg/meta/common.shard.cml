@@ -1,0 +1,46 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [ "syslog/elf_stdio.shard.cml" ],
+    program: {
+        // Subscribe to component lifecycle events
+        lifecycle: { stop_event: "notify" },
+    },
+    use: [
+        {
+            protocol: [
+                // TODO(https://fxbug.dev/74532): We won't need to reach out to
+                // debug once we don't have Ethernet interfaces anymore.
+                "fuchsia.net.debug.Interfaces",
+                "fuchsia.net.dhcp.Server",
+                "fuchsia.net.dhcpv6.ClientProvider",
+                "fuchsia.net.filter.Filter",
+                "fuchsia.net.interfaces.admin.Installer",
+                "fuchsia.net.interfaces.State",
+                "fuchsia.net.name.LookupAdmin",
+                "fuchsia.net.stack.Stack",
+                "fuchsia.netstack.Netstack",
+            ],
+        },
+        {
+            directory: "dev-class-ethernet",
+            rights: [ "rw*" ],
+            path: "/dev/class/ethernet",
+        },
+        {
+            directory: "dev-class-network",
+            rights: [ "rw*" ],
+            path: "/dev/class/network",
+        },
+        {
+            storage: "data",
+            path: "/data",
+        },
+        {
+            directory: "config-data",
+            rights: [ "r*" ],
+            path: "/config/data",
+        },
+    ],
+}

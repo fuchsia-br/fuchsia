@@ -1,0 +1,258 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/toolchain/toolchain_environment.gni")
+import("//build/zircon/zx_library.gni")
+
+# These set the ABI contract between C++ and assembly code.
+# This is kept consistent between the kernel proper and phys
+# so (pure PIC) code should be callable from the kernel proper.
+config("abi") {
+  cflags = [
+    "-mno-red-zone",
+
+    # context switch routines conditionally use these instructions.
+    "-mfsgsbase",
+
+    # Hard disable floating point in the kernel.
+    "-msoft-float",
+    "-mno-mmx",
+    "-mno-sse",
+    "-mno-sse2",
+    "-mno-3dnow",
+    "-mno-avx",
+    "-mno-avx2",
+  ]
+
+  if (is_gcc) {
+    cflags += [
+      # Optimization: Since FPU is disabled, do not pass flag in %rax to
+      # varargs routines that floating point args are in use.
+      "-mskip-rax-setup",
+    ]
+  } else {
+    # Clang needs -mcmodel=kernel to tell it to use the right safe-stack
+    # ABI for the kernel.
+    cflags += [ "-mcmodel=kernel" ]
+  }
+
+  # This is not part of the ABI contract per se, but it's part of the
+  # "expected resilience of generated code" contract that should be uniform
+  # across all the privileged code.
+  configs = [
+    ":retpoline",
+    ":skylake_jcc",
+  ]
+}
+
+config("retpoline") {
+  visibility = [ ":*" ]
+  if (is_gcc) {
+    cflags = [
+      "-mindirect-branch=thunk-inline",
+      "-mindirect-branch-register",
+    ]
+  } else {
+    cflags = [ "-mretpoline" ]
+    if (toolchain_environment == "kernel") {
+      # The kernel proper uses its own optimized thunks, but phys and
+      # multiboot can just use the compiler's safe default thunks.
+      cflags += [ "-mretpoline-external-thunk" ]
+    }
+  }
+  defines = [ "KERNEL_RETPOLINE=1" ]
+}
+
+# Mitigate errata in Intel Skylake family of CPUs that cause control transfer instructions to
+# execute incorrectly when they end at or cross 32-byte boundaries. (fxbug.dev/44204)
+config("skylake_jcc") {
+  visibility = [ ":*" ]
+  defines = [ "X64_KERNEL_JCC_WORKAROUND" ]
+  configs = [ "//build/config/x64:mitigate_skylake_jcc" ]
+}
+
+# This is used pervasively throughout the kernel on x86.
+config("kernel") {
+  defines = [
+    "ARCH_X86",
+
+    "KERNEL_LOAD_OFFSET=0x00100000",  # 1MB
+  ]
+
+  # For #include <arch/foo.h>.
+  include_dirs = [ "include" ]
+
+  # TODO(digit): Once the dependencies below have been migrated to the Fuchsia
+  # build, only use configs to add the include paths.
+  include_dirs += [
+    # <arch/aspace.h> has #include <bitmap/rle-bitmap.h>
+    "//zircon/system/ulib/bitmap/include",
+
+    # <arch/aspace.h> has #include <arch/x86/page_tables/constants.h>.
+    "page_tables/include",
+
+    # <arch/x86/page_tables/page_tables.h> has #include <hwreg/bitfields.h>.
+    "//zircon/system/ulib/hwreg/include",
+
+    # <arch/x86/idle_states.h> has #include <ktl/atomic.h>.
+    "//zircon/kernel/lib/ktl/include",
+
+    # <arch/x86.h> has #include <lib/arch/intrin.h>.
+    "//zircon/kernel/lib/arch/x86/include",
+  ]
+}
+
+# TODO(fxbug.dev/58463): Remove conditional when all dependencies below have been
+# migrated to the Fuchsia build.
+# NOTE: Bad indentation is intentional, to make code reviews easier.
+zx_library("x86") {
+  sources = [
+    "amd.cc",
+    "arch.cc",
+    "asm.S",
+    "bootstrap16.cc",
+    "cache.cc",
+    "debugger.cc",
+    "descriptor.cc",
+    "exceptions.S",
+    "faults.cc",
+    "feature.cc",
+    "gdt.S",
+    "hwp.cc",
+    "idle_states.cc",
+    "idt.cc",
+    "intel.cc",
+    "ioapic.cc",
+    "ioport.cc",
+    "lapic.cc",
+    "mexec.S",
+    "mmu.cc",
+    "mmu_mem_types.cc",
+    "mp.cc",
+    "msr.cc",
+    "ops.S",
+    "perf_mon.cc",
+    "proc_trace.cc",
+    "pv.cc",
+    "registers.cc",
+    "smp.cc",
+    "spinlock.cc",
+    "start.S",
+    "start16.S",
+    "system_topology.cc",
+    "thread.cc",
+    "timer_freq.cc",
+    "uspace_entry.S",
+  ]
+  deps = [
+    ":dev-init",
+    ":syscall",
+    ":tests",
+    "code-patches:headers",
+    "cpuid",
+    "retpoline",
+    "user-copy",
+    "//sdk/lib/fit",
+    "//zircon/kernel/dev/hw_rng",
+    "//zircon/kernel/dev/iommu/dummy",
+    "//zircon/kernel/dev/iommu/intel",
+    "//zircon/kernel/lib/acpi_lite",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/backtrace",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/code-patching:headers",
+    "//zircon/kernel/lib/console",
+    "//zircon/kernel/lib/counters",
+    "//zircon/kernel/lib/crashlog",
+    "//zircon/kernel/lib/debuglog",
+    "//zircon/kernel/lib/fbl",
+    "//zircon/kernel/lib/init",
+    "//zircon/kernel/lib/instrumentation",
+    "//zircon/kernel/lib/kpci",
+    "//zircon/kernel/lib/ktrace",
+    "//zircon/kernel/lib/perfmon",
+    "//zircon/kernel/lib/root_resource_filter",
+    "//zircon/kernel/lib/topology",
+    "//zircon/kernel/lib/version",
+    "//zircon/kernel/object",
+    "//zircon/kernel/phys:handoff",
+    "//zircon/kernel/phys:handoff",
+    "//zircon/kernel/platform/pc",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/pretty",
+  ]
+  public_deps = [
+    # arch/x86/system_topology.h has #include <arch/x86/cpuid.h>.
+    "//zircon/kernel/arch/x86/cpuid:headers",
+
+    # arch/x86/apic.h has #include <dev/interrupt.h>.
+    "//zircon/kernel/dev/interrupt:headers",
+
+    # arch/x86/hypervisor.h has #include <hypervisor/guest_physical_address_space.h>.
+    "//zircon/kernel/hypervisor:headers",
+
+    # <arch/aspace.h> has #include <bitmap/rle-bitmap.h>.
+    "//zircon/system/ulib/bitmap:headers",
+
+    # <arch/aspace.h> uses various fbl things
+    "//zircon/system/ulib/fbl:headers",
+
+    # <arch/x86/ioport.h> has #include <bitmap/rle-bitmap.h>.
+    "//zircon/system/ulib/bitmap:headers",
+
+    # <arch/x86/apic.h> has #include <dev/interrupt.h>.
+    "//zircon/kernel/dev/interrupt:headers",
+
+    # <arch/x86/idle_states.h> has #include <ktl/atomic.h>.
+    "//zircon/kernel/lib/ktl:headers",
+
+    # <arch/x86.h> has #include <lib/arch/intrin.h>.
+    "//zircon/kernel/lib/arch:headers",
+
+    # <arch/x86/system_topology.h> has #include <lib/acpi_lite.h>.
+    "//zircon/kernel/lib/acpi_lite:headers",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("syscall") {
+  sources = [ "syscall.S" ]
+  deps = [
+    "code-patches:headers",
+    "//zircon/kernel/lib/code-patching:headers",
+    "//zircon/kernel/lib/syscalls",
+  ]
+}
+
+source_set("dev-init") {
+  visibility = [ ":*" ]
+  sources = [ "dev-init.cc" ]
+  deps = [
+    "//zircon/kernel/phys:handoff",
+    "//zircon/kernel/platform/pc",
+    "//zircon/system/ulib/uart",
+  ]
+}
+
+source_set("tests") {
+  sources = [
+    "hwp_tests.cc",
+    "idle_states_test.cc",
+    "mmu_tests.cc",
+    "platform_tests.cc",
+    "system_topology_test.cc",
+  ]
+  deps = [
+    ":headers",
+    "//zircon/kernel/lib/arch/testing",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/console:headers",
+    "//zircon/kernel/lib/topology:headers",
+    "//zircon/kernel/lib/unittest",
+  ]
+}

@@ -1,0 +1,205 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/components.gni")
+
+source_set("constants") {
+  sources = [ "constants.h" ]
+  public_deps = [ "//src/media/audio/lib/format:constants" ]
+}
+
+source_set("coefficient_table") {
+  sources = [
+    "coefficient_table.cc",
+    "coefficient_table.h",
+  ]
+
+  public_deps = [
+    ":constants",
+    "//sdk/lib/stdcompat",
+    "//sdk/lib/syslog/cpp",
+  ]
+}
+
+source_set("mixer") {
+  sources = [
+    "channel_strip.h",
+    "coefficient_table_cache.h",
+    "filter.cc",
+    "filter.h",
+    "gain.cc",
+    "gain.h",
+    "intersect.cc",
+    "intersect.h",
+    "mixer.cc",
+    "mixer.h",
+    "mixer_utils.h",
+    "no_op.cc",
+    "no_op.h",
+    "output_producer.cc",
+    "output_producer.h",
+    "point_sampler.cc",
+    "point_sampler.h",
+    "position_manager.cc",
+    "position_manager.h",
+    "sinc_sampler.cc",
+    "sinc_sampler.h",
+  ]
+
+  public_deps = [
+    ":coefficient_table",
+    ":constants",
+    "//sdk/fidl/fuchsia.media",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/ffl",
+    "//zircon/system/ulib/trace",
+  ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl:fxl",
+    "//src/media/audio/lib/format",
+    "//src/media/audio/lib/timeline",
+  ]
+
+  # Building without optimizations causes significant slowdowns for these components; the additional
+  # CPU load may lead to audio glitches on debug builds. These config settings enable the needed
+  # code optimization while maintaining other 'debug' aspects (e.g. DCHECK is still enabled).
+  configs -= [ "//build/config:default_optimize" ]
+  configs += [ "//build/config:optimize_speed" ]
+
+  # Allow some of our loops to be vectorized by the compiler.
+  cflags = [
+    "-ffast-math",
+
+    # Allow inf/nan until we sanitize these out of streams (not normally allowed with -ffast-math).
+    "-fhonor-infinities",
+    "-fhonor-nans",
+    "-fno-finite-math-only",
+  ]
+}
+
+group("tools") {
+  testonly = true
+  deps = [ "tools" ]
+}
+
+# Any executable which uses :mixer (either directly or transitively) must also
+# include either prebuilt or empty coefficient tables, via one of the following
+# two build rules. The decision of which tables to include is usually left to
+# the top-most build rule (i.e., the executable), since that rule often has the
+# most insight into system constraints, such as code size.
+
+source_set("prebuilt_coefficient_tables") {
+  sources = [ "$target_gen_dir/coefficient_table_data_prebuilt.cc" ]
+  deps = [
+    ":build_coefficient_table_data_prebuilt_cc",
+    ":coefficient_table",
+  ]
+}
+
+source_set("empty_coefficient_tables") {
+  sources = [ "coefficient_table_data_empty.cc" ]
+  deps = [ ":coefficient_table" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":audio_mixer_death_unittests",
+    ":audio_mixer_unittests",
+    "test",
+  ]
+}
+
+executable("mixer_unittest_bin") {
+  testonly = true
+  output_name = "audio_mixer_unittests"
+
+  sources = [
+    "bookkeeping_unittest.cc",
+    "channel_strip_unittest.cc",
+    "coefficient_table_cache_unittest.cc",
+    "coefficient_table_unittest.cc",
+    "filter_unittest.cc",
+    "gain_unittest.cc",
+    "intersect_unittest.cc",
+    "mixer_utils_unittest.cc",
+    "no_op_unittest.cc",
+    "output_producer_unittest.cc",
+    "point_sampler_unittest.cc",
+    "position_manager_unittest.cc",
+    "sinc_sampler_unittest.cc",
+    "source_info_unittest.cc",
+  ]
+
+  deps = [
+    ":mixer",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/media/audio/audio_core/mixer:prebuilt_coefficient_tables",
+    "//src/media/audio/lib/format",
+    "//src/media/audio/lib/test:constants",
+    "//third_party/googletest:gmock",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_unittest_package("audio_mixer_unittests") {
+  deps = [ ":mixer_unittest_bin" ]
+}
+
+fuchsia_component("mixer_death_unittest_comp") {
+  testonly = true
+  manifest = "meta/audio_mixer_death_unittests.cmx"
+  deps = [ ":mixer_death_test_bin" ]
+}
+
+fuchsia_test_package("audio_mixer_death_unittests") {
+  test_specs = {
+    log_settings = {
+      max_severity = "FATAL"
+    }
+  }
+  test_components = [ ":mixer_death_unittest_comp" ]
+}
+
+executable("mixer_death_test_bin") {
+  testonly = true
+  output_name = "audio_mixer_death_unittests"
+
+  sources = [ "sampler_death_unittest.cc" ]
+
+  deps = [
+    ":mixer",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//src/media/audio/audio_core/mixer:prebuilt_coefficient_tables",
+    "//third_party/googletest:gmock",
+  ]
+}
+
+# This executable is run automatically as part of the build deps for
+# :prebuilt_coefficient_tables. It can be run manually -- the binary
+# can be found adjacent to other host tools.
+executable("gen_audio_filter_coefficient_tables") {
+  sources = [
+    "coefficient_table.cc",
+    "coefficient_table.h",
+    "constants.h",
+    "gen_coefficient_tables.cc",
+  ]
+  deps = [
+    "//sdk/lib/stdcompat",
+    "//src/media/audio/lib/format:constants",
+  ]
+  defines = [ "BUILDING_FUCHSIA_AUDIO_HOST_TOOL=1" ]
+}
+
+compiled_action("build_coefficient_table_data_prebuilt_cc") {
+  tool = ":gen_audio_filter_coefficient_tables"
+  outputs = [ "$target_gen_dir/coefficient_table_data_prebuilt.cc" ]
+  args = [ rebase_path(target_gen_dir, root_build_dir) +
+           "/coefficient_table_data_prebuilt.cc" ]
+}

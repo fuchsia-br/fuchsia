@@ -1,0 +1,23 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+config("includes") {
+  include_dirs = [ "include" ]
+}
+
+source_set("amlogic_s905") {
+  public = [ "include/dev/uart/amlogic_s905/init.h" ]
+  sources = [ "uart.cc" ]
+  deps = [
+    "//zircon/kernel/dev/pdev",
+    "//zircon/kernel/dev/pdev/uart",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/cbuf",
+    "//zircon/kernel/lib/debuglog",
+    "//zircon/system/ulib/zxc:zx",
+  ]
+  public_configs = [ ":includes" ]
+}

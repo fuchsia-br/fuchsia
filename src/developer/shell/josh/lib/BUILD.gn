@@ -1,0 +1,126 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/dist/resource.gni")
+import("//third_party/quickjs/compiled_js.gni")
+
+static_library("lib") {
+  sources = [
+    "fdio.cc",
+    "fdio.h",
+    "fidl.cc",
+    "fidl.h",
+    "object_converter.cc",
+    "object_converter.h",
+    "qjs_util.h",
+    "runtime.cc",
+    "runtime.h",
+    "sys.cc",
+    "sys.h",
+    "zx.cc",
+    "zx.h",
+  ]
+
+  public_deps = [
+    ":fidl",
+    ":zx",
+    "//sdk/lib/fdio",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/shell/mirror:client",
+    "//src/lib/fidl_codec",
+    "//src/lib/line_input",
+    "//third_party/quickjs:qjs-lib",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/fidl:fidl_base",
+    "//zircon/system/ulib/zx",
+  ]
+
+  configs += [
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    #
+    # Might be hard because these conversions come from quickjs.h.
+    "//build/config:Wno-conversion",
+  ]
+}
+
+compiled_js("fidl") {
+  source = "fidl.js"
+  module = true
+  extra_args = [
+    "-M",
+    "fidl_internal",
+  ]
+}
+
+compiled_js("zx") {
+  source = "zx.js"
+  module = true
+  extra_args = [
+    "-M",
+    "zx_internal",
+  ]
+}
+
+resource("js_libs") {
+  sources = [
+    "ns.js",
+    "pp.js",
+    "task.js",
+    "util.js",
+  ]
+  outputs = [ "data/lib/{{source_file_part}}" ]
+}
+
+compiled_js("repl_init") {
+  source = "repl_init.js"
+  module = true
+  extra_args = [
+    "-M",
+    "li_internal",
+  ]
+}
+
+executable("spawn_child_test_util") {
+  testonly = true
+
+  sources = [ "spawn_child_test_util.cc" ]
+  deps = [ "//sdk/fidl/fuchsia.sys" ]
+}
+
+source_set("tests") {
+  testonly = true
+  sources = [
+    "fidl_test.cc",
+    "js_testing_utils.h",
+    "ns_test.cc",
+    "pp_test.cc",
+    "task_test.cc",
+    "zx_test.cc",
+  ]
+  deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/lib/fdio",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//sdk/testing/fidl:test",
+    "//sdk/testing/fidl:test_support",
+    "//src/developer/shell/josh/console",
+    "//src/lib/fidl_codec:json_for_test",
+    "//src/storage/memfs",
+    "//src/sys/component_index/fidl:index",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/task-utils",
+    "//zircon/system/ulib/zx",
+  ]
+  configs += [
+    # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+    #
+    # Might be hard because these conversions come from quickjs.h.
+    "//build/config:Wno-conversion",
+  ]
+}

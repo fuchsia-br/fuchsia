@@ -1,0 +1,124 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/test.gni")
+
+source_set("common") {
+  visibility = [ "//src/sys/*" ]
+  testonly = true
+  sources = [
+    "binding.h",
+    "controller-provider.cc",
+    "controller-provider.h",
+    "controller.cc",
+    "controller.h",
+    "dispatcher.cc",
+    "dispatcher.h",
+    "input.cc",
+    "input.h",
+    "module.h",
+    "monitors.cc",
+    "monitors.h",
+    "options.cc",
+    "options.h",
+    "options.inc",
+    "response.cc",
+    "response.h",
+    "result.h",
+    "run-once.cc",
+    "run-once.h",
+    "runner.cc",
+    "runner.h",
+    "sancov.h",
+    "shared-memory.cc",
+    "shared-memory.h",
+    "signal-coordinator.cc",
+    "signal-coordinator.h",
+    "status.cc",
+    "status.h",
+    "sync-wait.cc",
+    "sync-wait.h",
+    "transceiver.cc",
+    "transceiver.h",
+  ]
+  public_deps = [
+    "../fidl:fuchsia.fuzzer",
+    "//sdk/fidl/fuchsia.mem",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/backtrace-request",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+  ]
+}
+
+source_set("runner-unittests-common") {
+  visibility = [ ":*" ]
+  testonly = true
+  sources = [
+    "runner-unittest.cc",
+    "runner-unittest.h",
+  ]
+  public_deps = [
+    ":common",
+    "//third_party/googletest:gtest",
+  ]
+  deps = [ "testing" ]
+}
+
+source_set("runner-unittests") {
+  visibility = [ "../*" ]
+  testonly = true
+  sources = [ "runner-unittest.inc" ]
+  public_deps = [ ":runner-unittests-common" ]
+}
+
+source_set("runner-fatal-unittests") {
+  visibility = [ "../*" ]
+  testonly = true
+  sources = [ "runner-fatal-unittest.inc" ]
+  public_deps = [ ":runner-unittests-common" ]
+}
+
+test("unittests_bin") {
+  output_name = "component_fuzzing_common_unittests"
+  visibility = [ ":*" ]
+  testonly = true
+  sources = [
+    "controller-provider-unittest.cc",
+    "controller-unittest.cc",
+    "input-unittest.cc",
+    "monitors-unittest.cc",
+    "options-unittest.cc",
+    "run-once-unittest.cc",
+    "shared-memory-unittest.cc",
+    "signal-coordinator-unittest.cc",
+    "sync-wait-unittest.cc",
+    "transceiver-unittest.cc",
+  ]
+  deps = [
+    ":common",
+    "testing",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_component("unittests") {
+  visibility = [ ":*" ]
+  testonly = true
+  manifest = "meta/unittests.cml"
+  deps = [ ":unittests_bin" ]
+}
+
+fuchsia_test_package("tests") {
+  package_name = "component-fuzzing-common-tests"
+  test_components = [ ":unittests" ]
+}

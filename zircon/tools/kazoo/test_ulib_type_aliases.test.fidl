@@ -1,0 +1,17 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zxio;
+
+type Destination = strict enum : uint32 {
+    FOO = 1;
+};
+
+/// Test doc comment on type alias.
+alias Alias = Destination;
+
+// Test aliasing a special type charptr.
+// This item should not occur in the library header output.
+alias charptr = uint64;
+
+alias AliasCharPtr = charptr;

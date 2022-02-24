@@ -1,0 +1,85 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This target holds tests under //zircon/system/ulib which are now hosted in
+# packages but whose code hasn't yet been migrated to //src.
+# When a migration happens, the test needs to be removed from this list and
+# placed within the proper `tests` target under //src.
+
+import("//build/fuzzing/fuzzer.gni")
+
+# IMPORTANT NOTE
+# Do not add more libraries to this directory.
+# New libraries should be introduced under //src.
+
+group("tests") {
+  testonly = true
+  deps = [
+    "abs_clock:tests",
+    "affine:tests",
+    "async:tests",
+    "async-loop:tests",
+    "async-testing:tests",
+    "backtrace-request:tests",
+    "bitmap:tests",
+    "c:tests",
+    "closure-queue:tests",
+    "cmdline:tests",
+    "cobalt-client:tests",
+    "debugdata:tests",
+    "driver-unit-test:tests",
+    "edid:tests",
+    "elfload:tests",
+    "fbl:tests",
+    "fdio-caller:tests",
+    "ffl:tests",
+    "fidl-async:tests",
+    "fs-pty:tests",
+    "ftl:tests",
+    "ftl-mtd:tests",
+    "fzl:tests",
+    "gfx:tests",
+    "hid-parser:tests",
+    "hwreg:tests",
+    "id_allocator:tests",
+    "image-format:tests",
+    "inspect:tests",
+    "inspector:tests",
+    "io-scheduler:tests",
+    "ktrace:tests",
+    "lazy_init:tests",
+    "ldmsg:tests",
+    "lockdep:tests",
+    "mipi-dsi:tests",
+    "mmio-ptr/test:tests",
+    "mock-function:tests",
+    "nand-redundant-storage:tests",
+    "perftest:tests",
+    "pretty:tests",
+    "ram-crashlog:tests",
+    "range:tests",
+    "refcount:tests",
+    "region-alloc:tests",
+    "runtests-utils:tests",
+    "simplehid:tests",
+    "smbios:tests",
+    "storage-metrics:tests",
+    "storage/buffer:tests",
+    "storage/operation:tests",
+    "sysconfig-client:tests",
+    "sysmem-version:tests",
+    "test-exceptions:tests",
+    "tftp:tests",
+    "trace-engine:tests",
+    "trace-provider:tests",
+    "trace-reader:tests",
+    "trace-vthread:tests",
+    "uart:tests",
+    "uart/test",
+    "zbitl:tests",
+    "zircon-internal:tests",
+    "zxtest:tests",
+    "//zircon/third_party/ulib/lz4:tests",
+  ]
+}

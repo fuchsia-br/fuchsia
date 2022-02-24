@@ -1,0 +1,49 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_binary.gni")
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+
+go_library("main") {
+  source_dir = "cmd"
+  sources = [
+    "common.go",
+    "dev_finder_test.go",
+    "dnssderrors.go",
+    "dnssdfinder.go",
+    "dnssdfinder.h",
+    "dnssdfinder_c.c",
+    "finders.go",
+    "list.go",
+    "main.go",
+    "resolve.go",
+  ]
+  deps = [
+    "//third_party/golibs:github.com/google/subcommands",
+    "//tools/lib/color",
+    "//tools/lib/logger",
+    "//tools/net/mdns",
+    "//tools/net/netboot",
+  ]
+}
+
+go_binary("device-finder") {
+  gopackage = "go.fuchsia.dev/fuchsia/tools/net/device-finder/cmd"
+  deps = [ ":main" ]
+  sdk_category = "partner"
+}
+
+go_test("dev_finder_tests") {
+  gopackages = [ "go.fuchsia.dev/fuchsia/tools/net/device-finder/cmd" ]
+  deps = [
+    ":main",
+    "//third_party/golibs:github.com/google/go-cmp",
+  ]
+}
+
+install_host_tools("host") {
+  deps = [ ":device-finder" ]
+  outputs = [ "device-finder" ]
+}

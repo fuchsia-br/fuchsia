@@ -1,0 +1,48 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("usb_harriet_bind") {
+  rules = "usb_harriet.bind"
+  header_output = "usb_harriet_bind.h"
+  bind_output = "usb-harriet.bindbc"
+  tests = "bind_tests.json"
+  deps = [ "//src/devices/bind/fuchsia.usb" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":usb_harriet_bind_test" ]
+}
+
+fuchsia_driver("usb-harriet-driver") {
+  output_name = "usb-harriet"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = [ "usb-harriet.cc" ]
+  deps = [
+    ":usb_harriet_bind",
+    "//sdk/banjo/fuchsia.hardware.usb:fuchsia.hardware.usb_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.composite:fuchsia.hardware.usb.composite_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.usb.request:fuchsia.hardware.usb.request_banjo_cpp",
+    "//src/devices/lib/driver",
+    "//src/devices/usb/lib/usb",
+    "//src/lib/ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("usb-harriet") {
+  info = "usb-harriet-info.json"
+  component_name = "usb-harriet"
+  deps = [ ":usb-harriet-driver" ]
+  colocate = true
+}

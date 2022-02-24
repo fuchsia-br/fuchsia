@@ -1,0 +1,21 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("bt-beacon-reader") {
+  sources = [
+    "app.cc",
+    "app.h",
+    "beacons.cc",
+    "beacons.h",
+    "main.cc",
+  ]
+
+  deps = [
+    "//garnet/bin/bluetooth/tools/lib",
+    "//sdk/fidl/fuchsia.bluetooth",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+  ]
+}

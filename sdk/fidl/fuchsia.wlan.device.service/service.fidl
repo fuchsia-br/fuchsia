@@ -1,0 +1,238 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.wlan.device.service;
+
+using fuchsia.wlan.common;
+using fuchsia.wlan.ieee80211 as ieee80211;
+using fuchsia.wlan.minstrel;
+using fuchsia.wlan.mlme;
+using fuchsia.wlan.sme;
+using fuchsia.wlan.stats;
+using zx;
+
+type IfaceListItem = struct {
+    iface_id uint16;
+};
+
+type QueryIfaceResponse = struct {
+    /// The role the iface is currently operating in, e.g., client role.
+    role fuchsia.wlan.common.WlanMacRole;
+    /// The iface's global ID.
+    id uint16;
+    /// Iface's PHY ID.
+    phy_id uint16;
+    /// Local ID assigned by this iface's PHY.
+    phy_assigned_id uint16;
+    /// The iface's MAC.
+    sta_addr ieee80211.MacAddr;
+    /// The driver features supported on this iface.
+    driver_features vector<fuchsia.wlan.common.DriverFeature>:32;
+};
+
+type ListIfacesResponse = struct {
+    ifaces vector<IfaceListItem>;
+};
+
+type CreateIfaceRequest = struct {
+    phy_id uint16;
+    role fuchsia.wlan.common.WlanMacRole;
+    sta_addr ieee80211.MacAddr;
+};
+
+type CreateIfaceResponse = struct {
+    iface_id uint16;
+};
+
+type DestroyIfaceRequest = struct {
+    iface_id uint16;
+};
+
+type GetCountryResponse = struct {
+    alpha2 array<byte, 2>;
+};
+
+type SetCountryRequest = struct {
+    phy_id uint16;
+    alpha2 array<byte, 2>;
+};
+
+type ClearCountryRequest = struct {
+    phy_id uint16;
+};
+
+type SetPsModeRequest = struct {
+    /// Interface's PHY ID
+    phy_id uint16;
+    /// Power Save Mode bit mask
+    ps_mode fuchsia.wlan.common.PowerSaveType;
+};
+
+type GetPsModeResponse = struct {
+    /// Power Save Mode bit mask
+    ps_mode fuchsia.wlan.common.PowerSaveType;
+};
+
+type AddIfaceRequest = resource struct {
+    phy_id uint16;
+    assigned_iface_id uint16;
+    iface client_end:fuchsia.wlan.mlme.MLME;
+};
+
+type AddIfaceResponse = struct {
+    iface_id uint16;
+};
+
+// TODO(fxbug.dev/83621): Move this to wlan_internal.fidl after fxbug.dev/85462 is fixed
+type GetIfaceCounterStatsResponse = strict union {
+    1: stats fuchsia.wlan.stats.IfaceCounterStats;
+    2: error_status zx.status;
+};
+
+// TODO(fxbug.dev/83621): Move this to wlan_internal.fidl after fxbug.dev/85462 is fixed
+type GetIfaceHistogramStatsResponse = strict union {
+    1: stats fuchsia.wlan.stats.IfaceHistogramStats;
+    2: error_status zx.status;
+};
+
+protocol DeviceWatcher {
+    -> OnPhyAdded(struct {
+        phy_id uint16;
+    });
+    -> OnPhyRemoved(struct {
+        phy_id uint16;
+    });
+    -> OnIfaceAdded(struct {
+        iface_id uint16;
+    });
+    -> OnIfaceRemoved(struct {
+        iface_id uint16;
+    });
+};
+
+@discoverable
+protocol DeviceService {
+    // Iface methods
+    AddIface(resource struct {
+        req AddIfaceRequest;
+    }) -> (struct {
+        status int32;
+        iface_id box<AddIfaceResponse>;
+    });
+    ListIfaces() -> (struct {
+        resp ListIfacesResponse;
+    });
+    QueryIface(struct {
+        iface_id uint16;
+    }) -> (struct {
+        status int32;
+        resp box<QueryIfaceResponse>;
+    });
+    GetClientSme(resource struct {
+        iface_id uint16;
+        sme server_end:fuchsia.wlan.sme.ClientSme;
+    }) -> (struct {
+        status int32;
+    });
+    GetApSme(resource struct {
+        iface_id uint16;
+        sme server_end:fuchsia.wlan.sme.ApSme;
+    }) -> (struct {
+        status int32;
+    });
+    GetMeshSme(resource struct {
+        iface_id uint16;
+        sme server_end:fuchsia.wlan.sme.MeshSme;
+    }) -> (struct {
+        status int32;
+    });
+    GetIfaceStats(struct {
+        iface_id uint16;
+    }) -> (struct {
+        status int32;
+        stats box<fuchsia.wlan.stats.IfaceStats>;
+    });
+    GetIfaceCounterStats(struct {
+        iface_id uint16;
+    }) -> (struct {
+        resp GetIfaceCounterStatsResponse;
+    });
+    GetIfaceHistogramStats(struct {
+        iface_id uint16;
+    }) -> (struct {
+        resp GetIfaceHistogramStatsResponse;
+    });
+    GetMinstrelList(struct {
+        iface_id uint16;
+    }) -> (struct {
+        status int32;
+        peers fuchsia.wlan.minstrel.Peers;
+    });
+    GetMinstrelStats(struct {
+        iface_id uint16;
+        peer_addr ieee80211.MacAddr;
+    }) -> (struct {
+        status int32;
+        peer box<fuchsia.wlan.minstrel.Peer>;
+    });
+};
+
+@discoverable
+protocol DeviceMonitor {
+    // Phy methods
+    ListPhys() -> (struct {
+        phy_list vector<uint16>;
+    });
+    GetDevPath(struct {
+        phy_id uint16;
+    }) -> (struct {
+        dev_path string:optional;
+    });
+    GetSupportedMacRoles(struct {
+        phy_id uint16;
+    }) -> (struct {
+        supported_mac_roles
+                vector<fuchsia.wlan.common.WlanMacRole>:fuchsia.wlan.common.MAX_SUPPORTED_MAC_ROLES;
+    }) error zx.status;
+    WatchDevices(resource struct {
+        watcher server_end:DeviceWatcher;
+    });
+    GetCountry(struct {
+        phy_id uint16;
+    }) -> (struct {
+        resp GetCountryResponse;
+    }) error int32;
+    SetCountry(struct {
+        req SetCountryRequest;
+    }) -> (struct {
+        status int32;
+    });
+    ClearCountry(struct {
+        req ClearCountryRequest;
+    }) -> (struct {
+        status int32;
+    });
+    SetPsMode(struct {
+        req SetPsModeRequest;
+    }) -> (struct {
+        status int32;
+    });
+    GetPsMode(struct {
+        phy_id uint16;
+    }) -> (struct {
+        resp GetPsModeResponse;
+    }) error int32;
+
+    // Iface methods
+    CreateIface(struct {
+        req CreateIfaceRequest;
+    }) -> (struct {
+        status int32;
+        resp box<CreateIfaceResponse>;
+    });
+    DestroyIface(struct {
+        req DestroyIfaceRequest;
+    }) -> (struct {
+        status int32;
+    });
+};

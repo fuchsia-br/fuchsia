@@ -1,0 +1,199 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/compiled_action.gni")
+import("//build/config/clang/clang.gni")
+import("//src/developer/ffx/build/ffx_action.gni")
+
+declare_args() {
+  # If true, vboot() image builds print out the exact "futility" command line.
+  vboot_verbose = false
+
+  # vboot signing key directory. Must contain `kernel.keyblock` and
+  # `kernel_data_key.vbprivk`. Defaults to the public ChromeOS test keys.
+  vboot_keys = "//third_party/vboot_reference/tests/devkeys"
+}
+
+_kernel_keyblock = "${vboot_keys}/kernel.keyblock"
+_private_keyblock = "${vboot_keys}/kernel_data_key.vbprivk"
+_futility_tool = "//prebuilt/tools/futility/${host_platform}/futility"
+
+# These are details specific to the exact boot shim being used.  Different
+# switches to vbutil_kernel would be used here for a different boot shim.
+_vboot_shim = {
+  # Label for the shim, to be used in deps.
+  label = "//zircon/kernel/arch/x86/phys/boot-shim:depthcharge-multiboot-shim(//zircon/kernel/arch/x86/phys:kernel.phys32)"
+
+  # GN path to the shim binary, to be used in inputs.
+  path = get_label_info(label, "root_out_dir") + "/" +
+         get_label_info(label, "name") + ".bin"
+
+  # Arguments to vbutil_kernel to point to the shim.
+  #
+  # The boot shim is the "kernel" (`--vmlinuz` switch).  The CrOS bootloader
+  # supports Multiboot (with `--flags 0x2` below).
+  args = [
+    "--vmlinuz",
+    rebase_path(path, root_build_dir),
+    "--version",
+    "1",
+    "--flags",
+    "0x2",
+  ]
+}
+
+# This provides the details of the action to run to do vboot signing.
+# The vboot() template uses these details, and they can be used to
+# form an external command line to do the signing outside the build.
+vboot_action = {
+  # The action has these additional implicit file inputs (GN paths).
+  inputs = [
+    _futility_tool,
+    _vboot_shim.path,
+    _kernel_keyblock,
+    _private_keyblock,
+  ]
+
+  # The action needs these additional GN deps corresponding to inputs.
+  deps = [ _vboot_shim.label ]
+
+  # GN path of the script to invoke.
+  script = "//build/images/vboot/vboot_sign.py"
+
+  # Arguments to pass to that script.  The action will also add the -z (--zbi)
+  # and -o (--output) switches for the main input and output files.
+  args = [ "--tool=" + rebase_path(_futility_tool, root_build_dir) ]
+
+  if (vboot_verbose) {
+    args += [ "--verbose" ]
+  }
+
+  # The remaining arguments are piped through vboot_sign.py to futility.
+
+  # These args should come first.
+  foreach(arg,
+          [
+                "vbutil_kernel",
+                "--keyblock",
+                rebase_path(_kernel_keyblock, root_build_dir),
+                "--signprivate",
+                rebase_path(_private_keyblock, root_build_dir),
+              ] + _vboot_shim.args) {
+    args += [ "--args=$arg" ]
+  }
+
+  # These args should precede the input file name in the argument list.
+  # The ZBI file (RAM disk) argument will come after this.
+  args += [ "--input-args=--bootloader" ]
+
+  # These args should precede the output file name in the argument list.
+  # The output image file argument will come after this.
+  args += [ "--output-args=--pack" ]
+}
+
+# Build an "EFI System Partition" target for EFI targets.
+#
+# Parameters
+#
+#   deps (optional)
+#     [list of labels] Targets that generate the other inputs.
+#
+#   output_name (optional, default: `target_name`)
+#   output_extension (optional, default: `".esp.blk"`)
+#     [string] Determines the file name, in `root_out_dir`.
+#
+#   bootdata_bin (optional)
+#     [path] Must be a ramdisk that compliments zircon_bin.
+#
+#   zircon_bin (optional)
+#     [path] A zircon kernel.
+#
+#   zedboot (optional)
+#     [label] A Zedboot `zbi()` target.
+#
+#   cmdline (optional)
+#     [path] A bootloader (Gigaboot) cmdline file to include in the EFI root.
+#
+template("esp") {
+  if (defined(invoker.output_name)) {
+    output_file = invoker.output_name
+  } else {
+    output_file = target_name
+  }
+  if (defined(invoker.output_extension)) {
+    if (invoker.output_extension != "") {
+      output_file += ".${invoker.output_extension}"
+    }
+  } else {
+    output_file += ".esp.blk"
+  }
+  output_file = "$root_out_dir/$output_file"
+
+  ffx_action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "metadata",
+                             "testonly",
+                             "visibility",
+                           ])
+
+    outputs = [ output_file ]
+    inputs = []
+    args = [
+      "efi",
+      "create",
+      "--output",
+      rebase_path(output_file, root_build_dir),
+    ]
+
+    if (defined(invoker.zircon_bin)) {
+      args += [
+        "--zircon",
+        rebase_path(invoker.zircon_bin, root_build_dir),
+      ]
+      inputs += [ invoker.zircon_bin ]
+    }
+
+    if (defined(invoker.bootdata_bin)) {
+      args += [
+        "--bootdata",
+        rebase_path(invoker.bootdata_bin, root_build_dir),
+      ]
+      inputs += [ invoker.bootdata_bin ]
+    }
+
+    if (defined(invoker.zedboot)) {
+      args += [
+        "--zedboot",
+        rebase_path(invoker.zedboot, root_build_dir),
+      ]
+      inputs += [ invoker.zedboot ]
+    }
+
+    if (defined(invoker.cmdline)) {
+      args += [
+        "--cmdline",
+        rebase_path(invoker.cmdline, root_build_dir),
+      ]
+      inputs += [ invoker.cmdline ]
+    }
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    if (target_cpu == "x64") {
+      gigaboot_target = "//src/firmware/gigaboot:bootloader(//src/firmware/gigaboot:efi_$target_cpu)"
+      gigaboot_bin =
+          get_label_info(gigaboot_target, "root_out_dir") + "/bootx64.efi"
+      args += [
+        "--efi-bootloader",
+        rebase_path(gigaboot_bin, root_build_dir),
+      ]
+      inputs += [ gigaboot_bin ]
+      deps += [ gigaboot_target ]
+    }
+  }
+}

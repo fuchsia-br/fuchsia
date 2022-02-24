@@ -1,0 +1,36 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
+
+source_set("chipset") {
+  sources = [
+    "axi_backplane.cc",
+    "axi_backplane.h",
+    "backplane.cc",
+    "chipset.cc",
+    "chipset_interfaces.cc",
+    "cr4_chipset.cc",
+    "cr4_chipset.h",
+    "firmware.cc",
+  ]
+  public = [
+    "backplane.h",
+    "chipset.h",
+    "chipset_interfaces.h",
+    "chipset_regs.h",
+    "firmware.h",
+    "spinwait.h",
+  ]
+  deps = [
+    "//src/connectivity/wlan/drivers/third_party/broadcom/brcmfmac:debug",
+    "//src/connectivity/wlan/lib/common/cpp:common",
+  ]
+  public_deps = [
+    "//src/connectivity/wlan/drivers/third_party/broadcom/brcmfmac:core",
+    "//zircon/system/public",
+    "//zircon/system/ulib/zx",
+  ]
+  friend = [ "test/*" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}

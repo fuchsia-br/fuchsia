@@ -1,0 +1,6 @@
+archivist:
+  fuchsia-pkg://fuchsia.com/test_manager#meta/archivist-for-embedding.cm
+realm_builder\:CHILD_NAME/basic:
+  fuchsia-pkg://fuchsia.com/iquery-tests#meta/basic_component.cm
+realm_builder\:CHILD_NAME/test:
+  fuchsia-pkg://fuchsia.com/iquery-tests#meta/test_component.cm

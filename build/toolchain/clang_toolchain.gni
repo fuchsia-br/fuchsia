@@ -1,0 +1,846 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/rust/config.gni")
+import("//build/toolchain/breakpad.gni")
+import("//build/toolchain/ccache.gni")
+import("//build/toolchain/concurrent_jobs.gni")
+import("//build/toolchain/default_tools.gni")
+import("//build/toolchain/goma.gni")
+import("//build/toolchain/rbe.gni")
+import("//build/toolchain/restat.gni")
+
+# Defines a Clang-based toolchain.
+#
+# Parameters
+#
+#   toolchain_cpu
+#     Required: Value of "current_cpu" inside this toolchain.
+#
+#   toolchain_os
+#     Required: Value of "current_os" inside this toolchain.
+#
+#   toolchain_args
+#     Optional: Scope specifying build arguments to override in this
+#     toolchain context.
+#     NOTE! Do not use this in the toolchain used as the default toolchain.
+#     It will have no effect, and you will be confused.
+#
+#   use_strip
+#     Required: Whether to strip binaries, leaving unstripped ones
+#     in lib.unstripped and exe.unstripped subdirectories.
+#
+#   prefix
+#     Optional: The path from which "cc", "cxx", "ar", "ld" and
+#     "strip" will be found (unless overridden).  If not given,
+#     prefix defaults to $rebased_clang_prefix.
+#
+#   cc
+#   cxx
+#   ar
+#   ld
+#   strip
+#     Optional: Override default tool names.
+#
+#   use_ccache, use_goma
+#     Optional: Override the global setting, useful to opt out of
+#     ccache/goma in a particular toolchain.
+#
+#   deps
+#     Optional: Dependencies of this toolchain.
+#
+#   propagates_configs
+#     Optional: public_configs should escape this toolchain via deps
+#
+template("clang_toolchain") {
+  toolchain(target_name) {
+    assert(defined(invoker.toolchain_cpu),
+           "clang_toolchain() must specify a \"toolchain_cpu\"")
+    assert(defined(invoker.toolchain_os),
+           "clang_toolchain() must specify a \"toolchain_os\"")
+
+    compiler_prefix = ""
+    if (defined(invoker.use_goma)) {
+      use_goma = invoker.use_goma
+    }
+    if (use_goma) {
+      compiler_prefix = rebase_path(goma_dir, root_build_dir) + "/gomacc"
+    } else {
+      if (defined(invoker.use_ccache)) {
+        use_ccache = invoker.use_ccache
+      }
+      if (use_ccache) {
+        compiler_prefix = "ccache "
+      }
+    }
+
+    prefix = rebased_clang_prefix
+    if (defined(invoker.prefix)) {
+      prefix = invoker.prefix
+    }
+
+    rebased_rust_sysroot = rebase_path(rust_sysroot, root_build_dir)
+
+    # Configure builds to be restat-friendly by preserving timestamps of
+    # unchanged outputs.
+    _restat_rustc_prefix = ""
+    if (restat_rust) {
+      _restat_rust_wrapper =
+          string_join(" ",
+                      [
+                        rebase_path(python_exe_src, root_build_dir),
+                        "-S",
+                        rebase_path(restat_wrapper, root_build_dir),
+                      ])
+      _restat_rustc_prefix = "$_restat_rust_wrapper --outputs substitute_after:-o:{{output}} {{DEPFILE}} -- "
+    }
+    _restat_cc_prefix = ""
+    if (restat_cc) {
+      _restat_cc_wrapper =
+          string_join(" ",
+                      [
+                        rebase_path(python_exe_src, root_build_dir),
+                        "-S",
+                        rebase_path(restat_wrapper, root_build_dir),
+                      ])
+      _restat_cc_prefix = "$_restat_cc_wrapper --outputs substitute_after:-o:{{output}} {{DEPFILE}} -- "
+    }
+
+    # Configure Rust remote builds.
+    _rustc_wrapper = ""
+    _rust_concurrent_jobs = ""
+    if (enable_rbe) {
+      assert(
+          !check_rustc_consistency || !check_rustc_determinism,
+          "Only one of {check_rustc_consistency,check_rustc_determinism} may be true.")
+      if (check_rustc_consistency) {
+        # Compare local vs. remote build.
+        # Allow caching.
+        # Use local concurrency.
+        _rewrapper_flags = " --compare --fsatrace --exec_strategy=remote"
+      } else if (check_rustc_determinism) {
+        # Determinism check is run locally, and doesn't use RBE,
+        # even though it uses the same wrapper script.
+        _rewrapper_flags = " --local --check-determinism"
+      } else {
+        assert(rbe_exec_strategy == "remote" || rbe_exec_strategy == "local",
+               "Unsupported RBE exec_strategy: \"$rbe_exec_strategy\".")
+        if (rbe_exec_strategy == "remote") {
+          _rewrapper_flags = " --exec_strategy=remote"
+
+          # Use remote-worker parallelism
+          _rust_concurrent_jobs = concurrent_jobs.goma
+        } else if (rbe_exec_strategy == "local") {
+          _rewrapper_flags =
+              " --exec_strategy=local --remote_update_cache=false"
+        }
+      }
+      _rustc_wrapper = rebase_path(rustc_remote_wrapper, root_build_dir) +
+                       _rewrapper_flags + " -- "
+    }
+    if (_rust_concurrent_jobs == "") {
+      _rust_concurrent_jobs = concurrent_jobs.local
+    }
+
+    rebased_rust_sysroot = rebase_path(rust_sysroot, root_build_dir)
+
+    # Set all tools to defaults
+    cc = "${prefix}/clang"
+    cxx = "${prefix}/clang++"
+    ar = "${prefix}/llvm-ar"
+    ld = cxx
+    rustc = "${rebased_rustc_prefix}/rustc"
+    verify_depfile = string_join(" ",
+                                 [
+                                   rebase_path(python_exe_src, root_build_dir),
+
+                                   # Speed up startup time by not searching for
+                                   # site packages.
+                                   "-S",
+                                   rebase_path("//build/gn/verify_depfile.py",
+                                               root_build_dir),
+                                 ])
+
+    forward_variables_from(invoker, [ "use_strip" ])
+    if (use_strip) {
+      if (invoker.toolchain_os == "mac") {
+        strip = "${prefix}/llvm-strip"
+      } else {
+        strip = "${prefix}/llvm-objcopy"
+        buildidtool = rebase_path(
+                "//prebuilt/tools/buildidtool/${host_platform}/buildidtool",
+                root_build_dir)
+        if (output_breakpad_syms && invoker.toolchain_os == "fuchsia") {
+          dump_syms = breakpad_dump_syms
+
+          # The breakpad module name for executables and loadable modules.
+          breakpad_name = "<_>"
+        }
+        if (output_gsym && invoker.toolchain_os == "fuchsia") {
+          # TODO(fxbug.dev/58294): enable for other targets.
+          gsymutil = "${prefix}/llvm-gsymutil"
+        }
+      }
+    }
+
+    # Override any tools as requested by the invoker
+    if (defined(invoker.cc)) {
+      cc = invoker.cc
+    }
+    if (defined(invoker.cxx)) {
+      cxx = invoker.cxx
+    }
+    forward_variables_from(invoker,
+                           [
+                             "ar",
+                             "deps",
+                             "ld",
+                             "propagates_configs",
+                             "strip",
+                           ])
+
+    # These library switches can apply to all tools below.
+    lib_switch = "-l"
+    lib_dir_switch = "-L"
+
+    tool("cc") {
+      forward_variables_from(concurrent_jobs.goma, "*")
+      depfile = "{{output}}.d"
+      command = "$cc -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} -c {{source}} -o {{output}}"
+      command_launcher =
+          string_replace(_restat_cc_prefix, "{{DEPFILE}}", depfile) +
+          compiler_prefix
+      depsformat = "gcc"
+      description = "CC {{output}}"
+      outputs =
+          [ "{{source_out_dir}}/{{target_output_name}}.{{source_file_part}}.o" ]
+      restat = restat_cc
+    }
+
+    tool("cxx") {
+      forward_variables_from(concurrent_jobs.goma, "*")
+      depfile = "{{output}}.d"
+      command = "$cxx -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} -c {{source}} -o {{output}}"
+      command_launcher =
+          string_replace(_restat_cc_prefix, "{{DEPFILE}}", depfile) +
+          compiler_prefix
+      depsformat = "gcc"
+      description = "CXX {{output}}"
+      outputs =
+          [ "{{source_out_dir}}/{{target_output_name}}.{{source_file_part}}.o" ]
+      restat = restat_cc
+    }
+
+    tool("asm") {
+      forward_variables_from(concurrent_jobs.goma, "*")
+      depfile = "{{output}}.d"
+      command = "$cc -MD -MF $depfile {{defines}} {{include_dirs}} {{asmflags}} -c {{source}} -o {{output}}"
+      command_launcher =
+          string_replace(_restat_cc_prefix, "{{DEPFILE}}", depfile) +
+          compiler_prefix
+      depsformat = "gcc"
+      description = "ASM {{output}}"
+      outputs =
+          [ "{{source_out_dir}}/{{target_output_name}}.{{source_file_part}}.o" ]
+      restat = restat_cc
+    }
+
+    tool("objc") {
+      forward_variables_from(concurrent_jobs.local, "*")
+      depfile = "{{output}}.d"
+      command = "$cc -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} {{cflags_objc}} -c {{source}} -o {{output}}"
+      command_launcher =
+          string_replace(_restat_cc_prefix, "{{DEPFILE}}", depfile) +
+          compiler_prefix
+      depsformat = "gcc"
+      description = "OBJC {{output}}"
+      outputs =
+          [ "{{source_out_dir}}/{{target_output_name}}.{{source_file_part}}.o" ]
+      restat = restat_cc
+    }
+
+    tool("objcxx") {
+      forward_variables_from(concurrent_jobs.local, "*")
+      depfile = "{{output}}.d"
+      command = "$cxx -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} {{cflags_objcc}} -c {{source}} -o {{output}}"
+      command_launcher =
+          string_replace(_restat_cc_prefix, "{{DEPFILE}}", depfile) +
+          compiler_prefix
+      depsformat = "gcc"
+      description = "OBJCXX {{output}}"
+      outputs =
+          [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+      restat = restat_cc
+    }
+
+    # Compute default dynamic library extension
+    if (invoker.toolchain_os == "mac") {
+      _dylib_extension = ".dylib"
+    } else if (invoker.toolchain_cpu == "wasm32") {
+      _dylib_extension = ".wasm"
+    } else if (invoker.toolchain_os == "win") {
+      _dylib_extension = ".dll"
+    } else if (invoker.toolchain_os == "fuchsia" ||
+               invoker.toolchain_os == "linux") {
+      _dylib_extension = ".so"
+    } else {
+      assert(false,
+             "Unsupported toolchain_os value \"${invoker.toolchain_os}\"")
+    }
+
+    # The _rust_link_common scope is used to capture common computations that
+    # are needed by the "rust_bin", "rust_dylib" and "rust_cdylib" tool()
+    # definitions below. It should define the following keys:
+    #
+    #   depfile: The depfile to use.
+    #   command: The command used to build the binary.
+    #   outputs: The list of outputs for the command.
+    #   unstripped_outfile: Path to unstripped output file (see below).
+    #
+    # Note that the 'command' and 'outputs' keys will use template parameters in their
+    # string, with the following values, which must be expanded based on the final
+    # target type:
+    #
+    # - {{UNSTRIPPED_OUTFILE}}: path of the unstripped output file. Should be
+    #   'unstripped_outfile', except for tool("rust_bin") when toolchain_os == "wasm32", where
+    #   it should be "${unstripped_outfile}.wasm" instead. The reason for this is that setting
+    #   default_output_extension doesn't work for binaries as it does for libraries.
+    #
+    # - {{UNSTRIPPED_DIR}}: name of directory holding unstripped binaries. 'lib.unstripped'
+    #   for shared libraries and modules, and 'exe.unstripped' for executables. Must be
+    #   expanded after {{UNSTRIPPED_OUTFILE}}.
+    #
+    # - {{BREAKPAD_NAME}}: Either an empty string, or "-n \"$breakpad_name\" "
+    #   (note the trailing space) for loadable modules and executables
+    #   (but not shared libraries), when breakpad symbols must be generated. Note that
+    #   this is only used if 'breakpad_name' is defined.
+    #
+    # Note that the choice of GN-style source expansion parameters is intentional: If by
+    # mistake the parameters are not properly expanded inside the tool() definitions, GN
+    # will complain loudly about it!
+    #
+    _rust_link_common = {
+      outname = "{{target_output_name}}{{output_extension}}"
+      outfile = "{{output_dir}}/$outname"
+      depfile = "$outfile.d"
+      command = ""
+      unstripped_outfile = outfile
+
+      if (use_strip) {
+        unstripped_outfile = "{{output_dir}}/{{UNSTRIPPED_DIR}}/{{target_output_name}}{{output_extension}}"
+      }
+
+      forward_variables_from(_rust_concurrent_jobs, "*")
+
+      # TODO: see the comment below.
+      if (use_strip) {
+        command += "mkdir -p {{output_dir}}/{{UNSTRIPPED_DIR}} && "
+      }
+
+      ld_location_env = ""
+      link_map_args = ""
+      if (invoker.toolchain_os == "fuchsia") {
+        # On Fuchsia, lld is directly used to perform linking
+        link_map_args = "-C link-args=--Map=\"{{UNSTRIPPED_OUTFILE}}.map\""
+      } else if (invoker.toolchain_cpu == "wasm32") {
+        # TODO(fxbug.dev/56076): Remove need for ld location.
+        # On WASM builds, rust-ldd has trouble finding libLLVM.
+        # This workaround allows the build to proceed.
+        shared_lib_dir = rebase_path("$rustc_prefix/../lib", root_build_dir)
+        if (host_os == "mac") {
+          ld_location_env = " DYLD_FALLBACK_LIBRARY_PATH=\"$shared_lib_dir\""
+        } else if (host_os == "linux") {
+          ld_location_env = " LD_LIBRARY_PATH=\"$shared_lib_dir\""
+        } else {
+          assert(false, "Unsupported host os: $host_os")
+        }
+
+        # Disable link map args, which also seems to have a problem with WASM.
+      } else if (invoker.toolchain_os == "mac") {
+        # NOTE: MacOs does not support '--Map' in linker flags
+      } else {
+        # On host, clang seems to be used to perform linking
+        link_map_args = "-C link-args=-Wl,--Map=\"{{UNSTRIPPED_OUTFILE}}.map\""
+      }
+
+      # Overwrite an existing output file only if its contents have changed.
+      command += string_replace(_restat_rustc_prefix, "{{DEPFILE}}", depfile)
+      restat = restat_rust
+
+      # Possibly enable remote building for the rustc command.
+      command += _rustc_wrapper
+
+      # TODO(fxbug.dev/47565): Replacement for rustenv
+      command += "{{rustenv}}${ld_location_env} RUST_BACKTRACE=1 $rustc --color=always --crate-name {{crate_name}} {{source}}"
+      command += " --crate-type {{crate_type}} --emit=dep-info=$depfile,link -Zdep-info-omit-d-target $link_map_args {{rustflags}}"
+      command += " -o \"{{UNSTRIPPED_OUTFILE}}\" {{rustdeps}} {{externs}}"
+      command += " && $verify_depfile -t \"{{label}}\" -d $depfile {{sources}}"
+
+      outputs = [ outfile ]
+      if (outfile != unstripped_outfile) {
+        outputs += [ unstripped_outfile ]
+      }
+      if (defined(breakpad_name) && host_os != "mac") {
+        command += " && $dump_syms -r {{BREAKPAD_NAME}}-o Fuchsia \"{{UNSTRIPPED_OUTFILE}}\" > \"$outfile.sym\""
+        outputs += [ "$outfile.sym" ]
+      }
+      if (output_gsym && invoker.toolchain_os == "fuchsia") {
+        outputs += [ "$outfile.gsym" ]
+        command += " && $gsymutil --convert=\"{{UNSTRIPPED_OUTFILE}}\" --out-file=\"$outfile.gsym\""
+      }
+      if (use_strip) {
+        if (invoker.toolchain_os == "mac") {
+          command += " && $strip -Sx \"{{UNSTRIPPED_OUTFILE}}\" -o \"$outfile\""
+        } else {
+          command +=
+              " && $strip --strip-all \"{{UNSTRIPPED_OUTFILE}}\" \"$outfile\""
+        }
+        if (invoker.toolchain_os != "mac" && invoker.toolchain_os != "win") {
+          command +=
+              " && $buildidtool -build-id-dir .build-id" +
+              " -stamp \"$outfile.build-id.stamp\"" + " -entry \"=$outfile\"" +
+              " -entry \".debug={{UNSTRIPPED_OUTFILE}}\""
+        }
+      }
+      rust_sysroot = "$rebased_rust_sysroot"
+    }
+
+    # Compute common values for "rust_dylib" and "rust_cdylib".
+    # All template parameters will be expanded.
+    _rust_dylib_common = {
+      forward_variables_from(_rust_link_common, "*", [ "outputs" ])
+
+      # Expand UNSTRIPPED_OUTFILE
+      command =
+          string_replace(command, "{{UNSTRIPPED_OUTFILE}}", unstripped_outfile)
+      default_output_extension = _dylib_extension
+
+      # Expand UNSTRIPPED_DIR
+      _unstripped_dir = "lib.unstripped"
+      command = string_replace(command, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+      outputs = []
+      foreach(output, _rust_link_common.outputs) {
+        output =
+            string_replace(output, "{{UNSTRIPPED_OUTFILE}}", unstripped_outfile)
+        output = string_replace(output, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+        outputs += [ output ]
+      }
+
+      # Expand BREAKPAD_NAME, if present, which is unused for dynamic libraries.
+      command = string_replace(command, "{{BREAKPAD_NAME}}", "")
+    }
+
+    tool("rust_bin") {
+      description = "RUST {{output}}"
+      default_output_dir = "{{root_out_dir}}"
+      rust_sysroot = "$rebased_rust_sysroot"
+
+      forward_variables_from(_rust_link_common, "*", [ "outputs" ])
+
+      # Expand UNSTRIPPED_OUTFILE
+      if (invoker.toolchain_cpu == "wasm32") {
+        unstripped_outfile += ".wasm"
+      }
+      command =
+          string_replace(command, "{{UNSTRIPPED_OUTFILE}}", unstripped_outfile)
+
+      # Expand UNSTRIPPED_DIR
+      _unstripped_dir = "exe.unstripped"
+      command = string_replace(command, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+      outputs = []
+      foreach(output, _rust_link_common.outputs) {
+        output =
+            string_replace(output, "{{UNSTRIPPED_OUTFILE}}", unstripped_outfile)
+        output = string_replace(output, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+        outputs += [ output ]
+      }
+
+      # Expand BREAKPAD_NAME if present.
+      if (defined(breakpad_name)) {
+        command = string_replace(command,
+                                 "{{BREAKPAD_NAME}}",
+                                 "-n \"$breakpad_name\" ")
+      }
+
+      # As a special case, on Fuchsia, replace --strip-all with --strip-sections.
+      # It is stronger, and thus generates smaller binaries, but also creates
+      # crashes for host binaries (e.g. https://fxbug.dev/49945).
+      if (invoker.toolchain_os == "fuchsia") {
+        command = string_replace(command, " --strip-all ", " --strip-sections ")
+      }
+    }
+
+    tool("rust_rlib") {
+      forward_variables_from(_rust_concurrent_jobs, "*")
+      depfile = "{{output}}.d"
+
+      # Overwrite an existing output file only if its contents have changed.
+      command = string_replace(_restat_rustc_prefix, "{{DEPFILE}}", depfile)
+      restat = restat_rust
+
+      # Possibly enable remote building for the rustc command.
+      command += _rustc_wrapper
+
+      # TODO(fxbug.dev/47565): Replacement for rustenv
+      command += "{{rustenv}} RUST_BACKTRACE=1 $rustc --color=always --crate-name {{crate_name}} {{source}}"
+      command += " --crate-type {{crate_type}} --emit=dep-info=$depfile,link -Zdep-info-omit-d-target {{rustflags}}"
+      command += " -o {{output}} {{rustdeps}} {{externs}}"
+      command += " && $verify_depfile -t \"{{label}}\" -d $depfile {{sources}}"
+
+      description = "RUST {{output}}"
+      outputs =
+          [ "{{output_dir}}/lib{{target_output_name}}{{output_extension}}" ]
+      default_output_dir = "{{target_out_dir}}"
+      default_output_extension = ".rlib"
+      rust_sysroot = "$rebased_rust_sysroot"
+    }
+
+    tool("rust_staticlib") {
+      forward_variables_from(_rust_concurrent_jobs, "*")
+      depfile = "{{output}}.d"
+
+      # Overwrite an existing output file only if its contents have changed.
+      command = string_replace(_restat_rustc_prefix, "{{DEPFILE}}", depfile)
+      restat = restat_rust
+
+      # Possibly enable remote building for the rustc command.
+      command += _rustc_wrapper
+
+      # TODO(fxbug.dev/47565): Replacement for rustenv
+      command += "{{rustenv}} RUST_BACKTRACE=1 $rustc --color=always --crate-name {{crate_name}} {{source}}"
+      command += " --crate-type {{crate_type}} --emit=dep-info=$depfile,link -Zdep-info-omit-d-target {{rustflags}}"
+      command += " -o {{output}} {{rustdeps}} {{externs}}"
+      command += " && $verify_depfile -t \"{{label}}\" -d $depfile {{sources}}"
+
+      description = "RUST {{output}}"
+
+      outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+      default_output_dir = "{{target_out_dir}}"
+      default_output_extension = ".a"
+      output_prefix = "lib"
+      rust_sysroot = "$rebased_rust_sysroot"
+    }
+
+    tool("rust_cdylib") {
+      forward_variables_from(_rust_dylib_common, "*")
+
+      description = "RUST {{output}}"
+      default_output_dir = "{{target_out_dir}}"
+      output_prefix = "lib"
+    }
+
+    tool("rust_dylib") {
+      forward_variables_from(_rust_dylib_common, "*")
+
+      description = "RUST {{output}}"
+      default_output_dir = "{{root_out_dir}}"
+      output_prefix = "lib"
+    }
+
+    tool("rust_macro") {
+      forward_variables_from(_rust_concurrent_jobs, "*")
+      depfile = "{{output}}.d"
+
+      # Overwrite an existing output file only if its contents have changed.
+      command = string_replace(_restat_rustc_prefix, "{{DEPFILE}}", depfile)
+      restat = restat_rust
+
+      # Possibly enable remote building for the rustc command.
+      command += _rustc_wrapper
+
+      # TODO(fxbug.dev/47565): Replacement for rustenv
+      command += "{{rustenv}} RUST_BACKTRACE=1 $rustc --color=always --crate-name {{crate_name}} {{source}} "
+      command += " --crate-type {{crate_type}} --emit=dep-info=$depfile,link -Zdep-info-omit-d-target {{rustflags}}"
+      command += " -o {{output}} --extern proc_macro {{rustdeps}} {{externs}}"
+      command += " && $verify_depfile -t \"{{label}}\" -d $depfile {{sources}}"
+
+      description = "RUST {{output}}"
+      outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+      default_output_dir = "{{root_out_dir}}"
+      default_output_extension = _dylib_extension
+      output_prefix = "lib"
+      rust_sysroot = "$rebased_rust_sysroot"
+    }
+
+    tool("alink") {
+      forward_variables_from(concurrent_jobs.local, "*")
+      rspfile = "{{output}}.rsp"
+      command =
+          "rm -f {{output}} && $ar {{arflags}} rcsD {{output}} \"@$rspfile\""
+      description = "AR {{output}}"
+      rspfile_content = "{{inputs}}"
+      outputs = [ "{{output_dir}}/{{target_output_name}}{{output_extension}}" ]
+      default_output_dir = "{{target_out_dir}}"
+      default_output_extension = ".a"
+      output_prefix = "lib"
+    }
+
+    # The _link_common captures common computations used by the "solink", "solink_module"
+    # and "link" tool() definitions below. In particular it may contain the following
+    # important keys:
+    #
+    # - command
+    # - outputs
+    # - depfile
+    # - depsformat
+    # - rspfile
+    # - rspfile_content
+    #
+    # Note that the 'command' and 'outputs' keys will use template parameters in their
+    # string, with the following values, which must be expanded based on the final
+    # target type:
+    #
+    # - {{UNSTRIPPED_DIR}}: name of directory holding unstripped binaries. 'lib.unstripped'
+    #   for shared libraries and modules, and 'exe.unstripped' for executables.
+    #
+    # - {{STRIP_ARGS}}: Arguments to the strip command, only present when 'use_strip' is true
+    #   and when not generating MacOS binaries. Should be "--strip-sections" when generating
+    #   Fuchsia executables (not shared objects), and "--strip-all" otherwise.
+    #
+    # - {{BREAKPAD_NAME}}: Either an empty string, or "-n \"$breakpad_name\" "
+    #   (note the trailing space) for loadable modules and executables
+    #   (but not shared libraries), when breakpad symbols must be generated. Note that
+    #   this is only used if 'breakpad_name' is defined.
+    #
+    # - {{SOLINK_FLAGS}}: linker flags used to generate shared libraries, should be empty
+    #   for executables. Must use a trailing space if not empty.
+    #
+    # - {{START_GROUP}}: should expand to "-Wl,--start-group " on ELF systems that support it
+    #   when generating executables, and to an empty string otherwise. Must include a trailing
+    #   space if not empty.
+    #
+    # - {{END_GROUP}}: similar to {{START_GROUP}}, but should expand to "-Wl,--end-group "
+    #   instead. Must include a trailing space if not empty.
+    #
+    # Note that the choice of GN-style source expansion parameters is intentional: If by
+    # mistake the parameters are not properly expanded inside the tool() definitions, GN
+    # will complain loudly about it!
+    #
+    _link_common = {
+      forward_variables_from(concurrent_jobs.local, "*")
+      outname = "{{target_output_name}}{{output_extension}}"
+      outfile = "{{output_dir}}/$outname"
+      rspfile = "$outfile.rsp"
+
+      use_llvm_ifs =
+          invoker.toolchain_os != "mac" && invoker.toolchain_os != "win"
+      unstripped_outfile = outfile
+      if (use_strip) {
+        unstripped_outfile = "{{output_dir}}/{{UNSTRIPPED_DIR}}/{{target_output_name}}{{output_extension}}"
+      }
+      if (invoker.toolchain_os == "mac") {
+        command = "$ld {{SOLINK_FLAGS}}{{ldflags}} -o \"$unstripped_outfile\" -Wl,-filelist,\"$rspfile\" {{solibs}} {{libs}} {{frameworks}}"
+        rspfile_content = "{{inputs_newline}}"
+      } else {
+        depfile = "$outfile.d"
+        depsformat = "gcc"
+        command = "$ld {{SOLINK_FLAGS}}{{ldflags}} -o \"$unstripped_outfile\" -Wl,--dependency-file=\"$depfile\" -Wl,--Map=\"$unstripped_outfile.map\""
+        command +=
+            " {{START_GROUP}}\"@$rspfile\" {{solibs}} {{END_GROUP}}{{libs}}"
+        rspfile_content = "{{inputs}}"
+      }
+      outputs = [ outfile ]
+      if (outfile != unstripped_outfile) {
+        outputs += [ unstripped_outfile ]
+      }
+      if (use_strip) {
+        if (invoker.toolchain_os == "mac") {
+          command += " && $strip -Sx \"$unstripped_outfile\" -o \"$outfile\""
+        } else {
+          command +=
+              " && $strip {{STRIP_ARGS}} \"$unstripped_outfile\" \"$outfile\""
+          command +=
+              " && $buildidtool -build-id-dir .build-id" +
+              " -stamp \"$outfile.build-id.stamp\"" + " -entry \"=$outfile\"" +
+              " -entry \".debug=$unstripped_outfile\""
+        }
+      }
+      if (defined(breakpad_name)) {
+        outputs += [ "$outfile.sym" ]
+        command += " && $dump_syms -r {{BREAKPAD_NAME}}-o Fuchsia \"$unstripped_outfile\" > \"$outfile.sym\""
+      }
+      if (output_gsym && invoker.toolchain_os == "fuchsia") {
+        outputs += [ "$outfile.gsym" ]
+        command += " && $gsymutil --convert=\"$unstripped_outfile\" --out-file=\"$outfile.gsym\""
+      }
+    }
+
+    # Expand _link_common into a scope that can be used for "solink" and "solink_module" tools
+    # below directly. All template parameters will be expanded, except BREAKPAD_NAME.
+    _link_solink = {
+      forward_variables_from(_link_common, "*")
+      if (invoker.toolchain_os == "mac") {
+        command = string_replace(
+                command,
+                "{{SOLINK_FLAGS}}",
+                "-shared -Wl,-install_name,@rpath/\"{{target_output_name}}{{output_extension}}\" ")
+      } else {
+        command = string_replace(command,
+                                 "{{SOLINK_FLAGS}}",
+                                 "-shared -Wl,-soname=\"$outname\" ")
+      }
+
+      # Never use --start-group and --end-group for libraries.
+      command = string_replace(command, "{{START_GROUP}}", "")
+      command = string_replace(command, "{{END_GROUP}}", "")
+
+      # Expand STRIP_ARGS, which is always --strip-all for shared objects / libraries.
+      command = string_replace(command, "{{STRIP_ARGS}}", "--strip-all")
+
+      # Expand {{UNSTRIPPED_DIR}}
+      _unstripped_dir = "lib.unstripped"
+      command = string_replace(command, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+      outputs = []
+      foreach(output, _link_common.outputs) {
+        outputs +=
+            [ string_replace(output, "{{UNSTRIPPED_DIR}}", _unstripped_dir) ]
+      }
+    }
+
+    # Expand _link_common into a scope that can be used for the "link" tool below.
+    # All template parameters will be expanded.
+    _link_bin = {
+      forward_variables_from(_link_common, "*")
+
+      # Expand {{UNSTRIPPED_DIR}}
+      _unstripped_dir = "exe.unstripped"
+      command = string_replace(command, "{{UNSTRIPPED_DIR}}", _unstripped_dir)
+      outputs = []
+      foreach(output, _link_common.outputs) {
+        outputs +=
+            [ string_replace(output, "{{UNSTRIPPED_DIR}}", _unstripped_dir) ]
+      }
+
+      # There is no SOLINK_FLAGS for binaries
+      command = string_replace(command, "{{SOLINK_FLAGS}}", "")
+
+      # Expand STRIP_ARGS
+      if (invoker.toolchain_os == "fuchsia") {
+        # As a special case, on Fuchsia, replace --strip-all with --strip-sections.
+        # It is stronger, and thus generates smaller binaries, but also creates
+        # crashes for host binaries (e.g. https://fxbug.dev/49945).
+        command = string_replace(command, "{{STRIP_ARGS}}", "--strip-sections")
+      } else {
+        command = string_replace(command, "{{STRIP_ARGS}}", "--strip-all")
+      }
+
+      # Use --start-group and --eng-group for binaries, except on Mac.
+      # IMPORTANT: The trailing spaces in the replacement strings are critical!
+      if (invoker.toolchain_os != "mac") {
+        command =
+            string_replace(command, "{{START_GROUP}}", "-Wl,--start-group ")
+        command = string_replace(command, "{{END_GROUP}}", "-Wl,--end-group ")
+      } else {
+        command = string_replace(command, "{{START_GROUP}}", "")
+        command = string_replace(command, "{{END_GROUP}}", "")
+      }
+
+      # Expand BREADKPAD_NAME
+      if (defined(breakpad_name)) {
+        command = string_replace(command,
+                                 "{{BREAKPAD_NAME}}",
+                                 "-n \"$breakpad_name\" ")
+      }
+    }
+
+    tool("solink") {
+      forward_variables_from(_link_solink, "*")
+
+      description = "SOLINK $outfile"
+      default_output_dir = "{{root_out_dir}}"
+      default_output_extension = _dylib_extension
+      output_prefix = "lib"
+
+      # Do not use BREAKPAD_NAME in shared libraries.
+      command = string_replace(command, "{{BREAKPAD_NAME}}", "")
+
+      if (use_llvm_ifs) {
+        # The Ninja dependency for linking in the shared library will be
+        # the .ifs file (depend_output), though the actual linking *input*
+        # will be the original .so file (link_output).  Ninja will restat
+        # the output files after running the commands.  llvm-ifs will
+        # not touch the .ifs file if its contents haven't changed.  Hence
+        # Ninja will only re-run any linking commands depending on this
+        # shared library if the .ifs file has actually changed, indicating
+        # that the linking ABI has actually changed.
+        restat = true
+        depend_output = "{{output_dir}}/{{target_output_name}}.ifs"
+        unstripped_output = string_replace(unstripped_outfile,
+                                           "{{UNSTRIPPED_DIR}}",
+                                           "lib.unstripped")
+        link_output = "{{output_dir}}/link_stub/{{target_output_name}}.so"
+        runtime_outputs = [ outfile ]
+        outputs += [
+          depend_output,
+          link_output,
+        ]
+        command += " && ${prefix}/llvm-ifs --write-if-changed --output-ifs=$depend_output --output-elf=$link_output $unstripped_output"
+      }
+    }
+
+    tool("solink_module") {
+      forward_variables_from(_link_solink, "*")
+
+      description = "SOLINK $outfile"
+      default_output_dir = "{{root_out_dir}}"
+      default_output_extension = _dylib_extension
+
+      # Modules do not have a 'lib' prefix.
+
+      # Modules do use breakpad_name, unlike shared libraries.
+      if (defined(breakpad_name)) {
+        command = string_replace(command,
+                                 "{{BREAKPAD_NAME}}",
+                                 "-n \"$breakpad_name\" ")
+      }
+    }
+
+    tool("link") {
+      forward_variables_from(_link_bin, "*")
+
+      description = "LINK $outfile"
+      default_output_dir = "{{root_out_dir}}"
+
+      # Executables do use breakpad_name.
+      if (defined(breakpad_name)) {
+        command = string_replace(command,
+                                 "{{BREAKPAD_NAME}}",
+                                 "-n \"$breakpad_name\" ")
+      }
+    }
+
+    tool("stamp") {
+      command = stamp_command
+      description = stamp_description
+    }
+    tool("copy") {
+      command = copy_command
+      description = copy_description
+    }
+
+    # When invoking this toolchain not as the default one, these args will be
+    # passed to the build. They are ignored when this is the default toolchain.
+    toolchain_args = {
+      current_cpu = invoker.toolchain_cpu
+      current_os = invoker.toolchain_os
+
+      # These values need to be passed through unchanged.
+      target_os = target_os
+      target_cpu = target_cpu
+
+      if (defined(invoker.toolchain_args)) {
+        # The invoker isn't allowed to fiddle with the essential settings.
+        forward_variables_from(invoker.toolchain_args,
+                               "*",
+                               [
+                                 "current_cpu",
+                                 "current_os",
+                                 "target_os",
+                                 "target_cpu",
+                               ])
+      }
+    }
+  }
+}

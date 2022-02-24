@@ -1,0 +1,22 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/mock_sys_launcher",
+    },
+    capabilities: [
+        { protocol: "fuchsia.sys.Launcher" },
+    ],
+    use: [
+        {
+            protocol: [ "fuchsia.process.Launcher" ],
+            from: "parent",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.sys.Launcher",
+            from: "self",
+        },
+    ],
+}

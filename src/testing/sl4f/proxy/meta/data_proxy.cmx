@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/data_proxy"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.net.name.Lookup",
+            "fuchsia.posix.socket.Provider"
+        ]
+    }
+}

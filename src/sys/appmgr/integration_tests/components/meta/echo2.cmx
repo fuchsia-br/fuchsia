@@ -1,0 +1,11 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "helloworld"
+        ],
+        "binary": "bin/echo2"
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "--devdir",
+            "/vdev"
+        ],
+        "binary": "bin/device-name-provider"
+    },
+    "sandbox": {
+        "dev": [
+            "class/ethernet",
+            "class/network"
+        ]
+    }
+}

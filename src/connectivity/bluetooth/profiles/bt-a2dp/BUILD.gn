@@ -1,0 +1,259 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//build/rust/rustc_binary.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+rustc_binary("bin") {
+  output_name = "bt_a2dp"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.bluetooth:fuchsia.bluetooth-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.a2dp:fuchsia.bluetooth.a2dp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.avdtp:fuchsia.bluetooth.avdtp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.avrcp:fuchsia.bluetooth.avrcp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.bredr:fuchsia.bluetooth.bredr-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.internal.a2dp:fuchsia.bluetooth.internal.a2dp-rustc",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.media.playback:fuchsia.media.playback-rustc",
+    "//sdk/fidl/fuchsia.media.sessions2:fuchsia.media.sessions2-rustc",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.settings:fuchsia.settings-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/connectivity/bluetooth/fidl:component-rustc",
+    "//src/connectivity/bluetooth/lib/async-helpers",
+    "//src/connectivity/bluetooth/lib/battery-client",
+    "//src/connectivity/bluetooth/lib/bt-a2dp",
+    "//src/connectivity/bluetooth/lib/bt-a2dp:bt_a2dp_metrics_rustlib",
+    "//src/connectivity/bluetooth/lib/bt-avdtp",
+    "//src/connectivity/bluetooth/lib/fuchsia-audio-codec",
+    "//src/connectivity/bluetooth/lib/fuchsia-audio-device-output",
+    "//src/connectivity/bluetooth/lib/fuchsia-bluetooth",
+    "//src/connectivity/bluetooth/lib/profile-client",
+    "//src/lib/async-utils",
+    "//src/lib/cobalt/rust:fuchsia-cobalt",
+    "//src/lib/diagnostics/inspect/contrib/rust",
+    "//src/lib/diagnostics/inspect/derive",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fidl_table_validation",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/trace/rust:trace",
+    "//src/lib/trace/rust:trace-provider",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:nom",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:slab",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  test_deps = [
+    "//sdk/fidl/fuchsia.bluetooth:fuchsia.bluetooth-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power-rustc",
+    "//src/connectivity/bluetooth/lib/async-helpers:async-test-helpers",
+    "//src/connectivity/bluetooth/testing/test-battery-manager",
+    "//src/lib/mundane",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:futures-test",
+    "//third_party/rust_crates:hex",
+  ]
+
+  sources = [
+    "src/avrcp_relay.rs",
+    "src/avrcp_target.rs",
+    "src/config.rs",
+    "src/encoding.rs",
+    "src/latm.rs",
+    "src/main.rs",
+    "src/pcm_audio.rs",
+    "src/player.rs",
+    "src/sink_task.rs",
+    "src/source_task.rs",
+    "src/sources.rs",
+    "src/stream_controller.rs",
+    "src/volume_relay.rs",
+  ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+fuchsia_component("component") {
+  component_name = "bt-a2dp"
+  manifest = "meta/bt-a2dp.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("component-v2") {
+  component_name = "bt-a2dp"
+  manifest = "meta/bt-a2dp.cml"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("bt-a2dp") {
+  deps = [
+    ":component",
+    ":component-v2",
+  ]
+}
+
+# A configuration for bt-a2dp which disables sink.
+resource("source_only_config") {
+  sources = [ "config/source_only.config" ]
+  outputs = [ "data/a2dp.config" ]
+}
+
+fuchsia_package("source-only") {
+  package_name = "bt-a2dp"
+  deps = [
+    ":component-v2",
+    ":source_only_config",
+  ]
+}
+
+# The core realm shards to be used by product integrators.
+# The "lazy_core_shard" should be used when it is desired for A2DP to be started
+# via the fuchsia.bluetooth.a2dp.AudioMode API.
+core_shard("lazy_core_shard") {
+  shard_file = "meta/bt-a2dp-lazy.core_shard.cml"
+}
+
+# TODO(fxbug.dev/79964): eliminate this when the core_shard above can eagerly start
+# A2DP when it is available at startup.
+# "eager_core_shard" should be used when the A2DP profile should be available from
+# startup.
+core_shard("eager_core_shard") {
+  shard_file = "meta/bt-a2dp-eager.core_shard.cml"
+}
+
+# TODO(fxbug.dev/79964): remove when products have migrated off this name
+core_shard("bt-a2dp-core-shard") {
+  shard_file = "meta/bt-a2dp-lazy.core_shard.cml"
+}
+
+fuchsia_unittest_package("bt-a2dp-tests") {
+  deps = [ ":bin_test" ]
+}
+
+rustc_test("encoding_integration_bin") {
+  output_name = "bt_a2dp_encoding_tests"
+  features = [ "test_encoding" ]
+  source_root = "src/main.rs"
+
+  deps = [
+    "//sdk/fidl/fuchsia.bluetooth:fuchsia.bluetooth-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.a2dp:fuchsia.bluetooth.a2dp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.avdtp:fuchsia.bluetooth.avdtp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.avrcp:fuchsia.bluetooth.avrcp-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.bredr:fuchsia.bluetooth.bredr-rustc",
+    "//sdk/fidl/fuchsia.bluetooth.internal.a2dp:fuchsia.bluetooth.internal.a2dp-rustc",
+    "//sdk/fidl/fuchsia.cobalt:fuchsia.cobalt-rustc",
+    "//sdk/fidl/fuchsia.media:fuchsia.media-rustc",
+    "//sdk/fidl/fuchsia.media.playback:fuchsia.media.playback-rustc",
+    "//sdk/fidl/fuchsia.media.sessions2:fuchsia.media.sessions2-rustc",
+    "//sdk/fidl/fuchsia.mediacodec:fuchsia.mediacodec-rustc",
+    "//sdk/fidl/fuchsia.mem:fuchsia.mem-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power-rustc",
+    "//sdk/fidl/fuchsia.settings:fuchsia.settings-rustc",
+    "//sdk/fidl/fuchsia.sys:fuchsia.sys-rustc",
+    "//src/connectivity/bluetooth/fidl:component-rustc",
+    "//src/connectivity/bluetooth/lib/async-helpers",
+    "//src/connectivity/bluetooth/lib/async-helpers:async-test-helpers",
+    "//src/connectivity/bluetooth/lib/battery-client",
+    "//src/connectivity/bluetooth/lib/bt-a2dp",
+    "//src/connectivity/bluetooth/lib/bt-a2dp:bt_a2dp_metrics_rustlib",
+    "//src/connectivity/bluetooth/lib/bt-avdtp",
+    "//src/connectivity/bluetooth/lib/fuchsia-audio-codec",
+    "//src/connectivity/bluetooth/lib/fuchsia-audio-device-output",
+    "//src/connectivity/bluetooth/lib/fuchsia-bluetooth",
+    "//src/connectivity/bluetooth/lib/profile-client",
+    "//src/connectivity/bluetooth/testing/test-battery-manager",
+    "//src/lib/async-utils",
+    "//src/lib/cobalt/rust:fuchsia-cobalt",
+    "//src/lib/diagnostics/inspect/contrib/rust",
+    "//src/lib/diagnostics/inspect/derive",
+    "//src/lib/diagnostics/inspect/runtime/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fidl_table_validation",
+    "//src/lib/fuchsia",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/mundane",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/test_util",
+    "//src/lib/trace/rust:trace",
+    "//src/lib/trace/rust:trace-provider",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:argh",
+    "//third_party/rust_crates:assert_matches",
+    "//third_party/rust_crates:bitfield",
+    "//third_party/rust_crates:byteorder",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:futures-test",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:nom",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:serde",
+    "//third_party/rust_crates:serde_json",
+    "//third_party/rust_crates:slab",
+    "//third_party/rust_crates:thiserror",
+    "//third_party/rust_crates:tracing",
+  ]
+
+  sources = [
+    "src/avrcp_relay.rs",
+    "src/avrcp_target.rs",
+    "src/config.rs",
+    "src/encoding.rs",
+    "src/latm.rs",
+    "src/main.rs",
+    "src/pcm_audio.rs",
+    "src/player.rs",
+    "src/sink_task.rs",
+    "src/source_task.rs",
+    "src/sources.rs",
+    "src/stream_controller.rs",
+    "src/volume_relay.rs",
+  ]
+
+  configs -= [ "//build/config/rust:allow_unused_results" ]
+}
+
+fuchsia_unittest_package("bt-a2dp-encoding-tests") {
+  manifest = "meta/bt-a2dp-encoding-tests.cml"
+  deps = [ ":encoding_integration_bin" ]
+  package_deps_for_infra_only = [ "//src/media/codec:codec_factory" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":bt-a2dp-encoding-tests",
+    ":bt-a2dp-tests",
+
+    # The `bt-a2dp-encoding-tests` use the CFv2 Codec Factory component which is part of this
+    # package. See `include_codecfactory.shard.cml` for the list of provided capabilities.
+    "//src/media/codec:codec_factory",
+  ]
+}

@@ -1,0 +1,19 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/simple",
+    },
+    children: [
+        {
+            name: "child",
+            url: "fuchsia-pkg://fuchsia.com/hub_integration_test#meta/hub_client.cm",
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+}

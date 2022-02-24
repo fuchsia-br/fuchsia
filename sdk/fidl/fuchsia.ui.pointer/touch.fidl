@@ -1,0 +1,275 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.ui.pointer;
+
+using zx;
+
+const TOUCH_MAX_EVENT uint32 = 128;
+
+/// A method for a client to receive touch events and respond in a global
+/// gesture disambiguation protocol.
+///
+/// The position of a touch event is defined in the context of a viewport,
+/// situated in the view. The dimensions of the view and viewport, and their
+/// spatial relationship (defined with a transform matrix), are supplied
+/// synchronously in a |ViewParameter| table. A view may retrieve a pointer's
+/// position in its local coordinate system by applying the viewport-to-view
+/// transform matrix.
+///
+/// The viewport is embedded in an independent and stable coordinate system,
+/// suitable for interpreting touch events in a scale-independent manner; a
+/// swipe will be observed at a constant scale, even under effects such as
+/// magnification or panning. However, other effects, such as enlargening the
+/// view's clip bounds, may trigger a change in the viewport extents.
+protocol TouchSource {
+    /// A method for a client to receive touch pointer events.
+    ///
+    /// This call is formulated as a "hanging get" pattern: the client asks for
+    /// a set of recent events, and receives them via the callback. This
+    /// pull-based approach ensures that clients consume events at their own
+    /// pace; events don't clog up the channel in an unbounded manner.
+    ///
+    /// Flow control. The caller is allowed at most one in-flight |Watch| call
+    /// at a time; it is a logical error to have concurrent calls to |Watch|.
+    /// Non-compliance results in channel closure.
+    ///
+    /// Client pacing. The server will dispatch events to the caller on a FIFO,
+    /// lossless, best-effort basis, but the caller must allocate enough time to
+    /// keep up with new events. An unresponsive client may be categorized as
+    /// "App Not Responding" and targeted for channel closure.
+    ///
+    /// Responses. The gesture disambiguation scheme relies on the server
+    /// receiving a |TouchResponse| for each |TouchEvent|.|TouchPointerSample|;
+    /// non-sample events should return an empty |TouchResponse| table to the
+    /// server. Responses for *previous* events are fed to the server on the
+    /// *next* call of |Watch| [1]. Each element in the |responses| vector is
+    /// interpreted as the pairwise response to the event in the previous
+    /// |events| vector; the vector lengths must match.
+    ///
+    /// Initial response. The first call to |Watch| must be an empty vector.
+    ///
+    /// Event times. The timestamps on each event in the event vector are *not*
+    /// guaranteed monotonic; touch events from different devices may be
+    /// injected into Scenic at different times. Generally, events from a single
+    /// device are expected to have monotonically increasing timestamps.
+    ///
+    /// View parameters. Occasionally, changes in view or viewport require
+    /// notifying the client. If a |TouchEvent| carries |ViewParameters|, these
+    /// parameters apply to successive |TouchPointerSample|s until the next
+    /// |ViewParameters|.
+    ///
+    /// [1] The hanging get pattern enables straightforward API evolution, but
+    /// unfortunately does not admit an idiomatic matching of response to event.
+    Watch(struct {
+        responses vector<TouchResponse>:TOUCH_MAX_EVENT;
+    }) -> (struct {
+        events vector<TouchEvent>:TOUCH_MAX_EVENT;
+    });
+
+    /// The gesture protocol allows a client to enact a "hold" on an open
+    /// interaction of touch events; it prevents resolution of interaction
+    /// ownership, even after the interaction closes. This method updates the
+    /// client's previous "hold" by replacing it with a response that allows
+    /// ownership resolution to proceed.
+    ///
+    /// See |TouchInteractionId| for how a stream is structured into
+    /// interactions.
+    ///
+    /// Flow control. The caller is allowed at most one |UpdateResponse| call
+    /// per interaction, and it must be on a closed interaction. It is a logical
+    /// error to call |UpdateResponse| when a normal response is possible with
+    /// the |Watch| call.
+    ///
+    /// Validity. This TouchResponse must not be another "hold" response, and
+    /// the overwritten response is expected to be a "hold" response.
+    UpdateResponse(struct {
+        interaction TouchInteractionId;
+        response TouchResponse;
+    }) -> ();
+};
+
+/// The self-sufficient, self-consistent collection of pointer-related data,
+/// sent from server to client.
+type TouchEvent = table {
+    /// The time this event was observed.
+    /// Required.
+    1: timestamp zx.time;
+
+    /// The parameters of the associated view and viewport, sufficient to
+    /// correctly interpret the position, orientation, magnitude, and
+    /// inter-event distance of touch events dispatched to a view.
+    /// - It is issued on connection and on change.
+    2: view_parameters ViewParameters;
+
+    /// A description of the pointer device, sufficient to correctly interpret
+    /// the capabilities and usage intent of the device.
+    /// - It is issued once per device.
+    3: device_info TouchDeviceInfo;
+
+    /// A description of each sampled data point in an interaction of touch
+    /// events.
+    /// - It is issued on every sample in the interaction.
+    4: pointer_sample TouchPointerSample;
+
+    /// The result of gesture disambiguation for a interaction of touch events.
+    /// - It is issued once per interaction.
+    5: interaction_result TouchInteractionResult;
+
+    /// An identifier to correlate this event's send/receive occurrence across
+    /// component boundaries or abstraction layers.
+    6: trace_flow_id uint64;
+};
+
+/// Information about a device that issues touch event streams.
+type TouchDeviceInfo = table {
+    /// An identifier for the touch device that issues touch event streams.
+    /// A device may own multiple pointers, each with its own pointer id and its
+    /// own touch event stream.
+    /// Required.
+    1: id uint32;
+};
+
+/// A unique identifier for a "interaction" of touch events in an event stream.
+/// Touch events are observed as a succession of interactions, as fingers engage
+/// and disengage with the display.
+///
+/// A finite sequence of pointer events that follows the `EventPhase` state
+/// machine, starting from the initial state ADD, is called an **interaction**.
+/// A closed (or past) interaction is one where it has reached the terminal
+/// state (REMOVE or CANCEL); an open (or current) interaction is one where it
+/// has not.
+///
+/// For a given device pointer, a stream of events is observed as a succession
+/// of zero or more closed interactions (the past history of user engagement),
+/// followed by at most one open interaction (the current user engagement).
+///
+/// Because we need to group pointer events by their interaction, touch event
+/// carries an **interaction id** that is unique in that pointer stream. This
+/// common reference makes it possible to operate on a closed interaction, as
+/// well as an open interaction.
+///
+/// Also see `EventPhase` for a discussion on event streams by mice.
+type TouchInteractionId = struct {
+    /// An identifier for the pointer device that issues touch event streams.
+    /// A device may own multiple pointers, each with its own |pointer_id|.
+    device_id uint32;
+
+    /// An identifier of the pointer that issued this event. It is unique only
+    /// to a specific |device_id|. Each (device_id, pointer_id) pair issues at
+    /// most one open interaction at a time.
+    pointer_id uint32;
+
+    /// An identifier of the interaction. It is unique only to a specific
+    /// (device_id, pointer_id) pair.
+    interaction_id uint32;
+};
+
+/// A description of each sampled data point in a touch event stream.
+/// All fields are required.
+type TouchPointerSample = table {
+    /// The interaction that this pointer sample belongs to.
+    1: interaction TouchInteractionId;
+
+    /// The state of this event in the interaction's state machine.
+    2: phase EventPhase;
+
+    /// The position of this event, in the viewport's coordinate system.
+    3: position_in_viewport Point2;
+};
+
+/// The result of gesture disambiguation for a interaction of touch events, sent
+/// from server to client.
+type TouchInteractionResult = struct {
+    /// The interaction that this pointer sample belongs to.
+    interaction TouchInteractionId;
+
+    /// The interaction's disposition, sent from server to client.
+    status TouchInteractionStatus;
+};
+
+/// A description of the interaction's relationship to this client.
+type TouchInteractionStatus = strict enum {
+    /// The client has been denied ownership of the interaction.
+    DENIED = 1;
+
+    /// The client has been granted ownership of the interaction.
+    GRANTED = 2;
+};
+
+/// A feedback event per |Event|, sent from client to server.
+///
+/// Only |TouchPointerSample| requires a |TouchResponseType|; for other events,
+/// the server expects an empty |TouchResponse| table.
+type TouchResponse = table {
+    /// The interaction disposition that a client responds with for a given
+    /// |TouchPointerSample|.
+    1: response_type TouchResponseType;
+
+    /// An identifier to correlate this response's send/receive occurrence across
+    /// component boundaries or abstraction layers.
+    2: trace_flow_id uint64;
+};
+
+/// The possible interaction dispositions that a client can respond with to a
+/// given |TouchPointerSample|. Used as part of a gesture disambiguation scheme.
+///
+/// The responses are based on the idea of an ownership claim on a interaction.
+/// Clients may assert a claim of ownership on an open interaction, but only one
+/// client's claim is granted by the server; other clients' claims are denied.
+type TouchResponseType = strict enum {
+    /// The client has no further interest in this interaction; it declines
+    /// ownership of the interaction. The client will stop receiving events for
+    /// this interaction.
+    NO = 1;
+
+    /// The client is interested in this interaction, but needs to see more
+    /// events to decide; the client has not yet claimed ownership of this
+    /// interaction.
+    MAYBE = 2;
+
+    /// The client is interested in this interaction, but needs to see more
+    /// events to decide; the client has not yet claimed ownership of the
+    /// interaction. During ownership resolution, it exerts its priority over
+    /// lower-priority "maybe" claims, but always loses to a "yes" claim.
+    MAYBE_PRIORITIZE = 3;
+
+    /// The client is interested in this interaction, but needs to see more
+    /// events to decide; the client has not yet claimed ownership of the
+    /// interaction. Moreover, it suppresses lower-priority claims that try to
+    /// resolve interaction ownership.
+    MAYBE_SUPPRESS = 4;
+
+    /// The client is interested in this interaction, but needs to see more
+    /// events to decide; the client has not yet claimed ownership of the
+    /// interaction. Moreover, it suppresses lower-priority claims that try to
+    /// resolve interaction ownership. During ownership resolution, it exerts
+    /// its priority over lower-priority "maybe" claims, but always loses to a
+    /// "yes" claim.
+    MAYBE_PRIORITIZE_SUPPRESS = 5;
+
+    /// The client is interested in this interaction, but needs to see a
+    /// subsequent interaction to decide; the client has not yet claimed
+    /// ownership of this interaction. It prevents ownership resolution when the
+    /// interaction closes.
+    HOLD = 6;
+
+    /// The client is interested in this interaction, but needs to see a
+    /// subsequent interaction to decide; the client has not yet claimed
+    /// ownership of this interaction. It prevents ownership resolution when the
+    /// interaction closes. Moreover, it suppresses lower-priority claims that
+    /// try to resolve interaction ownership.
+    HOLD_SUPPRESS = 7;
+
+    /// The client wishes exclusive access to the remaining events in this
+    /// interaction; it claims ownership of this interaction (but that claim may
+    /// be granted or denied). During ownership resolution, it yields its
+    /// priority to lower-priority "yes" claims.
+    YES = 8;
+
+    /// The client wishes exclusive access to the remaining events in this
+    /// interaction; it claims ownership of this interaction (but that claim may
+    /// be granted or denied). During ownership resolution, it exerts its
+    /// priority over lower-priority "yes" claims.
+    YES_PRIORITIZE = 9;
+};

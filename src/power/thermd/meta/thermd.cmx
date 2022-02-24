@@ -1,0 +1,20 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/thermd"
+    },
+    "sandbox": {
+        "dev": [
+            "class/gpu-thermal",
+            "class/thermal",
+            "misc"
+        ],
+        "services": [
+            "fuchsia.kernel.PowerResource",
+            "fuchsia.sys.Launcher",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

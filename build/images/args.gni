@@ -1,0 +1,158 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/images/custom_signing.gni")
+import("//build/images/vbmeta.gni")
+
+declare_args() {
+  # Use vboot images
+  use_vboot = false
+
+  # Put the "system image" package in the BOOTFS.  Hence what would
+  # otherwise be /system/... at runtime is /boot/... instead.
+  bootfs_only = false
+
+  # This is really a build for a recovery image, and so the fuchsia image that
+  # is being built isn't properly configured, and so just disable the new image
+  # assembly work until that's been addressed.
+  recovery_only = false
+
+  # List of arguments to add to /boot/config/devmgr.
+  # These come after synthesized arguments to configure blobfs and pkgfs.
+  devmgr_config = []
+
+  # Generate a UEFI disk image
+  build_uefi_disk = false
+
+  # Generate installer disk image (ISO) to be flashed to a USB drive.
+  # Will be located at obj/build/installer_images/ relative to the build directory.
+  # See https://fuchsia.dev/fuchsia-src/development/hardware/installer
+  build_usb_installer = false
+
+  # (deprecated) List of kernel images to include in the update (OTA) package.
+  # If no list is provided, all built kernels are included. The names in the
+  # list are strings that must match the filename to be included in the update
+  # package.
+  update_kernels = []
+
+  # List of prebuilt firmware blobs to include in update packages.
+  #
+  # Each entry in the list is a scope containing:
+  #  * `path`: path to the image (see also `firmware_prebuilts_path_suffix`)
+  #  * `type`: firmware type, a device-specific unique identifier
+  #  * `partition` (optional): if specified, the `fastboot flash` partition
+  firmware_prebuilts = []
+
+  # Suffix to append to all `firmware_prebuilts` `path` variables.
+  #
+  # Typically this indicates the hardware revision, and is made available so
+  # that users can easily switch revisions using a single arg.
+  firmware_prebuilts_path_suffix = ""
+
+  # List of files needed to bootstrap the device.
+  #
+  # Flashing a device assumes a certain state; bootstrapping instead allows
+  # initially provisioning a device from unknown state, so may require
+  # additional resources that would not be included in an OTA.
+  #
+  # Each entry in the list is a scope containing:
+  #  * `path`: path to file.
+  #  * `partition` (optional): `fastboot flash` partition.
+  #  * `condition` (optional): a scope with `variable` and `value` keys; file is
+  #    only flashed if `fastboot getvar <variable>` == <value>.
+  bootstrap_files = []
+
+  # GUID Partition Table (GPT) image.
+  #
+  # Typically useful for initially flashing a device from zero-state.
+  gpt_image = ""
+
+  # Whether to build the netboot zbi by default.
+  #
+  # You can still build //build/images:netboot explicitly even if enable_netboot is false.
+  enable_netboot = false
+
+  # Check that all vtables in fuchsia binaries listed in binaries.json are in
+  # readonly data sections. This check will be run at the end of a full build.
+  #
+  # This is primarily meant to be used by the clang canary builders.
+  check_vtables_in_rodata = false
+
+  # A list of labels for packages that are appended to the set of base packages,
+  # but depend on all the other base, cache, and universe packages, therefore
+  # they must be separated into their own list.
+  meta_package_labels = []
+
+  # Arguments to `fx flash` script (along with any `firmware_prebuilts` which
+  # specify a partition).
+  #
+  # If `fvm_partition` is provided, the flash script will flash the full OS,
+  # recovery + Zircon + FVM + SSH keys. In this case, the bootloader must also
+  # support `fastboot oem add-staged-bootloader-file ssh.authorized_keys`.
+  #
+  # Otherwise, the script will flash the recovery image to all slots, which
+  # doesn't require the FVM or SSH keys.
+  zircon_a_partition = ""
+  zircon_b_partition = ""
+  zircon_r_partition = ""
+  vbmeta_a_partition = ""
+  vbmeta_b_partition = ""
+  vbmeta_r_partition = ""
+  fvm_partition = ""
+  active_partition = ""
+  fastboot_product = ""
+  pre_erase_flash = false
+
+  # Whether to include images necessary to run Fuchsia in QEMU in build
+  # archives.
+  add_qemu_to_build_archives = false
+
+  # Additional bootserver args to add to pave.sh. New uses of this should be
+  # added with caution, and ideally discussion. The present use case is to
+  # enable throttling of netboot when specific network adapters are combined
+  # with specific boards, due to driver and hardware challenges.
+  additional_bootserver_arguments = ""
+
+  # Whether to perform check on the build's eligibility for production.
+  # If true, base_packages and cache_packages are checked against dependencies
+  # on //build/validate:non_production_tag, which is used to tag any
+  # non-production GN labels. Build will fail if such dependency is found.
+  check_production_eligibility = false
+
+  # Whether to compress the blobfs image.
+  compress_blobs = true
+
+  # The format blobfs should store blobs in.
+  blob_layout_format = "compact"
+
+  # Build boot images that prefer Zedboot over local boot (only for EFI).
+  always_zedboot = false
+
+  # Include fvm.blob.sparse.blk image into the build if set to true
+  include_fvm_blob_sparse = false
+
+  # Include an account partition in the FVM image if set to true.
+  include_account_in_fvm = false
+
+  # Allows a product to specify the recovery image used in the zirconr slot.
+  # Default recovery image is zedboot. Overriding this value will keep zedboot
+  # in the build but will not include it as the default zirconr image.
+  # Recovery images can provide an update target by specifying the metadata item
+  # "update_target" in the format <target>=<path>. (Such as `update_target =
+  # [ "recovery=" + rebase_path(recovery_path, root_build_dir) ]`)
+  # Example value: "//build/images/recovery"
+  recovery_label = "//build/images/zedboot"
+
+  # Enable verbose output from `ffx assembly image`, this creates non-silent
+  # build output and therefore should never be 'true' in checked-in configs, and
+  # is meant solely for developer debugging.
+  verbose_image_assembly = false
+
+  # Include the shell commands package.  Used as a parameter to
+  # assemble_system().  See documentation there.
+  include_shell_commands_package = false
+}
+
+assert(custom_signing_script == "" || !use_vboot,
+       "custom_signing_script and use_vboot cannot be used together!")

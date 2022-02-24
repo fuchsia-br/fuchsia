@@ -1,0 +1,13 @@
+{
+    "short_description": "Driver for the Fuchsia Volume Manager",
+    "manufacturer": "",
+    "families": [
+        "generic"
+    ],
+    "models": [
+        "generic"
+    ],
+    "areas": [
+        "Storage"
+    ]
+}

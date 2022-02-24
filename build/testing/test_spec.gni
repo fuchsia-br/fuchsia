@@ -1,0 +1,371 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/board.gni")
+import("//build/testing/environments.gni")
+import("//build/testing/platforms.gni")
+
+_max_severity_allowed_val = [
+  "FATAL",
+  "ERROR",
+  "WARN",
+  "INFO",
+  "DEBUG",
+  "TRACE",
+]
+
+# Describes the target device environment in which a test should run. This
+# specification is written in JSON to the build directory, to be aggregated
+# at test-time.
+#
+# Parameters
+#
+#   path (optional for fuchsia; required for host)
+#     [string]: The path on the target OS at which the test will be installed.
+#
+#   target (required)
+#     [label_with_toolchain]: The test target. This will be used directly as the
+#     `label` field.
+#
+#   package_url (optional)
+#     [string] In the case of a fuchsia test, this describes the packaged test
+#     via a fuchsia package URL. See //docs/the-book/package_url.md for more
+#     details.
+#
+#   package_label (optional)
+#     [string] In the case of a fuchsia test, this describes the GN label
+#     (with toolchain) of the fuchsia package.
+#
+#   package_manifests (optional)
+#     [list of strings] In the case of a fuchsia test, this contains a set of
+#     paths to package manifests that describe the blobs needed by this test.
+#
+#   deps (optional)
+#     [list of labels]: List of labels that the test depends on.
+#
+#   environments (optional, default: Emu for fuchsia; else a VM)
+#     [list of scopes] Device environments in which the test should run.
+#
+#     Each scope in $environments contains:
+#
+#       dimensions (required)
+#         [scope] Dimensions of bots to target. Valid dimensions are
+#         element-wise subsets of the test platform entries defined in
+#         //build/testing/platforms.gni.
+#
+#       tags (optional)
+#         [list of strings] keys on which tests may be grouped. Tests with
+#         given tags will be run (1) together, and (2) only with support from
+#         the Infrastructure team. Labels are used as an escape hatch from the
+#         default testing pipeline for special tests or environments.
+#
+#    log_settings (optional, default: see below properties)
+#      [json] Properties of logs produced by this test run.
+#
+#      Following properties are supported:
+#
+#      max_severity (optional, default: WARN)
+#        [string] Defines maximum severity of logs which can be produced by test
+#        environment. This can only be defined for test components. Test will fail
+#        if any component in its environment produces log with greater severity
+#        than defined here.
+#
+#    parallel (optional)
+#     [int] Defines maximum concurrent test cases to run. This only works with v2 tests.
+#           If not defined, test runner will decide the default value.
+#
+template("test_spec") {
+  testonly = true
+
+  forward_variables_from(invoker, [ "environments" ])
+
+  # Set default environments: Emu for a fuchsia test, and VMs for linux and mac
+  # tests.
+  if (is_fuchsia) {
+    if (!defined(environments)) {
+      environments = basic_envs
+    }
+  } else if (is_linux || is_mac) {
+    if (!defined(environments)) {
+      environments = [ host_env ]
+    }
+  } else if (current_os == "unknown" && current_cpu == "wasm32") {
+    environments = []
+  } else {
+    assert(false, "$current_os not supported")
+  }
+
+  foreach(env, environments) {
+    empty_scope = {  # Clear from previous iteration
+    }
+    assert(defined(env.dimensions) && env.dimensions != empty_scope,
+           "each environment must specify dimensions")
+  }
+
+  if (is_fuchsia) {
+    _log_settings = {
+    }
+    if (defined(invoker.log_settings)) {
+      _log_settings = invoker.log_settings
+    }
+    if (!defined(_log_settings.max_severity)) {
+      _log_settings.max_severity = "WARN"
+    }
+
+    assert(_max_severity_allowed_val + [ _log_settings.max_severity ] -
+               [ _log_settings.max_severity ] != _max_severity_allowed_val,
+           "Invalid 'log_settings.max_severity': " + _log_settings.max_severity)
+
+    if (defined(invoker.package_url)) {
+      s = string_split(invoker.package_url, ".cm")
+      is_v2_component = false
+      foreach(s, string_split(invoker.package_url, ".cm")) {
+        is_v2_component = s == ""
+      }
+
+      # Running test cases in parallel is slow (https://fxbug.dev/86107) for
+      # "coverage" variant. Run cases serially for that variant by default.
+      # Also let devs override the default if needed.
+      if (!defined(invoker.parallel) && is_v2_component &&
+          select_variant + [ "coverage" ] - [ "coverage" ] != select_variant) {
+        _parallel = 1
+      }
+    }
+  } else {
+    not_needed(invoker, [ "log_settings" ])
+  }
+
+  if (defined(invoker.parallel)) {
+    assert(is_fuchsia, "'parallel' can only be used when target is fuchsia.")
+    assert(invoker.parallel > 0)
+    assert(defined(invoker.package_url))
+    assert(is_v2_component, "'parallel' only works for v2 test components.")
+    _parallel = invoker.parallel
+  }
+
+  # Call "expanding" the operation that takes a scope
+  # {
+  #  x = a
+  #  y = b
+  #  z = c
+  #  ...
+  # }
+  # and converts it to a list [{x=a}, {y=b}, {z=c},...].
+  #
+  # Expand each scope of test platform dimensions and group them by architecture
+  # (i.e., cpu). The same thing is done below with each environment's dimensions
+  # scope to more easily compare.
+  target_platform_dims = []
+  other_platform_dims = []
+  foreach(platform, test_platforms) {
+    platform_dims = []  # Clear from previous iteration.
+    foreach(key, all_dimension_keys) {
+      platform_dims += [
+        {
+          forward_variables_from(platform, [ key ])
+        },
+      ]
+    }
+
+    # Empty scopes may have been introduced to platform_dims, corresponding to
+    # non-existent keys;
+    # Add and then subtract an empty scope to remove them.
+    empty_dim = {  # Clear from previous iteration.
+    }
+    platform_dims += [ empty_dim ]
+    platform_dims -= [ empty_dim ]
+
+    if (!defined(platform.cpu) || platform.cpu == target_cpu) {
+      target_platform_dims += [ platform_dims ]
+    } else {
+      other_platform_dims += [ platform_dims ]
+    }
+  }
+
+  target_envs = []
+  foreach(env, environments) {
+    dims = []  # Clear from previous iteration.
+    if (defined(env.dimensions)) {
+      dim = {
+      }
+      dim = env.dimensions
+      assert(!defined(dim.tags),
+             "tags are only valid in an environments scope, not in dimensions")
+      foreach(key, all_dimension_keys) {
+        dims += [
+          {
+            forward_variables_from(env.dimensions, [ key ])
+          },
+        ]
+      }
+    }
+    empty_dim = {  # Clear from previous iteration.
+    }
+    dims += [ empty_dim ]
+    dims -= [ empty_dim ]
+
+    # Check if the environment's dimensions match those of a platform of the
+    # target architecture; if a match, include the environment among the
+    # test spec's.
+    # Note that in GN "A is a subset of B" is equivalent to `A + B - B == []`.
+    match = false
+    foreach(platform_dims, target_platform_dims) {
+      if (dims + platform_dims - platform_dims == []) {
+        match = true
+        target_envs += [ env ]
+      }
+    }
+
+    # If the environment's dimensions do not match a target architecture, ensure
+    # that they match those of a platform of another architecture.
+    if (!match) {
+      foreach(platform_dims, other_platform_dims) {
+        match = match || dims + platform_dims - platform_dims == []
+      }
+      if (!match) {
+        print("Could not match environment specifications for '$target_name':")
+        print("$env")
+        assert(
+            match,
+            "Consult //build/testing/platforms.gni for all allowable specifications")
+      }
+    }
+  }
+
+  target_name_deps = []
+
+  # Rely on metadata reachable through deps to determine any runtime
+  # dependencies of the test; record them to a file.
+  runtime_deps_file = ""
+  if (defined(invoker.deps) && invoker.deps != []) {
+    runtime_deps_file = "$target_gen_dir/${target_name}.deps.json"
+    runtime_deps_target_name = "${target_name}_deps"
+
+    generated_file(runtime_deps_target_name) {
+      outputs = [ runtime_deps_file ]
+      data_keys = [ "test_runtime_deps" ]
+      deps = invoker.deps
+      rebase = root_build_dir
+      output_conversion = "json"
+    }
+
+    target_name_deps += [ ":$runtime_deps_target_name" ]
+  }
+
+  # A given board, by definition, restrict which devices it meant for.
+  # We constrain the allowed device types and the dimensions considered as
+  # a function of this.
+  # TODO(joshuaseaton): Use board_name instead of cpu in the reasoning above.
+  allowed_device_types = []
+  if (board_name == "x64") {
+    allowed_device_types = [
+      "AEMU",
+      "QEMU",
+      "Intel NUC Kit NUC7i5DNHE",
+      "GCE",
+    ]
+  } else if (board_name == "qemu-arm64") {
+    allowed_device_types = [ "QEMU" ]
+  } else if (board_name == "qemu-x64") {
+    allowed_device_types = [
+      "AEMU",
+      "QEMU",
+    ]
+  } else if (board_name == "astro") {
+    allowed_device_types = [ "Astro" ]
+  } else if (board_name == "luis") {
+    allowed_device_types = [ "Luis" ]
+  } else if (board_name == "sherlock") {
+    allowed_device_types = [ "Sherlock" ]
+  } else if (board_name == "nelson") {
+    allowed_device_types = [ "Nelson" ]
+  } else if (board_name == "vim3") {
+    allowed_device_types = [ "Vim3" ]
+  } else if (board_name == "chromebook-x64") {
+    allowed_device_types = [ "Atlas" ]
+  }
+
+  _environments = []
+  foreach(env, target_envs) {
+    dims = []  # Clear from previous iteration.
+    dims = env.dimensions
+
+    if (defined(dims.os) && dims.os == "mac") {
+      # When running tests for a mac build, we only wish to run mac tests; we
+      # enforce the "mac" tag in that case to filter out other tests.
+      assert(defined(env.tags) && [ "mac" ] + env.tags - env.tags == [],
+             "Mac environments must have a tag of \"mac\"")
+    }
+
+    if (defined(dims.device_type) &&
+        (dims.device_type == "QEMU" || dims.device_type == "AEMU")) {
+      env.is_emu = true
+    }
+
+    has_allowed_device_type = defined(dims.device_type) &&
+                              allowed_device_types + [ dims.device_type ] -
+                              [ dims.device_type ] != allowed_device_types
+    if (has_allowed_device_type || !defined(dims.device_type)) {
+      # GN idiom for adding to a list without adding duplicate elements.
+      _environments += [ env ]
+      _environments -= [ env ]
+      _environments += [ env ]
+    }
+  }
+
+  test_spec = {
+    test = {
+      forward_variables_from(invoker,
+                             [
+                               "path",
+                               "package_url",
+                               "package_label",
+                               "package_manifests",
+                             ])
+      if (defined(_parallel)) {
+        parallel = _parallel
+      }
+      label = invoker.target
+      assert(label == get_label_info(label, "label_with_toolchain"),
+             "target '${label}' must be a label_with_toolchain.")
+
+      if (is_fuchsia) {
+        log_settings = _log_settings
+      }
+      if (defined(package_url)) {
+        name = package_url
+      } else {
+        assert(defined(path), "path or package_url must be defined.")
+        if (is_linux || is_mac) {
+          # Trim leading //.
+          path = rebase_path(path, root_build_dir)
+        }
+
+        # We want the test name to be the same regardless of variant.
+        # Path is of the form <toolchain_variant.name>/<basename>, so
+        # removing the left-most appearance should do what we want.
+        name = string_replace(path, toolchain_variant.suffix, "", 1)
+      }
+      os = current_os
+      cpu = current_cpu
+      if (runtime_deps_file != "") {
+        runtime_deps = rebase_path(runtime_deps_file, root_build_dir)
+      }
+    }
+    environments = []  # Clear from previous iteration.
+    environments = _environments
+  }
+
+  group(target_name) {
+    forward_variables_from(invoker, [ "visibility" ])
+    metadata = {
+      tests = [ test_spec ]
+    }
+    deps = target_name_deps
+  }
+
+  # When an unreferenced board_name is used, the allowed_device_types
+  # assignment will have no effect.
+  not_needed([ "allowed_device_types" ])
+}

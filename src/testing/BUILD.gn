@@ -1,0 +1,26 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("testing") {
+  testonly = true
+  deps = [
+    ":tests",
+    "fuzzing",
+    "loadbench",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "fuzzing:tests",
+    "host-target-testing:tests",
+    "loadbench:tests",
+    "metrics-logger:tests",
+    "perfcompare:tests",
+    "sl4f:tests",
+    "system-metrics-logger:tests",
+  ]
+}

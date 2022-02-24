@@ -1,0 +1,19 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/use_media_decoder"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.mediacodec.CodecFactory",
+            "fuchsia.sysinfo.SysInfo",
+            "fuchsia.sysmem.Allocator",
+            "fuchsia.ui.scenic.Scenic"
+        ]
+    }
+}

@@ -1,0 +1,22 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("drivers") {
+  testonly = true
+  deps = [
+    "testing",
+    "third_party",
+    "wlan",
+    "wlanif",
+    "wlanphy",
+  ]
+}
+
+group("iwlwifi") {
+  public_deps = [
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi:iwlwifi",
+    "//src/connectivity/wlan/drivers/wlan",
+    "//src/connectivity/wlan/drivers/wlanphy",
+  ]
+}

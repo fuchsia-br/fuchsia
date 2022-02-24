@@ -1,0 +1,486 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+import("//src/hwinfo/hwinfo_config.gni")
+
+###############################################################################
+# EXECUTABLES
+###############################################################################
+executable("annotation_manager_unittest_exe") {
+  testonly = true
+
+  sources = [ "annotation_manager_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback/annotations",
+    "//src/developer/forensics/testing:gmatchers",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("config_unittest_exe") {
+  testonly = true
+
+  sources = [ "config_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback:config",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("data_register_unittest_exe") {
+  testonly = true
+
+  sources = [ "data_register_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//src/developer/forensics/feedback/annotations:data_register",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/lib/files",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("device_id_provider_unittest_exe") {
+  testonly = true
+
+  # "device_id_provider_unittest" is used elsewhere in Forensics.
+  output_dir = target_out_dir
+
+  sources = [ "device_id_provider_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/fit-promise",
+    "//src/developer/forensics/feedback:device_id_provider",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:device_id_provider",
+    "//src/developer/forensics/utils:errors",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("feedback_integration_test_exe") {
+  testonly = true
+
+  sources = [ "feedback_integration_test.cc" ]
+
+  deps = [
+    ":zx_object_util",
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.hwinfo",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/fidl/fuchsia.mem",
+    "//sdk/fidl/fuchsia.sys",
+    "//sdk/fidl/fuchsia.update.channelcontrol",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/inspect/contrib/cpp:archive_reader",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/testing:gmatchers",
+    "//src/developer/forensics/testing/fakes:cobalt",
+    "//src/developer/forensics/utils:archive",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/lib/fostr/fidl/fuchsia.feedback",
+    "//src/lib/fsl",
+    "//src/lib/uuid:uuid",
+    "//src/ui/lib/escher/test/common:gtest_vulkan",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+    "//third_party/rapidjson",
+    "//zircon/system/ulib/zx",
+
+    # TODO(https://fxbug.dev/90302): switch back to
+    # //src/lib/fxl/test:gtest_main when this test is no longer
+    # order-dependent.
+    "//third_party/googletest:gtest_main",
+  ]
+}
+
+executable("feedback_data_unittest_exe") {
+  testonly = true
+
+  sources = [ "feedback_data_unittest.cc" ]
+
+  deps = [
+    "//src/developer/forensics/feedback:main_service",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/lib/files",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("inspect_exe") {
+  testonly = true
+
+  sources = [ "inspect_exe.cc" ]
+
+  deps = [
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/inspect/cpp",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}
+
+executable("last_reboot_unittest_exe") {
+  testonly = true
+
+  sources = [ "last_reboot_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol",
+    "//src/developer/forensics/feedback:main_service",
+    "//src/developer/forensics/feedback/reboot_log",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/testing/stubs:crash_reporter",
+    "//src/developer/forensics/testing/stubs:reboot_methods_watcher_register",
+    "//src/developer/forensics/utils/cobalt",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("main_service_unittest_exe") {
+  testonly = true
+
+  # "main_service_unittest_exe" is used a bunch in Forensics.
+  output_dir = target_out_dir
+
+  sources = [ "main_service_unittest.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.feedback",
+    "//src/developer/forensics/feedback:main_service",
+    "//src/developer/forensics/feedback/reboot_log",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/testing/stubs:cobalt",
+    "//src/developer/forensics/testing/stubs:crash_reporter",
+    "//src/developer/forensics/testing/stubs:reboot_methods_watcher_register",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("namespace_init_unittest_exe") {
+  testonly = true
+
+  # "namespace_init_unittest_exe" is also used by feedback-data.
+  output_dir = target_out_dir
+
+  sources = [ "namespace_init_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback:namespace_init",
+    "//src/developer/forensics/feedback_data/system_log_recorder:reader",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:production",
+    "//src/developer/forensics/feedback_data/system_log_recorder/encoding:version",
+    "//src/developer/forensics/testing:gtest_with_syslog_main",
+    "//src/developer/forensics/testing:log_message",
+    "//src/developer/forensics/testing:unit_test_fixture",
+    "//src/developer/forensics/utils:logs",
+    "//src/lib/files",
+    "//src/lib/timekeeper:testing",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+executable("startup_annotations_unittest_exe") {
+  testonly = true
+
+  sources = [ "startup_annotations_unittest.cc" ]
+
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/developer/forensics/feedback:constants",
+    "//src/developer/forensics/feedback/annotations",
+    "//src/developer/forensics/feedback/reboot_log",
+    "//src/developer/forensics/feedback_data:constants",
+    "//src/developer/forensics/testing:gmatchers",
+    "//src/developer/forensics/testing:gpretty_printers",
+    "//src/developer/forensics/testing:scoped_memfs_manager",
+    "//src/lib/files",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+###############################################################################
+# SOURCES
+###############################################################################
+source_set("zx_object_util") {
+  sources = [
+    "zx_object_util.cc",
+    "zx_object_util.h",
+  ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+###############################################################################
+# CONFIGS
+###############################################################################
+config_data("invalid_crash_reports_override_config") {
+  for_pkg = "copy-forensics-invalid-crash-reports-override-config"
+
+  sources = [ "configs/invalid_crash_reports_override.json" ]
+
+  outputs = [ "crash_reports/override_config.json" ]
+}
+
+config_data("valid_crash_reports_override_config") {
+  for_pkg = "copy-forensics-valid-crash-reports-override-config"
+
+  sources = [ "configs/valid_crash_reports_override.json" ]
+
+  outputs = [ "crash_reports/override_config.json" ]
+}
+
+hwinfo_config_validate("fake_hwinfo_product_config_validate") {
+  type = "product"
+  config = "configs/hwinfo_product_config.json"
+}
+
+hwinfo_config_validate("fake_hwinfo_board_config_validate") {
+  type = "board"
+  config = "configs/hwinfo_board_config.json"
+}
+
+config_data("fake_hwinfo_product_config") {
+  for_pkg = "fake_hwinfo"
+
+  sources = [ rebase_path("configs/hwinfo_product_config.json") ]
+
+  outputs = [ "product_config.json" ]
+
+  deps = [ ":fake_hwinfo_product_config_validate" ]
+}
+
+config_data("fake_hwinfo_board_config") {
+  for_pkg = "fake_hwinfo"
+
+  sources = [ rebase_path("configs/hwinfo_board_config.json") ]
+
+  outputs = [ "board_config.json" ]
+
+  deps = [ ":fake_hwinfo_board_config_validate" ]
+}
+
+###############################################################################
+# COMPONENTS
+###############################################################################
+fuchsia_component("annotation_manager_unittest") {
+  testonly = true
+
+  manifest = "meta/annotation_manager_unittest.cml"
+
+  deps = [ ":annotation_manager_unittest_exe" ]
+}
+
+fuchsia_component("config_unittest") {
+  testonly = true
+
+  manifest = "meta/config_unittest.cml"
+
+  deps = [ ":config_unittest_exe" ]
+}
+
+fuchsia_component("data_register_unittest") {
+  testonly = true
+
+  manifest = "meta/data_register_unittest.cml"
+
+  deps = [ ":data_register_unittest_exe" ]
+}
+
+fuchsia_component("device_id_provider_unittest") {
+  testonly = true
+
+  manifest = "meta/device_id_provider_unittest.cml"
+
+  deps = [ ":device_id_provider_unittest_exe" ]
+}
+
+fuchsia_component("feedback_integration_test") {
+  testonly = true
+
+  manifest = "meta/feedback_integration_test.cmx"
+
+  deps = [ ":feedback_integration_test_exe" ]
+}
+
+fuchsia_component(
+    "feedback_integration_test_invalid_crash_reports_override_config") {
+  testonly = true
+
+  manifest =
+      "meta/feedback_integration_test_invalid_crash_reports_override_config.cmx"
+
+  deps = [
+    ":feedback_integration_test_exe",
+    ":invalid_crash_reports_override_config",
+  ]
+}
+
+fuchsia_component(
+    "feedback_integration_test_valid_crash_reports_override_config") {
+  testonly = true
+
+  manifest =
+      "meta/feedback_integration_test_valid_crash_reports_override_config.cmx"
+
+  deps = [
+    ":feedback_integration_test_exe",
+    ":valid_crash_reports_override_config",
+  ]
+}
+
+fuchsia_component("feedback_data_unittest") {
+  testonly = true
+
+  manifest = "meta/feedback_data_unittest.cml"
+
+  deps = [ ":feedback_data_unittest_exe" ]
+}
+
+fuchsia_component("inspect_test_app") {
+  testonly = true
+
+  manifest = "meta/inspect_test_app.cmx"
+
+  deps = [ ":inspect_exe" ]
+}
+
+fuchsia_component("last_reboot_unittest") {
+  testonly = true
+
+  manifest = "meta/last_reboot_unittest.cml"
+
+  deps = [ ":last_reboot_unittest_exe" ]
+}
+
+fuchsia_component("main_service_unittest") {
+  testonly = true
+
+  manifest = "meta/main_service_unittest.cml"
+
+  deps = [ ":main_service_unittest_exe" ]
+}
+
+fuchsia_component("namespace_init_unittest") {
+  testonly = true
+
+  manifest = "meta/namespace_init_unittest.cml"
+
+  deps = [ ":namespace_init_unittest_exe" ]
+}
+
+fuchsia_component("startup_annotations_unittest") {
+  testonly = true
+
+  manifest = "meta/startup_annotations_unittest.cmx"
+
+  deps = [ ":startup_annotations_unittest_exe" ]
+}
+
+###############################################################################
+# PACKAGES
+###############################################################################
+fuchsia_test_package("feedback-tests") {
+  package_deps_for_infra_only = [
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/developer/forensics:copy-pkg",
+    "//src/factory/fake_factory_store_providers:fake_factory_store_providers",
+    "//src/hwinfo:fake_legacy_hwinfo",
+    "//src/sys/pkg/bin/fake-channel-control:fake-channel-control",
+  ]
+  test_components = [
+    ":annotation_manager_unittest",
+    ":config_unittest",
+    ":data_register_unittest",
+    ":device_id_provider_unittest",
+    ":feedback_integration_test",
+    ":feedback_integration_test_invalid_crash_reports_override_config",
+    ":feedback_integration_test_valid_crash_reports_override_config",
+    ":feedback_data_unittest",
+    ":last_reboot_unittest",
+    ":main_service_unittest",
+    ":namespace_init_unittest",
+    ":startup_annotations_unittest",
+  ]
+
+  deps = [
+    # needed for feedback_data_integration_test
+    ":inspect_test_app",
+    "//src/connectivity/network/netstack:component-legacy",
+  ]
+
+  test_specs = {
+    log_settings = {
+      max_severity = "FATAL"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":fake_hwinfo_board_config",
+    ":fake_hwinfo_product_config",
+    ":feedback-tests",
+
+    # Packages for the components that we are injecting in the integration tests.
+    "//garnet/bin/setui:setui_service",
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/connectivity/network/netstack",
+    "//src/developer/forensics:copy-pkg",
+    "//src/developer/forensics:copy-pkg-invalid-crash-reports-override-config",
+    "//src/developer/forensics:copy-pkg-valid-crash-reports-override-config",
+    "//src/devices/sysmem/bin/sysmem_connector",
+    "//src/diagnostics/archivist",
+    "//src/diagnostics/archivist:archivist-for-embedding",
+    "//src/factory/fake_factory_store_providers",
+    "//src/graphics/bin/vulkan_loader",
+    "//src/hwinfo:fake_legacy_hwinfo",
+    "//src/hwinfo:hwinfo_tests_factory_config",
+    "//src/intl/intl_services:pkg_small",
+    "//src/sys/pkg/bin/fake-channel-control",
+    "//src/sys/stash",
+    "//src/sys/time/timekeeper",
+  ]
+}

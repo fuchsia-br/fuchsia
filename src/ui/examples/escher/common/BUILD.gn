@@ -1,0 +1,98 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("common") {
+  sources = [ "demo_harness.cc" ]
+  deps = [
+    ":demo_base",
+    "//src/lib/files",
+    "//src/lib/fxl",
+    "//third_party/glm",
+    "//third_party/glslang:glslang_default_resource_limits_sources",
+    "//third_party/glslang:glslang_sources",
+  ]
+  public_deps = [ ":headers" ]
+  libs = [
+    "dl",
+    "pthread",
+  ]
+  include_dirs = [ "//lib" ]
+
+  if (is_fuchsia) {
+    deps += [ ":demo_harness_fuchsia" ]
+  }
+  if (is_linux || is_mac) {
+    deps += [ ":demo_harness_glfw" ]
+  }
+}
+
+if (is_host) {
+  group("host_test_data") {
+    testonly = true
+    deps = [
+      "assets:host_assets($host_toolchain)",
+      "//src/ui/lib/escher/shaders:host_shader_data($host_toolchain)",
+    ]
+  }
+}
+
+# "class Demo" is the base class for all demos that can be run by DemoHarness.
+# Split into a separate source_set so that it can be used in tests that don't use DemoHarness.
+source_set("demo_base") {
+  sources = [
+    "demo.cc",
+    "demo.h",
+  ]
+  public_deps = [ "//src/ui/lib/escher:escher_with_glslang" ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("demo_harness_fuchsia") {
+  visibility = [ ":*" ]
+  sources = [
+    "demo_harness_fuchsia.cc",
+    "demo_harness_fuchsia.h",
+  ]
+  deps = [
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//src/lib/vulkan/swapchain",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+  public_deps = [
+    ":demo_base",
+    ":headers",
+    "//src/ui/lib/input_report_reader",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("demo_harness_glfw") {
+  visibility = [ ":*" ]
+  sources = [
+    "demo_harness_glfw.cc",
+    "demo_harness_glfw.h",
+  ]
+  deps = [ "//third_party/glfw" ]
+  public_deps = [
+    ":demo_base",
+    ":headers",
+  ]
+
+  # TODO(fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("headers") {
+  visibility = [ ":*" ]
+  sources = [ "demo_harness.h" ]
+  public_deps = [ "//src/ui/lib/escher:escher_with_glslang" ]
+}

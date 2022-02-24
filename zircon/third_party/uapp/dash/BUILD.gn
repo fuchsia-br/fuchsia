@@ -1,0 +1,169 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("dash") {
+  if (is_fuchsia) {
+    fdio_config = [ "//build/config/fuchsia:fdio_config" ]
+    if (configs + fdio_config - fdio_config != configs) {
+      configs -= fdio_config
+    }
+  }
+  output_name = "sh"
+  sources = [
+    "src/alias.c",
+    "src/arith_yacc.c",
+    "src/arith_yylex.c",
+    "src/bltin/printf.c",
+    "src/bltin/test.c",
+    "src/bltin/times.c",
+    "src/bltin/zircon.c",
+    "src/builtins.c",
+    "src/cd.c",
+    "src/error.c",
+    "src/eval.c",
+    "src/exec.c",
+    "src/expand.c",
+    "src/init.c",
+    "src/input.c",
+    "src/jobs.c",
+    "src/main.c",
+    "src/memalloc.c",
+    "src/miscbltin.c",
+    "src/mystring.c",
+    "src/nodes.c",
+    "src/options.c",
+    "src/output.c",
+    "src/output.h",
+    "src/parser.c",
+    "src/process.c",
+    "src/pty_fuchsia.cc",
+    "src/redir.c",
+    "src/show.c",
+    "src/signames.c",
+    "src/syntax.c",
+    "src/system.c",
+    "src/tab.c",
+    "src/trap.c",
+    "src/var.c",
+  ]
+  configs += [
+    ":config",
+    "//build/config/fuchsia:static_cpp_standard_library",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_c",
+    "//sdk/fidl/fuchsia.hardware.power.statecontrol:fuchsia.hardware.power.statecontrol_c",
+    "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_c",
+    "//sdk/fidl/fuchsia.hardware.pty:fuchsia.hardware.pty_llcpp",
+    "//sdk/fidl/fuchsia.kernel:fuchsia.kernel_c",
+    "//sdk/lib/fdio",
+    "//src/lib/ddk:ddk-device-headers",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/fidl:fidl_base",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/third_party/ulib/linenoise",
+  ]
+
+  # TODO(https://fxbug.dev/41901): Resolve this UB and remove.
+  #
+  # ../../zircon/third_party/uapp/dash/src/memalloc.c:229:23: runtime error: index 1856 out of bounds for type 'char [504]'
+  #    #0    0x0000426934205b10 in growstackblock() ../../zircon/third_party/uapp/dash/src/memalloc.c:229 <<application>>+0x58b10
+  #    #1.2  0x000040a519a6f3c0 in ubsan_GetStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:43 <libclang_rt.asan.so>+0x363c0
+  #    #1.1  0x000040a519a6f3c0 in MaybePrintStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:53 <libclang_rt.asan.so>+0x363c0
+  #    #1    0x000040a519a6f3c0 in ~ScopedReport() compiler-rt/lib/ubsan/ubsan_diag.cpp:389 <libclang_rt.asan.so>+0x363c0
+  #    #2    0x000040a519a71048 in handleOutOfBoundsImpl() compiler-rt/lib/ubsan/ubsan_handlers.cpp:394 <libclang_rt.asan.so>+0x38048
+  #    #3    0x000040a519a70f40 in compiler-rt/lib/ubsan/ubsan_handlers.cpp:399 <libclang_rt.asan.so>+0x37f40
+  #    #4    0x0000426934205b10 in growstackblock() ../../zircon/third_party/uapp/dash/src/memalloc.c:229 <<application>>+0x58b10
+  #    #5    0x0000426934205be4 in makestrspace(size_t, char*) ../../zircon/third_party/uapp/dash/src/memalloc.c:285 <<application>>+0x58be4
+  #    #6    0x0000426934215940 in readtoken1(int, const char*, char*, int) ../../zircon/third_party/uapp/dash/src/parser.c:909 <<application>>+0x68940
+  #    #7    0x000042693421daa0 in xxreadtoken() ../../zircon/third_party/uapp/dash/src/parser.c:827 <<application>>+0x70aa0
+  #    #8    0x00004269342196c0 in readtoken() ../../zircon/third_party/uapp/dash/src/parser.c:688 <<application>>+0x6c6c0
+  #    #9.1  0x000042693421a430 in simplecmd() ../../zircon/third_party/uapp/dash/src/parser.c:507 <<application>>+0x6d430
+  #    #9    0x000042693421a430 in command() ../../zircon/third_party/uapp/dash/src/parser.c:456 <<application>>+0x6d430
+  #    #10   0x0000426934219d30 in pipeline() ../../zircon/third_party/uapp/dash/src/parser.c:258 <<application>>+0x6cd30
+  #    #11   0x00004269342140b0 in list(int) ../../zircon/third_party/uapp/dash/src/parser.c:169 <<application>>+0x670b0
+  #    #12   0x0000426934213fa4 in parsecmd(int) ../../zircon/third_party/uapp/dash/src/parser.c:141 <<application>>+0x66fa4
+  #    #13   0x00004269341e5c2c in evalstring(char*, int) ../../zircon/third_party/uapp/dash/src/eval.c:169 <<application>>+0x38c2c
+  #    #14   0x0000426934203b84 in main(int, char**) ../../zircon/third_party/uapp/dash/src/main.c:182 <<application>>+0x56b84
+  #    #15   0x000080e04466b654 in start_main(const start_params*) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:139 <libc.so>+0xcc654
+  #    #16   0x000080e04466bf24 in __libc_start_main(zx_handle_t, int (*)(int, char**, char**)) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:256 <libc.so>+0xccf24
+  #    #17   0x000042693422b7c0 in _start(zx_handle_t) ../../zircon/system/ulib/c/Scrt1.cc:7 <<application>>+0x7e7c0
+  #
+  # TODO(https://fxbug.dev/84060): Resolve this UB and remove.
+  #
+  # ../../zircon/third_party/uapp/dash/src/jobs.c:808:34:runtime error: applying zero offset to null pointer
+  #    #0.1  0x000021e48df762ad in growjobtab() ../../zircon/third_party/uapp/dash/src/jobs.c:808 <<application>>+0x5c2ad
+  #    #0    0x000021e48df762ad in makejob(node*, int) ../../zircon/third_party/uapp/dash/src/jobs.c:758 <<application>>+0x5c2ad
+  #    #1.2  0x0000211daf853e37 in ubsan_GetStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:55 <libclang_rt.asan.so>+0x3be37
+  #    #1.1  0x0000211daf853e37 in MaybePrintStackTrace() compiler-rt/lib/ubsan/ubsan_diag.cpp:53 <libclang_rt.asan.so>+0x3be37
+  #    #1    0x0000211daf853e37 in ~ScopedReport() compiler-rt/lib/ubsan/ubsan_diag.cpp:389 <libclang_rt.asan.so>+0x3be37
+  #    #2    0x0000211daf8581fb in handlePointerOverflowImpl() compiler-rt/lib/ubsan/ubsan_handlers.cpp:809 <libclang_rt.asan.so>+0x401fb
+  #    #3    0x0000211daf857d6d in compiler-rt/lib/ubsan/ubsan_handlers.cpp:815 <libclang_rt.asan.so>+0x3fd6d
+  #    #4.1  0x000021e48df762ad in growjobtab() ../../zircon/third_party/uapp/dash/src/jobs.c:808 <<application>>+0x5c2ad
+  #    #4    0x000021e48df762ad in makejob(node*, int) ../../zircon/third_party/uapp/dash/src/jobs.c:758 <<application>>+0x5c2ad
+  #    #5    0x000021e48df5a316 in evalpipe(node*, int) ../../zircon/third_party/uapp/dash/src/eval.c:572 <<application>>+0x40316
+  #    #6    0x000021e48df55a66 in evaltree(node*, int) ../../zircon/third_party/uapp/dash/src/eval.c:280 <<application>>+0x3ba66
+  #    #7    0x000021e48df77d49 in cmdloop(int) ../../zircon/third_party/uapp/dash/src/main.c:271 <<application>>+0x5dd49
+  #    #8    0x000021e48df7727e in main(int, char**) ../../zircon/third_party/uapp/dash/src/main.c:186 <<application>>+0x5d27e
+  #    #9    0x0000418883488f89 in start_main(const start_params*) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:139 <libc.so>+0xd2f89
+  #    #10   0x0000418883489991 in __libc_start_main(zx_handle_t, int (*)(int, char**, char**)) ../../zircon/third_party/ulib/musl/src/env/__libc_start_main.c:214 <libc.so>+0xd3991
+  #    #11   0x000021e48dfa3590 in _start(zx_handle_t) ../../zircon/system/ulib/c/Scrt1.cc:7 <<application>>+0x89590
+  #
+  # At the time of writing, our dash import dates to 2016. Perhaps this has been fixed upstream? We should try updating it.
+  configs += [ "//build/config/sanitizers:suppress-ubsan.DO-NOT-USE-THIS" ]
+
+  # Suppress warnings the dash code doesn't comply with.
+  configs += [ "//build/config:Wno-conversion" ]
+  configs += [ "//build/config:Wno-implicit-fallthrough" ]
+  configs += [ "//build/config:Wno-unused-function" ]
+  configs += [ "//build/config:Wno-unused-but-set-variable" ]
+  configs += [ "//build/config:Wno-unused-but-set-parameter" ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+source_set("output_h") {
+  public = [ "src/output.h" ]
+}
+
+config("config") {
+  visibility = [ ":*" ]
+  defines = [
+    "BSD",
+    "DEBUG",
+    "FLUSHERR",
+    "IFS_BROKEN",
+    "JOBS=0",
+    "SHELL",
+    "USE_GLIBC_STDIO",
+    "USE_LINENOISE",
+    "_GNU_SOURCE",
+  ]
+  include_dirs = [ "src" ]
+  cflags = [
+    "-include",
+    rebase_path("config.h", root_build_dir),
+  ]
+
+  # TODO: Fix Warnings
+  cflags_c = [
+    "-Wno-strict-prototypes",
+    "-Wno-sign-compare",
+    "-Wno-logical-not-parentheses",
+  ]
+  if (false) {  # is_gcc
+    cflags_c += [ "-Wno-discarded-qualifiers" ]
+  } else {
+    cflags_c += [
+      "-Wno-incompatible-pointer-types-discards-qualifiers",
+      "-Wno-gnu-designator",
+      "-Wno-format-security",
+      "-Wno-string-plus-int",
+    ]
+  }
+}

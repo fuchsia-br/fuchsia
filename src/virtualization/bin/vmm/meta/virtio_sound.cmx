@@ -1,0 +1,15 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/virtio_sound"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.media.Audio",
+            "fuchsia.scheduler.ProfileProvider",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

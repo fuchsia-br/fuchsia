@@ -1,0 +1,64 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components/fuchsia_test_component.gni")
+
+source_set("testing") {
+  visibility = [ "../*" ]
+  testonly = true
+  sources = [
+    "adapter.cc",
+    "adapter.h",
+    "module.cc",
+    "module.h",
+    "process-proxy.cc",
+    "process-proxy.h",
+    "process.cc",
+    "process.h",
+    "target.cc",
+    "target.h",
+  ]
+  public_deps = [
+    "../coverage:coverage-lib",
+    "../engine:engine-lib",
+    "../target:no_hooks",
+    "//src/sys/fuzzing/common",
+    "//src/sys/fuzzing/common/testing",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zx",
+  ]
+  deps = [ "//sdk/lib/fdio" ]
+}
+
+executable("target") {
+  output_name = "component_fuzzing_test_target"
+  visibility = [ "//src/sys/fuzzing/*" ]
+  testonly = true
+  sources = [ "target-main.cc" ]
+  deps = [
+    "//sdk/lib/syslog/cpp",
+    "//src/sys/fuzzing/common",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+executable("test-engine-bin") {
+  output_name = "component_fuzzing_test_engine"
+  visibility = [ ":*" ]
+  testonly = true
+  sources = [ "engine.cc" ]
+  deps = [
+    "../engine:adapter-client",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/sys/fuzzing/common",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+fuchsia_test_component("test-engine") {
+  manifest = "../meta/test-engine.cml"
+  deps = [ ":test-engine-bin" ]
+}

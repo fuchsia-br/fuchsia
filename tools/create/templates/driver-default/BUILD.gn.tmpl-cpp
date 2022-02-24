@@ -1,0 +1,77 @@
+{{>copyright comment="#"}}
+
+{{>generated comment="#"}}
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+group("{{PROJECT_NAME}}") {
+  testonly = true
+  deps = [
+    ":pkg",
+    ":tests",
+  ]
+}
+
+# TODO: Remember to link this to ../BUILD.gn tests group so that the tests are included.
+# Then delete this comment.
+group("tests") {
+  testonly = true
+  deps = [ ":{{PROJECT_NAME}}-tests" ]
+}
+
+driver_bind_rules("bind") {
+  rules = "{{snake_case PROJECT_NAME}}.bind"
+  header_output = "{{snake_case PROJECT_NAME}}-bind.h"
+  bind_output = "{{snake_case PROJECT_NAME}}.bindbc"
+}
+
+fuchsia_driver("driver") {
+  output_name = "{{PROJECT_NAME}}"
+  sources = [ "{{snake_case PROJECT_NAME}}.cc" ]
+  deps = [
+    ":bind",
+    "//src/devices/lib/driver",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+fuchsia_driver_component("component") {
+  component_name = "{{PROJECT_NAME}}"
+  deps = [ ":driver" ]
+  info = "{{snake_case PROJECT_NAME}}-info.json"
+  colocate = true
+}
+
+fuchsia_driver_package("pkg") {
+  package_name = "{{PROJECT_NAME}}"
+  driver_components = [ ":component" ]
+}
+
+test("{{PROJECT_NAME}}-unit-tests") {
+  sources = [
+    "{{snake_case PROJECT_NAME}}.cc",
+    "{{snake_case PROJECT_NAME}}.h",
+    "unit-tests.cc",
+  ]
+  deps = [
+    ":bind",
+    "//sdk/lib/inspect/testing/cpp:zxtest",
+    "//src/devices/lib/driver",
+    "//src/devices/testing/mock-ddk",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/inspect",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}
+
+fuchsia_unittest_package("{{PROJECT_NAME}}-tests") {
+  deps = [ ":{{PROJECT_NAME}}-unit-tests" ]
+}

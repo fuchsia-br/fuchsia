@@ -1,0 +1,18 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/timekeeper"
+    },
+    "sandbox": {
+        "dev": [
+            "class/rtc"
+        ],
+        "services": [
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.sys.Launcher",
+            "fuchsia.time.Maintenance"
+        ]
+    }
+}

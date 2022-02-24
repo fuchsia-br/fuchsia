@@ -1,0 +1,51 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.tracing.kernel;
+
+using zx;
+using fuchsia.tracing.provider;
+
+// TODO(fxbug.dev/30408): Allow providing a vmo of the buffer to use.
+@discoverable
+protocol Controller {
+    /// Start tracing.
+    Start(struct {
+        group_mask uint32;
+        buffering_mode fuchsia.tracing.provider.BufferingMode;
+    }) -> (struct {
+        status zx.status;
+    });
+
+    /// Stop tracing.
+    Stop() -> (struct {
+        status zx.status;
+    });
+
+    /// Rewind the trace buffer.
+    Rewind() -> (struct {
+        status zx.status;
+    });
+};
+
+const MAX_BUF uint32 = 8192;
+
+@discoverable
+protocol Reader {
+    /// Get the number of bytes written to the trace buffer.
+    /// `size` is valid if, and only if, `status` is `ZX_OK`.
+    GetBytesWritten() -> (struct {
+        status zx.status;
+        size uint64;
+    });
+
+    /// Read `count` bytes from ktrace buffer at `offset`
+    /// and return `data` read upon success
+    ReadAt(struct {
+        count uint64;
+        offset uint64;
+    }) -> (struct {
+        status zx.status;
+        data vector<uint8>:MAX_BUF;
+    });
+};

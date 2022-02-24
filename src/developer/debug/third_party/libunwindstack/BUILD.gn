@@ -1,0 +1,89 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+config("config") {
+  defines = [ "NO_LIBDEXFILE_SUPPORT" ]
+
+  # Use -isystem instead of -I to suppress -Wconversion warnings.
+  cflags = [ "-isystem" + rebase_path("include", root_build_dir) ]
+  include_dirs = [ "fuchsia" ]
+}
+
+config("config_private") {
+  defines = [ "FUCHSIA" ]
+}
+
+static_library("libunwindstack") {
+  public_configs = [ ":config" ]
+  configs += [ ":config_private" ]
+
+  sources = [
+    "ArmExidx.cpp",
+    "DwarfCfa.cpp",
+    "DwarfEhFrameWithHdr.cpp",
+    "DwarfMemory.cpp",
+    "DwarfOp.cpp",
+    "DwarfSection.cpp",
+    "Elf.cpp",
+    "ElfInterface.cpp",
+    "ElfInterfaceArm.cpp",
+    "Global.cpp",
+    "JitDebug.cpp",
+    "MapInfo.cpp",
+    "Symbols.cpp",
+    "Unwinder.cpp",
+    "fuchsia/LogFuchsia.cpp",
+    "fuchsia/MapsFuchsia.cpp",
+
+    # These files are Android-specific and aren't compiled for Fuchsia.
+    #"DexFile.cpp",
+    #"DexFiles.cpp",
+    #"LocalUnwinder.cpp",
+    #"Log.cpp",
+    #"Maps.cpp",
+  ]
+
+  if (is_fuchsia) {
+    # This project does some locking but doesn't annotate usage.
+    configs -= [ "//build/config:thread_safety_annotations" ]
+
+    sources += [ "fuchsia/MemoryFuchsia.cpp" ]
+
+    if (target_cpu == "x64") {
+      sources += [ "fuchsia/RegsFuchsiaX86_64.cpp" ]
+    } else if (target_cpu == "arm64") {
+      sources += [ "fuchsia/RegsFuchsiaArm64.cpp" ]
+    }
+  } else {
+    sources += [
+      "Memory.cpp",
+      "Regs.cpp",
+      "RegsArm.cpp",
+      "RegsArm64.cpp",
+      "RegsMips.cpp",
+      "RegsMips64.cpp",
+      "RegsX86.cpp",
+      "RegsX86_64.cpp",
+    ]
+  }
+
+  deps = [
+    "//src/lib/fxl",
+    "//zircon/system/ulib/fbl",
+  ]
+  if (is_mac) {
+    public_deps = [ "//src/developer/debug/shared:elf_h_on_mac" ]
+  }
+
+  configs += [ "//build/config:Wno-conversion" ]
+
+  # ../../src/developer/debug/third_party/libunwindstack/DwarfCfa.cpp:263:19: error: loop variable 'line' creates a copy from type 'const std::string' [-Werror,-Wrange-loop-construct]
+  #   for (const auto line : expression_lines) {
+  #                   ^
+  # ../../src/developer/debug/third_party/libunwindstack/DwarfCfa.cpp:263:8: note: use reference type 'const std::string &' to prevent copying
+  #   for (const auto line : expression_lines) {
+  #        ^~~~~~~~~~~~~~~~~
+  #                   &
+  configs += [ "//build/config:Wno-range-loop-construct" ]
+}

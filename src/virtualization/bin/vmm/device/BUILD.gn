@@ -1,0 +1,580 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/components/fuchsia_unittest_package.gni")
+import("//src/graphics/lib/magma/include/virtio/virtmagma_debug.gni")
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":device_tests_package",
+    ":device_unittests_package",
+    ":request_watchdog_unittests_package",
+    "virtio_sound:tests",
+  ]
+  public_deps = [
+    "//src/cobalt/bin/testing/mock_cobalt",
+    "//src/ui/scenic:scenic_pkg",
+  ]
+}
+
+group("packages") {
+  deps = [
+    ":virtio_balloon",
+    ":virtio_block",
+    ":virtio_console",
+    ":virtio_gpu",
+    ":virtio_input",
+    ":virtio_magma",
+    ":virtio_wl",
+    "virtio_net",
+    "virtio_rng",
+    "virtio_sound",
+  ]
+}
+
+source_set("lib") {
+  sources = [
+    "block.h",
+    "config.h",
+    "input.h",
+    "phys_mem.cc",
+    "phys_mem.h",
+    "virtio_queue.cc",
+    "virtio_queue.h",
+  ]
+  configs += [ "//build/config:all_source" ]
+  public_deps = [
+    "//sdk/fidl/fuchsia.virtualization.hardware",
+    "//sdk/lib/fit",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl",
+    "//third_party/mesa/include:drm-uapi",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/virtio",
+  ]
+}
+
+source_set("virtio") {
+  visibility = [ "./*" ]
+
+  sources = [
+    "device_base.h",
+    "stream_base.h",
+  ]
+  public_deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.virtualization.hardware",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+executable("virtio_balloon_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_balloon"
+  sources = [ "virtio_balloon.cc" ]
+  deps = [ ":virtio" ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_balloon") {
+  deps = [
+    ":virtio_balloon_v1",
+    ":virtio_balloon_v2",
+  ]
+}
+
+fuchsia_component("virtio_balloon_v2") {
+  manifest = "../meta/virtio_balloon.cml"
+  deps = [ ":virtio_balloon_bin" ]
+  component_name = "virtio_balloon"
+}
+
+fuchsia_component("virtio_balloon_v1") {
+  manifest = "../meta/virtio_balloon.cmx"
+  deps = [ ":virtio_balloon_bin" ]
+  component_name = "virtio_balloon"
+}
+
+source_set("request_watchdog") {
+  visibility = [ ":*" ]
+
+  public = [ "request_watchdog.h" ]
+
+  public_deps = [
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+executable("request_watchdog_unittests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [ "request_watchdog_unittest.cc" ]
+
+  deps = [
+    ":request_watchdog",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-testing",
+  ]
+}
+
+fuchsia_unittest_package("request_watchdog_unittests_package") {
+  package_name = "request_watchdog_unittests"
+  deps = [ ":request_watchdog_unittests" ]
+}
+
+source_set("block") {
+  visibility = [ ":*" ]
+
+  sources = [
+    "block_dispatcher.cc",
+    "block_dispatcher.h",
+    "qcow.cc",
+    "qcow.h",
+    "request_queue.cc",
+    "request_queue.h",
+  ]
+  public_deps = [
+    ":lib",
+    "//sdk/fidl/fuchsia.io",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/storage/block_client/cpp",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/trace",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+executable("virtio_block_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_block"
+  sources = [ "virtio_block.cc" ]
+  deps = [
+    ":block",
+    ":request_watchdog",
+    ":virtio",
+  ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_block") {
+  deps = [
+    ":virtio_block_v1",
+    ":virtio_block_v2",
+  ]
+}
+
+fuchsia_component("virtio_block_v2") {
+  manifest = "../meta/virtio_block.cml"
+  deps = [ ":virtio_block_bin" ]
+  component_name = "virtio_block"
+}
+
+fuchsia_component("virtio_block_v1") {
+  manifest = "../meta/virtio_block.cmx"
+  deps = [ ":virtio_block_bin" ]
+  component_name = "virtio_block"
+}
+
+executable("virtio_console_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_console"
+  sources = [ "virtio_console.cc" ]
+  deps = [ ":virtio" ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_console") {
+  deps = [
+    ":virtio_console_v1",
+    ":virtio_console_v2",
+  ]
+}
+
+fuchsia_component("virtio_console_v2") {
+  manifest = "../meta/virtio_console.cml"
+  deps = [ ":virtio_console_bin" ]
+  component_name = "virtio_console"
+}
+
+fuchsia_component("virtio_console_v1") {
+  manifest = "../meta/virtio_console.cmx"
+  deps = [ ":virtio_console_bin" ]
+  component_name = "virtio_console"
+}
+
+executable("virtio_input_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_input"
+  sources = [ "virtio_input.cc" ]
+  deps = [ ":virtio" ]
+}
+
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_input") {
+  deps = [
+    ":virtio_input_v1",
+    ":virtio_input_v2",
+  ]
+}
+
+fuchsia_component("virtio_input_v2") {
+  manifest = "../meta/virtio_input.cml"
+  deps = [ ":virtio_input_bin" ]
+  component_name = "virtio_input"
+}
+
+fuchsia_component("virtio_input_v1") {
+  manifest = "../meta/virtio_input.cmx"
+  deps = [ ":virtio_input_bin" ]
+  component_name = "virtio_input"
+}
+
+executable("virtio_gpu_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_gpu"
+  sources = [
+    "gpu_resource.cc",
+    "gpu_resource.h",
+    "gpu_scanout.cc",
+    "gpu_scanout.h",
+    "guest_view.cc",
+    "guest_view.h",
+    "virtio_gpu.cc",
+  ]
+  deps = [
+    ":virtio",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/ui/base_view",
+    "//zircon/system/ulib/zxc",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_gpu") {
+  deps = [
+    ":virtio_gpu_v1",
+    ":virtio_gpu_v2",
+  ]
+}
+
+fuchsia_component("virtio_gpu_v2") {
+  manifest = "../meta/virtio_gpu.cml"
+  deps = [ ":virtio_gpu_bin" ]
+  component_name = "virtio_gpu"
+}
+
+fuchsia_component("virtio_gpu_v1") {
+  manifest = "../meta/virtio_gpu.cmx"
+  deps = [ ":virtio_gpu_bin" ]
+  component_name = "virtio_gpu"
+}
+
+source_set("magma_image") {
+  visibility = [ ":*" ]
+
+  sources = [
+    "magma_image.cc",
+    "magma_image.h",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/fidl/fuchsia.ui.composition:fuchsia.ui.composition_llcpp",
+    "//src/graphics/lib/magma/include:magma",
+    "//src/lib/fsl",
+    "//src/lib/vulkan",
+    "//third_party/mesa/include:drm-uapi",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/image-format:image-format-llcpp",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/syslog",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("virtio_magma_lib") {
+  visibility = [ ":*" ]
+
+  sources = [
+    "../bits.h",
+    "virtio_magma.cc",
+    "virtio_magma.h",
+  ]
+  deps = [
+    ":magma_image",
+    ":virtio",
+    "//src/graphics/lib/magma/include:magma",
+    "//src/graphics/lib/magma/include/virtio",
+    "//zircon/system/ulib/syslog",
+  ]
+  public_deps = [ ":virtio_magma_generic" ]
+
+  if (virtmagma_debug) {
+    defines = [ "VIRTMAGMA_DEBUG=1" ]
+  }
+}
+
+executable("virtio_magma_bin") {
+  visibility = [ ":*" ]
+  output_name = "virtio_magma"
+  deps = [
+    ":virtio_magma_lib",
+    "//src/graphics/lib/magma/src/libmagma",
+  ]
+}
+
+executable("virtio_magma_bin_mock_system") {
+  visibility = [ ":*" ]
+  testonly = true
+  output_dir = "$target_out_dir/virtio_magma_mock_system"
+  output_name = "virtio_magma"
+  deps = [
+    ":virtio_magma_lib",
+    "//src/graphics/lib/magma/tests/mock:magma_system",
+  ]
+}
+
+resource("virtio_magma_resources") {
+  sources = [ "${root_build_dir}/linux_x64-shared/libvulkan_intel.so" ]
+  outputs = [ "drivers/libvulkan_intel.so" ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_magma") {
+  deps = [
+    # TODO(fxbug.dev/13128): don't hard-code the driver
+    ":virtio_magma_resources",
+    ":virtio_magma_v1",
+    ":virtio_magma_v2",
+    "//third_party/mesa/src/intel/vulkan:vulkan_intel(//build/toolchain:linux_x64-shared)",
+  ]
+}
+
+fuchsia_component("virtio_magma_v2") {
+  manifest = "../meta/virtio_magma.cml"
+  deps = [ ":virtio_magma_bin" ]
+  component_name = "virtio_magma"
+}
+
+fuchsia_component("virtio_magma_v1") {
+  manifest = "../meta/virtio_magma.cmx"
+  deps = [ ":virtio_magma_bin" ]
+  component_name = "virtio_magma"
+}
+
+fuchsia_package_with_single_component("virtio_magma_mock_system") {
+  testonly = true
+  manifest = "../meta/virtio_magma.cmx"
+  deps = [ ":virtio_magma_bin_mock_system" ]
+}
+
+executable("virtio_wl_bin") {
+  visibility = [ ":*" ]
+
+  output_name = "virtio_wl"
+  sources = [
+    "../bits.h",
+    "virtio_wl.cc",
+    "virtio_wl.h",
+  ]
+
+  deps = [
+    ":virtio",
+    "//sdk/fidl/fuchsia.sysmem",
+    "//sdk/fidl/fuchsia.ui.composition",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+# TODO(fxbug.dev/72386)
+# CFv2 migration in progress
+# v2 component is being used in device tests
+# v1 component is being used in prod code
+fuchsia_package("virtio_wl") {
+  deps = [
+    ":virtio_wl_v1",
+    ":virtio_wl_v2",
+  ]
+}
+
+fuchsia_component("virtio_wl_v2") {
+  manifest = "../meta/virtio_wl.cml"
+  deps = [ ":virtio_wl_bin" ]
+  component_name = "virtio_wl"
+}
+
+fuchsia_component("virtio_wl_v1") {
+  manifest = "../meta/virtio_wl.cmx"
+  deps = [ ":virtio_wl_bin" ]
+  component_name = "virtio_wl"
+}
+
+executable("device_tests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [
+    "magma_image_test.cc",
+    "test_with_device.cc",
+    "test_with_device.h",
+    "virtio_balloon_test.cc",
+    "virtio_block_test.cc",
+    "virtio_console_test.cc",
+    "virtio_gpu_test.cc",
+    "virtio_input_test.cc",
+    "virtio_magma_test.cc",
+    "virtio_net_test.cc",
+    "virtio_queue_fake.cc",
+    "virtio_queue_fake.h",
+    "virtio_queue_test.cc",
+    "virtio_rng_test.cc",
+    "virtio_sound_test.cc",
+    "virtio_wl_unittest.cc",
+  ]
+
+  deps = [
+    ":lib",
+    ":magma_image",
+    "//sdk/fidl/fuchsia.hardware.network",
+    "//sdk/fidl/fuchsia.logger",
+    "//sdk/fidl/fuchsia.media",
+    "//sdk/fidl/fuchsia.net.interfaces",
+    "//sdk/fidl/fuchsia.net.virtualization",
+    "//sdk/fidl/fuchsia.netstack",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/fidl/fuchsia.tracing.provider",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.virtualization.hardware",
+    "//sdk/fidl/fuchsia.vulkan.loader",
+    "//sdk/lib/sys/component/cpp/testing:cpp",
+    "//sdk/lib/sys/cpp/testing:integration_fixture",
+    "//src/connectivity/lib/network-device/cpp",
+    "//src/graphics/drivers/msd-intel-gen/include:include",
+    "//src/graphics/lib/magma/include:magma",
+    "//src/graphics/lib/magma/include/virtio:headers",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/googletest:gmock",
+    "//third_party/mesa/include:drm-uapi",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+    "//zircon/system/ulib/virtio",
+  ]
+
+  configs += [ "//build/config:all_source" ]
+}
+
+fuchsia_unittest_package("device_tests_package") {
+  package_name = "device_tests"
+  manifest = "meta/device_tests.cml"
+  deps = [
+    ":device_tests",
+    ":wrapped_scenic",
+    "//src/ui/bin/hardware_display_controller_provider:fake-hardware-display-controller-provider-cmv2-component",
+  ]
+  test_specs = {
+    environments = guest_envs
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+fuchsia_component("wrapped_scenic") {
+  testonly = true
+  manifest = "meta/wrapped_scenic.cml"
+  deps = [ "//src/ui/scenic" ]
+}
+
+source_set("qcow_test_data") {
+  visibility = [ "//src/virtualization/*" ]
+  sources = [ "qcow_test_data.h" ]
+  public_deps = [ ":block" ]
+}
+
+executable("device_unittests") {
+  visibility = [ ":*" ]
+  testonly = true
+
+  sources = [
+    "qcow_unittest.cc",
+    "request_queue_unittest.cc",
+    "volatile_write_block_dispatcher_unittest.cc",
+  ]
+
+  deps = [
+    ":block",
+    ":qcow_test_data",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fxl/test:gtest_main",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+  ]
+}
+
+fuchsia_unittest_package("device_unittests_package") {
+  manifest = "meta/device_unittests.cml"
+  package_name = "device_unittests"
+  deps = [ ":device_unittests" ]
+  test_specs = {
+    log_settings = {
+      max_severity = "ERROR"
+    }
+  }
+}
+
+action("virtio_magma_generic") {
+  out_file = "$target_gen_dir/virtio_magma_generic.h"
+  script = "virtio_magma_generic_h_gen.py"
+  args = [
+    rebase_path("//src/graphics/lib/magma/include/magma/magma.json",
+                root_build_dir),
+    rebase_path(out_file, root_build_dir),
+  ]
+  sources = [ "$script" ]
+  inputs = [ "//src/graphics/lib/magma/include/magma/magma.json" ]
+  outputs = [ "$out_file" ]
+}

@@ -1,0 +1,18 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/rendezvous_exit",
+    },
+    use: [
+        {
+            protocol: [ "fidl.test.components.Trigger" ],
+        },
+    ],
+    expose: [
+        {
+            protocol: "fuchsia.component.Binder",
+            from: "framework",
+        },
+    ],
+}

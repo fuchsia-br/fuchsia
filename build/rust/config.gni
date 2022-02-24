@@ -1,0 +1,107 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/clang/clang.gni")
+import("//build/config/compiler.gni")
+import("//build/config/sysroot.gni")
+import("//build/fidl/toolchain.gni")
+
+default_rust_sysroot = "//prebuilt/third_party/rust/${host_platform}"
+
+default_rustc_prefix = "//prebuilt/third_party/rust/${host_platform}/bin"
+
+_rustc_version = read_file(
+        "//prebuilt/third_party/rust/${host_platform}/.versions/rust.cipd_version",
+        "json")
+default_rustc_version_string = _rustc_version.instance_id
+
+declare_args() {
+  # Sets a custom base directory for `rustc` and `cargo`.
+  # This can be used to test custom Rust toolchains.
+  rustc_prefix = default_rustc_prefix
+
+  # This is a string identifying the particular toolchain version in use.  Its
+  # only purpose is to be unique enough that it changes when switching to a new
+  # toolchain, so that recompilations with the new compiler can be triggered.
+  #
+  # When using the prebuilt, this is ignored and the CIPD instance ID of the
+  # prebuilt is used.
+  rustc_version_string = default_rustc_version_string
+
+  # Human-readable identifier for the toolchain version.
+  #
+  # TODO(tmandry): Make this the same repo/revision info from `rustc --version`.
+  # e.g., clang_version_description = read_file("$_rustc_lib_dir/VERSION")
+  rustc_version_description = ""
+
+  # Sets a custom base directory for where rust tooling
+  # looks for the standard library
+  rust_sysroot = default_rust_sysroot
+
+  # Sets the default LTO type for rustc bulids.
+  rust_lto = ""
+
+  # Sets the fuchsia toolchain target triple suffix (after arch)
+  rust_toolchain_triple_suffix = "fuchsia"
+
+  # Sets the maximum lint level.
+  # "deny" will make all warnings into errors, "warn" preserves them as warnings, and "allow" will
+  # ignore warnings.
+  rust_cap_lints = "deny"
+
+  # Enables generation of corresponding clippy targets for all `rustc_binary`,
+  # `rustc_library`, and `rustc_test` targets.
+  generate_clippy = true
+
+  # By default clippy is set to allow all lints, this flag will change it to
+  # warn on all. Note: setting lint levels in source takes precedence over this.
+  clippy_warn = false
+
+  # Makes clippy targets fail to build when any deny lints are found
+  clippy_cause_failure = true
+}
+
+if (rustc_prefix == default_rustc_prefix &&
+    rustc_version_string != default_rustc_version_string) {
+  # You almost never want to set this when using a prebuilt, it could result in
+  # failing to rebuild when the prebuilt updates.
+  print(
+      "WARNING: Using prebuilt toolchain, but rustc_version_string is set! Toolchain updates won't be detected.")
+}
+
+# rustc_prefix/rust_sysroot paths rebased to root_build_dir, useful in string
+# expansions that go into command arguments.
+rebased_rustc_prefix = rebase_path(rustc_prefix, root_build_dir)
+rebased_rust_sysroot = rebase_path(rust_sysroot, root_build_dir)
+
+if (is_fuchsia) {
+  rust_panic = "abort"
+} else {
+  # Always use panic=unwind on host, or proc macros won't work.
+  rust_panic = "unwind"
+}
+
+assert(
+    current_os == "mac" || current_os == "linux" || current_os == "fuchsia" ||
+        (current_os == "unknown" && current_cpu == "wasm32") ||
+        current_os == "win",
+    "current_os was neither mac, linux, unknown, nor fuchsia")
+assert(
+    current_cpu == "x64" || current_cpu == "arm64" || current_cpu == "wasm32")
+if (current_os == "mac") {
+  _suffix = "apple-darwin"
+} else if (current_os == "linux") {
+  _suffix = "unknown-linux-gnu"
+} else if (current_os == "win") {
+  _suffix = "windows-msvc"
+} else if (current_os == "fuchsia") {
+  _suffix = rust_toolchain_triple_suffix
+}
+if (current_cpu == "x64") {
+  rust_target = "x86_64-${_suffix}"
+} else if (current_cpu == "arm64") {
+  rust_target = "aarch64-${_suffix}"
+} else if (current_cpu == "wasm32" && current_os == "unknown") {
+  rust_target = "wasm32-unknown-unknown"
+}

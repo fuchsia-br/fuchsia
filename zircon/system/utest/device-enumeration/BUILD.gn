@@ -1,0 +1,37 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/test.gni")
+import("//build/testing/bootfs_test.gni")
+
+test("device-enumeration") {
+  output_name = "device-enumeration-test"
+  sources = [
+    "aemu.cc",
+    "aemu.h",
+    "main.cc",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.acpi:fuchsia.hardware.acpi_llcpp",
+    "//sdk/fidl/fuchsia.sysinfo:fuchsia.sysinfo_c",
+    "//sdk/lib/device-watcher/cpp",
+    "//sdk/lib/fdio",
+    "//src/lib/fsl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+bootfs_test("device-enumeration-bootfs-test") {
+  name = "device-enumeration-test"
+  deps = [ ":device-enumeration" ]
+}

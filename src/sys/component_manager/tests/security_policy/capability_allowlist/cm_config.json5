@@ -1,0 +1,36 @@
+{
+    debug: true,
+    security_policy: {
+        capability_policy: [
+            {
+                source_moniker: "/policy_service",
+                source: "component",
+                source_name: "test.policy.Restricted",
+                capability: "protocol",
+                target_monikers: ["/policy_allowed"]
+            },
+            {
+                source_moniker: "/dir_service",
+                source: "component",
+                source_name: "restricted",
+                capability: "directory",
+                target_monikers: ["/policy_allowed"]
+            }
+        ]
+    },
+    builtin_capabilities: [
+        {
+            protocol: [
+                "fuchsia.sys2.CrashIntrospect",
+                "fuchsia.sys2.EventSource",
+                "fuchsia.sys2.SystemController",
+                "fuchsia.sys2.WorkSchedulerControl",
+            ],
+        },
+        {
+            runner: "elf",
+        },
+    ],
+    builtin_pkg_resolver: "appmgr_bridge",
+    out_dir_contents: "hub",
+}

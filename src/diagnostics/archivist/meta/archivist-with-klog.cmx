@@ -1,0 +1,23 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "args": [
+            "--enable-component-event-provider",
+            "--enable-klog",
+            "--enable-log-connector",
+            "--install-controller",
+            "--config-path",
+            "/pkg/data/embedding-config.json"
+        ],
+        "binary": "bin/archivist"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.boot.ReadOnlyLog",
+            "fuchsia.sys.internal.ComponentEventProvider",
+            "fuchsia.sys.internal.LogConnector"
+        ]
+    }
+}

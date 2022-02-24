@@ -1,0 +1,107 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/dist/distribution_manifest.gni")
+import("//build/test.gni")
+
+# Generate a manifest providing all of the .fidl.json files exported by the
+# core SDK (and any other FIDL files we might want).
+action("generate_fidl_json") {
+  script = "generate_fidl_json.py"
+  generated_output = "$target_gen_dir/sdk_fidl_json.manifest"
+  inputs = [ "$root_gen_dir/sdk/core.fidl_json.txt" ]
+  outputs = [ "$generated_output" ]
+  depfile = "$target_gen_dir/$target_name.d"
+  testonly = true
+  deps = [
+    "//sdk:core",
+    "//sdk:core_fidl_json",
+    "//sdk/fidl/fuchsia.boot",
+    "//sdk/fidl/fuchsia.device.manager",
+    "//sdk/fidl/fuchsia.kernel",
+    "//sdk/fidl/fuchsia.power",
+    "//third_party/quickjs:qjs($host_toolchain)",
+  ]
+  args = [
+    "--out-file",
+    rebase_path("$generated_output", root_build_dir),
+    "--dep-file",
+    rebase_path(depfile, root_build_dir),
+    "@" + rebase_path("$root_gen_dir/sdk/core.fidl_json.txt", root_build_dir),
+    rebase_path(
+        "$root_build_dir/fidling/gen/sdk/fidl/fuchsia.device.manager/fuchsia.device.manager.fidl.json",
+        root_build_dir),
+    rebase_path(
+        "$root_build_dir/fidling/gen/sdk/fidl/fuchsia.power/fuchsia.power.fidl.json",
+        root_build_dir),
+    rebase_path(
+        "$root_build_dir/fidling/gen/sdk/fidl/fuchsia.kernel/fuchsia.kernel.fidl.json",
+        root_build_dir),
+    rebase_path(
+        "$root_build_dir/fidling/gen/sdk/fidl/fuchsia.boot/fuchsia.boot.fidl.json",
+        root_build_dir),
+  ]
+  metadata = {
+    # Don't pick up resources from SDK deps
+    distribution_entries_barrier = []
+  }
+}
+
+distribution_entries_file("fidl_json") {
+  testonly = true
+  deps = [ ":generate_fidl_json" ]
+  file = get_target_outputs(deps[0])
+  file = file[0]
+}
+
+fuchsia_test_component("josh-tests-component") {
+  component_name = "josh_tests_bin"
+  manifest = "meta/josh_tests_bin.cmx"
+  deps = [ "//src/developer/shell/josh:josh_tests_bin" ]
+}
+
+fuchsia_test_package("josh-tests") {
+  test_components = [ ":josh-tests-component" ]
+  deps = [
+    ":fidl_json",
+    "josh/lib:js_libs",
+    "//src/developer/shell/josh:bin",
+    "//src/developer/shell/josh/lib:spawn_child_test_util",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    ":josh-tests",
+    "console:shell-console-unittests",
+    "interpreter:shell_server",
+    "interpreter:tests",
+    "mirror:shell-mirror-tests",
+    "parser:shell-parser-unittests",
+  ]
+}
+
+# "josh" is Javascript Object SHell.
+fuchsia_shell_package("josh") {
+  # TODO(jeremymanson): This is only testonly because sdk:core is.  We should undo that.
+  testonly = true
+  deps = [
+    ":fidl_json",
+    "josh/lib:js_libs",
+    "//src/developer/shell/josh:bin",
+  ]
+}
+
+# "cliff" is the CLI For Fuchsia.  Need a better name.
+fuchsia_shell_package("cliff") {
+  # TODO(jeremymanson): This is only testonly because sdk:core is.  We should undo that.
+  testonly = true
+  deps = [
+    ":fidl_json",
+    "//src/developer/shell/console:bin",
+  ]
+}

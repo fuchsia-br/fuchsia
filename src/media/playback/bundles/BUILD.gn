@@ -1,0 +1,26 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("services") {
+  deps = [ "//src/media/playback/mediaplayer" ]
+}
+
+group("tools") {
+  testonly = true
+  deps = []
+}
+
+group("examples") {
+  testonly = true
+  deps = [ "//src/media/playback/examples" ]
+}
+
+group("config") {
+  testonly = true
+  deps = [ "//src/media/playback/mediaplayer:player_config" ]
+}
+
+group("audio_consumer_config") {
+  deps = [ "//src/media/playback/mediaplayer:audio_consumer_config" ]
+}

@@ -1,0 +1,67 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+rustc_binary("bin") {
+  edition = "2018"
+  name = "weave_ip_forward"
+  sources = [ "src/main.rs" ]
+  deps = [
+    "//sdk/fidl/fuchsia.net:fuchsia.net-rustc",
+    "//sdk/fidl/fuchsia.net.interfaces:fuchsia.net.interfaces-rustc",
+    "//sdk/fidl/fuchsia.net.stack:fuchsia.net.stack-rustc",
+    "//src/connectivity/lib/fidl_fuchsia_net_stack_ext",
+    "//src/connectivity/lib/net-declare",
+    "//src/connectivity/network/testing/netemul/lib/fidl:sync-rustc",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/network/fidl_fuchsia_net_interfaces_ext",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:prettytable-rs",
+    "//third_party/rust_crates:structopt",
+  ]
+}
+
+fuchsia_component("weave-ip-forward") {
+  testonly = true
+  manifest = "meta/weave_ip_forward.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("weave-ip-fwd-test-wpan-subnet-6") {
+  testonly = true
+  manifest = "meta/weave_ip_fwd_test_wpan_subnet_6.cmx"
+  deps = [ ":weave-ip-forward" ]
+}
+
+fuchsia_component("weave-ip-fwd-test-wpan-non-subnet-6") {
+  testonly = true
+  manifest = "meta/weave_ip_fwd_test_wpan_non_subnet_6.cmx"
+  deps = [ ":weave-ip-forward" ]
+}
+
+fuchsia_test_package("weave-ip-fwd-tests") {
+  package_deps_for_infra_only = [
+    "//src/connectivity/network/testing/netemul/runner:netemul-sandbox",
+    "//src/connectivity/network/testing/netemul/runner/runner:netemul-runner",
+    "//src/diagnostics/archivist:archivist-for-embedding",
+  ]
+  test_components = [ ":weave-ip-fwd-test-wpan-non-subnet-6" ]
+  deps = [
+    # netstack is under test.
+    "//src/connectivity/network/netstack:component-debug-legacy",
+
+    # netstack-cfg is used to set up test environments.
+    "//src/connectivity/network/testing/netemul/runner:netstack-cfg",
+
+    # TODO(jiamingw): figure out what this test should be doing and move it back to test_components.
+    ":weave-ip-fwd-test-wpan-subnet-6",
+  ]
+}

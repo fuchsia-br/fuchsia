@@ -1,0 +1,60 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/zircon/zx_library.gni")
+
+declare_args() {
+  # Enable backwards compatible fit namespace and include path.
+  fit_promise_compat = true
+}
+
+zx_library("fit-promise") {
+  sdk = "source"
+  sdk_publishable = true
+
+  sdk_headers = [
+    "lib/fpromise/barrier.h",
+    "lib/fpromise/bridge.h",
+    "lib/fpromise/bridge_internal.h",
+    "lib/fpromise/promise.h",
+    "lib/fpromise/promise_internal.h",
+    "lib/fpromise/result.h",
+    "lib/fpromise/scheduler.h",
+    "lib/fpromise/scope.h",
+    "lib/fpromise/sequencer.h",
+    "lib/fpromise/single_threaded_executor.h",
+  ]
+
+  if (fit_promise_compat) {
+    sdk_headers += [
+      "lib/fit/barrier.h",
+      "lib/fit/bridge.h",
+      "lib/fit/promise.h",
+      "lib/fit/result.h",
+      "lib/fit/scheduler.h",
+      "lib/fit/scope.h",
+      "lib/fit/sequencer.h",
+      "lib/fit/single_threaded_executor.h",
+    ]
+  }
+
+  sources = [
+    "barrier.cc",
+    "promise.cc",
+    "scheduler.cc",
+    "scope.cc",
+    "sequencer.cc",
+    "single_threaded_executor.cc",
+  ]
+
+  public_deps = [
+    "//sdk/lib/fit",
+    "//sdk/lib/stdcompat",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "tests" ]
+}

@@ -1,0 +1,80 @@
+# Copyright 2020 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/toolchain/toolchain_environment.gni")
+import("//build/toolchain/variant.gni")
+
+# This has to be variant() rather than config() to be used in the toolchain
+# configs list.
+variant("strict-align") {
+  cflags = [ "-mstrict-align" ]
+}
+
+if (toolchain_environment == "kernel.phys") {
+  source_set("address-space") {
+    sources = [ "address-space.cc" ]
+    include_dirs = [ "//." ]
+    deps = [
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/boot-options",
+      "//zircon/kernel/phys:allocation",
+      "//zircon/kernel/phys:page-table",
+      "//zircon/kernel/phys/lib/memalloc",
+      "//zircon/kernel/phys/lib/page-table",
+      "//zircon/system/ulib/zbitl",
+    ]
+  }
+
+  static_library("phys") {
+    sources = [
+      "exception.S",
+      "psci.S",
+      "psci.cc",
+      "reset.cc",
+      "setup.cc",
+      "shadow-call-stack.S",
+      "start.S",
+    ]
+    include_dirs = [ "//zircon/.." ]
+    deps = [
+      "//zircon/kernel/lib/arch",
+      "//zircon/kernel/lib/boot-options",
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/lib/libc",
+      "//zircon/kernel/phys:main",
+      "//zircon/kernel/phys:stdio",
+      "//zircon/kernel/phys:symbolize",
+      "//zircon/system/ulib/zbitl",
+    ]
+  }
+
+  config("qemu.config") {
+    # Like ZBI executables, direct QEMU phys executables can be loaded
+    # anywhere, so they are linked at 0.
+    configs = [ "//zircon/kernel/phys:load-pic" ]
+  }
+
+  source_set("linuxboot") {
+    sources = [ "linuxboot-header.S" ]
+    deps = [ "//zircon/kernel/lib/arch" ]
+    libs = [ "./linuxboot.ld" ]
+  }
+
+  source_set("arch-handoff-prep") {
+    sources = [ "arch-handoff-prep-zbi.cc" ]
+    deps = [
+      "//zircon/kernel/lib/ktl",
+      "//zircon/kernel/phys:handoff",
+      "//zircon/kernel/phys:handoff-prep.h",
+    ]
+    include_dirs = [ "//zircon/kernel/phys" ]
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = []
+}

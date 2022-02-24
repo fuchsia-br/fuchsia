@@ -1,0 +1,18 @@
+{
+    include: [
+        "//src/sys/test_runners/gtest/default.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "test/external_decompressor_integration",
+    },
+    use: [
+        {
+            protocol: [
+                "fuchsia.blobfs.internal.DecompressorCreator",
+                "fuchsia.process.Launcher",
+            ],
+        },
+    ],
+}

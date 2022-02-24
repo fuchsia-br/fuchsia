@@ -1,0 +1,27 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/audio_core"
+    },
+    "sandbox": {
+        "dev": [
+            "class/audio-input",
+            "class/audio-output"
+        ],
+        "features": [
+            "config-data",
+            "isolated-persistent-storage",
+            "isolated-temp"
+        ],
+        "services": [
+            "fuchsia.audio.effects.ProcessorCreator",
+            "fuchsia.cobalt.LoggerFactory",
+            "fuchsia.media.audio.EffectsController",
+            "fuchsia.scheduler.ProfileProvider",
+            "fuchsia.thermal.Controller",
+            "fuchsia.tracing.provider.Registry"
+        ]
+    }
+}

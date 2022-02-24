@@ -1,0 +1,65 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("lib") {
+  testonly = true
+  deps = [
+    "async-generator",
+    "blobfs",
+    "bounded-node",
+    "epoch",
+    "event-queue",
+    "far:lib",
+    "fidl-fuchsia-update-ext",
+    "fidl-fuchsia-update-installer-ext",
+    "forced-fdr",
+    "fuchsia-hash",
+    "fuchsia-merkle",
+    "fuchsia-pkg",
+    "fuchsia-pkg-testing",
+    "isolated-ota",
+    "isolated-swd",
+    "omaha-client",
+    "package-directory",
+    "pkgfs",
+    "repo",
+    "system-image",
+    "update-package",
+    "version",
+    "version-history",
+    "work-queue",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "async-generator:tests",
+    "blobfs:tests",
+    "bounded-node:tests",
+    "epoch:tests",
+    "event-queue:tests",
+    "far:tests",
+    "fidl-fuchsia-update-ext:tests",
+    "fidl-fuchsia-update-installer-ext:tests",
+    "forced-fdr:tests",
+    "fuchsia-hash:tests",
+    "fuchsia-merkle:tests",
+    "fuchsia-pkg:tests",
+    "fuchsia-pkg-testing:tests",
+    "isolated-swd:tests",
+    "merkle:tests",
+    "omaha-client:tests",
+    "package-directory:tests",
+    "pkgfs:tests",
+    "repo:tests",
+    "sse:tests",
+    "system-image:tests",
+    "tuf:tests",
+    "update-package:tests",
+    "version:tests",
+    "version-history:tests",
+    "work-queue:tests",
+  ]
+}

@@ -1,0 +1,57 @@
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.gpio;
+
+using zx;
+
+/// Flags for `ConfigIn`.
+type GpioFlags = strict enum : uint32 {
+    PULL_DOWN = 0x0;
+    PULL_UP = 0x1;
+    NO_PULL = 0x2;
+    PULL_MASK = 0x3;
+};
+
+protocol Gpio {
+    /// Configures a GPIO for input.
+    ConfigIn(struct {
+        flags GpioFlags;
+    }) -> (struct {}) error zx.status;
+
+    /// Configures a GPIO for output.
+    ConfigOut(struct {
+        initial_value uint8;
+    }) -> (struct {}) error zx.status;
+
+    /// Reads the current value of a GPIO (0 or 1).
+    Read() -> (struct {
+        value uint8;
+    }) error zx.status;
+
+    /// Sets the current value of the GPIO (any non-zero value maps to 1).
+    Write(struct {
+        value uint8;
+    }) -> (struct {}) error zx.status;
+
+    /// Sets the drive strength of the GPIO.
+    /// actual_ds_ua is always >= ds_ua. If ds_ua is larger than max value, the drive strength will be set to the max value.
+    /// Return error if unable to set drive strength. actual_ds_ua is not set in this case.
+    SetDriveStrength(struct {
+        ds_ua uint64;
+    }) -> (struct {
+        actual_ds_ua uint64;
+    }) error zx.status;
+
+    /// Gets an interrupt object pertaining to a particular GPIO pin. `flags`
+    /// is passed as the `options` parameter when
+    /// [creating the interrupt](https://fuchsia.dev/fuchsia-src/reference/syscalls/interrupt_create).
+    GetInterrupt(struct {
+        flags uint32;
+    }) -> (resource struct {
+        irq zx.handle:INTERRUPT;
+    }) error zx.status;
+
+    /// Release the interrupt.
+    ReleaseInterrupt() -> (struct {}) error zx.status;
+};

@@ -1,0 +1,39 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("util") {
+  testonly = true
+  deps = [ ":mdns-util" ]
+}
+
+fuchsia_shell_package("mdns-util") {
+  deps = [ ":bin" ]
+}
+
+executable("bin") {
+  output_name = "mdns-util"
+
+  sources = [
+    "formatting.cc",
+    "formatting.h",
+    "main.cc",
+    "mdns_impl.cc",
+    "mdns_impl.h",
+    "mdns_params.cc",
+    "mdns_params.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.net.mdns",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/fostr",
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+  ]
+}

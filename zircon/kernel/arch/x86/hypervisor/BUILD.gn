@@ -1,0 +1,33 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+source_set("hypervisor") {
+  sources = [
+    "guest.cc",
+    "pv.cc",
+    "vcpu.cc",
+    "vmexit.cc",
+    "vmx.S",
+    "vmx_cpu_state.cc",
+  ]
+  deps = [
+    ":tests",
+    "//zircon/kernel/arch/x86:headers",
+    "//zircon/kernel/hypervisor:headers",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/platform/pc",
+    "//zircon/system/ulib/explicit-memory",
+  ]
+}
+
+source_set("tests") {
+  # TODO: testonly = true
+  sources = [ "vmx_test.cc" ]
+  deps = [
+    "//zircon/kernel/hypervisor:headers",
+    "//zircon/kernel/lib/unittest",
+  ]
+}

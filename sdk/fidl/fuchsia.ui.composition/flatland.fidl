@@ -1,0 +1,865 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.ui.composition;
+
+using fuchsia.math;
+using fuchsia.scenic.scheduling;
+using fuchsia.ui.pointer;
+using fuchsia.ui.views;
+using zx;
+
+/// The set of error codes returned in [`OnError`]. Everything except NO_ERROR, causes Flatland
+/// channel to be closed.
+type FlatlandError = strict enum {
+    /// Indicates that the parameters used the function calls are invalid.
+    BAD_OPERATION = 1;
+    /// Indicates that `additional_present_credits` field was not properly processed and the client
+    /// queued more [`Present`]s than allowed.
+    NO_PRESENTS_REMAINING = 2;
+    /// Indicates that the client has overwritten hanging gets in the protocols returned.
+    BAD_HANGING_GET = 3;
+};
+
+type Orientation = strict enum {
+    CCW_0_DEGREES = 1;
+    CCW_90_DEGREES = 2;
+    CCW_180_DEGREES = 3;
+    CCW_270_DEGREES = 4;
+};
+
+/// The set of possible blending functions to choose from when determining how an image should
+/// be composited on top of other images.
+type BlendMode = strict enum {
+    /// Indicates that the source pixels replace the destination pixels. In other words,
+    /// the source pixels are treated as opaque, regardless of what alpha values are set.
+    SRC = 1;
+    /// The source pixels are drawn over the destination pixels. The final pixel color
+    /// that is displayed is calculated as: C_src + (1.0 - alpha_src) * C_dst).
+    SRC_OVER = 2;
+};
+
+type ColorRgba = struct {
+    red float32;
+    green float32;
+    blue float32;
+    alpha float32;
+};
+
+/// The return type of [`GetLayout`]. This table contains most of the information necessary
+/// for a client to decide how to layout their content in a Flatland instance. This data may be
+/// provided to the client before the command that creates the View is presented, so that the
+/// client may lay out content properly before their first call to [`Present`].
+type LayoutInfo = table {
+    /// The layout size of a View in logical pixels, defined by the parent's call to
+    /// [`SetViewportProperties`]. Clients should re-layout their content when this value changes.
+    1: logical_size fuchsia.math.SizeU;
+    /// The ratio from physical display pixels to logical pixels, defined by the sizes and scale
+    /// transforms of the parent: each logical pixel is displayed on-screen by one or more physical
+    /// pixels, as determined by this scale.  Clients should not necessarily re-layout their content
+    /// when this value changes.
+    2: pixel_scale fuchsia.math.SizeU;
+};
+
+/// ParentViewportWatchers will be informed when they are actively attached to a output display
+/// (either directly, or through a chain of parent Viewports) and when they are not. Until they are
+/// connected to a display, some pieces of information (such as pixel scale) may be unavailable.
+type ParentViewportStatus = strict enum {
+    CONNECTED_TO_DISPLAY = 1;
+    DISCONNECTED_FROM_DISPLAY = 2;
+};
+
+/// A protocol that provides information about the parent Viewport attached to a Flatland instance's
+/// sole View.  Although Flatland instances can have at most one view, it is possible to have
+/// multiple ParentViewportWatchers during the brief transition period when replacing the instance's
+/// View with another, e.g. via [`CreateView`].  During this period, certain updates may be
+/// duplicated and sent to each ParentViewportWatcher connection.
+///
+/// A ParentViewportWatcher will remain connected as long as the corresponding parent Viewport
+/// exists; the connection will also be closed if the parents's ViewportCreationToken is dropped
+/// without using it to create a Viewport.
+protocol ParentViewportWatcher {
+    /// A hanging get for receiving layout information. Clients may receive layout information
+    /// before the ParentViewportWatcher operation has been presented. This allows children to
+    /// layout their content before their first call to [`Present`]. In transition cases where two
+    /// ParentViewportWatcher channels exist at the same time, both protocol instances will be
+    /// receiving different layout information.
+    ///
+    /// This hanging get will only fire when the LayoutInfo is different than the previously
+    /// returned LayoutInfo. Note that, since LayoutInfo is a table, only some fields may have
+    /// changed.
+    ///
+    /// It is invalid to call `GetLayout` while a previous call is still pending. Doing so will
+    /// cause both this channel and the Flatland channel that handed out ParentViewportWatcher to be
+    /// closed.
+    GetLayout() -> (struct {
+        info LayoutInfo;
+    });
+
+    /// A hanging get for receiving the status of the parent Viewport. This provides global
+    /// connectivity information to the child.
+    ///
+    /// This hanging get will only fire when the ParentViewportStatus is different than the
+    /// previously returned ParentViewportStatus.
+    ///
+    /// It is invalid to call `GetStatus` while a previous call is still pending. Doing so will
+    /// cause both this channel and the Flatland channel that handed out ParentViewportWatcher to be
+    /// closed.
+    GetStatus() -> (struct {
+        status ParentViewportStatus;
+    });
+};
+
+type ChildViewStatus = strict enum {
+    /// The underlying Flatland instance has connected its View, called [`Present`], and the
+    /// acquisition fences of the [`Present`] call have all be reached, indicating that it has some
+    /// content ready to be displayed, and NOT that the child content has actually been shown on the
+    /// screen (a common use case is for the parent to wait for the child content to be ready before
+    /// attaching the child to the global scene graph).
+    // TODO(fxbug.dev/87800): rename to CONTENT_IS_AVAILABLE.
+    CONTENT_HAS_PRESENTED = 1;
+};
+
+/// A protocol that provides information about a particular child View which is attached to the
+/// Viewport owned by the parent client; connections to this protocol are estabished in
+/// [`CreateViewport`].  Since a Flatland instance may contain any number of Viewports, each of
+/// which may or may not be attached to a transform, the client can maintain connections to an
+/// equal number of ChildViewWatcher instances.
+///
+/// Each ChildViewWatcher instance will remain connected as long as the corresponding child View
+/// exists; the connection will also be closed if the child's ViewCreationToken is dropped without
+/// using it to create a View.
+protocol ChildViewWatcher {
+    /// A hanging get for receiving the status of a View. This provides information to the parent,
+    /// such as whether or not the child has successfully presented content through this View.
+    ///
+    /// This hanging get will only fire when the ChildViewStatus is different than the previously
+    /// returned ChildViewStatus.  This can happen immediately, and even if the creator of the
+    /// Viewport hasn't yet called Present() after calling CreateViewport().  This allows the parent
+    /// to know that the child has content ready to display before the parent modifies their own
+    /// local scene graph to incorporate the child content.
+    ///
+    /// It is invalid to call `GetStatus` while a previous call is still pending. Doing so will
+    /// cause both this channel and the Flatland channel that handed out ChildViewWatcher to be
+    /// closed.
+    GetStatus() -> (struct {
+        status ChildViewStatus;
+    });
+
+    /// Hanging get to receive the ViewRef of the child View. This will only fire when the View ref
+    /// is different from the previously-returned View ref. Note: currently the View ref will not
+    /// change after it is first received, but this will change if/when the API changes to allow
+    /// relinking of views.
+    ///
+    /// The ViewRef is not returned until the View is included in the View tree, in other words when
+    /// there is a chain of ancestor transforms all the way back up to the root of the scene graph,
+    /// i.e. the display.
+    ///
+    /// It is invalid to call `GetViewRef` while a previous call is still pending. Doing so will
+    /// cause both this channel and the Flatland channel that handed out ChildViewWatcher to be
+    /// closed.
+    ///
+    /// A `GetViewRef` call will hang if the View was created using `CreateView`, but returns the
+    /// View if the View was created using CreateView2. This is because `CreateView` does not mint
+    /// a ViewRef for that View.
+    GetViewRef() -> (resource struct {
+        view_ref fuchsia.ui.views.ViewRef;
+    });
+};
+
+/// The properties of a Viewport as defined by the parent. This data, along with the set of attached
+/// Transforms, will be used to compute the LayoutInfo for the View of the Viewport.
+/// `ViewportProperties` must have `logical_size` set at least once. This is the initial size that
+/// will drive the layout of the child.
+type ViewportProperties = table {
+    /// The size of the Viewport in logical pixels. This maps directly to the logical_size field in
+    /// LayoutInfo.
+    1: logical_size fuchsia.math.SizeU;
+};
+
+/// The properties of an Image as defined by the client. These properties determine how an Image
+/// uses the backing BufferCollection. See [`CreateImage`] for more information.
+type ImageProperties = table {
+    /// The size of the Image in pixels.
+    1: size fuchsia.math.SizeU;
+};
+
+/// A user-defined identifier for a particular transform. See [`CreateTransform`] and
+/// [`ReleaseTransform`] for more information.
+type TransformId = struct {
+    value uint64;
+};
+
+/// A user-defined identifier for a particular piece of Content. See Content creation functions
+/// (e.g. [`CreateViewport`], [`CreateImage`]) for more information.
+type ContentId = struct {
+    value uint64;
+};
+
+// A maximum of 16 fences is enough for the current usage of these APIs.
+const MAX_PRESENT_ARGS_FENCE_COUNT int32 = 16;
+// TODO(fxbug.dev/85551): delete.
+const MAX_ACQUIRE_RELEASE_FENCE_COUNT int32 = 16;
+
+/// Arguments passed into [`Present`]. All arguments are optional, and if an
+/// argument is omitted Flatland will use a reasonable default, specified below.
+type PresentArgs = resource table {
+    /// `requested_presentation_time` specifies the time on or after which the client would like the
+    /// enqueued operations to take visible effect (light up pixels on the screen), expressed in
+    /// nanoseconds in the `CLOCK_MONOTONIC` timebase.
+    ///
+    /// The default `requested_presentation_time` is 0.
+    ///
+    /// Using a `requested_presentation_time` in the present or past (such as 0) schedules enqueued
+    /// operations to take visible effect as soon as possible, during the next frame to be prepared.
+    ///
+    /// Using a `requested_presentation_time` in the future schedules the enqueued operations to
+    /// take visible effect on or as closely as possible after the stated time, but no earlier.
+    ///
+    /// Each rendered frame has a target presentation time. This is when Flatland aims to have the
+    /// frame presented to the user. Before rendering a frame, Flatland applies all
+    /// enqueued operations associated with all squashable calls to [`Present`] whose
+    /// `requested_presentation_time` is on or before the frame's target presentation time.
+    ///
+    1: requested_presentation_time zx.time;
+
+    /// Flatland will wait until all of a Flatland instance's `acquire_fences` are ready before it
+    /// will execute the presented commands. Not signaling `acquire_fences` will block the current
+    /// [`Present`] as well as the following ones even if their `acquire_fences` are signaled.
+    ///
+    /// The default `acquire_fences` value is the empty vector.
+    // TODO(fxbug.dev/85551): delete.
+    2: acquire_fences vector<zx.handle:EVENT>:MAX_PRESENT_ARGS_FENCE_COUNT;
+
+    /// Flatland will signal all `release_fences` when the resources and shared buffers from this
+    /// [`Present`] are no longer in use. Callers should not modify shared resources, such as
+    /// BufferCollections, until after these fences are signaled.
+    ///
+    /// If an error occurs, release fences are not necessarily fired as Flatland can close the
+    /// client's instance at any point.
+    ///
+    /// The default `release_fences` value is the empty vector.
+    // TODO(fxbug.dev/85551): delete.
+    3: release_fences vector<zx.handle:EVENT>:MAX_PRESENT_ARGS_FENCE_COUNT;
+
+    /// If `unsquashable` is true, then the update is guaranteed to be uniquely shown for at
+    /// least one vsync interval.
+    ///
+    /// If `unsquashable` is false, then the update can be combined with those that come after
+    /// it.
+    ///
+    /// If absent, `unsquashable` is false.
+    4: unsquashable bool;
+
+    /// Flatland will wait until all of a Flatland instance's `server_wait_fences` are ready before
+    /// it will execute the presented commands. Not signaling `server_wait_fences` will block the
+    /// current [`Present`] as well as the following ones even if their `server_wait_fences` are
+    /// signaled.
+    ///
+    /// The default `server_wait_fences` value is the empty vector.
+    // TODO(fxbug.dev/85551): change ordinal to 2.
+    5: server_wait_fences vector<zx.handle:EVENT>:MAX_PRESENT_ARGS_FENCE_COUNT;
+
+    /// (read this one carefully, it may be counter-intuitive)
+    ///
+    /// Flatland will signal all `server_signal_fences` when the resources and shared buffers from
+    /// *the previous* [`Present`] are no longer in use. Callers should not modify shared resources,
+    /// such as BufferCollections, until after these fences are signaled. Otherwise, there may be
+    /// graphical artifacts such as tearing, caused by the client modifying content which is still
+    /// visible on screen.
+    ///
+    /// The following example explains why the fences correspond to the previous frame's resources,
+    /// not the current frame.  Consider an app which uses a separate image for a pop-up dialog,
+    /// which will disappear immediately if the user taps elsewhere.  The app cannot tell whether
+    /// the image will be removed next frame because, if this happens, it will be due to user input
+    /// which has not yet occurred.  Since the image will probably continue to be presented next
+    /// frame, it wouldn't make sense to provide a fence this frame.
+    ///
+    /// If an error occurs, Flatland may close the channel without signaling these fences.  Clients
+    /// may immediately release shared buffers, but they should not immediately modify such buffers,
+    /// because they may still be displayed on screen.  There is currently no good signal available
+    /// to the client about when it is safe to reuse shared buffers.
+    ///
+    /// The default `server_signal_fences` value is the empty vector.
+    // TODO(fxbug.dev/85551): change ordinal to 3.
+    // TODO(fxbug.dev/85563): when fixed, update documentation re: when it is safe to modify buffers
+    //                        upon channel closure.
+    6: server_signal_fences vector<zx.handle:EVENT>:MAX_PRESENT_ARGS_FENCE_COUNT;
+};
+
+/// A user-defined identifier for future presentation info. A maximum of 8
+/// future presentation counts is enough for the current usage of these APIs.
+alias FuturePresentationInfos = vector<fuchsia.scenic.scheduling.PresentationInfo>:8;
+
+/// Fields that a client needs in order to produce its next frame, returned in
+/// [`OnNextFrameBegin`]. Each field is guaranteed to be  set and contain valid information.
+type OnNextFrameBeginValues = table {
+    /// The number of *additional* [`Present`] calls allowed to the client so that they
+    /// can call [`Present`] further times. This is a delta in the present
+    /// credit budget, not the absolute number of present credits.
+    1: additional_present_credits uint32;
+    /// Information about future presentation and latch times that a client may aim for
+    /// precise scheduling behavior.
+    2: future_presentation_infos FuturePresentationInfos;
+};
+
+/// The protocol endpoints bound to a Flatland ViewCreationToken. These protocols operate on the
+/// View that ViewCreationToken created in the Flatland session.
+type ViewBoundProtocols = resource table {
+    /// Learn when a View gains focus.
+    ///
+    /// Server-bound ViewRef. The [`view_ref_focused`] client does not specify the ViewRef
+    /// explicitly; instead, the server implementation uses the ViewRef used in View creation for
+    /// reporting focus movement on/off this View.
+    1: view_ref_focused server_end:fuchsia.ui.views.ViewRefFocused;
+
+    /// Enable a View to request focus transfer to a child (target) View.
+    ///
+    /// Server-bound ViewRef. The [`view_focuser`] client does not specify the "requestor" ViewRef
+    /// explicitly, only the "target" ViewRef. Instead, the server implementation uses the ViewRef
+    /// used in View creation as the "requestor" ViewRef.
+    2: view_focuser server_end:fuchsia.ui.views.Focuser;
+
+    /// Receive touch events that are associated with a View.
+    3: touch_source server_end:fuchsia.ui.pointer.TouchSource;
+
+    /// Receive mouse events that are associated with a View.
+    4: mouse_source server_end:fuchsia.ui.pointer.MouseSource;
+};
+
+/// A maximum of 64 hit regions is enough for the expected usage of these APIs.
+const MAX_HIT_REGION_COUNT int32 = 64;
+
+/// The kind of hit test interaction expected for a hit region.
+type HitTestInteraction = flexible enum : uint8 {
+    /// The natural default behavior is for a hit region to interact with both regular hit testing
+    /// and accessibility hit testing.
+    DEFAULT = 0;
+
+    /// Some use cases require that a hit region to interact with regular hit testing, but not
+    /// interact with accessibility hit testing. Here, "semantics" refers to accessibility's
+    /// semantic tree data, which describes UI elements in a View.
+    SEMANTICALLY_INVISIBLE = 1;
+};
+
+/// An interactive area of a View, placed in the coordinate space of a specific Transform.
+type HitRegion = struct {
+    /// The position and size of this hit region, in the coordinate space of the Transform that owns
+    /// this hit region.
+    region fuchsia.math.RectF;
+
+    /// The interaction behavior specified for this hit region.
+    /// To specify "no interaction at all", remove this hit region from the owning Transform.
+    hit_test HitTestInteraction;
+};
+
+/// Each Flatland instance contains a Graph, which consists of a set of objects, and the
+/// relationships between those objects. The client can specify a subset of those objects
+/// (specifically, the directed acyclic graph starting at the root transform) to be presented as
+/// content to some kind of output -- usually, a display.
+///
+/// Flatland Graphs are both hierarchical, and distributed. Graphs from different Flatland instances
+/// may be connected together, allowing multiple processes to be involved in authoring content for a
+/// particular output.
+///
+/// All functions in this protocol are feed-forward. The operations they represent are not fully
+/// executed until [`Present`] is called.
+@discoverable
+protocol Flatland {
+    /// Complete execution of all feed-forward operations.
+    ///
+    /// If executing an operation produces an error (e.g., CreateTransform(0)), an [`OnError`] event
+    /// is emitted. Operations that produce errors are ignored and the channel is closed.
+    ///
+    /// If the execution is completed successfully, [`OnNextFrameBegin`] emits NO_ERROR along
+    /// with other valid fields.
+    ///
+    /// The client may only call [`Present`] when they have a non-zero number of present credits,
+    /// which are tracked by the server. The server may increment the number of credits when it
+    /// fires the [`OnNextFrameBegin`] event, which informs the client when it receives additional
+    /// present credits. Each [`Present`] call uses one present credit and decrements the server
+    /// count by one. If the client calls [`Present`] with no present credits, the server will
+    /// return a `NO_PRESENTS_REMAINING` error.
+    ///
+    /// The client should assume that prior to receiving any [`OnNextFrameBegin`] events, they have
+    /// one present credit.
+    ///
+    /// Every [`Present`] call results in one [`OnNextFrameBegin`] event, and one
+    /// [`OnFramePresented`] event, typically in that order.
+    ///
+    /// When the commands flushed by [`Present`] make it to display, an [`OnFramePresented`] event
+    /// is fired. This event includes information pertaining to all [`Present`]s that had content
+    /// that were part of that frame.
+    ///
+    /// See [`fuchsia.ui.composition/PresentArgs`] documentation above for more detailed information
+    /// on what arguments are passed in and their role.
+    Present(resource struct {
+        args PresentArgs;
+    });
+
+    /// This event is fired when clients should expect minimal resource contention. Clients may use
+    /// the timing of this event to begin their rendering work, using the information returned to
+    /// inform their scheduling decisions.
+    ///
+    /// Importantly, OnNextFrameBegin is only fired when the client has one or more present credits,
+    /// including what is returned in this event. It is therefore safe to present once every time
+    /// this event fires.
+    ///
+    /// - response `values` the table of information a client needs to produce its next frame. See
+    /// [`OnNextFrameBeginValues`] for more information.
+    -> OnNextFrameBegin(struct {
+        values OnNextFrameBeginValues;
+    });
+
+    /// This event is fired whenever a set of one or more [`Present`]s are presented simultaneously,
+    /// and are therefore no longer in flight.
+    ///
+    /// This event signifies that the commands enqueued before the [`Present`] have taken effect in
+    /// the scene graph, and are globally visible.
+    ///
+    /// Clients do NOT have to implement a handler for this event for basic frame scheduling, unless
+    /// they explicitly want feedback on prior frame presentation. All future frame information is
+    /// given in the [`OnNextFrameBegin`] event.
+    ///
+    /// TODO(fxbug.dev/63305): remove `num_presents_allowed` from this event.
+    -> OnFramePresented(struct {
+        frame_presented_info fuchsia.scenic.scheduling.FramePresentedInfo;
+    });
+
+    /// If an error occurrs after a [`Present`], an `OnError` event will fire with associated
+    /// information.
+    ///
+    /// FlatlandErrors will close the connection with the client.
+    ///
+    /// - response `error` the error a client may receive after performing some invalid operations.
+    -> OnError(struct {
+        error FlatlandError;
+    });
+
+    // ***** View management *****
+
+    /// Two Flatland instances may be connected in a parent-child relationship. The parent endpoint
+    /// is held in a Viewport, and the child endpoint is held in a View. The parent Flatland
+    /// instance that creates a Viewport has control over how the child's View is integrated into
+    /// its own View.
+    ///
+    /// The lifecycle of a parent-child connection starts with two endpoints of a channel object:
+    /// a ViewportCreationToken and a ViewCreationToken. Out-of-band protocols pass the
+    /// ViewportCreationToken to the parent, which calls [`CreateViewport`], and the
+    /// ViewCreationToken to the child, which calls [`CreateView`].
+    ///
+    /// Only nodes connected to the Root Transform in this Flatland instance will be rendered into
+    /// the parent's Viewport.
+    ///
+    /// Calling [`CreateView`] a second time will disconnect the Root Transform from the existing
+    /// parent's Viewport, and attach it to a new parent's Viewport. In other words, each View can
+    /// only have one parent.
+    ///
+    /// This function is queued, meaning that the Root Transform will not be attached to the
+    /// parent Viewport until [`Present`] is called. However, clients will receive information
+    /// through their ParentViewportWatcher (e.g., LayoutInfo) immediately after calling this
+    /// function, even if they have not called [`Present`] or [`SetRootTransform`]. This allows
+    /// clients to wait for layout information from their parent before calling [`Present`].
+    ///
+    /// Any illegal operations on ParentViewportWatcher will cause both ParentViewportWatcher
+    /// channel and this Flatland channel to be torn down.
+    ///
+    /// Lifecycle note. The lifetime of the ParentViewportWatcher channel is bound by the peer
+    /// ViewportCreationToken. When the ViewportCreationToken dies, this ParentViewportWatcher
+    /// channel is destroyed.
+    ///
+    /// Views created using `CreateView` will not be associated with a ViewRef.
+    CreateView(resource struct {
+        token fuchsia.ui.views.ViewCreationToken;
+        parent_viewport_watcher server_end:ParentViewportWatcher;
+    });
+
+    /// Identical to [`CreateView`], except it allows association of View identity (ViewRef) and
+    /// view-bound protocols.
+    @transitional
+    CreateView2(resource struct {
+        /// A typed wrapper for a channel, representing the child endpoint of the connection
+        /// between two Flatland instances.
+        token fuchsia.ui.views.ViewCreationToken;
+        /// The ViewRef to strongly associate with [`token`].
+        view_identity fuchsia.ui.views.ViewIdentityOnCreation;
+        /// The protocol endpoints that are strongly bound to the ViewRef in [`view_identity`].
+        /// The protocols are bound when the view is created and installed in the view tree.
+        protocols ViewBoundProtocols;
+        parent_viewport_watcher server_end:ParentViewportWatcher;
+    });
+
+    // ***** Transforms *****
+
+    /// Creates a new Transform node. Transforms are a hierarchical piece of a Flatland graph. They
+    /// can have children, and can reference Content. A sub-graph represented by a Transform and its
+    /// descendants can be rendered to a display.
+    ///
+    /// Transforms are kept alive, even when released, as long as they are children of either an
+    /// unreleased Transform, or the Root Transform.
+    ///
+    /// Each Transform can have a single piece of attached Content. Common types of Content include
+    /// bitmaps, asynchronous streams of images, and Viewports to Views hosted in other Flatland
+    /// instances.
+    ///
+    /// Transforms have attributes. Child Transforms inherit the combined attributes of their
+    /// parents. Content attached to a Transform is also affected by that Transform's attributes.
+    ///
+    /// When a sub-graph of Transforms is rendered, Content will be rendered back-to-front, starting
+    /// with the Content on the root transform, and continuing recursively through all of its child
+    /// Transforms in the order the children were added. See [`AddChild`] for more information.
+    ///
+    /// Zero is not a valid transform id. All other values are valid, assuming they are not already
+    /// in use (see [`ReleaseTransform`] for more details).
+    CreateTransform(struct {
+        transform_id TransformId;
+    });
+
+    // ***** Transform Attributes *****
+
+    /// All Transform objects support all attributes.
+    ///
+    /// Geometric attributes are applied in the following order:
+    /// 1. Translation (relative to the parent's coordinate space)
+    /// 2. Orientation (around the new origin as defined by the translation)
+    /// 3. Clipping (performed in pixel space to constrain the transform's render region)
+    ///
+    /// Sets the translation on a Transform. The order of geometric attribute application is
+    /// addressed above.
+    SetTranslation(struct {
+        transform_id TransformId;
+        translation fuchsia.math.Vec;
+    });
+
+    /// Sets the orientation on a Transform. The order of geometric attribute application is
+    /// addressed in the documentation for [`SetTranslation`].
+    SetOrientation(struct {
+        transform_id TransformId;
+        orientation Orientation;
+    });
+
+    /// Sets the bounds, expressed in the local coordinate space of the transform, that
+    /// constrains the region that content attached to this transform can be rendered to.
+    /// If the content's area exceeds the clip bounds, the area outside the bounds will
+    /// not be rendered. These bounds are valid for all children of this transform node as
+    /// well, which includes nested Flatland instances and their node hierarchies.
+    /// If a child transform attempts to set clip bounds larger than that of its parent,
+    /// it will be clipped to the parent's clip bounds. The default state is for a transform
+    /// to be unclipped, meaning it will not have any bounds placed on its render region.
+    /// The clip width/height must be positive. Negative values will result in an error.
+    /// Passing in an empty box to the |rect| parameter will remove the clip bounds.
+    SetClipBoundary(struct {
+        transform_id TransformId;
+        rect box<fuchsia.math.Rect>;
+    });
+
+    // ***** Transform management *****
+
+    /// Adds a child Transform to a parent Transform. The new child Transform, and any Content
+    /// attached to it or its children, will be rendered on top of the parent's Content, as well as
+    /// any previously added children.
+    AddChild(struct {
+        parent_transform_id TransformId;
+        child_transform_id TransformId;
+    });
+
+    /// Removes a child Transform from a parent Transform.
+    RemoveChild(struct {
+        parent_transform_id TransformId;
+        child_transform_id TransformId;
+    });
+
+    /// Sets the Root Transform for the graph.
+    ///
+    /// The sub-graph defined by the Root Transform and its children will be rendered as View
+    /// in the connected parent's Viewport (see [`CreateView`]). Any parents of the Root Transform
+    /// in this Graph will be ignored.
+    ///
+    /// The Root Transform, and all children of the Root Transform, are kept alive if they are
+    /// released (see [`ReleaseTransform`] for more details).
+    ///
+    /// There is only ever one Root. Since 0 is not a valid transform id (see [`CreateTransform`]),
+    /// calling SetRootTransform(0) clears the current Root, destroying any previously released
+    /// objects that are not referenced by the new root.
+    SetRootTransform(struct {
+        transform_id TransformId;
+    });
+
+    /// Sets an opacity in linear space to be applied to a flatland image. Opacity values must
+    /// be in the range [0.0, 1.0].
+    SetImageOpacity(struct {
+        image_id ContentId;
+        val float32;
+    });
+
+    /// Sets the interactive areas for a Transform. By default, Content is not interactive; hit
+    /// regions must be placed for a user to interact with the Content in a View. Because hit
+    /// regions are described in the Flatland protocol, a Flatland instance can synchronize Content
+    /// and hit regions.
+    ///
+    /// Each hit region is placed in the coordinate space of the owning Transform, and may or may
+    /// not interact with different types of hit testing, depending on its [`HitTestInteraction`]
+    /// type. When there are multiple hit regions that intersect with a hit test, the precedence
+    /// rules given below dictate which hit region has interacted with the hit test. Only Transforms
+    /// that transitively connect to the root Transform have their hit regions interact with a hit
+    /// test.
+    ///
+    /// Precedence rules
+    ///   Within a Transform, if multiple hit regions overlap, the hit test examines each
+    ///   intersecting hit region for a possible interaction. Thus, for a regular hit test R and an
+    ///   accessibility hit test A, where R and A both intersect two hit regions D ([`DEFAULT`]) and
+    ///   S ([`SEMANTICALLY_INVISIBLE`]) on the same Transform, (1) R interacts with both D and S,
+    ///   and (2) A only interacts with D. Generally, hit regions that overlap in a single Transform
+    ///   can cause confusing behavior.
+    ///
+    ///   Within a View, for a given hit test, the front-most Transform's hit regions take
+    ///   precedence over those behind. This follows the expected reverse "render order" of
+    ///   Transforms (described in [`CreateTransform`]), where a user expects to interact with
+    ///   Content that is visible, or front-most.
+    ///
+    ///   Across Flatland instances, for a given hit test, the front-most instance's front-most
+    ///   Transform's hit regions take precedence over those behind. This follows the expected
+    ///   reverse "render order" of views, where a user expects to interact with the View that is
+    ///   visible, or front-most. For example, if a child View owns Content that is rendered over
+    ///   the parent View, the user expects to interact with the child's Content.
+    ///
+    /// To reset a Transform to "no hit testing": send an empty vector.
+    SetHitRegions(struct {
+        transform_id TransformId;
+        regions vector<HitRegion>:MAX_HIT_REGION_COUNT;
+    });
+
+    // ***** Content *****
+    //
+    // Content comes in many forms, but most content can be treated conceptually as a bitmap.
+    // Content is attached to Transforms. Each Transform can have, at most, one piece of attached
+    // Content. Content will inherit all of the attributes from its attached Transform (which
+    // inherits the attributes of its parent Transform, and so on).
+    //
+    // Content is contained within a unit rectangle, with the top-left corner at the origin of the
+    // coordinate space defined by the attached Transform.
+
+    /// The Viewport and View pair, together, represent the connection between two Flatland
+    /// instances. The Viewport is created in the parent, and the View is created in the child. The
+    /// parent has control over how the child's View is integrated into its own View.
+    ///
+    /// Any illegal operations on ChildViewWatcher will cause both ChildViewWatcher channel and this
+    /// Flatland channel to be torn down.
+    ///
+    /// `ViewportProperties` must have logical_size set. This is the initial size that will drive
+    /// the layout of the child. The logical_size is also used as the default Content size, but
+    /// subsequent changes to the logical_size will have no effect on the Content size.
+    ///
+    /// The logical_size must have positive X and Y components.
+    ///
+    /// Zero is not a valid ContentId. All other values are valid, assuming they are not already
+    /// in use for another piece of Content (see [`ReleaseViewport`] for more details).
+    ///
+    /// Lifecycle note. The lifetime of the ChildViewWatcher channel is bound by the peer
+    /// ViewCreationToken. When the ViewCreationToken dies, this ChildViewWatcher channel is
+    /// destroyed.
+    CreateViewport(resource struct {
+        viewport_id ContentId;
+        /// A typed wrapper for a channel, representing the parent endpoint of the connection
+        /// between two Flatland instances.
+        token fuchsia.ui.views.ViewportCreationToken;
+        properties ViewportProperties;
+        child_view_watcher server_end:ChildViewWatcher;
+    });
+
+    /// An Image is a bitmap backed by a specific VMO in a BufferCollection.
+    ///
+    /// Image creation requires an allocated BufferCollection registered with Allocator. This
+    /// function will fail unless all clients of the specified BufferCollection have set their
+    /// constraints.
+    ///
+    /// The Image must reference a valid VMO index and must have ImageProperties that fall within
+    /// the constraints specified by the backing BufferCollection (i.e. width and height within a
+    /// valid range, etc.)
+    ///
+    /// Zero is not a valid Image id. All other values are valid, assuming they are not already in
+    /// use for another piece of Content (see [`ReleaseImage`] for more details).
+    CreateImage(resource struct {
+        image_id ContentId;
+        import_token BufferCollectionImportToken;
+        vmo_index uint32;
+        properties ImageProperties;
+    });
+
+    /// This function is used to determine the region (in texel space) of an image that will be used
+    /// by Flatland when rendering. The image to be sampled is referenced by [`image_id`] and the
+    /// sample region is specified by [`rect`] which itself is comprised of an origin point (x,y) as
+    /// well as a width and height, in unnormalized coordinates. It is illegal to call this function
+    /// on non-image content, or to sample a region outside of the texel space of the image. In
+    /// other words, the region specifed by [`rect`] must not exceed the ranges (0, image_width) and
+    /// (0, image_height). If (rect.x + rect.width > image_width) or (rect.y + rect.height >
+    /// image_height) or if any of the values are negative, this will result in an error.
+    SetImageSampleRegion(struct {
+        image_id ContentId;
+        rect fuchsia.math.RectF;
+    });
+
+    /// The content size for an Image is the size of the rectangle in the parent's space that the
+    /// image occupies. This combined with the global translation of the transform it is attached
+    /// to determines the size and location of where the content is rendered on the display.
+    SetImageDestinationSize(struct {
+        image_id ContentId;
+        size fuchsia.math.SizeU;
+    });
+
+    /// Determines the blend function to use when rendering the image specified by
+    /// |image_id|. The image must be a valid image that was previously created with
+    /// a call to |CreateImage|. For details on the different blend functions that are
+    /// available, please refer to the BlendMode enum.
+    SetImageBlendingFunction(struct {
+        image_id ContentId;
+        blend_mode BlendMode;
+    });
+
+
+    /// Creates a solid-color rectangle. By default a filled-rect does not have a defined
+    /// color or size. It is necessary to call |SetSolidFill| to specify a color and size
+    /// before a filled rect can be used for rendering. Not doing so will result the
+    // rectangle having a default size of (0,0) and so it will not show up when rendering.
+    CreateFilledRect(resource struct {
+        rect_id ContentId;
+    });
+
+
+    /// Defines the color and size of a filled rect. |rect_id| must refer to content that
+    /// was created via a call to CreateFilledRect. The color is not premultiplied.
+    SetSolidFill(resource struct {
+        rect_id ContentId;
+        color ColorRgba;
+        size fuchsia.math.SizeU;
+    });
+
+    /// Automatically garbage collects the rectangle when it is no longer needed for
+    /// rendering. |rect_id| must have been instantiated with a call to
+    /// |CreateFilledRect|. Once released, the ID immediately goes out of scope and is free
+    /// to be used again.
+    ReleaseFilledRect(struct {
+        rect_id ContentId;
+    });
+
+    // ***** Content management *****
+
+    /// Setting a piece of Content on a Transform makes that Content visible in the render tree as
+    /// long as the Transform is visible from the root Transform. The Content will be rendered
+    /// before, and therefore "behind", any Content attached to the descendants of the Transform.
+    ///
+    /// Because each Transform can have, at most, a single piece of Content on it, calling this
+    /// function on a Transform that already has Content will replace that Content.
+    ///
+    /// A Content may be set on more than one Transform.
+    ///
+    /// Calling this function with a Content id of 0 will remove any Content currently on the
+    /// Transform.
+    SetContent(struct {
+        transform_id TransformId;
+        content_id ContentId;
+    });
+
+    // ***** Content mutators *****
+
+    /// Transforms are usually sufficient to change how Content is presented. Viewports, however,
+    /// have special properties that are not part of the Transform hierarchy. Those properties can
+    /// be set using this function.
+    ///
+    /// The logical_size must have positive X and Y components.
+    SetViewportProperties(struct {
+        viewport_id ContentId;
+        properties ViewportProperties;
+    });
+
+    // ***** Cleanup operations *****
+
+    /// Released Transforms will be garbage collected by the system once they are no longer
+    /// necessary for rendering. For Transforms, this means there is no path from any unreleased
+    /// Transform to the newly-released Transform.
+    ///
+    /// Once released, the id immediately goes out of scope for future function calls and can be
+    /// reused when creating new Transforms.
+    ///
+    /// It is an error to call functions with a released id (unless that id has been reused to
+    /// construct a new Transform).
+    ReleaseTransform(struct {
+        transform_id TransformId;
+    });
+
+    // Releases the View, which disconnects this Flatland instance from its parent Flatland
+    // instance.
+    //
+    // To clear the existing content from the screen without releasing the current View, use
+    // SetRootTransform(0) instead.
+    //
+    // Despite having a return type, this function is still feed-forward Like [`CreateView`] and
+    // requires a call to [`Present`] to be executed. The ViewCreationToken will be returned after
+    // the presented operations have been executed.
+    // TODO(fxbug.dev/81576): Consider re-linking. We can return the ViewCreationToken used to
+    // establish the View. This token can then be used to establish a new View with the parent
+    // Viewport.
+    ReleaseView();
+
+    /// Releases a Viewport from the scene, even if the Viewport is still connected to a Transform.
+    /// Unlike other resources, Viewports are garbage collected by the system during the next
+    /// [`Present`] because a removed Viewport is guaranteed to provide no renderable content.
+    ///
+    /// Use SetContent(transform_id, 0) to clean up references to released Viewports.
+    ///
+    /// Despite having a return type, this function is still feed-forward like [`CreateView`] and
+    /// requires a call to [`Present`] to be executed. The ViewportCreationToken will be returned
+    /// after the presented operations have been executed.
+    ReleaseViewport(struct {
+        viewport_id ContentId;
+    }) -> (resource struct {
+        token fuchsia.ui.views.ViewportCreationToken;
+    });
+
+    /// Released Images will be garbage collected by the system once they are no longer necessary
+    /// for rendering. For Images, this means the Image is no longer attached to any Transform and
+    /// any pending rendering that references the Image is complete.
+    ///
+    /// Use SetContent(transform_id, 0) to clean up references to released Images.
+    ///
+    /// Once released, the id immediately goes out of scope for future function calls and can be
+    /// reused when creating new Images.
+    ///
+    /// It is an error to call functions with a released id (unless that id has been reused to
+    /// construct a new Image).
+    ReleaseImage(struct {
+        image_id ContentId;
+    });
+
+    /// This function will reset all state on this interface. This includes destroying all existing
+    /// View and Viewports without returning the associated Token to the caller.
+    Clear();
+
+    // ***** Debug operations *****
+
+    /// Set debug name of the current client that can be used by Flatland to print as a prefix to
+    /// logs to help client distinguish what is theirs. [`name`] can be an arbitrary string, but the
+    /// current process name (see fsl::GetCurrentProcessName()) is a good default.
+    SetDebugName(struct {
+        name string:64;
+    });
+};
+
+// TODO(fxbug.dev/76643):  In the future this will be replaced with something
+// that allows control over which hardware display to use.  This API is sufficient for the purpose
+// of initial bringup of Flatland.
+/// This API connects to the singleton "primary display", and allows a tree of Flatland content to
+/// be attached underneath.  Only one FlatlandDisplay client connection is allowed at one time.
+@discoverable
+protocol FlatlandDisplay {
+    // TODO(fxbug.dev/76643): Consider whether this should be:
+    //   SetContent(ViewportCreationToken token) -> (ViewportCreationToken? previous_token);
+    // ... this way, whoever is using the display can keep track of multiple different pieces
+    // of content, and choose which to display.  OTOH, an argument could be made that this API
+    // should be kept as simple as possible, and if one wanted to do this sort of thing they should
+    // create their own Flatland instance and do the content management there.
+    SetContent(resource struct {
+        token fuchsia.ui.views.ViewportCreationToken;
+        child_view_watcher server_end:ChildViewWatcher;
+    });
+};

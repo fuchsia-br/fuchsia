@@ -1,0 +1,225 @@
+{{/*
+// Copyright 2020 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Protocol:EventSender:WireMessagingHeader" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia -}}
+template<>
+class {{ .WireWeakEventSender }} : public ::fidl::internal::WeakEventSenderBase {
+ public:
+  using WeakEventSenderBase::WeakEventSenderBase;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    fidl::Result {{ .Name }}({{ RenderParams .ResponseArgs }});
+
+{{ "" }}
+  {{- end }}
+};
+
+template<>
+class {{ .WireWeakBufferEventSender }} : public ::fidl::internal::WeakBufferEventSenderBase {
+ public:
+  using WeakBufferEventSenderBase::WeakBufferEventSenderBase;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    fidl::Result {{ .Name }}({{ RenderParams .ResponseArgs }});
+
+{{ "" }}
+  {{- end }}
+};
+
+template<>
+class {{ .WireEventSender }}
+    : public ::fidl::internal::SyncEndpointManagedVeneer<{{ .WireEventSender }}> {
+ public:
+  using SyncEndpointManagedVeneer::SyncEndpointManagedVeneer;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    fidl::Result {{ .Name }}({{ RenderParams .ResponseArgs }});
+
+{{ "" }}
+  {{- end }}
+};
+
+template<>
+class {{ .InternalWireBufferEventSender }}
+    : public ::fidl::internal::SyncEndpointBufferVeneer<{{ .InternalWireBufferEventSender }}> {
+ public:
+  using SyncEndpointBufferVeneer::SyncEndpointBufferVeneer;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    fidl::Result {{ .Name }}({{ RenderParams .ResponseArgs }});
+
+{{ "" }}
+  {{- end }}
+};
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+{{- define "Protocol:EventSender:WireMessagingSource" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia -}}
+  {{- range .Events }}
+
+    {{- /* Weak, managed */}}
+fidl::Result {{ $.WireWeakEventSender.NoLeading }}::{{ .Name }}(
+    {{- RenderParams .ResponseArgs }}) {
+  {{ .WireTransactionalEvent }} _response{ {{- RenderForwardParams .ResponseArgs }} };
+  FIDL_INTERNAL_DISABLE_AUTO_VAR_INIT
+  ::fidl::unstable::OwnedEncodedMessage<{{ .WireTransactionalEvent }}, {{ .Transport.Type }}> _response_message{
+      ::fidl::internal::AllowUnownedInputRef{}, &_response
+  };
+  return _inner().SendEvent(_response_message.GetOutgoingMessage());
+}
+
+    {{- /* Weak, caller-allocated */}}
+{{ "" }}
+fidl::Result {{ $.WireWeakBufferEventSender.NoLeading }}::{{ .Name }}(
+    {{- RenderParams .ResponseArgs }}) {
+  constexpr uint32_t _buffer_size = ::fidl::EventReplyBufferSizeInChannel<{{ .Marker }}>();
+  ::fitx::result<::fidl::Error, ::fidl::BufferSpan> _allocation =
+      _allocator().TryAllocate(_buffer_size);
+  if (!_allocation.is_ok()) {
+    _inner().HandleSendError(_allocation.error_value());
+    return _allocation.error_value();
+  }
+
+  {{ .WireTransactionalEvent }} _response{ {{- RenderForwardParams .ResponseArgs }} };
+  ::fidl::unstable::UnownedEncodedMessage<{{ .WireTransactionalEvent }}, {{ .Transport.Type }}> _response_message(
+      _allocation->data, _buffer_size, &_response);
+  return _inner().SendEvent(_response_message.GetOutgoingMessage());
+}
+{{ "" }}
+
+    {{- /* Managed */}}
+fidl::Result {{ $.WireEventSender.NoLeading }}::{{ .Name }}(
+    {{- RenderParams .ResponseArgs }}) {
+  {{ .WireTransactionalEvent }} _response{ {{- RenderForwardParams .ResponseArgs }} };
+  FIDL_INTERNAL_DISABLE_AUTO_VAR_INIT
+  ::fidl::unstable::OwnedEncodedMessage<{{ .WireTransactionalEvent }}, {{ .Transport.Type }}> _response_message{
+      ::fidl::internal::AllowUnownedInputRef{}, &_response
+  };
+  auto& _message = _response_message.GetOutgoingMessage();
+  _message.Write(_transport());
+  return ::fidl::Result{_message};
+}
+
+    {{- /* Caller-allocated */}}
+{{ "" }}
+fidl::Result {{ $.InternalWireBufferEventSender.NoLeading }}::{{ .Name }}(
+    {{- RenderParams .ResponseArgs }}) {
+  constexpr uint32_t _buffer_size = ::fidl::EventReplyBufferSizeInChannel<{{ .Marker }}>();
+  ::fitx::result<::fidl::Error, ::fidl::BufferSpan> _allocation =
+      _allocator().TryAllocate(_buffer_size);
+  if (!_allocation.is_ok()) {
+    return _allocation.error_value();
+  }
+
+  {{ .WireTransactionalEvent }} _response{ {{- RenderForwardParams .ResponseArgs }} };
+  ::fidl::unstable::UnownedEncodedMessage<{{ .WireTransactionalEvent }}, {{ .Transport.Type }}> _response_message(
+        _allocation->data, _buffer_size, &_response);
+  auto& _message = _response_message.GetOutgoingMessage();
+  _message.Write(_transport());
+  return ::fidl::Result{_message};
+}
+{{ "" }}
+
+  {{- end }}
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Protocol:EventSender:NaturalMessagingHeader" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia -}}
+
+template<>
+class {{ .NaturalWeakEventSender }} : public ::fidl::internal::WeakEventSenderBase {
+ public:
+  using WeakEventSenderBase::WeakEventSenderBase;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    ::fitx::result<::fidl::Error> {{ .Name }}(
+        {{- if .HasResponsePayload }}{{ .ResponsePayload }} payload{{ end }});
+
+  {{ end }}
+};
+
+template<>
+class {{ .NaturalEventSender }}
+    : public ::fidl::internal::SyncEndpointManagedVeneer<{{ .NaturalEventSender }}> {
+ public:
+  using SyncEndpointManagedVeneer::SyncEndpointManagedVeneer;
+{{ "" }}
+
+  {{- range .Events }}
+    {{- .Docs }}
+    ::fitx::result<::fidl::Error> {{ .Name }}(
+        {{- if .HasResponsePayload }}{{ .ResponsePayload }} payload{{ end }});
+
+  {{ end }}
+};
+
+{{- EndifFuchsia -}}
+{{- end }}
+
+
+
+{{- define "Protocol:EventSender:NaturalMessagingSource" }}
+{{ EnsureNamespace "" }}
+{{- IfdefFuchsia -}}
+  {{- range .Events }}
+
+::fitx::result<::fidl::Error> {{ $.NaturalWeakEventSender.NoLeading }}::{{ .Name }}(
+    {{- if .HasResponsePayload }}{{ .ResponsePayload }} payload{{ end }}) {
+  ::fidl::internal::NaturalMessageEncoder<::fidl::internal::ChannelTransport> _encoder{ {{ .OrdinalName }} };
+  ::fidl::Result result = ::fidl::internal::ConvertFromHLCPPOutgoingMessageThen(
+      {{- if .HasResponsePayload -}}
+        &{{ .Response.WireCodingTable }}
+      {{- else -}}
+        nullptr
+      {{- end -}},
+      ::fidl::internal::EncodeTransactionalMessageWithoutValidating(
+          _encoder {{- if .HasResponsePayload }}, std::move(payload){{ end }}),
+      [this] (fidl::OutgoingMessage outgoing) {
+        return _inner().SendEvent(outgoing);
+      });
+  return ::fidl::internal::ToFitxResult(result);
+}
+
+::fitx::result<::fidl::Error> {{ $.NaturalEventSender.NoLeading }}::{{ .Name }}(
+    {{- if .HasResponsePayload }}{{ .ResponsePayload }} payload{{ end }}) {
+  ::fidl::internal::NaturalMessageEncoder<::fidl::internal::ChannelTransport> _encoder{ {{ .OrdinalName }} };
+  ::fidl::Result result = ::fidl::internal::ConvertFromHLCPPOutgoingMessageThen(
+      {{- if .HasResponsePayload -}}
+        &{{ .Response.WireCodingTable }}
+      {{- else -}}
+        nullptr
+      {{- end -}},
+      ::fidl::internal::EncodeTransactionalMessageWithoutValidating(
+          _encoder {{- if .HasResponsePayload }}, std::move(payload){{ end }}),
+      [this] (fidl::OutgoingMessage outgoing) {
+        outgoing.Write(_transport());
+        return ::fidl::Result{outgoing};
+      });
+  return ::fidl::internal::ToFitxResult(result);
+}
+
+  {{ end }}
+{{- EndifFuchsia -}}
+{{- end }}

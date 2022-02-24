@@ -1,0 +1,79 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.input.report;
+
+using zx;
+
+const MAX_DEVICE_REPORT_COUNT uint32 = 50;
+
+/// The InputReport field to be populated by InputDevice.GetInputReport.
+type DeviceType = strict enum {
+    MOUSE = 0;
+    SENSOR = 1;
+    TOUCH = 2;
+    KEYBOARD = 3;
+    CONSUMER_CONTROL = 4;
+};
+
+/// Each `InputReportsReader` has its own FIFO of InputReports that it maintains.
+/// When ReadInputReports is called it drains the InputReports FIFO.
+/// If too many InputReports are created before the FIFO is drained, then
+/// the oldest InputReport will be silently discarded.
+protocol InputReportsReader {
+    /// This is a Hanging-Get function to read the reports in the
+    /// InputReport FIFO. This will not reply until there is at least one
+    /// report available.
+    /// If there is already one outstanding Hanging-Get, calling this
+    /// again will return ZX_ERR_ALREADY_BOUND.
+    ReadInputReports() -> (struct {
+        reports vector<InputReport>:MAX_DEVICE_REPORT_COUNT;
+    }) error zx.status;
+};
+
+/// An `InputDevice` driver represents a single physical input device.
+/// The InputDevice maintains an internal FIFO of `MAX_DEVICE_REPORT_COUNT`
+/// reports for each client that connects. Reports are removed from the FIFO
+/// once they are read by the client. If the FIFO is full, it will drop the
+/// oldest report to make room for an incoming report.
+protocol InputDevice {
+    /// Open a new InputReportsReader on this device. Each reader receives
+    /// their own reports.
+    GetInputReportsReader(resource struct {
+        reader server_end:InputReportsReader;
+    });
+
+    /// Gets the device descriptor for this device.
+    GetDescriptor() -> (struct {
+        descriptor DeviceDescriptor;
+    });
+
+    /// Send a single output report to the device. This will throw an error
+    /// if the output report does not follow the OutputDescriptor.
+    SendOutputReport(struct {
+        report OutputReport;
+    }) -> (struct {}) error zx.status;
+
+    /// Get the feature report for a given device. This requests the state of
+    /// the device's features.
+    GetFeatureReport() -> (struct {
+        report FeatureReport;
+    }) error zx.status;
+
+    /// Set the feature report for a given device. This sets the state of
+    /// the device's features.
+    SetFeatureReport(struct {
+        report FeatureReport;
+    }) -> (struct {}) error zx.status;
+
+    /// For general cases, InputReportReader is the preferred way of getting
+    /// InputReports. For devices that don't send InputReports naturally, this
+    /// method can be used to request a report from the device type indicated.
+    /// Does not block, and returns ZX_ERR_NOT_SUPPORTED if `GetInputReport` or
+    /// `device_type` are not supported.
+    GetInputReport(struct {
+        device_type DeviceType;
+    }) -> (struct {
+        report InputReport;
+    }) error zx.status;
+};

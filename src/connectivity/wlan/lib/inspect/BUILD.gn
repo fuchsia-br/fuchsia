@@ -1,0 +1,32 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("wlan-inspect") {
+  name = "wlan_inspect"
+  version = "0.1.0"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//sdk/fidl/fuchsia.wlan.common:fuchsia.wlan.common-rustc",
+    "//src/connectivity/wlan/lib/common/rust:wlan-common",
+    "//src/lib/diagnostics/inspect/contrib/rust",
+    "//src/lib/diagnostics/inspect/rust",
+    "//third_party/rust_crates:hex",
+    "//third_party/rust_crates:parking_lot",
+  ]
+
+  sources = [
+    "src/iface_mgr.rs",
+    "src/lib.rs",
+    "src/wrappers.rs",
+  ]
+}
+
+fuchsia_unittest_package("wlan-inspect-tests") {
+  deps = [ ":wlan-inspect_test" ]
+}

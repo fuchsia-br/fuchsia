@@ -1,0 +1,37 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+
+rustc_library("injectable-time") {
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//third_party/rust_crates:chrono",
+    "//third_party/rust_crates:parking_lot",
+  ]
+  if (is_fuchsia) {
+    deps += [ "//src/lib/zircon/rust:fuchsia-zircon" ]
+  }
+  sources = [
+    "src/injectable_time.rs",
+    "src/lib.rs",
+  ]
+}
+
+fuchsia_unittest_package("injectable-time-test") {
+  deps = [ ":injectable-time_test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    # Since this uses system time, we want to test on both host and Fuchsia.
+    ":injectable-time-test",
+    ":injectable-time_test($host_toolchain)",
+  ]
+}

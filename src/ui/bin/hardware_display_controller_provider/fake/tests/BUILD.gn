@@ -1,0 +1,40 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":fake_hdcp_tests" ]
+}
+
+executable("unittests") {
+  output_name = "fake_hdcp_unittests"
+  testonly = true
+
+  configs += [ "//build/config:all_source" ]
+
+  sources = [ "fake_hdcp_unittest.cc" ]
+
+  deps = [
+    "..:lib",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+    "//third_party/googletest:gtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("fake_hdcp_tests") {
+  package_deps_for_infra_only = [
+    "//garnet/bin/cpuperf_provider:cpuperf_provider",
+    "//garnet/bin/ktrace_provider:ktrace_provider",
+  ]
+  manifest = "meta/fake_hdcp_unittests.cmx"
+  deps = [ ":unittests" ]
+}

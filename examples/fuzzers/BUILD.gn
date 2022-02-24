@@ -1,0 +1,63 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+
+group("fuzzers") {
+  testonly = true
+  deps = [ ":tests" ]
+}
+
+# This target is the same as the one above; whether fuzzers or unit tests are built depends on which
+# toolchain variant is active. Typically, you should include fuzzers in your package's tests.
+group("tests") {
+  testonly = true
+  deps = [
+    ":fuzzing-examples",
+    "rust:toy-example",
+  ]
+}
+
+fuzzers_package("fuzzing-examples") {
+  # Packages can have non-default names.
+  package_name = "example-fuzzers"
+
+  # Variables set in the outer scope apply to all fuzzers.
+  fuzz_host = true
+
+  # `fuzzers` (without a language prefix) are folded into `cpp_fuzzers` below.
+  fuzzers = [ "cpp:crash_fuzzer" ]
+
+  # Fuzzers are defined for each supported language
+  cpp_fuzzers = [
+    # Each list of fuzzers can contain simple labels...
+    "cpp:overflow_fuzzer",
+    "cpp:corpus_fuzzer",
+    "cpp:corpus_fuzzer_without_corpus",
+    "cpp:dictionary_fuzzer",
+    "cpp:dictionary_fuzzer_without_dictionary",
+    "cpp:fuzzed_data_provider_fuzzer",
+    "cpp:noop_fuzzer",
+    {
+      # ... or scopes with additional fields, like a non-default output name.
+      label = "cpp:oom_fuzzer"
+      output_name = "out_of_memory_fuzzer"
+    },
+    {
+      # Variables set here override those in the outer scope.
+      label = "fidl:echo-fuzzer"
+      fuzz_host = false
+    },
+  ]
+
+  # A fuzzers package can have fuzzers for multiple languages.
+  rust_fuzzers = [
+    "rust:toy_example_arbitrary",
+    "rust:toy_example_raw_bytes",
+    "rust:toy_example_with_main",
+  ]
+
+  # TODO(fxbug.dev/91051): Go fuzzer tests flake.
+  # go_fuzzers = [ "go:basic_fuzzer" ]
+}

@@ -1,0 +1,17 @@
+library test.emptystruct;
+
+type Empty = struct {};
+
+protocol EmptyProtocol {
+    Send(struct {
+        e Empty;
+    });
+    -> Receive(struct {
+        e Empty;
+    });
+    SendAndReceive(struct {
+        e Empty;
+    }) -> (struct {
+        e Empty;
+    });
+};

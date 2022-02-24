@@ -1,0 +1,53 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/cpp/library_headers.gni")
+
+source_set("code-patching") {
+  sources = [ "code-patching.cc" ]
+  public_deps = [ ":headers" ]
+}
+
+library_headers("headers") {
+  headers = [
+    "lib/code-patching/asm.h",
+    "lib/code-patching/code-patches.h",
+    "lib/code-patching/code-patching.h",
+  ]
+
+  public_deps = [
+    "//zircon/kernel/lib/ktl:headers",
+
+    # code-patches.h includes <lib/arch/cache.h>
+    # code-patching.h includes <lib/arch/nop.h>.
+    "//zircon/kernel/lib/arch:headers",
+
+    # code-patches.h includes <lib/zbitl/items/bootfs.h>
+    "//zircon/system/ulib/zbitl:headers",
+
+    # code-patches.h includes <lib/fitx/result.h>
+    "//zircon/system/ulib/zxc:headers",
+  ]
+}
+
+config("hermetic-leaf.config") {
+  inputs = [ "hermetic-leaf.ld" ]
+
+  # Use a custom linker script rather than the default PIE layout.
+  ldflags = [ "-Wl,-T," + rebase_path(inputs[0], root_build_dir) ]
+
+  # lld defaults to PIE, while the GNU linkers do not.
+  if (!is_gcc) {
+    ldflags += [ "-Wl,--no-pie" ]
+  }
+
+  ldflags += [
+    # Don't add any additional sections or dependencies.
+    "-nostdlib",
+    "-Wl,--build-id=none",
+    "-Wl,--no-dynamic-linker",
+  ]
+}

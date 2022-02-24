@@ -1,0 +1,9 @@
+library test.error;
+
+protocol Example {
+    foo(struct {
+        s string;
+    }) -> (struct {
+        y int64;
+    }) error uint32;
+};

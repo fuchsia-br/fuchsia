@@ -1,0 +1,16 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/vsock_service"
+    },
+    "sandbox": {
+        "dev": [
+            "class/vsock"
+        ],
+        "services": [
+            "fuchsia.logger.Log"
+        ]
+    }
+}

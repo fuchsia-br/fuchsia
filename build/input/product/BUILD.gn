@@ -1,0 +1,30 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/product.gni")
+import("//build/security.gni")
+import("//build/security/policies.gni")
+import("//build/security/policies_swd.gni")
+import("//src/sys/root/build/root.gni")
+
+root_realm("root") {
+  core_package_name = core_realm_package_name
+}
+
+group("bootfs_labels") {
+  testonly = fuchsia_zbi_testonly
+  deps = product_bootfs_labels + [ ":root" ]
+}
+
+group("system_image_deps") {
+  testonly = fuchsia_zbi_testonly
+  deps = product_system_image_deps
+  if (defined(policy_labels.swd)) {
+    foreach(policy, policies_swd) {
+      if (policy.name == policy_labels.swd) {
+        deps += policy.system_image_deps
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("developer") {
+  testonly = true
+  deps = [
+    ":tests",
+    "build_info:build-info-service",
+    "debug",
+    "ffx",
+    "forensics",
+    "fuchsia-criterion",
+    "remote-control",
+    "tracing",
+  ]
+}
+
+group("tests") {
+  testonly = true
+
+  deps = [
+    "//src/developer/build_info:tests",
+    "//src/developer/debug:tests",
+    "//src/developer/ffx:tests",
+    "//src/developer/forensics:tests",
+    "//src/developer/fuchsia-criterion:fuchsia-criterion-tests",
+    "//src/developer/memory:tests",
+    "//src/developer/remote-control:tests",
+    "//src/developer/shell:tests",
+    "//src/developer/sshd-host:tests",
+    "//src/developer/tracing:tests",
+  ]
+}

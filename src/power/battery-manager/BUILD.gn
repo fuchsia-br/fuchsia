@@ -1,0 +1,83 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+import("//src/sys/core/build/core_shard.gni")
+
+rustc_binary("bin") {
+  output_name = "battery_manager"
+  with_unit_tests = true
+  edition = "2018"
+
+  deps = [
+    "//garnet/lib/rust/io_util",
+    "//sdk/fidl/fuchsia.hardware.power:fuchsia.hardware.power-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power-rustc",
+    "//sdk/fidl/fuchsia.power:fuchsia.power.test-rustc",
+    "//src/lib/fdio/rust:fdio",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//src/lib/fuchsia-component",
+    "//src/lib/fuchsia-runtime",
+    "//src/lib/storage/fuchsia-vfs-watcher",
+    "//src/lib/syslog/rust:syslog",
+    "//src/lib/zircon/rust:fuchsia-zircon",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:libc",
+    "//third_party/rust_crates:log",
+    "//third_party/rust_crates:parking_lot",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/battery_manager.rs",
+    "src/battery_simulator.rs",
+    "src/main.rs",
+    "src/power.rs",
+  ]
+}
+
+fuchsia_component("battery_manager") {
+  component_name = "battery_manager"
+  manifest = "meta/battery_manager.cml"
+  deps = [ ":bin" ]
+}
+
+# TODO: Remove this component after SL4F is migrated to CML
+fuchsia_component("battery_manager_legacy") {
+  component_name = "battery_manager"
+  manifest = "meta/battery_manager.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_package("battery-manager") {
+  deps = [
+    ":battery_manager",
+    ":battery_manager_legacy",
+  ]
+}
+
+fuchsia_component("battery_manager_bin_test") {
+  testonly = true
+  manifest = "meta/battery_manager_bin_test.cml"
+  deps = [ ":bin_test" ]
+}
+
+fuchsia_test_package("battery-manager-tests") {
+  test_components = [ ":battery_manager_bin_test" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":battery-manager-tests",
+    "//src/power/battery-manager/tests:battery-manager-gotests",
+  ]
+}
+
+core_shard("battery-manager-core-shard") {
+  shard_file = "meta/battery_manager.core_shard.cml"
+}

@@ -1,0 +1,189 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library zx;
+
+alias HandleOp = uint32;
+
+// TODO(scottmg): ZX_HANDLE_OP_xyz here.
+
+type HandleInfo = resource struct {
+    handle handle;
+    type obj_type;
+    rights rights;
+    unused uint32;
+};
+
+type ChannelCallArgs = resource struct {
+    wr_bytes vector<byte>;
+    wr_handles vector<handle>;
+    // TODO(scottmg): mutable_vector_void
+    rd_bytes vector<byte>;
+    // TODO(scottmg): mutable_vector_handle
+    rd_handles vector<handle>;
+};
+
+type HandleDisposition = resource struct {
+    operation HandleOp;
+    handle handle;
+    type obj_type;
+    rights rights;
+    result status;
+};
+
+type ChannelCallEtcArgs = resource struct {
+    wr_bytes vector<byte>;
+    wr_handles mutable_vector_HandleDisposition_u32size;
+    rd_bytes vector<byte>;
+    rd_handles mutable_vector_HandleInfo_u32size;
+};
+
+@transport("Syscall")
+protocol channel {
+    /// Create a channel.
+    channel_create(struct {
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        out0 handle;
+        out1 handle;
+    });
+
+    /// Read a message from a channel.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ.
+    @arg_reorder(
+            "handle, options, bytes, handles, num_bytes, num_handles, actual_bytes, actual_handles")
+    @handle_unchecked
+    channel_read(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        bytes vector_void_u32size;
+        handles vector_handle_u32size;
+        actual_bytes optional_uint32;
+        actual_handles optional_uint32;
+    });
+
+    /// Read a message from a channel.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ.
+    @arg_reorder(
+            "handle, options, bytes, handles, num_bytes, num_handles, actual_bytes, actual_handles")
+    channel_read_etc(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+    }) -> (resource struct {
+        status status;
+        bytes vector_void_u32size;
+        handles vector_HandleInfo_u32size;
+        actual_bytes optional_uint32;
+        actual_handles optional_uint32;
+    });
+
+    /// Write a message to a channel.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_WRITE.
+    /// Rights: Every entry of handles must have ZX_RIGHT_TRANSFER.
+    channel_write(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        bytes vector_void_u32size;
+        @release
+        handles vector_handle_u32size;
+    }) -> (struct {
+        status status;
+    });
+
+    /// Write a message to a channel.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_WRITE.
+    /// Rights: Every entry of handles must have ZX_RIGHT_TRANSFER.
+    channel_write_etc(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        bytes vector_void_u32size;
+        handles mutable_vector_HandleDisposition_u32size;
+    }) -> (struct {
+        status status;
+    });
+
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ and have ZX_RIGHT_WRITE.
+    /// Rights: All wr_handles of args must have ZX_RIGHT_TRANSFER.
+    @internal
+    channel_call_noretry(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        deadline time;
+        args ChannelCallArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+
+    @internal
+    channel_call_finish(resource struct {
+        deadline time;
+        args ChannelCallArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+
+    /// Send a message to a channel and await a reply.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ and have ZX_RIGHT_WRITE.
+    /// Rights: All wr_handles of args must have ZX_RIGHT_TRANSFER.
+    @blocking
+    @vdsocall
+    // TODO(scottmg): Express "All wr_handles of args must have ZX_RIGHT_TRANSFER."
+    channel_call(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        deadline time;
+        args ChannelCallArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ and have ZX_RIGHT_WRITE.
+    /// Rights: All wr_handles of args must have ZX_RIGHT_TRANSFER.
+    @internal
+    channel_call_etc_noretry(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        deadline time;
+        args mutable_ChannelCallEtcArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+
+    @internal
+    channel_call_etc_finish(resource struct {
+        deadline time;
+        args mutable_ChannelCallEtcArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+
+    /// Send a message to a channel and await a reply.
+    /// Rights: handle must be of type ZX_OBJ_TYPE_CHANNEL and have ZX_RIGHT_READ and have ZX_RIGHT_WRITE.
+    /// Rights: All wr_handles of args must have ZX_RIGHT_TRANSFER.
+    @blocking
+    @vdsocall
+    // TODO(scottmg): Express "All wr_handles of args must have ZX_RIGHT_TRANSFER."
+    channel_call_etc(resource struct {
+        handle handle:CHANNEL;
+        options uint32;
+        deadline time;
+        args mutable_ChannelCallEtcArgs;
+    }) -> (struct {
+        status status;
+        actual_bytes uint32;
+        actual_handles uint32;
+    });
+};

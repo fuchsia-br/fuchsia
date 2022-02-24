@@ -1,0 +1,89 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("scenic") {
+  sources = [
+    "forward_declarations.h",
+    "scenic.cc",
+    "scenic.h",
+    "session.cc",
+    "session.h",
+  ]
+
+  public_deps = [
+    ":command_dispatcher",
+    ":event_reporter",
+    ":system",
+    ":take_screenshot_delegate_deprecated",
+    "//sdk/fidl/fuchsia.ui.annotation",
+    "//sdk/fidl/fuchsia.ui.focus",
+    "//sdk/fidl/fuchsia.ui.gfx",
+    "//sdk/fidl/fuchsia.ui.input.accessibility",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.scenic.internal",
+    "//sdk/lib/fit",
+    "//src/lib/fxl",
+    "//src/ui/lib/escher",
+    "//src/ui/scenic/lib/scenic/util",
+    "//zircon/system/ulib/inspect",
+  ]
+
+  deps = [
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fostr/fidl/fuchsia.ui.scenic",
+    "//src/lib/fsl",
+    "//src/ui/lib/escher",
+    "//src/ui/scenic/lib/focus",
+    "//src/ui/scenic/lib/gfx:gfx",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler",
+    "//src/ui/scenic/lib/utils",
+    "//zircon/system/ulib/trace",
+  ]
+}
+
+source_set("event_reporter") {
+  sources = [
+    "event_reporter.cc",
+    "event_reporter.h",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fostr/fidl/fuchsia.ui.scenic",
+    "//src/lib/fxl",
+    "//src/ui/scenic/lib/scenic/util:util",
+  ]
+}
+
+source_set("command_dispatcher") {
+  sources = [ "command_dispatcher.h" ]
+  deps = [ "//src/lib/fxl" ]
+  public_deps = [ "//src/ui/scenic/lib/scheduling:id" ]
+}
+
+source_set("system") {
+  sources = [
+    "system.cc",
+    "system.h",
+  ]
+  public_deps = [
+    ":command_dispatcher",
+    "//zircon/system/ulib/inspect",
+  ]
+  deps = [
+    ":event_reporter",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/lib/fxl",
+    "//src/ui/scenic/lib/scenic/util:util",
+    "//src/ui/scenic/lib/scheduling:frame_scheduler",
+    "//src/ui/scenic/lib/scheduling:id",
+  ]
+}
+
+source_set("take_screenshot_delegate_deprecated") {
+  sources = [ "take_screenshot_delegate_deprecated.h" ]
+  public_deps = [ "//sdk/fidl/fuchsia.ui.scenic" ]
+}

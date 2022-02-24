@@ -1,0 +1,17 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("channel-call-etc") {
+  testonly = true
+  sources = [ "call_etc.cc" ]
+  deps = [
+    "//sdk/lib/fdio",
+    "//sdk/lib/fit",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/mini-process",
+    "//zircon/system/ulib/vdso-code-header",
+    "//zircon/system/ulib/zx",
+    "//zircon/system/ulib/zxtest",
+  ]
+}

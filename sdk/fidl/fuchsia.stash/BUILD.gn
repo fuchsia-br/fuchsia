@@ -1,0 +1,40 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fidl/fidl.gni")
+
+fidl("fuchsia.stash") {
+  sources = [ "stash.fidl" ]
+
+  public_deps = [ "//sdk/fidl/fuchsia.mem" ]
+
+  sdk_category = "internal"
+
+  # Stash cannnot not guarantee isolation between clients so its usage must
+  # be carefully managed, see fxbug.dev/47602. We intend to deprecate
+  # stash and are not accepting new clients.
+  #
+  # Please don't add entries to this visibility list without approval
+  # from the people listed in OWNERS.
+  visibility = [
+    "//garnet/bin/setui/*",
+    "//src/connectivity/bluetooth/core/bt-gap/*",
+    "//src/connectivity/bluetooth/testing/*",
+    "//src/connectivity/bluetooth/tests/bt-manifest-integration-tests/*",
+    "//src/connectivity/network/dhcp:*",
+    "//src/connectivity/network/netstack",
+    "//src/connectivity/network/netstack:lib",
+    "//src/connectivity/network/tests/integration/common:*",
+    "//src/connectivity/wlan/*",
+    "//src/identity/*",
+    "//src/modular/lib/modular_test_harness/*",
+    "//src/modular/tests/*",
+    "//src/sys/pkg/bin/omaha-client/*",
+    "//src/sys/stash/*",
+    "//src/sys/tools/stash_ctl/*",
+
+    # TODO(fxb/91585): Resolve this unapproved dependency.
+    "//src/ui/scenic/bin",
+  ]
+}

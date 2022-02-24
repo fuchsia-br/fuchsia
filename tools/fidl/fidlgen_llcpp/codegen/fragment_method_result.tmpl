@@ -1,0 +1,102 @@
+{{/*
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+*/}}
+
+{{- define "Method:Result:WireMessagingHeader" }}
+{{- EnsureNamespace "" }}
+template<>
+class {{ .WireResult }} final : public ::fidl::Result {
+  public:
+    {{ .WireResult.Self }}(::{{ .Transport.Namespace }}::UnownedClientEnd<{{ .Protocol }}> client,
+        {{ .WireTransactionalRequest }}* request);
+   {{- if .HasResponse }}
+    {{ .WireResult.Self }}(::{{ .Transport.Namespace }}::UnownedClientEnd<{{ .Protocol }}> client,
+        {{ .WireTransactionalRequest }}* request, zx_time_t _deadline);
+   {{- end }}
+   explicit {{ .WireResult.Self }}(const ::fidl::Result& result) : ::fidl::Result(result) {}
+   {{ .WireResult.Self }}({{ .WireResult.Self }}&&) = delete;
+   {{ .WireResult.Self }}(const {{ .WireResult.Self }}&) = delete;
+   {{ .WireResult.Self }}* operator=({{ .WireResult.Self }}&&) = delete;
+   {{ .WireResult.Self }}* operator=(const {{ .WireResult.Self }}&) = delete;
+   {{- if and .HasResponse .Response.IsResource }}
+   ~{{ .WireResult.Self }}() {
+     if (ok()) {
+     Unwrap()->_CloseHandles();
+     }
+   }
+   {{- else }}
+   ~{{ .WireResult.Self }}() = default;
+   {{- end }}
+   {{- if .HasResponse }}
+
+   {{- if .ResponseArgs }}
+   {{ .WireResponse }}* Unwrap() {
+     ZX_DEBUG_ASSERT(ok());
+     return reinterpret_cast<{{ .WireResponse }}*>(bytes_.data() + sizeof(fidl_message_header_t));
+   }
+   const {{ .WireResponse }}* Unwrap() const {
+     ZX_DEBUG_ASSERT(ok());
+     return reinterpret_cast<const {{ .WireResponse }}*>(bytes_.data() + sizeof(fidl_message_header_t));
+   }
+
+   {{ .WireResponse }}& value() { return *Unwrap(); }
+   const {{ .WireResponse }}& value() const { return *Unwrap(); }
+
+   {{ .WireResponse }}* operator->() { return &value(); }
+   const {{ .WireResponse }}* operator->() const { return &value(); }
+
+   {{ .WireResponse }}& operator*() { return value(); }
+   const {{ .WireResponse }}& operator*() const { return value(); }
+   {{- end }}
+   {{- end }}
+
+  private:
+   {{- if .HasResponse }}
+   {{ .Response.ClientAllocationV1.BackingBufferType }} bytes_;
+   {{- end }}
+};
+{{- end }}
+
+
+
+
+
+
+{{- define "Method:Result:WireMessagingSource" }}
+{{- IfdefFuchsia -}}
+{{- EnsureNamespace "" }}
+{{ .WireResult }}::{{ .WireResult.Self }}(
+    ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ .Protocol }}> client,
+    {{ .WireTransactionalRequest }}* request) {
+  FIDL_INTERNAL_DISABLE_AUTO_VAR_INIT
+  ::fidl::unstable::OwnedEncodedMessage<{{ .WireTransactionalRequest }}, {{ .Transport.Type }}> request_message(
+      ::fidl::internal::AllowUnownedInputRef{},
+      request);
+  auto& outgoing = request_message.GetOutgoingMessage();
+  {{- if .HasResponse }}
+  outgoing.Call<{{ .WireTransactionalResponse }}>(
+    client.handle(), bytes_.data(), static_cast<uint32_t>(bytes_.size()));
+  {{- else }}
+  outgoing.Write(client.handle());
+  {{- end }}
+  SetResult(outgoing);
+}
+  {{- if .HasResponse }}
+
+{{ .WireResult }}::{{ .WireResult.Self }}(
+    ::{{ .Transport.Namespace }}::UnownedClientEnd<{{ .Protocol }}> client,
+    {{ .WireTransactionalRequest }}* request, zx_time_t deadline) {
+  FIDL_INTERNAL_DISABLE_AUTO_VAR_INIT
+  ::fidl::unstable::OwnedEncodedMessage<{{ .WireTransactionalRequest }}, {{ .Transport.Type }}> request_message(
+      ::fidl::internal::AllowUnownedInputRef{}, request);
+  auto& outgoing = request_message.GetOutgoingMessage();
+  outgoing.Call<{{ .WireTransactionalResponse }}>(
+    client.handle(), bytes_.data(), static_cast<uint32_t>(bytes_.size()), fidl::CallOptions{.deadline = deadline});
+  SetResult(outgoing);
+}
+  {{- end }}
+{{- EndifFuchsia -}}
+{{- end }}
+

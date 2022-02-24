@@ -1,0 +1,190 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library banjo.examples.protocolbase;
+
+using zx;
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol SynchronousBase {
+    Status(struct {
+        status zx.status;
+    }) -> (struct {
+        status zx.status;
+        status_2 zx.status;
+    });
+    Time(struct {
+        time zx.time;
+    }) -> (struct {
+        time zx.time;
+        time_2 zx.time;
+    });
+    Duration(struct {
+        duration zx.duration;
+    }) -> (struct {
+        duration zx.duration;
+        duration_2 zx.duration;
+    });
+    Koid(struct {
+        koid zx.koid;
+    }) -> (struct {
+        koid zx.koid;
+        koid_2 zx.koid;
+    });
+    Vaddr(struct {
+        vaddr zx.vaddr;
+    }) -> (struct {
+        vaddr zx.vaddr;
+        vaddr_2 zx.vaddr;
+    });
+    Paddr(struct {
+        paddr zx.paddr;
+    }) -> (struct {
+        paddr zx.paddr;
+        paddr_2 zx.paddr;
+    });
+    Paddr32(struct {
+        paddr32 zx.paddr32;
+    }) -> (struct {
+        paddr32 zx.paddr32;
+        paddr32_2 zx.paddr32;
+    });
+    Gpaddr(struct {
+        gpaddr zx.gpaddr;
+    }) -> (struct {
+        gpaddr zx.gpaddr;
+        gpaddr_2 zx.gpaddr;
+    });
+    Off(struct {
+        off zx.off;
+    }) -> (struct {
+        off zx.off;
+        off_2 zx.off;
+    });
+};
+
+@transport("Banjo")
+@banjo_layout("ddk-protocol")
+protocol AsyncBase {
+    @async
+    Status(struct {
+        status zx.status;
+    }) -> (struct {
+        status zx.status;
+        status_2 zx.status;
+    });
+    @async
+    Time(struct {
+        time zx.time;
+    }) -> (struct {
+        time zx.time;
+        time_2 zx.time;
+    });
+    @async
+    Duration(struct {
+        duration zx.duration;
+    }) -> (struct {
+        duration zx.duration;
+        duration_2 zx.duration;
+    });
+    @async
+    Koid(struct {
+        koid zx.koid;
+    }) -> (struct {
+        koid zx.koid;
+        koid_2 zx.koid;
+    });
+    @async
+    Vaddr(struct {
+        vaddr zx.vaddr;
+    }) -> (struct {
+        vaddr zx.vaddr;
+        vaddr_2 zx.vaddr;
+    });
+    @async
+    Paddr(struct {
+        paddr zx.paddr;
+    }) -> (struct {
+        paddr zx.paddr;
+        paddr_2 zx.paddr;
+    });
+    @async
+    Paddr32(struct {
+        paddr32 zx.paddr32;
+    }) -> (struct {
+        paddr32 zx.paddr32;
+        paddr32_2 zx.paddr32;
+    });
+    @async
+    Gpaddr(struct {
+        gpaddr zx.gpaddr;
+    }) -> (struct {
+        gpaddr zx.gpaddr;
+        gpaddr_2 zx.gpaddr;
+    });
+    @async
+    Off(struct {
+        off zx.off;
+    }) -> (struct {
+        off zx.off;
+        off_2 zx.off;
+    });
+};
+
+protocol WrongTransport {
+    Status(struct {
+        status zx.status;
+    }) -> (struct {
+        status zx.status;
+        status_2 zx.status;
+    });
+    Time(struct {
+        time zx.time;
+    }) -> (struct {
+        time zx.time;
+        time_2 zx.time;
+    });
+    Duration(struct {
+        duration zx.duration;
+    }) -> (struct {
+        duration zx.duration;
+        duration_2 zx.duration;
+    });
+    Koid(struct {
+        koid zx.koid;
+    }) -> (struct {
+        koid zx.koid;
+        koid_2 zx.koid;
+    });
+    Vaddr(struct {
+        vaddr zx.vaddr;
+    }) -> (struct {
+        vaddr zx.vaddr;
+        vaddr_2 zx.vaddr;
+    });
+    Paddr(struct {
+        paddr zx.paddr;
+    }) -> (struct {
+        paddr zx.paddr;
+        paddr_2 zx.paddr;
+    });
+    Paddr32(struct {
+        paddr32 zx.paddr32;
+    }) -> (struct {
+        paddr32 zx.paddr32;
+        paddr32_2 zx.paddr32;
+    });
+    Gpaddr(struct {
+        gpaddr zx.gpaddr;
+    }) -> (struct {
+        gpaddr zx.gpaddr;
+        gpaddr_2 zx.gpaddr;
+    });
+    Off(struct {
+        off zx.off;
+    }) -> (struct {
+        off zx.off;
+        off_2 zx.off;
+    });
+};

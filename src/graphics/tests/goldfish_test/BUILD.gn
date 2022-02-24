@@ -1,0 +1,46 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+
+executable("goldfish_test_bin") {
+  testonly = true
+  output_name = "goldfish_test"
+
+  sources = [ "goldfish_test.cc" ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.hardware.goldfish:fuchsia.hardware.goldfish_llcpp",
+    "//sdk/fidl/fuchsia.sysmem:fuchsia.sysmem_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/fsl",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/service:service-llcpp",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_component("goldfish_test_cmp") {
+  testonly = true
+  deps = [ ":goldfish_test_bin" ]
+  component_name = "goldfish_test"
+  manifest = "meta/goldfish_test.cmx"
+}
+
+fuchsia_test_package("goldfish-test-pkg") {
+  test_components = [ ":goldfish_test_cmp" ]
+  package_name = "goldfish_test"
+}
+
+group("goldfish_test") {
+  testonly = true
+  deps = [ ":goldfish-test-pkg" ]
+}

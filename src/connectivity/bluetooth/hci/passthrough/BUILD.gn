@@ -1,0 +1,49 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+
+driver_bind_rules("bt_hci_passthrough_bind") {
+  rules = "bt_hci_passthrough.bind"
+  header_output = "bt_hci_passthrough_bind.h"
+  tests = "bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.bluetooth" ]
+}
+
+fuchsia_driver("fuchsia_driver") {
+  output_name = "bt-hci-passthrough"
+
+  sources = [ "passthrough.c" ]
+
+  deps = [
+    ":bt_hci_passthrough_bind",
+    "//sdk/banjo/fuchsia.hardware.bt.hci:fuchsia.hardware.bt.hci_banjo_cpp",
+    "//sdk/fidl/fuchsia.hardware.bluetooth:fuchsia.hardware.bluetooth_c",
+    "//src/devices/lib/driver",
+    "//src/lib/ddk",
+    "//zircon/system/ulib/fidl",
+    "//zircon/system/ulib/zx",
+  ]
+
+  configs += [ "//build/config/fuchsia:enable_zircon_asserts" ]
+}
+
+fuchsia_driver_component("driver") {
+  component_name = "bt-hci-passthrough"
+  deps = [ ":fuchsia_driver" ]
+  info = "driver-info.json"
+  colocate = true
+}
+
+fuchsia_driver_package("passthrough") {
+  driver_components = [ ":driver" ]
+  # This package is reachable from //garnet/packages/prod:all
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":bt_hci_passthrough_bind_test" ]
+}

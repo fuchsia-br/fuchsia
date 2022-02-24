@@ -1,0 +1,40 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/rust/rustc_library.gni")
+
+rustc_library("lib") {
+  name = "ffx_log_utils"
+  version = "0.1.0"
+  edition = "2018"
+  with_unit_tests = true
+
+  deps = [
+    "//sdk/fidl/fuchsia.developer.remotecontrol:fuchsia.developer.remotecontrol-rustc",
+    "//src/developer/ffx/config:lib",
+    "//src/developer/ffx/lib/symbol-index",
+    "//src/lib/fidl/rust/fidl",
+    "//src/lib/fuchsia-async",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:async-channel",
+    "//third_party/rust_crates:async-io",
+    "//third_party/rust_crates:async-lock",
+    "//third_party/rust_crates:async-trait",
+    "//third_party/rust_crates:futures",
+    "//third_party/rust_crates:futures-lite",
+    "//third_party/rust_crates:log",
+  ]
+
+  data_deps = [ "//tools/symbolizer:symbolizer($host_toolchain)" ]
+
+  sources = [
+    "src/lib.rs",
+    "src/symbolizer.rs",
+  ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [ ":lib_test" ]
+}

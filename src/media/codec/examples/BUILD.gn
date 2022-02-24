@@ -1,0 +1,842 @@
+# Copyright 2016 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/testing/environments.gni")
+
+declare_args() {
+  build_all_vp9_file_decoder_conformance_tests = false
+}
+
+# We have a separate package for each example to clarify the dependencies of
+# each example.
+
+# Test video encode of camera stream
+fuchsia_shell_package("encode-camera") {
+  testonly = true
+  manifest = "encode_camera/meta/encode_camera.cmx"
+  deps = [ "//src/media/codec/examples/encode_camera" ]
+}
+
+# Test video encode of from raw video file
+fuchsia_shell_package("encode-file") {
+  testonly = true
+  manifest = "encode_file/meta/encode_file.cmx"
+  deps = [ "//src/media/codec/examples/encode_file" ]
+}
+
+fuchsia_shell_package("use_media_decoder") {
+  testonly = true
+  manifest = "use_media_decoder/meta/use_media_decoder.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder" ]
+}
+
+resource("bear_h264") {
+  sources = [
+    "//garnet/test_data/media/third_party/chromium_media_test_data/bear.h264",
+  ]
+  outputs = [ "data/bear.h264" ]
+}
+
+resource("bear_vp9") {
+  sources = [ "//garnet/test_data/media/third_party/chromium_media_test_data/bear-vp9.ivf" ]
+  outputs = [ "data/bear-vp9.ivf" ]
+}
+
+resource("1080p_10_frames_h264") {
+  sources = [ "//garnet/test_data/media/third_party/chromium_media_test_data_downstream/1080p_10_frames.h264" ]
+  outputs = [ "data/1080p_10_frames.h264" ]
+}
+
+resource("adts_audio_resource") {
+  sources = [ "use_media_decoder/test/test_audio.adts" ]
+  outputs = [ "data/media_test_data/test_audio.adts" ]
+}
+
+resource("bear-1280x546-vp9") {
+  sources = [ "//garnet/test_data/media/third_party/chromium_media_test_data_downstream/bear-1280x546-vp9.ivf" ]
+  outputs = [ "data/bear-1280x546-vp9.ivf" ]
+}
+
+resource("test-25fps.vp9") {
+  sources = [ "//garnet/test_data/media/third_party/chromium_media_test_data/test-25fps.vp9" ]
+  outputs = [ "data/test-25fps.vp9.ivf" ]
+}
+
+# Test amlogic-video h264 decode.  Can also work in QEMU using SW decode, but
+# when decode HW is present we'll use that to decode.
+fuchsia_unittest_component("use_h264_decoder_test") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_test",
+  ]
+}
+
+fuchsia_test_component("use_h264_decoder_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_decoder_tests") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_ffmpeg",
+  ]
+  test_components = [
+    ":use_h264_decoder_test",
+    ":use_h264_decoder_test_v2",
+  ]
+  test_specs = {
+    environments = [
+      astro_env,
+      emu_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Gaps in frame_num are often handled specially.  We need to at least verify this doesn't get stuck
+# or crash.  At the moment we also verify that the decoder outputs at least a few output frames
+# beyond the first missing input frame.
+fuchsia_unittest_component("use_h264_decoder_frame_num_gaps_test") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_frame_num_gaps_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_frame_num_gaps_test",
+  ]
+}
+
+fuchsia_unittest_component("use_h264_decoder_frame_num_gaps_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_frame_num_gaps_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_frame_num_gaps_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_decoder_frame_num_gaps_tests") {
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_ffmpeg",
+  ]
+  test_components = [
+    ":use_h264_decoder_frame_num_gaps_test",
+    ":use_h264_decoder_frame_num_gaps_test_v2",
+  ]
+  test_specs = {
+    environments = [
+      astro_env,
+      emu_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Force SW decode.  Only run in environments where we include a SW h264 decoder.
+fuchsia_unittest_component("use_h264_sw_decoder_test") {
+  manifest = "use_media_decoder/meta/use_h264_sw_decoder_test.cmx"
+  deps = [
+    ":1080p_10_frames_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_sw_decoder_test",
+  ]
+}
+
+fuchsia_test_component("use_h264_sw_decoder_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_sw_decoder_test.cml"
+  deps = [
+    ":1080p_10_frames_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_sw_decoder_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_sw_decoder_tests") {
+  test_components = [
+    ":use_h264_sw_decoder_test",
+    ":use_h264_sw_decoder_test_v2",
+  ]
+
+  test_specs = {
+    environments = [ emu_env ]
+  }
+  package_deps_for_infra_only = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec:codec_runner_sw_ffmpeg",
+  ]
+}
+
+fuchsia_unittest_component("use_h264_multi_decoder_test") {
+  manifest = "use_media_decoder/meta/use_h264_multi_decoder_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_test",
+  ]
+}
+
+fuchsia_test_component("use_h264_multi_decoder_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_multi_decoder_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_multi_decoder_tests") {
+  test_components = [
+    ":use_h264_multi_decoder_test",
+    ":use_h264_multi_decoder_test_v2",
+  ]
+  test_specs = {
+    # Only works on amlogic hardware.
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_unittest_component("use_h264_multi_decoder_flake_repro_test") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_flake_repro_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_flake_repro_test",
+  ]
+}
+
+fuchsia_test_component("use_h264_multi_decoder_flake_repro_test_v2") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_flake_repro_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_flake_repro_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_multi_decoder_flake_repro_tests") {
+  test_components = [
+    ":use_h264_multi_decoder_flake_repro_test",
+    ":use_h264_multi_decoder_flake_repro_test_v2",
+  ]
+  test_specs = {
+    # Only works on amlogic hardware.
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Test amlogic-video h264 decode with stream switching.  Can also work in QEMU
+# using SW decode, but when decode HW is present we'll use that to decode.
+fuchsia_unittest_component("use_h264_decoder_stream_switching_test") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_stream_switching_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_stream_switching_test",
+  ]
+}
+fuchsia_unittest_component("use_h264_decoder_stream_switching_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_stream_switching_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_stream_switching_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_decoder_stream_switching_tests") {
+  test_components = [
+    ":use_h264_decoder_stream_switching_test",
+    ":use_h264_decoder_stream_switching_test_v2",
+  ]
+  test_specs = {
+    # Should pass when run on VIM2, sherlock, or QEMU.
+
+    # Disable on qemu because the test flakes so far. TODO(fxbug.dev/49932) Re-enable in emu_env.
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+
+      # emu_env,
+    ]
+  }
+}
+
+# Test amlogic-video multi-instance h264 decode with stream switching.
+fuchsia_unittest_component("use_h264_multi_decoder_stream_switching_test") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_stream_switching_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_stream_switching_test",
+  ]
+}
+
+fuchsia_test_component("use_h264_multi_decoder_stream_switching_test_v2") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_stream_switching_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_stream_switching_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_multi_decoder_stream_switching_tests") {
+  test_components = [
+    ":use_h264_multi_decoder_stream_switching_test",
+    ":use_h264_multi_decoder_stream_switching_test_v2",
+  ]
+  test_specs = {
+    # Should pass when run on VIM2, sherlock, or QEMU.
+
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Test amlogic-video multi-instance h264 decode with stream switching.
+fuchsia_unittest_component(
+    "use_h264_multi_decoder_concurrent_stream_switching_test") {
+  manifest = "use_media_decoder/meta/use_h264_multi_decoder_concurrent_stream_switching_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_concurrent_stream_switching_test",
+  ]
+}
+
+fuchsia_test_component(
+    "use_h264_multi_decoder_concurrent_stream_switching_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_multi_decoder_concurrent_stream_switching_test.cml"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_concurrent_stream_switching_test",
+  ]
+}
+
+fuchsia_test_package(
+    "use_h264_multi_decoder_concurrent_stream_switching_tests") {
+  test_components = [
+    ":use_h264_multi_decoder_concurrent_stream_switching_test",
+    ":use_h264_multi_decoder_concurrent_stream_switching_test_v2",
+  ]
+  test_specs = {
+    # Should pass when run on VIM2, astro, sherlock, or QEMU.
+
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_unittest_component("use_h264_decoder_secure_output_test") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_secure_output_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:use_h264_decoder_secure_output_test" ]
+}
+fuchsia_unittest_component("use_h264_decoder_secure_output_test_v2") {
+  manifest = "use_media_decoder/meta/use_h264_decoder_secure_output_test.cml"
+  deps = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_secure_output_test",
+  ]
+}
+
+fuchsia_unittest_component("use_h264_multi_decoder_secure_output_test") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_secure_output_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_secure_output_test" ]
+}
+fuchsia_unittest_component("use_h264_multi_decoder_secure_output_test_v2") {
+  manifest =
+      "use_media_decoder/meta/use_h264_multi_decoder_secure_output_test.cml"
+  deps = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_h264_multi_decoder_secure_output_test",
+  ]
+}
+
+fuchsia_test_package("use_h264_decoder_secure_output_tests") {
+  test_components = [
+    ":use_h264_decoder_secure_output_test",
+    ":use_h264_decoder_secure_output_test_v2",
+    ":use_h264_multi_decoder_secure_output_test",
+    ":use_h264_multi_decoder_secure_output_test_v2",
+  ]
+
+  deps = [ ":bear_h264" ]
+
+  test_specs = {
+    # Should pass when run on astro.
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+    ]
+  }
+}
+
+fuchsia_unittest_package("use_h264_decoder_secure_input_output_test") {
+  manifest =
+      "use_media_decoder/meta/use_h264_decoder_secure_input_output_test.cmx"
+  deps = [
+    ":bear_h264",
+    "//src/media/codec/examples/use_media_decoder:use_h264_decoder_secure_input_output_test",
+  ]
+
+  test_specs = {
+    # Without ClearTVP, can't pass anywhere at the moment.
+    # TODO(fxbug.dev/42991): Re-enable.
+    environments = []
+  }
+}
+
+fuchsia_unittest_component("h264_decoder_fuzzer_test") {
+  manifest = "use_media_decoder/meta/h264_decoder_fuzzer_test.cmx"
+  deps = [
+    "//src/media/codec/examples/use_media_decoder:h264_decoder_fuzzer_test",
+  ]
+}
+
+fuchsia_unittest_component("h264_decoder_fuzzer_test_v2") {
+  manifest = "use_media_decoder/meta/h264_decoder_fuzzer_test.cml"
+  deps = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:h264_decoder_fuzzer_test",
+  ]
+}
+
+fuchsia_unittest_component("h264_decoder_malformed_stream_test") {
+  manifest = "use_media_decoder/meta/h264_decoder_malformed_stream_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:h264_decoder_malformed_stream_test" ]
+}
+
+fuchsia_unittest_component("h264_decoder_malformed_stream_test_v2") {
+  manifest = "use_media_decoder/meta/h264_decoder_malformed_stream_test.cml"
+  deps = [ "//src/media/codec/examples/use_media_decoder:h264_decoder_malformed_stream_test" ]
+}
+
+fuchsia_unittest_component("h264_multi_decoder_fuzzer_test") {
+  manifest = "use_media_decoder/meta/h264_multi_decoder_fuzzer_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:h264_multi_decoder_fuzzer_test" ]
+}
+
+fuchsia_unittest_component("h264_multi_decoder_fuzzer_test_v2") {
+  manifest = "use_media_decoder/meta/h264_multi_decoder_fuzzer_test.cml"
+  deps = [ "//src/media/codec/examples/use_media_decoder:h264_multi_decoder_fuzzer_test" ]
+}
+
+fuchsia_test_package("h264_decoder_fuzzer_tests") {
+  test_components = [
+    ":h264_decoder_fuzzer_test",
+    ":h264_decoder_fuzzer_test_v2",
+    ":h264_decoder_malformed_stream_test",
+    ":h264_decoder_malformed_stream_test_v2",
+    ":h264_multi_decoder_fuzzer_test",
+    ":h264_multi_decoder_fuzzer_test_v2",
+  ]
+
+  deps = [ ":bear_h264" ]
+
+  test_specs = {
+    environments = [
+      astro_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_unittest_component("vp9_decoder_fuzzer_test") {
+  manifest = "use_media_decoder/meta/vp9_decoder_fuzzer_test.cmx"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:vp9_decoder_fuzzer_test",
+  ]
+}
+
+fuchsia_unittest_component("vp9_decoder_fuzzer_test_v2") {
+  manifest = "use_media_decoder/meta/vp9_decoder_fuzzer_test.cml"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:vp9_decoder_fuzzer_test",
+  ]
+}
+
+fuchsia_test_package("vp9_decoder_fuzzer_tests") {
+  test_components = [
+    ":vp9_decoder_fuzzer_test",
+    ":vp9_decoder_fuzzer_test_v2",
+  ]
+  test_specs = {
+    # Disable on astro because not enough contiguous memory. TODO(fxbug.dev/41735) Re-enable
+    environments = [
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_unittest_component("use_vp9_decoder_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_test" ]
+}
+
+fuchsia_unittest_component("use_vp9_decoder_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_test.cml"
+  deps = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_test",
+  ]
+}
+
+fuchsia_unittest_component("use_vp9_decoder_1280x546_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_1280x546_test.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_1280x546_test" ]
+}
+
+fuchsia_unittest_component("use_vp9_decoder_1280x546_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_1280x546_test.cml"
+  deps = [
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_1280x546_test",
+  ]
+}
+
+# Test amlogic-video vp9 decode.
+fuchsia_test_package("use_vp9_decoder_tests") {
+  test_components = [
+    ":use_vp9_decoder_1280x546_test",
+    ":use_vp9_decoder_1280x546_test_v2",
+    ":use_vp9_decoder_test",
+    ":use_vp9_decoder_test_v2",
+  ]
+
+  deps = [
+    ":bear-1280x546-vp9",
+    ":bear_vp9",
+  ]
+
+  test_specs = {
+    # Astro has enough contiguous memory for this.
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Test amlogic-video vp9 decode, with stream switching.
+fuchsia_unittest_component("use_vp9_decoder_stream_switching_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_stream_switching_test.cmx"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_stream_switching_test",
+  ]
+}
+
+fuchsia_unittest_component("use_vp9_decoder_stream_switching_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_stream_switching_test.cml"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_stream_switching_test",
+  ]
+}
+
+fuchsia_test_package("use_vp9_decoder_stream_switching_tests") {
+  test_components = [
+    ":use_vp9_decoder_stream_switching_test",
+    ":use_vp9_decoder_stream_switching_test_v2",
+  ]
+
+  test_specs = {
+    environments = [
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Test amlogic-video vp9 decoder's ability to skip frames until keyframe when
+# input starts at non-keyframe.
+fuchsia_unittest_component("use_vp9_decoder_skip_first_frame_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_skip_first_frame_test.cmx"
+  deps = [
+    ":test-25fps.vp9",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_skip_first_frame_test",
+  ]
+}
+
+fuchsia_unittest_component("use_vp9_decoder_skip_first_frame_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_skip_first_frame_test.cml"
+  deps = [
+    ":test-25fps.vp9",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_skip_first_frame_test",
+  ]
+}
+
+fuchsia_test_package("use_vp9_decoder_skip_first_frame_tests") {
+  test_components = [
+    ":use_vp9_decoder_skip_first_frame_test",
+    ":use_vp9_decoder_skip_first_frame_test_v2",
+  ]
+
+  test_specs = {
+    environments = [
+      astro_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+# Test amlogic-video vp9 decode with max output frame count, on environments
+# that have enough contiguous SYSTEM_RAM configured for sysmem.
+fuchsia_test_component("use_vp9_decoder_24_output_frames_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_24_output_frames_test.cmx"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_24_output_frames_test",
+  ]
+}
+
+fuchsia_test_component("use_vp9_decoder_24_output_frames_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_24_output_frames_test.cml"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_24_output_frames_test",
+  ]
+}
+
+fuchsia_test_package("use_vp9_decoder_24_output_frames_tests") {
+  test_components = [
+    ":use_vp9_decoder_24_output_frames_test",
+    ":use_vp9_decoder_24_output_frames_test_v2",
+  ]
+  test_specs = {
+    environments = [
+      astro_env,
+      sherlock_env,
+      vim3_env,
+    ]
+  }
+}
+
+fuchsia_test_component("use_vp9_decoder_secure_output_test") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_secure_output_test.cmx"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_secure_output_test",
+  ]
+}
+
+fuchsia_test_component("use_vp9_decoder_secure_output_test_v2") {
+  manifest = "use_media_decoder/meta/use_vp9_decoder_secure_output_test.cml"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec:codec_factory",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_secure_output_test",
+  ]
+}
+
+fuchsia_test_package("use_vp9_decoder_secure_output_tests") {
+  test_components = [
+    ":use_vp9_decoder_secure_output_test",
+    ":use_vp9_decoder_secure_output_test_v2",
+  ]
+  test_specs = {
+    environments = [
+      astro_env,
+      nelson_env,
+      sherlock_env,
+    ]
+  }
+}
+
+fuchsia_unittest_package("use_vp9_decoder_secure_input_output_test") {
+  manifest =
+      "use_media_decoder/meta/use_vp9_decoder_secure_input_output_test.cmx"
+  deps = [
+    ":bear_vp9",
+    "//src/media/codec/examples/use_media_decoder:use_vp9_decoder_secure_input_output_test",
+  ]
+
+  test_specs = {
+    # Without ClearTVP, can't pass anywhere at the moment.
+    # TODO(fxbug.dev/42991): Re-enable.
+    environments = []
+  }
+}
+
+template("vp9_file_decoder_conformance_test") {
+  ivf_resource_name = "${invoker.target_name}_ivf"
+  resource(ivf_resource_name) {
+    sources = [ invoker.ivf_file ]
+    outputs = [ "data/vp9.ivf" ]
+  }
+
+  md5_resource_name = "${invoker.target_name}_md5"
+  resource(md5_resource_name) {
+    sources = [ invoker.md5_file ]
+    outputs = [ "data/vp9.md5" ]
+  }
+
+  fuchsia_unittest_package(target_name) {
+    manifest = "use_media_decoder/meta/vp9_decoder_conformance_test.cmx"
+    deps = [
+      ":${ivf_resource_name}",
+      ":${md5_resource_name}",
+      "//src/media/codec/examples/use_media_decoder:vp9_decoder_conformance_test",
+    ]
+
+    test_specs = {
+      # This should pass when run on VIM2 or astro, and will fail in any env
+      # that lacks VP9 decode.
+      # Disable on astro because not enough contiguous memory. TODO(fxbug.dev/41735) Re-enable
+      environments = [
+        sherlock_env,
+        vim3_env,
+      ]
+    }
+  }
+}
+
+#
+# Tests that don't run on CQ yet.
+#
+
+fuchsia_unittest_package("use_aac_decoder_test") {
+  manifest = "use_media_decoder/meta/use_aac_decoder_test.cmx"
+  deps = [
+    ":adts_audio_resource",
+    "//src/media/codec/examples/use_media_decoder:use_aac_decoder_test",
+  ]
+}
+
+# Running this binary, the --http=<url> command-line parameter needs to be
+# passed, and the binary won't verify the MD5.  Instead it'll stream the URL
+# data in, parse it as ivf, decode it, compute MD5, and output the MD5.
+fuchsia_package_with_single_component("vp9_decoder_conformance_http") {
+  testonly = true
+  manifest = "use_media_decoder/meta/vp9_decoder_conformance_http.cmx"
+  deps = [
+    "//src/media/codec/examples/use_media_decoder:vp9_decoder_conformance_test",
+  ]
+}
+
+# Running this binary, the --http=<url> command-line parameter needs to be
+# passed, and the binary won't verify the MD5.  Instead it'll stream the URL
+# data in, parse it as h264, decode it, compute MD5, and output the MD5.
+fuchsia_package_with_single_component("h264-decoder-conformance-http") {
+  testonly = true
+  manifest = "use_media_decoder/meta/h264_decoder_conformance_http.cmx"
+  deps = [ "//src/media/codec/examples/use_media_decoder:h264_decoder_conformance_test" ]
+}
+
+# Put the below group of vp9 conformance tests last in the file.  Otherwise,
+# with the above __http package last in this file, the build complains about
+# duplicate packages, at least when fx set with these:
+# --args=build_all_vp9_file_decoder_conformance_tests=true \
+# --with //src/media/codec/examples:vp9_decoder_conformance_tests \
+# --with //src/media/codec/examples:vp9_decoder_conformance_test__http
+
+_vp9_file_conformance_tests_group_deps = []
+
+# This target makes sure the vp9_decoder_conformance_test executable builds and
+# can verify an md5 hash of decompressed frames.
+#
+# Test amlogic-video vp9 decode.  This uses the same test executable as VP9
+# decode conformance tests.
+package_name = "vp9-decoder-conformance-test--bear-vp9"
+vp9_file_decoder_conformance_test(package_name) {
+  ivf_file = "//garnet/test_data/media/third_party/chromium_media_test_data/bear-vp9.ivf"
+  md5_file = "use_media_decoder/test/bear-vp9.i420.md5"
+}
+_vp9_file_conformance_tests_group_deps += [ ":" + package_name ]
+
+# build_all_vp9_file_decoder_conformance_tests is currently false by default.
+# These tests currently require a directory of converted VP9 test streams which
+# is not yet hosted on CIPD.
+#
+# The self-contained variants of these tests rely on having enough flash space
+# for the whole input file, and running more than one large test per pave will
+# tend to fail due to insufficient flash space (at the moment).  Still, for
+# debugging it's useful to be able to run this way, especially since re-building
+# the code doesn't require re-copying the input file blob whose hash hasn't
+# changed - and building tests this way avoids relying on a local http server.
+#
+# For automated testing, we instead use vp9_decoder_conformance_test__http
+# (single target), which will fetch a .ivf file from a local http server and
+# output it's MD5 hash to stdout.  That target is driven by e2e test script
+# running off-target that scrapts stdout for the MD5 and deteremines e2e test
+# success/failure in the e2e test script, not on the target.
+if (build_all_vp9_file_decoder_conformance_tests) {
+  testcases = read_file(
+          "//garnet/test_data/media/third_party/webm_vp9_conformance_streams/test_cases_all.list",
+          "trim list lines")
+  foreach(testcase, testcases) {
+    # remove prefix
+    testcase = string_replace(testcase, "processed/", "")
+
+    # remove suffix
+    testcase_partial_path = string_replace(testcase, ".webm.ivf", "")
+
+    # don't have any "/" in the name
+    testcase = string_replace(testcase_partial_path, "/", "__")
+
+    # shorten profile string
+    testcase = string_replace(testcase, "Profile_0_8bit", "0")
+    testcase = string_replace(testcase, "Profile_2_10bit", "2")
+
+    # Downcase the only uppercase letters that actually exist; uppercase isn't
+    # allowed in package names.
+    testcase = string_replace(testcase, "X", "x")
+    package_name = "vp9_decoder_conformance_test__file__" + testcase
+
+    # Avoid any "_" in the package name.
+    package_name = string_replace(package_name, "_", "-")
+    vp9_file_decoder_conformance_test(package_name) {
+      ivf_file = "//garnet/test_data/media/third_party/webm_vp9_conformance_streams/processed/" + testcase_partial_path + ".webm.ivf"
+      md5_file = "//garnet/test_data/media/third_party/webm_vp9_conformance_streams/decompressed_md5/" + testcase_partial_path + ".md5"
+    }
+    _vp9_file_conformance_tests_group_deps += [ ":" + package_name ]
+  }
+}
+
+group("vp9_decoder_conformance_tests") {
+  testonly = true
+  deps = _vp9_file_conformance_tests_group_deps
+}

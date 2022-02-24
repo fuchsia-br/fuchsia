@@ -1,0 +1,109 @@
+# Copyright 2017 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/drivers.gni")
+import("//src/graphics/lib/magma/gnbuild/magma.gni")
+
+fuchsia_driver("msd_arm-driver") {
+  output_name = "libmsd_arm"
+
+  deps = [
+    ":msd_arm_entry",
+    "src",
+    "//src/graphics/lib/magma/src/magma_util/platform:logger_for_system_drivers",
+  ]
+}
+
+fuchsia_driver_component("msd_arm") {
+  component_name = "libmsd_arm"
+  deps = [ ":msd_arm-driver" ]
+  info = "msd_arm-info.json"
+  colocate = true
+  root_resource = true
+}
+
+fuchsia_driver("msd_arm_test-driver") {
+  testonly = true
+  output_name = "libmsd_arm_test"
+
+  deps = [
+    ":msd_arm_test_entry",
+    "src",
+    "tests/unit_tests:tests_requiring_hardware",
+    "//src/graphics/lib/magma/src/magma_util/platform:logger_for_system_drivers",
+    "//src/graphics/lib/magma/tests/unit_tests:magma_platform_hardware_tests",
+    "//src/graphics/lib/magma/tests/unit_tests:msd_conformance_tests",
+  ]
+}
+
+fuchsia_driver_component("msd_arm_test") {
+  testonly = true
+  component_name = "libmsd_arm_test"
+  deps = [ ":msd_arm_test-driver" ]
+  info = "msd_arm_test-info.json"
+  colocate = true
+}
+
+driver_bind_rules("msd_arm_bind") {
+  rules = "msd_arm.bind"
+  header_output = "bind.h"
+  tests = "tests/bind_tests.json"
+  deps = [
+    "//src/devices/bind/fuchsia.arm.platform",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+magma_pdev_entry("msd_arm_entry") {
+  deps = [ ":msd_arm_bind" ]
+}
+
+driver_bind_rules("msd_arm_test_bind") {
+  rules = "msd_arm.bind"
+  header_output = "test_bind.h"
+  disable_autobind = true
+  deps = [
+    "//src/devices/bind/fuchsia.arm.platform",
+    "//src/devices/bind/fuchsia.platform",
+  ]
+}
+
+magma_pdev_entry("msd_arm_test_entry") {
+  test_entry = true
+  deps = [ ":msd_arm_test_bind" ]
+}
+
+group("tests") {
+  testonly = true
+  public_deps = [
+    ":msd_arm_bind_test",
+    "tests",
+  ]
+}
+
+group("msd-system") {
+  deps = [ ":msd-arm-mali" ]
+}
+
+group("msd-config") {
+  deps = [ "//src/diagnostics/config/triage:mali-detect" ]
+}
+
+fuchsia_driver_package("msd-arm-mali") {
+  driver_components = [ ":msd_arm" ]
+}
+
+fuchsia_driver_package("msd-arm-mali-test") {
+  testonly = true
+  driver_components = [ ":msd_arm_test" ]
+}
+
+group("test-driver") {
+  testonly = true
+  deps = [
+    ":msd-arm-mali-test",
+    "//src/graphics/lib/magma/tests/unit_tests:testing_firmware_file",
+  ]
+}

@@ -1,0 +1,18 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_binary.gni")
+
+group("donut-tests") {
+  testonly = true
+  deps = [
+    "cli:donut-arg-tests",
+    "policy:donut-lib-tests",
+  ]
+}
+
+fuchsia_shell_package("donut") {
+  deps = [ "cli:bin" ]
+}

@@ -1,0 +1,131 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+import("//build/test.gni")
+import("//src/storage/testing/driver_test_realm.gni")
+
+if (is_fuchsia) {
+  shared_library("fs-management") {
+    public = [
+      "admin.h",
+      "format.h",
+      "fvm.h",
+      "launch.h",
+      "mount.h",
+    ]
+    configs += [ "//build/config:all_source" ]
+    sources = [
+      "admin.cc",
+      "format.cc",
+      "fsck.cc",
+      "fvm.cc",
+      "fvm_internal.h",
+      "launch.cc",
+      "mkfs.cc",
+      "mount.cc",
+      "path.cc",
+    ]
+    public_deps = [
+      "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_c",
+      "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+      "//zircon/system/ulib/async",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/fidl",
+    ]
+    deps = [
+      "//sdk/fidl/fuchsia.boot:fuchsia.boot_llcpp",
+      "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+      "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_c",
+      "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+      "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_c",
+      "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_c",
+      "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+      "//src/lib/digest",
+      "//src/lib/storage/vfs/cpp",
+      "//src/storage/fvm",
+      "//src/storage/gpt",
+      "//third_party/boringssl",
+      "//zircon/system/ulib/fbl",
+      "//zircon/system/ulib/fdio-caller",
+      "//zircon/system/ulib/fzl",
+      "//zircon/system/ulib/pretty",
+      "//zircon/system/ulib/zx",
+      "//zircon/system/ulib/zxc",
+    ]
+
+    # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+    # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+    # See linked bug for details.
+    configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+  }
+} else {
+  source_set("fs-management") {
+    public = [
+      "format.h",
+      "fvm.h",
+      "launch.h",
+    ]
+  }
+}
+
+test("fs-management-test") {
+  configs += [ "//build/config:all_source" ]
+  sources = [
+    "admin_test.cc",
+    "format_test.cc",
+    "fvm.cc",
+    "fvm_test.cc",
+    "mount_test.cc",
+  ]
+  deps = [
+    ":fs-management",
+    "//sdk/fidl/fuchsia.device:fuchsia.device_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block:fuchsia.hardware.block_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.partition:fuchsia.hardware.block.partition_llcpp",
+    "//sdk/fidl/fuchsia.hardware.block.volume:fuchsia.hardware.block.volume_llcpp",
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/fdio",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/fxl/test:test_settings",
+    "//src/storage/fvm",
+    "//src/storage/testing:storage_driver_test_realm",
+    "//src/storage/testing:storage_driver_test_support",
+    "//third_party/googletest:gtest",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/zx",
+  ]
+  data_deps = [
+    "//src/storage/bin/blobfs",
+    "//src/storage/bin/f2fs",
+    "//src/storage/bin/minfs",
+    "//src/storage/fxfs",
+    "//zircon/third_party/uapp/fsck-msdosfs",
+    "//zircon/third_party/uapp/mkfs-msdosfs",
+  ]
+}
+
+fuchsia_component("fs-management-test-component") {
+  testonly = true
+  manifest = "meta/fs_management_tests.cml"
+  deps = [ ":fs-management-test" ]
+}
+
+fuchsia_test_package("fs-management-tests") {
+  test_components = [ ":fs-management-test-component" ]
+  test_specs = {
+    log_settings = {
+      # Required due to no access to Cobalt for minfs
+      max_severity = "ERROR"
+    }
+  }
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":fs-management-tests" ]
+}

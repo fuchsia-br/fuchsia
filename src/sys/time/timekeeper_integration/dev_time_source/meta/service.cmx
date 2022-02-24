@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/dev_time_source"
+    },
+    "sandbox": {
+        "services": [
+            "test.time.TimeSourceControl"
+        ]
+    }
+}

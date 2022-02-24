@@ -1,0 +1,216 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.developer.bridge;
+
+using fuchsia.device;
+
+const MAX_NAME uint64 = 255;
+const MAX_PATH uint64 = 4095;
+const MAX_REPOS uint64 = 512;
+const MAX_ALIASES uint64 = 32;
+
+/// Describes all the possible repositories that could be managed by this service.
+type RepositorySpec = flexible union {
+    1: file_system FileSystemRepositorySpec;
+    2: pm PmRepositorySpec;
+    3: http HttpRepositorySpec;
+};
+
+/// [FileSystemRepositorySpec] describes a TUF repository found on the local filesystem.
+type FileSystemRepositorySpec = table {
+    /// File system path to the location of the metadata repository.
+    1: metadata_repo_path string:MAX_PATH;
+
+    /// File system path to the location of the blob repository.
+    2: blob_repo_path string:MAX_PATH;
+};
+
+/// [PmRepositorySpec] describes a TUF repository created by pm found on the local filesystem.
+type PmRepositorySpec = table {
+    /// File system path to the location of the pm repository.
+    1: path string:MAX_PATH;
+};
+
+/// [HttpRepositorySpec] describes a Http TUF repository.
+type HttpRepositorySpec = table {
+    /// URL of the TUF repository.
+    1: metadata_repo_url string:MAX_PATH;
+
+    /// URL of the Blob Server.
+    2: blob_repo_url string:MAX_PATH;
+};
+
+@discoverable
+protocol RepositoryRegistry {
+    /// Add a repository named `name` that has the following [RepositorySpec].
+    AddRepository(struct {
+        name string:MAX_NAME;
+        repository RepositorySpec;
+    }) -> (struct {}) error RepositoryError;
+
+    /// Returns true if the repository was removed, or false if there is no
+    /// repository named `name`.
+    RemoveRepository(struct {
+        name string:MAX_NAME;
+    }) -> (struct {
+        found bool;
+    });
+
+    ListRepositories(resource struct {
+        iterator server_end:RepositoryIterator;
+    });
+
+    /// Registers a repository on a target.
+    ///
+    /// `target_info`: Metadata describing the repository registration.
+    RegisterTarget(struct {
+        target_info RepositoryTarget;
+    }) -> (struct {}) error RepositoryError;
+
+    /// Deregisters a repository from a target.
+    ///
+    /// `repo_name`: The configured name of the repository.
+    /// `target_identifier`: The target from which to deregister this repository.
+    DeregisterTarget(struct {
+        repository_name string:MAX_NAME;
+        target_identifier string:<fuchsia.device.DEVICE_NAME_MAX, optional>;
+    }) -> (struct {}) error RepositoryError;
+
+    /// List the packages in the repository named `name`.
+    ListPackages(resource struct {
+        name string:MAX_NAME;
+        iterator server_end:RepositoryPackagesIterator;
+        /// Fields to include. This defaults to being empty (and therefore including none of the
+        /// fields that can be toggled by this parameter).
+        include_fields ListFields;
+    }) -> (struct {}) error RepositoryError;
+
+    /// List the components in the package named `package_name` from a repo named `repository_name` .
+    ShowPackage(resource struct {
+        repository_name string:MAX_NAME;
+        package_name string:MAX_NAME;
+        iterator server_end:PackageEntryIterator;
+    }) -> (struct {}) error RepositoryError;
+
+    /// Get a list associating repositories with the targets they have been registered to.
+    ListRegisteredTargets(resource struct {
+        iterator server_end:RepositoryTargetsIterator;
+    });
+};
+
+type RepositoryConfig = struct {
+    name string:MAX_NAME;
+    spec RepositorySpec;
+};
+
+protocol RepositoryIterator {
+    Next() -> (struct {
+        repos vector<RepositoryConfig>:MAX_REPOS;
+    });
+};
+
+protocol PackageEntryIterator {
+    Next() -> (struct {
+        entries vector<PackageEntry>:MAX;
+    });
+};
+
+protocol RepositoryPackagesIterator {
+    Next() -> (struct {
+        packages vector<RepositoryPackage>:MAX;
+    });
+};
+
+protocol RepositoryTargetsIterator {
+    Next() -> (struct {
+        registrations vector<RepositoryTarget>:MAX;
+    });
+};
+
+type PackageEntry = table {
+    /// Blob name
+    1: path string:MAX_PATH;
+    /// Blob's merkle hash
+    2: hash string:MAX_PATH;
+    /// Size in bytes of this blob.
+    3: size uint64;
+    /// Last modification timestamp (seconds since UNIX epoch). May be null
+    /// depending on repository source.
+    4: modified uint64;
+};
+
+type ListFields = flexible bits : uint32 {
+    COMPONENTS = 0x00000001; // If present, component info will be included
+};
+
+type RepositoryPackage = table {
+    /// Package name
+    1: name string:2048;
+    /// Package's merkle hash
+    2: hash string:2048;
+    /// Size in bytes of all blobs in this package.
+    3: size uint64;
+    /// Last modification timestamp (seconds since UNIX epoch). May be null depending on repository
+    /// source.
+    4: modified uint64;
+    /// List of blobs in this package: currently, this is only components.
+    5: entries vector<PackageEntry>:MAX;
+};
+
+type RepositoryTarget = table {
+    /// The configured name of the repository
+    1: repo_name string:MAX_NAME;
+    /// The target on which to configure this repository
+    2: target_identifier string:fuchsia.device.DEVICE_NAME_MAX;
+    /// An optional list of hostnames. A rewrite rule will be added
+    /// for each hostname in this list to resolve to this repository.
+    3: aliases vector<string:MAX_NAME>:MAX_ALIASES;
+    /// Controls how repository metadata is persisted across reboots. Optional, if absent presumed
+    /// to be EPHEMERAL.
+    4: storage_type RepositoryStorageType;
+};
+
+/// Where the repository storage is written to.
+type RepositoryStorageType = strict enum {
+    /// Ephemeral, or in-memory storage. This repository metadata will be lost
+    /// when the process or device is restarted. The default type.
+    EPHEMERAL = 1;
+
+    /// Persistent, where the repository metadata is written to mutable storage
+    /// and is available after a reboot.
+    PERSISTENT = 2;
+};
+
+type RepositoryError = strict enum : uint32 {
+    /// Repository "name" is missing in an API where it is required.
+    MISSING_REPOSITORY_NAME = 1;
+    /// No repository matches the provided name.
+    NO_MATCHING_REPOSITORY = 2;
+    /// There was an error communicating with the target. This may mean that
+    /// the target does not exist, is down or unreachable, or that there was an
+    /// error communicating with a proxy on target.
+    /// TODO(fxbug.dev/77904) make this more specific when we have more specific
+    /// errors from the underlying API.
+    TARGET_COMMUNICATION_FAILURE = 3;
+    /// There was an error from the fuchsia.pkg.RepositoryRegistry.
+    REPOSITORY_MANAGER_ERROR = 4;
+    /// There was a error from fuchsia.pkg.rewrite.Engine.
+    REWRITE_ENGINE_ERROR = 5;
+    /// Unknown repository spec type.
+    UNKNOWN_REPOSITORY_SPEC = 6;
+    /// Repository spec is missing a required field.
+    MISSING_REPOSITORY_SPEC_FIELD = 7;
+    /// Some unspecified error occurred during I/O.
+    IO_ERROR = 8;
+    /// Some unspecified internal error occurred.
+    INTERNAL_ERROR = 9;
+    /// Repository metadata is expired.
+    EXPIRED_REPOSITORY_METADATA = 10;
+    /// No repository registration matches the provided repository and target.
+    NO_MATCHING_REGISTRATION = 11;
+    /// The server is not running.
+    SERVER_NOT_RUNNING = 12;
+    /// The provided URL was invalid.
+    INVALID_URL = 13;
+};

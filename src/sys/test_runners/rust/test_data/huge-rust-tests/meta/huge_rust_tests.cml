@@ -1,0 +1,9 @@
+{
+    include: [
+        "syslog/client.shard.cml",
+        "//src/sys/test_runners/rust/default.shard.cml",
+    ],
+    program: {
+        binary: "bin/huge_rust_tests",
+    },
+}

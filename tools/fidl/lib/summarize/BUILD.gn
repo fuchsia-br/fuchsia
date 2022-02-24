@@ -1,0 +1,58 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/go/go_library.gni")
+import("//build/go/go_test.gni")
+import("//build/host.gni")
+import("//tools/fidl/lib/fidlgentest/fidlgentest_go_test.gni")
+
+if (is_host) {
+  fidlgentest_go_test("summarize_test") {
+    gopackages = [ "go.fuchsia.dev/fuchsia/tools/fidl/lib/summarize" ]
+    deps = [
+      ":gopkg",
+      "//third_party/golibs:github.com/google/go-cmp",
+    ]
+  }
+
+  go_library("gopkg") {
+    name = "go.fuchsia.dev/fuchsia/tools/fidl/lib/summarize"
+    sources = [
+      "aliases.go",
+      "bits.go",
+      "consts.go",
+      "elementslice.go",
+      "elementslice_test.go",
+      "elementstr.go",
+      "enums.go",
+      "library.go",
+      "properties.go",
+      "protocol.go",
+      "summary.go",
+      "summary_test.go",
+      "symboltable.go",
+      "symboltable_test.go",
+      "wraparoundtype.go",
+      "wraparoundtype_test.go",
+    ]
+    deps = [ "//tools/fidl/lib/fidlgen" ]
+
+    visibility = [
+      # Producing API coverage reports.
+      "//sdk/cts/plasa/*",
+
+      # FIDL internal use.
+      "//tools/fidl/*",
+    ]
+  }
+}  # is_host
+
+group("summarize") {
+  deps = [ ":gopkg($host_toolchain)" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ ":summarize_test($host_toolchain)" ]
+}

@@ -1,0 +1,118 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//tools/cmc/build/cmc.gni")
+
+# Defines a new core realm.
+#
+# The core realm on Fuchsia is a packaged non-executable component that holds
+# most of the interesting packaged CFv2 components. This realm is configurable
+# on a per-product basis to allow product owners to control which features and
+# functionality the component instance tree is capable of on their product.
+#
+# For typical product definitions, the arguments to this template are set
+# through GN arguments, declared in //build/product.gni.
+#
+# Parameters
+#
+#   package_name (required)
+#     The name of the package holding the core realm on this product. This
+#     package name should be unique across all products, and thus usually is
+#     set to "core-$PRODUCT_NAME", for example "core-workstation" or
+#     "core-core".
+#
+#   restrict_persistent_storage (optional)
+#     If true, only components listed in the component ID index may use the
+#     persistent `data` storage capability. If false, any component which is
+#     offered the `data` storage capability may use it. Default is true.
+#
+#   restrict_full_resolver_to_base (optional)
+#     If true, must use the base resolver to resolve packages. If false, the
+#     component has access to the package resolver and can auto-update.
+#     Default is true.
+#
+#   deps
+#   testonly
+#   visibility
+template("core_realm") {
+  assert(defined(invoker.package_name),
+         "The `package_name` argument is missing")
+
+  if (defined(invoker.deps)) {
+    shard_deps = invoker.deps
+  } else {
+    shard_deps = []
+  }
+
+  restrict_persistent_storage = true
+  if (defined(invoker.restrict_persistent_storage)) {
+    restrict_persistent_storage = invoker.restrict_persistent_storage
+  }
+
+  if (restrict_persistent_storage) {
+    shard_deps += [ "//src/sys/core:core-storage-restricted" ]
+  } else {
+    shard_deps += [ "//src/sys/core:core-storage-unrestricted" ]
+  }
+
+  restrict_full_resolver_to_base = true
+  if (defined(invoker.restrict_full_resolver_to_base)) {
+    restrict_full_resolver_to_base = invoker.restrict_full_resolver_to_base
+  }
+
+  if (restrict_full_resolver_to_base) {
+    shard_deps += [ "//src/sys/core:full-resolver-base-only" ]
+  } else {
+    shard_deps += [ "//src/sys/core:full-resolver" ]
+  }
+
+  generated_file_target = "${target_name}_shard_list"
+  generated_file(generated_file_target) {
+    deps = shard_deps
+    data_keys = [ "shard_files" ]
+    outputs = [ "$target_out_dir/core_shard_list" ]
+  }
+
+  merged_manifest_target = "${target_name}_merged_manifest"
+  cmc_merge(merged_manifest_target) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "testonly",
+                           ])
+    visibility = [ ":*" ]
+    if (!defined(deps)) {
+      deps = []
+    }
+    deps += [ ":${generated_file_target}" ]
+
+    sources = [ "//src/sys/core/meta/core.cml" ]
+    from_file = "$target_out_dir/core_shard_list"
+
+    output_name = "core.cml"
+  }
+
+  merge_outputs = get_target_outputs(":${merged_manifest_target}")
+  component_target = "${target_name}_component"
+  fuchsia_component(component_target) {
+    forward_variables_from(invoker, [ "testonly" ])
+    visibility = [ ":*" ]
+    manifest = merge_outputs[0]
+    component_name = "core"
+    check_includes = false
+    deps = [ "//src/sys/core:core_proxy" ]
+    manifest_deps = [ ":${merged_manifest_target}" ]
+  }
+
+  fuchsia_package(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "package_name",
+                             "testonly",
+                             "visibility",
+                           ])
+    deps = [ ":${component_target}" ]
+  }
+}

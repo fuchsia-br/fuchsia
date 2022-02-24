@@ -1,0 +1,99 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/bind/bind.gni")
+import("//build/components.gni")
+import("//build/drivers.gni")
+import("//build/test.gni")
+
+driver_bind_rules("hid-buttons-bind") {
+  rules = "hid-buttons.bind"
+  header_output = "hid-buttons-bind.h"
+  bind_output = "hid-buttons.bindbc"
+  tests = "bind-tests.json"
+  deps = [ "//src/devices/bind/fuchsia.platform" ]
+}
+
+fuchsia_driver("hid-buttons-driver") {
+  output_name = "hid-buttons"
+  configs += [
+    "//build/config:all_source",
+    "//build/config/fuchsia:enable_zircon_asserts",
+  ]
+  sources = []
+  deps = [
+    ":common",
+    "//src/devices/lib/driver",
+  ]
+}
+
+fuchsia_driver_component("hid-buttons") {
+  component_name = "hid-buttons"
+  deps = [ ":hid-buttons-driver" ]
+  info = "hid-buttons-info.json"
+  colocate = true
+}
+
+source_set("common") {
+  configs += [ "//build/config:all_source" ]
+  sources = [ "hid-buttons.cc" ]
+
+  public_deps = [
+    ":hid-buttons-bind",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp",
+    "//sdk/banjo/fuchsia.hardware.hidbus:fuchsia.hardware.hidbus_banjo_cpp",
+    "//sdk/fidl/fuchsia.buttons:fuchsia.buttons_llcpp",
+    "//src/lib/ddk",
+    "//src/lib/ddk:ddk-metadata-headers",
+    "//src/lib/ddktl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+    "//zircon/system/ulib/hid",
+    "//zircon/system/ulib/sync",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zx",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+test("hid-buttons-test") {
+  configs += [ "//build/config:all_source" ]
+  output_name = "hid-buttons-test"
+  sources = [ "hid-buttons-test.cc" ]
+  deps = [
+    ":common",
+    "//sdk/banjo/fuchsia.hardware.gpio:fuchsia.hardware.gpio_banjo_cpp_mock",
+    "//src/devices/testing/fake_ddk",
+    "//zircon/system/ulib/mock-function",
+    "//zircon/system/ulib/zxtest",
+  ]
+
+  # TODO(fxbug.dev/69585): This target uses raw zx::channel with LLCPP which is deprecated.
+  # Please migrate to typed channel APIs (fidl::ClientEnd<T>, fidl::ServerEnd<T>).
+  # See linked bug for details.
+  configs += [ "//build/cpp:fidl-llcpp-deprecated-raw-channels" ]
+}
+
+fuchsia_unittest_package("hid-buttons-test-package") {
+  package_name = "hid-buttons-test"
+  deps = [ ":hid-buttons-test" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    ":hid-buttons-bind_test",
+    ":hid-buttons-test-package",
+  ]
+}

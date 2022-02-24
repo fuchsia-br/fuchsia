@@ -1,0 +1,127 @@
+#!/bin/bash
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#### CATEGORY=Other
+### Remotely build, fetch and flash
+
+## usage: fx flash-remote HOST [DIR] [--no-flash] [--no-build]
+##
+## Connect to HOST, run a build using fx from DIR, fetch the artifacts and
+## start the flash.
+##
+##  --no-build    Do not build, just pull artifacts already present
+##  --no-flash    Do not start the fastboot, just pull the artifacts
+##   -s           Serial of device you wish to flash to (only necessary if multiple
+##                devices in fastboot mode)
+##  --skip-verify Skip hardware verification. This is dangerous, please be
+##                sure the images you are flashing match the device. Only supported
+##                with ffx
+##
+##  HOST          the hostname to connect to
+##  DIR           defaults to ~/fuchsia, the path to the FUCHSIA_DIR on HOST
+
+set -o errexit
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/vars.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/fx-remote.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"/lib/fx-flash.sh
+fx-config-read
+
+build=true
+flash=true
+host=""
+dir=""
+serial=
+device=$(get-device-name)
+skip_verify=false
+while [[ $# -ne 0 ]]; do
+  case "$1" in
+  --help|-h)
+      fx-command-help
+      exit 0
+      ;;
+  --no-build)
+    build=false
+    ;;
+  --no-flash)
+    flash=false
+    ;;
+  -s)
+    shift
+    serial="$1"
+    ;;
+  -device)
+    shift
+    device="$1"
+    ;;
+  --skip-verify)
+    skip_verify=true
+    ;;
+  -*)
+    fx-error "Unknown flag: $1"
+    fx-command-help
+    exit 1
+    ;;
+  *)
+    if [[ -z "${host}" ]]; then
+      host="$1"
+    elif [[ -z "${dir}" ]]; then
+      dir="$1"
+    else
+      fx-error "unexpected argument: '$1'"
+      exit 1
+    fi
+    ;;
+  esac
+  shift
+done
+
+if cached=( $(load_remote_info "$host") ); then
+  host="${cached[0]}"
+  dir="${cached[1]}"
+fi
+
+if [[ -z "${host}" ]]; then
+  fx-error "HOST must be specified"
+  fx-command-help
+  exit 1
+fi
+
+if [[ -z "${dir}" ]]; then
+  if ssh "$host" ls \~/fuchsia/.jiri_root/bin/fx > /dev/null; then
+    dir="~/fuchsia"
+  else
+    fx-error "failed to find ~/fuchsia on $host, please specify DIR"
+    fx-command-help
+    exit 1
+  fi
+fi
+
+save_remote_info "$host" "$dir"
+
+# Fetch remote flashing artifacts
+artifact_dir="${FUCHSIA_DIR}/out/fetched"
+flash_manifest=$(find_remote_build_artifact "${host}" "${dir}" flash-manifest images)
+
+if [[ -z "${flash_manifest}" ]]; then
+    fx-error "failed to find flash manifest on $host."
+    exit 1
+fi
+
+fx-info "Fetching artifacts from remote host: ${host}"
+fetch_remote_build_artifacts "${host}" "${dir}" "${artifact_dir}" flash $build
+fetch_remote_artifacts "${host}" "${dir}" "${artifact_dir}" "${flash_manifest}"
+
+if "${flash}"; then
+  fx-info "Verifying required host tools..."
+  if is_feature_enabled "legacy_fastboot"; then
+    fetch_or_build_tool ${host} ${dir} "${artifact_dir}" fastboot
+  else
+    fetch_or_build_tool ${host} ${dir} "${artifact_dir}" ffx
+  fi
+  cd "${artifact_dir}"
+  manifest_path="${artifact_dir}/${flash_manifest}"
+  fx-flash "${serial}" "${device}" "${manifest_path}" "${skip_verify}"
+fi

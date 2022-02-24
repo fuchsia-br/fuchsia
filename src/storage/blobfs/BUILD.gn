@@ -1,0 +1,286 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/fidl/fidl.gni")
+
+declare_args() {
+  # Set this to true when configuring gn args to enable blobfs page-in
+  # metrics recording.
+  # This will also increase the inspect VMO size for blobfs to 2 MiB,
+  # to accommodate the large number of metrics entries.
+  blobfs_page_in_metrics_recording = false
+
+  # Set this to true when configuring gn args to enable blobfs streaming writes.
+  # This is a compile time argument which allows us to conditionally enable blobfs streaming writes
+  # only on specific configurations.
+  blobfs_enable_streaming_writes = false
+}
+
+static_library("blobfs") {
+  friend = [
+    ":decompressor_impl",
+    "test:*",
+    "test/integration:*",
+  ]
+  visibility = [
+    "//src/security/scrutiny/utils/*",
+    "//src/storage/*",
+    "//zircon/system/ulib/fvm-host",
+    "//zircon/system/utest/blobfs-bench",
+    "//zircon/system/utest/fvm",
+    "//zircon/tools/blobfs",
+  ]
+  public = [
+    "blob_layout.h",
+    "blobfs_inspector.h",
+    "cache_policy.h",
+    "common.h",
+    "format.h",
+    "fsck.h",
+    "fsck_host.h",
+    "host.h",
+    "iterator/node_populator.h",
+    "mkfs.h",
+    "mount.h",
+    "node_finder.h",
+  ]
+  sources = [
+    "allocator/base_allocator.cc",
+    "allocator/base_allocator.h",
+    "allocator/extent_reserver.cc",
+    "allocator/extent_reserver.h",
+    "allocator/node_reserver.cc",
+    "allocator/node_reserver.h",
+    "blob_layout.cc",
+    "blobfs_checker.cc",
+    "common.cc",
+    "compression/chunked.cc",
+    "compression/chunked.h",
+    "compression/compressor.h",
+    "compression/decompressor.cc",
+    "compression/decompressor.h",
+    "compression/seekable_decompressor.h",
+    "compression_settings.cc",
+    "inspector/blobfs_inspector.cc",
+    "inspector/parser.cc",
+    "inspector/parser.h",
+    "iterator/allocated_extent_iterator.cc",
+    "iterator/allocated_extent_iterator.h",
+    "iterator/allocated_node_iterator.cc",
+    "iterator/allocated_node_iterator.h",
+    "iterator/block_iterator.cc",
+    "iterator/block_iterator.h",
+    "iterator/block_iterator_provider.h",
+    "iterator/extent_iterator.h",
+    "iterator/node_populator.cc",
+    "iterator/vector_extent_iterator.cc",
+    "iterator/vector_extent_iterator.h",
+  ]
+  public_deps = [
+    # format.h includes digest.h.
+    "//sdk/fidl/fuchsia.fs",
+    "//sdk/lib/fit",
+    "//sdk/lib/fit-promise",
+    "//src/lib/digest",
+    "//src/lib/storage/vfs/cpp",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//src/lib/storage/vfs/cpp/transaction",
+    "//src/storage/lib/watchdog",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/id_allocator",
+    "//zircon/system/ulib/range",
+    "//zircon/system/ulib/storage/buffer",
+    "//zircon/system/ulib/zxc",
+    "//zircon/third_party/ulib/safemath",
+  ]
+  deps = [
+    "compression/configs",
+    "//sdk/lib/fit",
+    "//sdk/lib/syslog/cpp",
+    "//src/lib/chunked-compression",
+    "//src/lib/digest",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//src/lib/storage/vfs/cpp/transaction",
+    "//src/storage/fvm",
+    "//src/storage/lib/disk_inspector",
+    "//third_party/boringssl",
+    "//zircon/system/ulib/bitmap",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/range",
+    "//zircon/system/ulib/storage/buffer",
+    "//zircon/system/ulib/storage/operation",
+    "//zircon/system/ulib/zircon-internal",
+    "//zircon/system/ulib/zxc",
+    "//zircon/third_party/ulib/cksum",
+  ]
+  if (is_fuchsia) {
+    sources += [
+      "allocator/allocator.cc",
+      "blob.cc",
+      "blob_cache.cc",
+      "blob_corruption_notifier.cc",
+      "blob_data_producer.cc",
+      "blob_data_producer.h",
+      "blob_loader.cc",
+      "blob_verifier.cc",
+      "blob_verifier.h",
+      "blobfs.cc",
+      "blobfs_inspect_tree.cc",
+      "blobfs_inspect_tree.h",
+      "cache_node.cc",
+      "component_runner.cc",
+      "compression/blob_compressor.cc",
+      "compression/external_decompressor.cc",
+      "directory.cc",
+      "format.cc",
+      "fsck.cc",
+      "loader_info.h",
+      "metrics.cc",
+      "mount.cc",
+      "page_loader.cc",
+      "page_loader.h",
+      "read_metrics.cc",
+      "runner.cc",
+      "service/admin.cc",
+      "service/admin.h",
+      "service/health_check.cc",
+      "service/health_check.h",
+      "service/lifecycle.cc",
+      "service/lifecycle.h",
+      "service/startup.cc",
+      "service/startup.h",
+      "transaction.cc",
+      "transfer_buffer.cc",
+      "transfer_buffer.h",
+      "verification_metrics.cc",
+    ]
+    public_deps += [
+      ":fuchsia.blobfs.internal",
+      ":fuchsia.blobfs.internal_llcpp",
+      "//sdk/fidl/fuchsia.blobfs:fuchsia.blobfs_llcpp",
+      "//sdk/fidl/fuchsia.device.manager:fuchsia.device.manager_llcpp",
+      "//sdk/fidl/fuchsia.fs:fuchsia.fs_llcpp",
+      "//sdk/fidl/fuchsia.process.lifecycle:fuchsia.process.lifecycle_llcpp",
+      "//src/lib/storage/block_client/cpp",
+      "//src/lib/storage/vfs/cpp/inspect",
+      "//src/lib/storage/vfs/cpp/metrics:metrics-cobalt",
+      "//src/lib/storage/vfs/cpp/metrics:metrics-composite-latency-event",
+      "//src/lib/storage/vfs/cpp/metrics:metrics-inspect",
+      "//src/storage/fidl/fuchsia.fs.startup:fuchsia.fs.startup_llcpp",
+      "//src/sys/pkg/fidl/fuchsia.update.verify:fuchsia.update.verify_llcpp",
+      "//zircon/system/ulib/async-loop:async-loop-cpp",
+    ]
+    deps += [
+      "//sdk/fidl/fuchsia.blobfs:fuchsia.blobfs_llcpp",
+      "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+      "//sdk/fidl/fuchsia.scheduler",
+      "//sdk/lib/fdio",
+      "//sdk/lib/sys/inspect/cpp",
+      "//sdk/lib/syslog/cpp",
+      "//src/lib/storage/block_client/cpp",
+      "//zircon/system/ulib/async",
+      "//zircon/system/ulib/async:async-cpp",
+      "//zircon/system/ulib/async-default",
+      "//zircon/system/ulib/async-loop",
+      "//zircon/system/ulib/async-loop:async-loop-default",
+      "//zircon/system/ulib/backtrace-request",
+      "//zircon/system/ulib/fidl-async:fidl-async-cpp",
+      "//zircon/system/ulib/fidl-utils",
+      "//zircon/system/ulib/fzl",
+      "//zircon/system/ulib/service:service-llcpp",
+      "//zircon/system/ulib/sync",
+      "//zircon/system/ulib/trace",
+      "//zircon/system/ulib/trace-engine",
+      "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+      "//zircon/system/ulib/zx",
+    ]
+  } else {
+    sources += [
+      "allocator/host_allocator.cc",
+      "allocator/host_allocator.h",
+      "fsck_host.cc",
+      "host.cc",
+    ]
+    deps += [ "//zircon/system/ulib/fs-host" ]
+  }
+
+  if (blobfs_page_in_metrics_recording) {
+    defines = [
+      # Enable blobfs page-in metrics.
+      "BLOBFS_ENABLE_PAGE_IN_METRICS",
+
+      # The page-in metrics feature requires a large Inspect VMO (>512KB) for blobfs.
+      "BLOBFS_ENABLE_LARGE_INSPECT_VMO",
+    ]
+  }
+
+  if (blobfs_enable_streaming_writes) {
+    defines = [
+      # Enable blobfs streaming writes feature only when we are running on fuchsia and gn config
+      # asks us to enable.
+      "BLOBFS_ENABLE_STREAMING_WRITES",
+    ]
+  }
+}
+
+fidl("fuchsia.blobfs.internal") {
+  sources = [ "compression/decompressor_sandbox/decompressor.fidl" ]
+  public_deps = [ "//zircon/vdso/zx" ]
+}
+
+source_set("decompressor_impl") {
+  visibility = [ "./*" ]
+  sources = [
+    "compression/decompressor_sandbox/decompressor_impl.cc",
+    "compression/decompressor_sandbox/decompressor_impl.h",
+  ]
+  public_deps = [
+    # Used by decompressor_impl.h
+    ":fuchsia.blobfs.internal_llcpp",
+  ]
+  deps = [
+    ":blobfs",
+    ":fuchsia.blobfs.internal",
+    "//sdk/fidl/fuchsia.scheduler",
+    "//sdk/lib/fidl/cpp:cpp",
+    "//sdk/lib/sys/cpp:cpp",
+    "//sdk/lib/syslog/cpp:cpp",
+    "//src/lib/chunked-compression",
+    "//src/lib/digest",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+executable("decompressor") {
+  sources = [ "compression/decompressor_sandbox/main.cc" ]
+  deps = [
+    ":decompressor_impl",
+    ":fuchsia.blobfs.internal",
+    "//sdk/lib/fidl/cpp:cpp",
+    "//sdk/lib/sys/cpp:cpp",
+    "//sdk/lib/syslog/cpp:cpp",
+    "//src/lib/digest",
+    "//src/lib/storage/vfs/cpp/journal",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/fzl",
+    "//zircon/system/ulib/trace",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+    "//zircon/system/ulib/zxc",
+  ]
+}
+
+fuchsia_component("decompressor-sandbox") {
+  manifest = "meta/decompressor_sandbox.cml"
+  deps = [ ":decompressor" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "test" ]
+}

@@ -1,0 +1,15 @@
+{
+    include: [
+        "//src/sys/test_runners/elf/default.shard.cml",
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    program: {
+        binary: "bin/element-manager-test",
+    },
+    use: [
+        {
+            protocol: [ "fuchsia.element.Manager" ],
+        },
+    ],
+}

@@ -1,0 +1,25 @@
+[
+    {
+        "device": {
+            "fuchsia.BIND_PROTOCOL": "fuchsia.bluetooth.BIND_PROTOCOL.DEVICE"
+        },
+        "expected": "abort",
+        "name": "Protocol"
+    },
+    {
+        "device": {
+            "fuchsia.acpi.hid": "\"GFSH0000\"",
+            "fuchsia.BIND_COMPOSITE": "1"
+        },
+        "expected": "abort",
+        "name": "Device-id"
+    },
+    {
+        "device": {
+            "fuchsia.acpi.hid": "\"GFSH0006\"",
+            "fuchsia.BIND_COMPOSITE": "1"
+        },
+        "expected": "match",
+        "name": "goldfish-sync"
+    }
+]

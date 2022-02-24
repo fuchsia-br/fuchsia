@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/camera_benchmark_bin"
+    },
+    "sandbox": {
+        "dev": [
+            "class/aml-ram"
+        ],
+        "services": [
+            "fuchsia.camera3.DeviceWatcher",
+            "fuchsia.sysmem.Allocator"
+        ]
+    }
+}

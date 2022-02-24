@@ -1,0 +1,34 @@
+{
+    include: [ "syslog/client.shard.cml" ],
+    program: {
+        runner: "elf",
+        binary: "bin/starnix_test_runner",
+        use_next_vdso: "true",
+    },
+    capabilities: [
+        {
+            runner: "starnix_test_runner",
+            path: "/svc/fuchsia.component.runner.ComponentRunner",
+        },
+    ],
+    use: [
+        {
+            storage: "data",
+            path: "/data",
+        },
+        {
+            storage: "tmp",
+            path: "/tmp",
+        },
+        {
+            protocol: [ "fuchsia.component.runner.ComponentRunner" ],
+            from: "parent",
+        },
+    ],
+    expose: [
+        {
+            runner: "starnix_test_runner",
+            from: "self",
+        },
+    ],
+}

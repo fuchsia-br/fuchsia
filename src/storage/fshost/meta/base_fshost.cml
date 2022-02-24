@@ -1,0 +1,103 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+    ],
+    capabilities: [
+        {
+            directory: "factory",
+            rights: [ "r*" ],
+            path: "/fs/factory",
+        },
+        {
+            directory: "durable",
+            rights: [ "rw*" ],
+            path: "/fs/durable",
+        },
+        {
+            directory: "install",
+            rights: [ "rw*" ],
+            path: "/fs/install",
+        },
+        {
+            directory: "mnt",
+            rights: [ "rw*" ],
+            path: "/fs/mnt",
+        },
+        {
+            directory: "tmp",
+            rights: [ "rw*" ],
+            path: "/fs/tmp",
+        },
+        {
+            protocol: [
+                "fuchsia.fshost.Admin",
+                "fuchsia.fshost.BlockWatcher",
+                "fuchsia.fshost.Loader",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "dev",
+            rights: [ "rw*" ],
+            path: "/dev",
+        },
+        {
+            directory: "boot",
+            rights: [ "rx*" ],
+            path: "/boot",
+        },
+        {
+            protocol: [
+                "fuchsia.boot.Arguments",
+                "fuchsia.boot.Items",
+                "fuchsia.process.Launcher",
+                "fuchsia.tracing.provider.Registry",
+            ],
+        },
+    ],
+    expose: [
+        {
+            directory: "factory",
+            from: "self",
+        },
+        {
+            directory: "durable",
+            from: "self",
+        },
+        {
+            directory: "install",
+            from: "self",
+        },
+        {
+            directory: "mnt",
+            from: "self",
+        },
+        {
+            directory: "tmp",
+            from: "self",
+        },
+        {
+            protocol: [
+                "fuchsia.fshost.Admin",
+                "fuchsia.fshost.BlockWatcher",
+            ],
+            from: "self",
+        },
+
+        // This service name is breaking the convention whereby the directory entry
+        // name matches the protocol name. This is an implementation of
+        // fuchsia.ldsvc.Loader, and is renamed to make it easier to identify that
+        // this implementation comes from fshost.
+        // TODO(fxbug.dev/34633): This service is deprecated and should only be routed to
+        // devcoordinator
+        {
+            protocol: "fuchsia.fshost.Loader",
+            from: "self",
+        },
+    ],
+}

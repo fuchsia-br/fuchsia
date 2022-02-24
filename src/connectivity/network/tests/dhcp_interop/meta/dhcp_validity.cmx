@@ -1,0 +1,20 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/dhcp_validity"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-persistent-storage"
+        ],
+        "services": [
+            "fuchsia.net.dhcpv6.ClientProvider",
+            "fuchsia.net.interfaces.State",
+            "fuchsia.net.stack.Stack",
+            "fuchsia.netemul.guest.GuestDiscovery",
+            "fuchsia.netstack.Netstack"
+        ]
+    }
+}

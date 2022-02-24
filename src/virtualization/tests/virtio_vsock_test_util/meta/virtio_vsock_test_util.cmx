@@ -1,0 +1,13 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/virtio_vsock_test_util"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.vsock.Connector"
+        ]
+    }
+}

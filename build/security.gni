@@ -1,0 +1,157 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# A collection of GN arguments that are used for security purpose.
+
+declare_args() {
+  # An optional list of golden files for fuchsia.zbi kernel cmdline args. If
+  # specified, they would be compared against fuchsia.zbi kernel cmdline during
+  # build time.
+  # In normal case, there should only be golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  fuchsia_zbi_kernel_cmdline_goldens = []
+
+  # An optional list of golden files for recovery.zbi kernel cmdline args. If
+  # specified, they would be compared against recovery.zbi kernel cmdline
+  # during build time. At least one of the golden files must match.
+  # In normal case, there should only be one golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  recovery_zbi_kernel_cmdline_goldens = []
+
+  # An optional lit of golden files for fuchsia.zbi bootFS file list. If
+  # specified, they would be compared against fuchsia.zbi bootFS file list
+  # during build time. At least one of the golden files must match.
+  # In normal case, there should only be one golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  fuchsia_zbi_bootfs_filelist_goldens = []
+
+  # An optional list of golden files for recovery.zbi bootFS file list. If
+  # specified, they would be compared against recovery.zbi bootFS file list
+  # during build time.  At least one of the golden files must match.
+  # In normal case, there should only be golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  recovery_zbi_bootfs_filelist_goldens = []
+
+  # An optional lit of golden files for fuchsia.zbi static pkgs list. If
+  # specified, they would be compared against fuchsia.zbi static pkgs list
+  # during build time. At least one of the golden files must match.
+  # In normal case, there should only be one golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  fuchsia_static_pkgs_goldens = []
+
+  # An optional file path to the route_sources verifier configuration to be used
+  # on the assembled fuchsia system.
+  fuchsia_route_sources_config = ""
+
+  # An optional list of (capability, moniker) pairs that determine exceptions
+  # to the verify_route.gni build rule that prevents v2 components from
+  # attempting to use capabilities they were not offered. Generally new entries
+  # should not be added to this allowlist and acts as a marker for future
+  # technical debt to clean up.
+  fuchsia_verify_routes_exceptions_allowlist =
+      "//src/security/policy/build/verify_routes_exceptions_allowlist.json5"
+
+  # Same as above, except this allowlist gets added in bootfs_only builds.
+  fuchsia_verify_routes_exceptions_allowlist_bootfs = "//src/security/policy/build/verify_routes_exceptions_allowlist_bootfs.json5"
+
+  # An optional mapping of (scheme, resolver moniker, and resolver capability)
+  # to component monikers that determine which component resolvers are compared
+  # to the allowlist and which components are allowed to be resolved by the
+  # matching component resolver. Used by verify_component_resolvers.gni.
+  fuchsia_verify_component_resolvers_allowlist =
+      "//src/security/policy/component_resolvers_policy.json5"
+
+  # An optional list of golden files for recovery.zbi static pkgs list. If
+  # specified, they would be compared against recovery.zbi static pkgs list
+  # during build time.  At least one of the golden files must match.
+  # In normal case, there should only be golden file in this list.
+  # During a soft transition where changes are made in a different repo than
+  # the golden file repo, user need to
+  # 1. copy the old golden file before the change to '*.orig'
+  # 2. create a new golden file reflecting the changes
+  # 3. add both the old golden file and new golden file to this list. e.g. there
+  # would be 'product.txt' and 'product.txt.orig' in this list and check in the
+  # above changes.
+  # 4. check in the changes that is made in a different repo.
+  # 5. delete 'product.txt.orig' and remove it from this list.
+  recovery_static_pkgs_goldens = []
+
+  # Whether to allow testonly=true targets in fuchsia ZBI or base/cache packages.
+  #
+  # Possible values are
+  #   "all": Allow testonly=true target in fuchsia ZBI and base/cache packages.
+  #   "all_but_base_cache_packages": Do not allow testonly=true target in
+  #      base/cache packages, but allow in other fuchsia ZBI dependencies.
+  #   "none": Do not allow testonly=true target in all ZBI dependencies
+  #      including base/cache packages.
+  #
+  # Default value is 'all', it is preferable to set to 'none' for production
+  #   image to avoid accidental inclusion of testing targets.
+  testonly_in_containers = "all"
+
+  # Controls the behavior of sysmgr's PackageUpdatingLoader (v1) and the
+  # full-resolver (v2). If true, when resolving a component an attempt to
+  # update the component's package is first made through the Software Delivery
+  # system (specifically, through the package resolver,
+  # fuchsia.pkg.PackageResolver). If false, no attempt to update is made and
+  # components are loaded only from packages already available locally (for
+  # example, because the package is in base).
+  auto_update_packages = true
+}
+
+# Whether to allow testonly=true in base_packages/cache_packages.
+base_cache_packages_testonly = false
+if (testonly_in_containers == "all") {
+  # If we allow testonly=true for all containers, then we allow it for
+  # base/cache packges.
+  base_cache_packages_testonly = true
+}
+
+# Whether to allow testonly=true in zbi("fuchsia") and all its dependencies
+# except base_packages/cache_packages.
+fuchsia_zbi_testonly = false
+if (testonly_in_containers == "all" ||
+    testonly_in_containers == "all_but_base_cache_packages") {
+  fuchsia_zbi_testonly = true
+}

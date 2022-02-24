@@ -1,0 +1,67 @@
+{
+    include: [
+        "inspect/client.shard.cml",
+        "syslog/client.shard.cml",
+        "syslog/elf_stdio.shard.cml",
+    ],
+    program: {
+        runner: "elf",
+        binary: "bin/starnix_runner",
+        job_policy_create_raw_processes: "true",
+        use_next_vdso: "true",
+    },
+    capabilities: [
+        {
+            runner: "starnix",
+            path: "/svc/fuchsia.component.runner.ComponentRunner",
+        },
+        {
+            protocol: [
+                "fuchsia.component.runner.ComponentRunner",
+                "fuchsia.starnix.developer.Manager",
+            ],
+        },
+    ],
+    use: [
+        {
+            directory: "dev-gpu",
+            rights: [ "rw*" ],
+            path: "/dev/class/gpu",
+        },
+        {
+            protocol: [
+                // Note that this is the parent's realm. This is used to create children in
+                // starnix_manager's collection.
+                "fuchsia.component.Realm",
+                "fuchsia.component.runner.ComponentRunner",
+                "fuchsia.kernel.VmexResource",
+                "fuchsia.sysmem.Allocator",
+
+                // Wayland bridge protocols.
+                "fuchsia.tracing.provider.Registry",
+                "fuchsia.ui.composition.Allocator",
+                "fuchsia.ui.composition.Flatland",
+                "fuchsia.ui.input3.Keyboard",
+                "fuchsia.ui.scenic.Scenic",
+                "fuchsia.vulkan.loader.Loader",
+            ],
+            from: "parent",
+        },
+    ],
+    expose: [
+        {
+            runner: "starnix",
+            from: "self",
+        },
+        {
+            protocol: [
+                "fuchsia.component.runner.ComponentRunner",
+
+                // In principle, this protocol should be exposed by a separate
+                // starnix_manager component, but that is blocked behind fxb/74087
+                "fuchsia.starnix.developer.Manager",
+            ],
+            from: "self",
+        },
+    ],
+}

@@ -1,0 +1,11 @@
+{
+    "phy": {
+        "*": [
+            "Client"
+        ],
+        "/dev/sys/test/wlantapctl/*": [
+            "Client",
+            "Ap"
+        ]
+    }
+}

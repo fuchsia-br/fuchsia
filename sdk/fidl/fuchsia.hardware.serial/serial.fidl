@@ -1,0 +1,93 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library fuchsia.hardware.serial;
+
+using zx;
+
+/// Description of what type of serial device this is
+type Class = strict enum : uint8 {
+    GENERIC = 1;
+    /// A Bluetooth host controller
+    BLUETOOTH_HCI = 2;
+    /// An interactive console
+    CONSOLE = 3;
+    /// Kernel debug serial
+    KERNEL_DEBUG = 4;
+};
+
+/// Number of bits per character
+type CharacterWidth = strict enum : uint8 {
+    BITS_5 = 1;
+    BITS_6 = 2;
+    BITS_7 = 3;
+    BITS_8 = 4;
+};
+
+/// Number of stop bits
+type StopWidth = strict enum : uint8 {
+    BITS_1 = 1;
+    BITS_2 = 2;
+};
+
+/// Which parity computation to use, if any.
+type Parity = strict enum : uint8 {
+    NONE = 1;
+    EVEN = 2;
+    ODD = 3;
+};
+
+/// What flow control mechanism to use
+type FlowControl = strict enum : uint8 {
+    NONE = 1;
+    /// Clear To Send/Request To Send
+    CTS_RTS = 2;
+};
+
+type Config = struct {
+    character_width CharacterWidth;
+    stop_width StopWidth;
+    parity Parity;
+    control_flow FlowControl;
+    baud_rate uint32;
+};
+
+/// Legacy synchronous device interface.
+/// New drivers should implement NewDevice instead.
+protocol Device {
+    /// Lookup what type of serial device this is.
+    GetClass() -> (struct {
+        device_class Class;
+    });
+
+    /// Set the configuration of this serial device.
+    SetConfig(struct {
+        config Config;
+    }) -> (struct {
+        s zx.status;
+    });
+};
+
+/// FIDL device utilizing the new asynchronous serial driver
+/// instead of the synchronous FDIO-backed read/write interface.
+/// New drivers should implement this instead of the Device interface above.
+protocol NewDevice {
+    compose Device;
+
+    /// Reads data from the serial port
+    Read() -> (struct {
+        data vector<uint8>:MAX;
+    }) error zx.status;
+
+    /// Writes data to the serial port
+    Write(struct {
+        data vector<uint8>:MAX;
+    }) -> (struct {}) error zx.status;
+};
+
+@discoverable
+protocol NewDeviceProxy {
+    GetChannel(resource struct {
+        req server_end:NewDevice;
+    });
+};

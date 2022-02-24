@@ -1,0 +1,36 @@
+// Test records that use PERFMON_RECORD_VALUE.
+// These don't count anything, just provide a value, like a temperature.
+// This test is highly chip-specific. The test harness knows this.
+{
+  "config_name": "value-records",
+  "events": [
+    {
+      // This event is used as a timebase to control data collection.
+      "group_name": "fixed",
+      "event_name": "instructions_retired",
+      "rate": 10000,
+      "flags": [ "os", "user", "timebase" ]
+    },
+    {
+      "group_name": "misc",
+      "event_name": "edram_temperature"
+    },
+    {
+      "group_name": "misc",
+      "event_name": "package_temperature"
+    },
+    {
+      "group_name": "misc",
+      "event_name": "ia_temperature"
+    },
+    {
+      "group_name": "misc",
+      "event_name": "gt_temperature"
+    }
+  ],
+  "buffer_size_in_mb": 16,
+  "duration": 1,
+  "num_iterations": 1,
+  "output_path_prefix": "/data/cpuperf-test",
+  "session_result_spec_path": "/data/cpuperf-test.cpsession"
+}

@@ -1,0 +1,27 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//build/components.gni")
+
+executable("bin") {
+  testonly = true
+  output_name = "example_hlcpp_protocol_test"
+  sources = [ "main.cc" ]
+  deps = [
+    "//examples/fidl/fuchsia.examples",
+    "//sdk/lib/fidl/cpp",
+    "//sdk/lib/sys/cpp",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_unittest_package("example-hlcpp-protocol-test") {
+  deps = [ ":bin" ]
+}
+
+group("testing") {
+  testonly = true
+  deps = [ ":example-hlcpp-protocol-test" ]
+}

@@ -1,0 +1,134 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/fuzzing/fuzzer.gni")
+import("//build/rust/rustc_staticlib.gni")
+import("//build/toolchain/rbe.gni")
+
+# Defines a Rust fuzzer
+#
+# The template creates a Rust static library with fuzz target functions enabled
+# and provides it to the usual `fuzzer` template. This can create three
+# different outputs based on the toolchain variant applied to the target:
+#
+#   - If the toolchain variant is "rust-*san-fuzzer", this will build a fuzzer
+#     which instruments the Rust code of the target and its dependencies.
+#
+#   - If the toolchain variant is "*san-fuzzer", this will build a fuzzer which
+#     instruments the C/C++ code of the target and its dependencies.
+#
+#   - Otherwise, it will build an uninstrumented unit test that ensures the
+#     fuzzer code can build and link.
+#
+# Parameters:
+#
+#   rustfunction (optional)
+#     Name of the fuzz target function. Defaults to the GN target name.
+#     See also https://llvm.org/docs/LibFuzzer.html#fuzz-target.
+#
+#   version
+#   edition
+#   configs
+#   data_deps
+#   deps
+#   source_root
+#   enforce_source_listing
+#   sources
+#   inputs
+#   features
+#   disable_rbe
+#     Same meaning as for rustc_staticlib.
+#
+#   cmx
+#   dictionary
+#   options
+#   executable parameters, except deps
+#     Same meaning as for fuzzer.
+#
+# Example:
+#
+# In src/lib.rs:
+#   fuzz!("my_fuzzer", (input: ArbitraryType), { ... });
+#
+# In BUILD.gn:
+#   rust_fuzzer("my_fuzzer") {}
+#
+template("rustc_fuzzer") {
+  fuzzer_name = target_name
+  fuzzer_lib = "${fuzzer_name}_lib"
+  fuzzer_cfg = "${fuzzer_name}_cfg"
+
+  rustfunction = target_name
+  if (defined(invoker.rustfunction)) {
+    rustfunction = invoker.rustfunction
+  }
+
+  config(fuzzer_cfg) {
+    visibility = [ ":*" ]
+    rustflags = [
+      "--cfg=fuzz",
+      "--cfg=fuzz_target=\"$rustfunction\"",
+    ]
+  }
+
+  rustc_staticlib(fuzzer_lib) {
+    forward_variables_from(invoker,
+                           [
+                             "version",
+                             "edition",
+                             "source_root",
+                             "enforce_source_listing",
+                             "sources",
+                             "inputs",
+                             "features",
+                           ])
+    visibility = [ ":*" ]
+    testonly = true
+    configs = []
+    configs += invoker.configs
+    configs += [ ":$fuzzer_cfg" ]
+    deps = [
+      "//src/lib/fuzzing/rust:fuzz",
+      "//third_party/rust_crates:arbitrary",
+    ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+
+    inputs = []
+    if (defined(invoker.inputs)) {
+      inputs = invoker.inputs
+    }
+    _use_rbe = enable_rbe
+    if (defined(invoker.disable_rbe) && invoker.disable_rbe) {
+      _use_rbe = false
+    }
+    if (_use_rbe) {
+      # Depend on Rust/RBE scripts and tools
+      inputs += rust_rbe_deps
+    }
+  }
+
+  fuzzer(fuzzer_name) {
+    non_rust_deps = []
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "version",
+                             "edition",
+                             "deps",
+                             "source_root",
+                             "sources",
+                             "inputs",
+                             "features",
+                             "configs",
+                           ])
+    deps = [ ":$fuzzer_lib" ]
+    deps += non_rust_deps
+  }
+}
+
+set_defaults("rustc_fuzzer") {
+  configs = default_common_binary_configs + default_rust_configs
+}

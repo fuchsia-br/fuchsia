@@ -1,0 +1,79 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package fint;
+
+option go_package = "go.fuchsia.dev/fuchsia/tools/integration/fint/proto";
+
+import "google/protobuf/struct.proto";
+
+// Various ninja build data.
+message NinjaActionMetrics {
+  // The number of actions to complete the build in the beginning.
+  int32 initial_actions = 1;
+
+  // The number of actions executed at the end of the build.
+  // This may be less than the number of initial actions due to `restat`
+  // (dynamic action graph pruning).
+  int32 final_actions = 2;
+
+  // Breakdown of actions executed by type, e.g. "ACTION", "CXX", "STAMP".
+  map<string, int32> actions_by_type = 3;
+}
+
+// BuildArtifacts contains information about the targets built by `fint build`.
+message BuildArtifacts {
+  // A brief error log populated in case of a recognized failure mode (e.g. a
+  // Ninja compilation failure).
+  string failure_summary = 1;
+
+  // Images produced by the build. We use a struct to avoid needing to maintain
+  // a copy of the images.json schema here.
+  repeated google.protobuf.Struct built_images = 2;
+
+  // Archives produced by the build. We use a struct to avoid needing to
+  // maintain a copy of the images.json schema here.
+  repeated google.protobuf.Struct built_archives = 3;
+
+  // Zedboot paving images built for ZBI tests. Only populated if ZBI tests were
+  // built.
+  repeated google.protobuf.Struct built_zedboot_images = 4;
+
+  // Mapping from ZBI test name to QEMU kernel image for the test. Only
+  // populated if ZBI tests were built.
+  map<string, google.protobuf.Struct> zbi_test_qemu_kernel_images = 5;
+
+  // Absolute path to the Ninja log file.
+  string ninja_log_path = 6;
+
+  // Absolute path to a Ninja graph file.
+  string ninja_graph_path = 7;
+
+  // Absolute path to a Ninja compdb file.
+  string ninja_compdb_path = 8;
+
+  // The duration taken by the ninja build step.
+  int32 ninja_duration_seconds = 9;
+
+  // Various ninja build data
+  NinjaActionMetrics ninja_action_metrics = 10;
+
+  // Mapping from user-friendly title to absolute path for important log files
+  // that should be presented by the infrastructure for humans to read. We
+  // reference the logs by path rather than inlining the contents in the
+  // protobuf because the logs may be very long and inlining them would make it
+  // very hard for humans to read the output proto.
+  map<string, string> log_files = 11;
+
+  // Whether an analysis of the build graph determined that the changed files do
+  // not affect the build.
+  bool build_not_affected = 12;
+
+  // Names, as they appear in tests.json, of tests affected by the change under
+  // tests. This is determined by doing a build graph analysis of the files
+  // reported in the `changed_files` context spec field.
+  repeated string affected_tests = 13;
+}

@@ -1,0 +1,54 @@
+# Copyright 2020 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+source_set("input_report_reader") {
+  sources = [
+    "input_interpreter.cc",
+    "input_interpreter.h",
+    "input_reader.cc",
+    "input_reader.h",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.input.report",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/lib/fdio",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//zircon/system/ulib/async-default",
+    "//zircon/system/ulib/trace",
+  ]
+
+  public_deps = [
+    ":fdio",
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/lib/fdio",
+    "//src/lib/fostr/fidl/fuchsia.ui.input",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+}
+
+source_set("fdio") {
+  visibility = [ ":*" ]
+
+  sources = [
+    "fdio_device_watcher.cc",
+    "fdio_device_watcher.h",
+  ]
+
+  deps = [
+    "//src/lib/fsl",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/trace",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.ui.input",
+    "//sdk/lib/fdio",
+    "//zircon/system/ulib/fbl",
+    "//zircon/system/ulib/fdio-caller",
+    "//zircon/system/ulib/fzl",
+  ]
+}

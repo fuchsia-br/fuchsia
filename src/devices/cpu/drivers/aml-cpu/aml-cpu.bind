@@ -1,0 +1,22 @@
+// Copyright 2021 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+using fuchsia.google.platform;
+using fuchsia.amlogic.platform;
+
+// The device must be a composite protocol device.
+fuchsia.BIND_COMPOSITE == 1;
+
+if fuchsia.BIND_PLATFORM_DEV_VID == fuchsia.google.platform.BIND_PLATFORM_DEV_VID.GOOGLE {
+  fuchsia.BIND_PLATFORM_DEV_DID == fuchsia.google.platform.BIND_PLATFORM_DEV_DID.GOOGLE_AMLOGIC_CPU;
+  accept fuchsia.BIND_PLATFORM_DEV_PID {
+    fuchsia.google.platform.BIND_PLATFORM_DEV_PID.ASTRO,
+    fuchsia.google.platform.BIND_PLATFORM_DEV_PID.LUIS,
+  }
+} else if fuchsia.BIND_PLATFORM_DEV_VID == fuchsia.amlogic.platform.BIND_PLATFORM_DEV_VID.AMLOGIC {
+  fuchsia.BIND_PLATFORM_DEV_DID == fuchsia.amlogic.platform.BIND_PLATFORM_DEV_DID.CPU;
+  fuchsia.BIND_PLATFORM_DEV_PID == fuchsia.amlogic.platform.BIND_PLATFORM_DEV_PID.A311D;
+} else {
+  false;
+}

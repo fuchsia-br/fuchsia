@@ -1,0 +1,14 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/sockscripter"
+    },
+    "sandbox": {
+        "services": [
+            "fuchsia.posix.socket.Provider",
+            "fuchsia.posix.socket.raw.Provider"
+        ]
+    }
+}

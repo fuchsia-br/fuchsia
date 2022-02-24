@@ -1,0 +1,54 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/rust/rustc_library.gni")
+import("//build/rust/rustc_test.gni")
+
+# Build the library.
+rustc_library("ppp_protocol") {
+  edition = "2018"
+  deps = [
+    "//src/connectivity/ppp/lib/ppp_packet",
+    "//src/lib/fuchsia-async",
+    "//src/lib/network/packet",
+    "//src/lib/syslog/rust:syslog",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/ipv4.rs",
+    "src/ipv6.rs",
+    "src/lib.rs",
+    "src/link.rs",
+    "src/ppp.rs",
+  ]
+}
+
+rustc_test("ppp_protocol_test_bin") {
+  edition = "2018"
+
+  deps = [
+    "//src/connectivity/ppp/lib/ppp_packet",
+    "//src/lib/fuchsia-async",
+    "//src/lib/network/packet",
+    "//src/lib/syslog/rust:syslog",
+    "//third_party/rust_crates:anyhow",
+    "//third_party/rust_crates:thiserror",
+  ]
+
+  sources = [
+    "src/ipv4.rs",
+    "src/ipv6.rs",
+    "src/lib.rs",
+    "src/link.rs",
+    "src/ppp.rs",
+    "src/test.rs",
+  ]
+}
+
+fuchsia_unittest_package("ppp-protocol-tests") {
+  deps = [ ":ppp_protocol_test_bin" ]
+}

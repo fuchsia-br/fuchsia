@@ -1,0 +1,101 @@
+# Copyright 2019 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/cpp/sdk_source_set.gni")
+import("//build/zircon/zx_library.gni")
+
+# TODO(brettw) remove this when callers are updated to use full paths.
+config("memfs_config") {
+  include_dirs = [ "include" ]
+}
+
+# The in-memory filesystem implementation.
+#
+# Most users will want to consume the shared library rather than statically linking this
+# implementation. To do that, either use the "memfs" target (C) or the "cpp" target (C++).
+static_library("lib") {
+  output_name = "memfs_lib"
+
+  public = [
+    "memfs.h",
+    "vnode.h",
+    "vnode_dir.h",
+    "vnode_file.h",
+    "vnode_vmo.h",
+  ]
+  sources = [
+    "dnode.cc",
+    "include/lib/memfs/memfs.h",
+    "memfs.cc",
+    "vnode.cc",
+    "vnode_dir.cc",
+    "vnode_file.cc",
+    "vnode_vmo.cc",
+  ]
+
+  public_configs = [ ":memfs_config" ]
+
+  public_deps = [
+    # <lib/memfs/cpp/vnode.h> has #include <lib/fdio/io.h>
+    "//sdk/lib/fdio",
+
+    # <lib/memfs/cpp/vnode.h> has #include <fbl/ref_ptr.h>
+    "//zircon/system/ulib/fbl",
+
+    # <lib/memfs/cpp/vnode.h> has #include <lib/zx/vmo.h>
+    "//zircon/system/ulib/zx",
+
+    # <lib/memfs/cpp/vnode.h> has #include "src/lib/storage/vfs/cpp/vfs.h> and many other <fs/*.h"
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+  ]
+  deps = [
+    "//sdk/fidl/fuchsia.io:fuchsia.io_llcpp",
+    "//sdk/lib/syslog/cpp",
+    "//zircon/system/ulib/async",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/sync",
+    "//zircon/third_party/ulib/safemath",
+  ]
+}
+
+# libmemfs.so: The C ABI client library.
+#
+# Used to create local temporary filesystems.
+zx_library("memfs") {
+  sdk = "shared"
+  sdk_publishable = true
+  sdk_headers = [ "lib/memfs/memfs.h" ]
+
+  sources = [ "memfs_api.cc" ]
+  public_deps = [
+    # <lib/memfs/memfs.h> has #include <lib/async/dispatcher.h>.
+    "//zircon/system/ulib/async",
+
+    # <lib/memfs/memfs.h> has #include <lib/sync/completion.h>.
+    "//zircon/system/ulib/sync",
+  ]
+  deps = [
+    ":lib",
+    "//sdk/lib/fdio",
+    "//src/lib/storage/vfs/cpp",
+    "//zircon/system/ulib/fbl",
+  ]
+  runtime_deps = [
+    "//sdk/lib/fdio:fdio_sdk",
+    "//zircon/system/ulib/trace-engine:trace-engine_sdk",
+  ]
+}
+
+# A C++ wrapper around the C "memfs" shared library that handles setup and tear-down.
+source_set("cpp") {
+  public = [ "scoped_memfs.h" ]
+
+  public_deps = [ ":memfs" ]
+}
+
+group("tests") {
+  testonly = true
+  deps = [ "test:tests" ]
+}

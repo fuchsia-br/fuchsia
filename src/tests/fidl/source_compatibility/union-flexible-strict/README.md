@@ -1,0 +1,1 @@
+See //docs/development/languages/fidl/guides/compatibility/union_flexible_strict.md

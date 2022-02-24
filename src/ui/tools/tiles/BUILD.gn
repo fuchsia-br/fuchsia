@@ -1,0 +1,90 @@
+# Copyright 2018 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/config.gni")
+
+source_set("tiles_lib") {
+  sources = [
+    "tiles.cc",
+    "tiles.h",
+  ]
+
+  public_deps = [
+    "//sdk/fidl/fuchsia.developer.tiles",
+    "//sdk/fidl/fuchsia.ui.app",
+    "//sdk/fidl/fuchsia.ui.gfx",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//sdk/fidl/fuchsia.ui.views",
+    "//sdk/lib/ui/scenic/cpp",
+    "//src/lib/ui/base_view",
+    "//zircon/system/ulib/async:async-cpp",
+    "//zircon/system/ulib/zx",
+  ]
+
+  deps = [
+    "//sdk/fidl/fuchsia.sys",
+    "//src/lib/fxl",
+  ]
+}
+
+executable("bin") {
+  output_name = "tiles"
+
+  sources = [ "main.cc" ]
+
+  deps = [
+    ":tiles_lib",
+    "//sdk/fidl/fuchsia.ui.policy",
+    "//sdk/fidl/fuchsia.ui.scenic",
+    "//src/lib/fxl",
+    "//zircon/system/ulib/async-loop:async-loop-cpp",
+    "//zircon/system/ulib/async-loop:async-loop-default",
+    "//zircon/system/ulib/trace-provider:trace-provider-with-fdio",
+  ]
+}
+
+fuchsia_component("tiles-gfx") {
+  component_name = "tiles"
+  manifest = "meta/tiles.cmx"
+  deps = [ ":bin" ]
+}
+
+fuchsia_component("tiles-flatland") {
+  manifest = "flatland/meta/tiles-flatland.cmx"
+  deps = [ "flatland:bin" ]
+}
+
+fuchsia_package("tiles") {
+  deps = [
+    ":tiles-flatland",
+    ":tiles-gfx",
+    ":tiles_config",
+  ]
+}
+
+executable("tiles_unittests") {
+  testonly = true
+
+  sources = [ "tiles_unittest.cc" ]
+
+  deps = [
+    ":tiles_lib",
+    "//sdk/lib/sys/cpp/testing:unit",
+    "//src/lib/fxl",
+    "//src/lib/fxl/test:gtest_main",
+    "//src/lib/testing/loop_fixture",
+  ]
+}
+
+fuchsia_unittest_package("tiles_tests") {
+  deps = [ ":tiles_unittests" ]
+}
+
+# Add a Sysmgr entry to allow connections to fuchsia.developer.tiles.Controller
+config_data("tiles_config") {
+  for_pkg = "sysmgr"
+  outputs = [ "tiles.config" ]
+  sources = [ "config/service.config" ]
+}

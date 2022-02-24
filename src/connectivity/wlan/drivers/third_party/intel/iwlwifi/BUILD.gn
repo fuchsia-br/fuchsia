@@ -1,0 +1,127 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/components.gni")
+import("//build/drivers.gni")
+
+visibility = [ "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/*" ]
+
+# Common configuration for builds on Fuchsia.
+config("fuchsia_config") {
+  defines = [
+    "CPTCFG_IWL_TIMEOUT_FACTOR=1",
+    "CPTCFG_IWLMVM=1",
+  ]
+}
+
+# The iwlwifi core sources.
+source_set("core") {
+  sources = [
+    "iwl-drv.c",
+    "iwl-eeprom-parse.c",
+    "iwl-io.c",
+    "iwl-nvm-parse.c",
+    "iwl-phy-db.c",
+    "iwl-trans.c",
+  ]
+  public = [
+    "iwl-agn-hw.h",
+    "iwl-config.h",
+    "iwl-constants.h",
+    "iwl-csr.h",
+    "iwl-dbg-tlv.h",
+    "iwl-debug.h",
+    "iwl-drv.h",
+    "iwl-eeprom-parse.h",
+    "iwl-eeprom-read.h",
+    "iwl-fh.h",
+    "iwl-io.h",
+    "iwl-modparams.h",
+    "iwl-nvm-parse.h",
+    "iwl-op-mode.h",
+    "iwl-phy-db.h",
+    "iwl-prph.h",
+    "iwl-scd.h",
+    "iwl-trans.h",
+    "iwl-vendor-cmd.h",
+  ]
+  deps = [
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/fw:api",
+    "//src/lib/ddk",
+    "//zircon/system/public",
+    "//zircon/system/ulib/sync",
+  ]
+  public_deps = [
+    "//sdk/banjo/fuchsia.hardware.wlan.phyinfo:fuchsia.hardware.wlan.phyinfo_banjo_c",
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/platform",
+    "//zircon/system/public",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+fuchsia_driver("iwlwifi_driver-driver") {
+  output_name = "iwlwifi"
+  deps = [ "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/platform:fuchsia_device" ]
+}
+
+fuchsia_driver_component("iwlwifi_driver") {
+  info = "iwlwifi_driver-info.json"
+  component_name = "iwlwifi"
+  deps = [
+    ":iwlwifi_driver-driver",
+    "platform:fuchsia_bind",
+  ]
+  visibility = []
+  visibility = [ "*" ]
+  colocate = true
+}
+
+# TODO(fxbug.dev/93333: Remove this when DFv2 has stabilised.
+fuchsia_driver_component("iwlwifi_driver_dfv2") {
+  info = "iwlwifi_driver-info.json"
+  component_name = "iwlwifi"
+  deps = [
+    ":iwlwifi_driver-driver",
+    "platform:fuchsia_bind_dfv2",
+  ]
+  visibility = []
+  visibility = [ "*" ]
+  colocate = true
+}
+
+all_fw_files = [
+  "iwlwifi-7265D-29.ucode",
+  "iwlwifi-8265-31.ucode",
+  "iwlwifi-9260-th-b0-jf-b0-38.ucode",
+]
+
+foreach(fw_file, all_fw_files) {
+  resource("iwlwifi-firmware-" + fw_file) {
+    sources =
+        [ "//prebuilt/connectivity/wlan/firmware/intel/iwlwifi/" + fw_file ]
+    outputs = [ "lib/firmware/iwlwifi/" + fw_file ]
+  }
+}
+
+fuchsia_system_package("iwlwifi") {
+  deps = [ ":iwlwifi_driver" ]
+  foreach(fw_file, all_fw_files) {
+    deps += [ ":iwlwifi-firmware-" + fw_file ]
+  }
+  visibility = []
+  visibility = [ "*" ]
+  allowed_in_extra_deps = true
+}
+
+group("tests") {
+  testonly = true
+  deps = [
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/platform:fuchsia_bind_test",
+    "//src/connectivity/wlan/drivers/third_party/intel/iwlwifi/test:iwlwifi_test",
+  ]
+  visibility = []
+  visibility = [ "*" ]
+}

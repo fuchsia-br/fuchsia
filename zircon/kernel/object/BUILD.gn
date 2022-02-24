@@ -1,0 +1,144 @@
+# Copyright 2019 The Fuchsia Authors
+#
+# Use of this source code is governed by a MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT
+
+import("//build/zircon/migrated_targets.gni")
+
+zx_library("object") {
+  sources = [
+    "buffer_chain.cc",
+    "bus_transaction_initiator_dispatcher.cc",
+    "channel_dispatcher.cc",
+    "clock_dispatcher.cc",
+    "diagnostics.cc",
+    "dispatcher.cc",
+    "event_dispatcher.cc",
+    "event_pair_dispatcher.cc",
+    "exception.cc",
+    "exception_dispatcher.cc",
+    "exceptionate.cc",
+    "executor.cc",
+    "fifo_dispatcher.cc",
+    "futex_context.cc",
+    "guest_dispatcher.cc",
+    "handle.cc",
+    "handle_table.cc",
+    "interrupt_dispatcher.cc",
+    "interrupt_event_dispatcher.cc",
+    "iommu_dispatcher.cc",
+    "job_dispatcher.cc",
+    "job_policy.cc",
+    "log_dispatcher.cc",
+    "mbuf.cc",
+    "memory_watchdog.cc",
+    "message_packet.cc",
+    "msi_dispatcher.cc",
+    "msi_interrupt_dispatcher.cc",
+    "pager_dispatcher.cc",
+    "pager_proxy.cc",
+    "pci_device_dispatcher.cc",
+    "pci_interrupt_dispatcher.cc",
+    "pinned_memory_token_dispatcher.cc",
+    "port_dispatcher.cc",
+    "process_dispatcher.cc",
+    "profile_dispatcher.cc",
+    "resource.cc",
+    "resource_dispatcher.cc",
+    "root_job_observer.cc",
+    "singleton.cc",
+    "socket_dispatcher.cc",
+    "stream_dispatcher.cc",
+    "suspend_token_dispatcher.cc",
+    "thread_dispatcher.cc",
+    "timer_dispatcher.cc",
+    "user_handles.cc",
+    "vcpu_dispatcher.cc",
+    "virtual_interrupt_dispatcher.cc",
+    "vm_address_region_dispatcher.cc",
+    "vm_object_dispatcher.cc",
+    "wait_signal_observer.cc",
+  ]
+  deps = [
+    ":tests",
+    "//sdk/lib/fit",
+    "//zircon/kernel/dev/interrupt",
+    "//zircon/kernel/dev/iommu/dummy",
+    "//zircon/kernel/dev/pcie",
+    "//zircon/kernel/hypervisor",
+    "//zircon/kernel/lib/arch",
+    "//zircon/kernel/lib/boot-options",
+    "//zircon/kernel/lib/console",
+    "//zircon/kernel/lib/counters",
+    "//zircon/kernel/lib/crashlog",
+    "//zircon/kernel/lib/fbl",
+    "//zircon/kernel/lib/init",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/ktrace",
+    "//zircon/kernel/lib/object_cache",
+    "//zircon/kernel/lib/page_cache",
+    "//zircon/kernel/lib/root_resource_filter",
+    "//zircon/system/ulib/pretty",
+    "//zircon/system/ulib/region-alloc",
+    "//zircon/system/ulib/zxc",
+  ]
+  if (current_cpu == "x64") {
+    deps += [ "//zircon/kernel/dev/iommu/intel" ]
+  }
+  public_deps = [
+    # <object/buffer_chain.h> has #include <ktl/move.h>.
+    "//zircon/kernel/lib/ktl:headers",
+
+    # <object/port_dispatcher.h> has <lib/object_cache.h>
+    "//zircon/kernel/lib/object_cache:headers",
+
+    # <object/buffer_chain.h> has <lib/page_cache.h>
+    "//zircon/kernel/lib/page_cache:headers",
+
+    # <object/pci_device_dispatcher.h> has #include <dev/pci_common.h>
+    "//zircon/kernel/dev/pcie:headers",
+
+    # <object/log_dispatcher.h> has #include <lib/debuglog.h>.
+    "//zircon/kernel/lib/debuglog:headers",
+
+    # <object/resource_dispatcher.h> has #include <region-alloc/region-alloc.h>.
+    "//zircon/system/ulib/region-alloc:headers",
+
+    # <object/vcpu_dispatcher.h> has #include <hypervisor/interrupt_tracker.h>.
+    #"//zircon/kernel/hypervisor:headers",
+
+    # <object/process_dispatcher.h> has #include <vm/vm_aspace.h>.
+    "//zircon/kernel/vm:headers",
+
+    # <object/clock_dispatcher.h> has #include <lib/affine/transform.h>.
+    "//zircon/system/ulib/affine",
+  ]
+
+  # TODO(https://fxbug.dev/58162): delete the below and fix compiler warnings
+  configs += [ "//build/config:Wno-conversion" ]
+}
+
+source_set("tests") {
+  # TODO: testonly = true
+  sources = [
+    "buffer_chain_tests.cc",
+    "exceptionate_tests.cc",
+    "handle_tests.cc",
+    "interrupt_event_dispatcher_tests.cc",
+    "job_dispatcher_tests.cc",
+    "job_policy_tests.cc",
+    "mbuf_tests.cc",
+    "message_packet_tests.cc",
+    "msi_object_tests.cc",
+    "root_job_observer_tests.cc",
+    "socket_dispatcher_tests.cc",
+    "state_tracker_tests.cc",
+  ]
+  deps = [
+    ":headers",
+    "//zircon/kernel/lib/console",
+    "//zircon/kernel/lib/ktl",
+    "//zircon/kernel/lib/unittest",
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "include": [
+        "syslog/client.shard.cmx"
+    ],
+    "program": {
+        "binary": "bin/multiple_guests"
+    },
+    "sandbox": {
+        "features": [
+            "isolated-persistent-storage"
+        ],
+        "services": [
+            "fuchsia.netemul.guest.GuestDiscovery",
+            "fuchsia.virtualization.Manager"
+        ]
+    }
+}
